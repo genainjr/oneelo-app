@@ -5,9 +5,23 @@ import { useEscalas, FilterEscalas } from '@/hooks/use-escalas';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { api } from '@/lib/api';
-import { Escala, EscalaItem, Ministerio, Membro } from '@/types';
+import { Escala, EscalaItem, Ministerio } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { getCurrentUser } from '@/lib/auth';
+
+// ─── Toast inline ─────────────────────────────────────────────────────────────
+
+type ToastType = 'success' | 'error' | 'info';
+
+interface Toast {
+  id: number;
+  type: ToastType;
+  message: string;
+}
+
+let toastCounter = 0;
+
+// ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function EscalasPage() {
   const {
@@ -28,10 +42,27 @@ export default function EscalasPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
 
+  // Toast notifications
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  function showToast(message: string, type: ToastType = 'success') {
+    const id = ++toastCounter;
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }
+
   // Modals and selections
   const [selectedEscala, setSelectedEscala] = useState<Escala | null>(null);
   const [isScaleModalOpen, setIsScaleModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [escalaToDelete, setEscalaToDelete] = useState<Escala | null>(null);
+
+  // Saving states
+  const [isSavingScale, setIsSavingScale] = useState(false);
+  const [isSavingItem, setIsSavingItem] = useState(false);
+  const [isDeletingScale, setIsDeletingScale] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   // New Scale form
   const [titulo, setTitulo] = useState('');
@@ -54,7 +85,7 @@ export default function EscalasPage() {
 
   useEffect(() => {
     setCurrentUser(getCurrentUser());
-    
+
     // Load ministries for filters & form
     api.get<Ministerio[]>('/api/ministerios')
       .then((res) => setMinisterios(Array.isArray(res) ? res : []))
@@ -100,6 +131,7 @@ export default function EscalasPage() {
   async function handleSaveScale(e: React.FormEvent) {
     e.preventDefault();
     if (!titulo.trim() || !dataEscala || !ministerioId) return;
+    setIsSavingScale(true);
 
     try {
       const payload = {
@@ -111,33 +143,52 @@ export default function EscalasPage() {
 
       if (selectedEscala) {
         await updateEscala(selectedEscala.id, payload);
+        showToast('Escala atualizada com sucesso!');
       } else {
         await createEscala(payload);
+        showToast('Escala criada com sucesso!');
       }
       setIsScaleModalOpen(false);
       setSelectedEscala(null);
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar escala.');
+      showToast(err.message || 'Erro ao salvar escala.', 'error');
+    } finally {
+      setIsSavingScale(false);
     }
   }
 
-  // Handle delete scale
-  async function handleDeleteScale(escala: Escala) {
-    if (confirm(`Tem certeza que deseja deletar a escala "${escala.titulo}"?`)) {
-      try {
-        await deleteEscala(escala.id);
-      } catch (err: any) {
-        alert(err.message || 'Erro ao excluir escala.');
-      }
+  // Handle delete scale (com modal de confirmação inline)
+  function openDeleteConfirm(escala: Escala) {
+    setEscalaToDelete(escala);
+    setIsDeleteConfirmOpen(true);
+  }
+
+  async function handleConfirmDelete() {
+    if (!escalaToDelete) return;
+    setIsDeletingScale(true);
+    try {
+      await deleteEscala(escalaToDelete.id);
+      showToast(`Escala "${escalaToDelete.titulo}" excluída com sucesso.`);
+      setIsDeleteConfirmOpen(false);
+      setEscalaToDelete(null);
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao excluir escala.', 'error');
+    } finally {
+      setIsDeletingScale(false);
     }
   }
 
   // Quick Publish/Finish scale status
   async function handleUpdateStatus(escala: Escala, status: 'RASCUNHO' | 'PUBLICADA' | 'ENCERRADA') {
+    setUpdatingStatusId(escala.id + status);
     try {
       await updateEscala(escala.id, { status });
+      const labels = { PUBLICADA: 'publicada', ENCERRADA: 'encerrada', RASCUNHO: 'rascunho' };
+      showToast(`Escala ${labels[status]} com sucesso!`);
     } catch (err: any) {
-      alert(err.message || 'Erro ao atualizar status da escala.');
+      showToast(err.message || 'Erro ao atualizar status da escala.', 'error');
+    } finally {
+      setUpdatingStatusId(null);
     }
   }
 
@@ -145,18 +196,22 @@ export default function EscalasPage() {
   async function handleAddMemberItem(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedMembroId || !funcao.trim() || !selectedEscala) return;
+    setIsSavingItem(true);
 
     try {
       await addMembroItem(selectedEscala.id, selectedMembroId, funcao.trim(), itemObs.trim() || undefined);
       setSelectedMembroId('');
       setFuncao('');
       setItemObs('');
-      
-      // Update details in local state
+      showToast('Membro adicionado à escala!');
+
+      // Refresh the selected escala details
       const updated = await api.get<Escala>(`/api/escalas/${selectedEscala.id}`);
       setSelectedEscala(updated);
     } catch (err: any) {
-      alert(err.message || 'Erro ao escalar membro.');
+      showToast(err.message || 'Erro ao escalar membro.', 'error');
+    } finally {
+      setIsSavingItem(false);
     }
   }
 
@@ -164,10 +219,11 @@ export default function EscalasPage() {
     if (!selectedEscala) return;
     try {
       await removeMembroItem(selectedEscala.id, membroId);
+      showToast('Membro removido da escala.');
       const updated = await api.get<Escala>(`/api/escalas/${selectedEscala.id}`);
       setSelectedEscala(updated);
     } catch (err: any) {
-      alert(err.message || 'Erro ao remover membro da escala.');
+      showToast(err.message || 'Erro ao remover membro da escala.', 'error');
     }
   }
 
@@ -178,18 +234,17 @@ export default function EscalasPage() {
       const updated = await api.get<Escala>(`/api/escalas/${selectedEscala.id}`);
       setSelectedEscala(updated);
     } catch (err: any) {
-      alert(err.message || 'Erro ao alterar status de confirmação.');
+      showToast(err.message || 'Erro ao alterar status de confirmação.', 'error');
     }
   }
 
   // Current User quick confirmation handler
   async function handleMyConfirmation(escalaId: string, status: 'CONFIRMADO' | 'RECUSADO') {
-    const note = prompt('Deseja deixar alguma observação? (Opcional)');
     try {
-      await confirmarPresenca(escalaId, status, note || undefined);
-      alert('Presença confirmada com sucesso!');
+      await confirmarPresenca(escalaId, status);
+      showToast(status === 'CONFIRMADO' ? 'Presença confirmada! ✅' : 'Presença recusada.');
     } catch (err: any) {
-      alert(err.message || 'Erro ao confirmar presença.');
+      showToast(err.message || 'Erro ao confirmar presença.', 'error');
     }
   }
 
@@ -199,7 +254,7 @@ export default function EscalasPage() {
     setTitulo(escala.titulo);
     setDataEscala(escala.data ? escala.data.split('T')[0] : '');
     setMinisterioId(escala.ministerioId);
-    setObservacoes(escala.descricao || '');
+    setObservacoes(escala.observacoes || '');
     setIsScaleModalOpen(true);
   }
 
@@ -211,6 +266,15 @@ export default function EscalasPage() {
     setMinisterioId('');
     setObservacoes('');
     setIsScaleModalOpen(true);
+  }
+
+  // Confirmation summary helper
+  function getConfirmacaoSummary(itens?: EscalaItem[]) {
+    if (!itens || itens.length === 0) return null;
+    const confirmados = itens.filter((i) => i.statusConfirmacao === 'CONFIRMADO').length;
+    const pendentes = itens.filter((i) => i.statusConfirmacao === 'PENDENTE').length;
+    const recusados = itens.filter((i) => i.statusConfirmacao === 'RECUSADO').length;
+    return { confirmados, pendentes, recusados };
   }
 
   // Columns definition
@@ -238,14 +302,19 @@ export default function EscalasPage() {
       key: 'status',
       header: 'Status',
       render: (e) => {
-        const badges = {
-          RASCUNHO: 'bg-gray-100 text-gray-700 border-gray-250',
+        const badges: Record<string, string> = {
+          RASCUNHO: 'bg-gray-100 text-gray-700 border-gray-200',
           PUBLICADA: 'bg-blue-50 text-blue-700 border-blue-150',
           ENCERRADA: 'bg-emerald-50 text-emerald-700 border-emerald-150',
         };
+        const labels: Record<string, string> = {
+          RASCUNHO: 'Rascunho',
+          PUBLICADA: 'Publicada',
+          ENCERRADA: 'Encerrada',
+        };
         return (
-          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${badges[e.status]}`}>
-            {e.status}
+          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${badges[e.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+            {labels[e.status] ?? e.status}
           </span>
         );
       },
@@ -254,11 +323,19 @@ export default function EscalasPage() {
       key: 'equipe',
       header: 'Equipe',
       render: (e) => {
+        const summary = getConfirmacaoSummary(e.itens);
         const count = e.itens?.length ?? 0;
         return (
-          <span className="text-xs text-gray-500 font-medium">
-            {count} {count === 1 ? 'membro' : 'membros'}
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-gray-500 font-medium">
+              {count} {count === 1 ? 'membro' : 'membros'}
+            </span>
+            {summary && count > 0 && (
+              <span className="text-[10px] text-gray-400 font-medium">
+                ✅{summary.confirmados} · ⏳{summary.pendentes} · ❌{summary.recusados}
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -267,12 +344,12 @@ export default function EscalasPage() {
       header: 'Minha Presença',
       render: (e) => {
         if (!currentUser) return null;
-        
+
         // Find if current user is scheduled (by email comparison)
         const myItem = e.itens?.find((item) => item.membro?.email === currentUser.email);
         if (!myItem) return <span className="text-xs text-gray-300">Não escalado</span>;
 
-        const colors = {
+        const colors: Record<string, string> = {
           PENDENTE: 'text-amber-600 bg-amber-50 border-amber-200',
           CONFIRMADO: 'text-emerald-600 bg-emerald-50 border-emerald-200',
           RECUSADO: 'text-rose-600 bg-rose-50 border-rose-200',
@@ -291,13 +368,13 @@ export default function EscalasPage() {
               <div className="flex gap-1.5">
                 <button
                   onClick={() => handleMyConfirmation(e.id, 'CONFIRMADO')}
-                  className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-bold shadow-3xs"
+                  className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-bold shadow-sm"
                 >
                   Confirmar
                 </button>
                 <button
                   onClick={() => handleMyConfirmation(e.id, 'RECUSADO')}
-                  className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-md text-[10px] font-bold shadow-3xs"
+                  className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-md text-[10px] font-bold shadow-sm"
                 >
                   Recusar
                 </button>
@@ -334,17 +411,19 @@ export default function EscalasPage() {
               {e.status === 'RASCUNHO' && (
                 <button
                   onClick={() => handleUpdateStatus(e, 'PUBLICADA')}
-                  className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-100"
+                  disabled={updatingStatusId === e.id + 'PUBLICADA'}
+                  className="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-100 disabled:opacity-50 transition-all"
                 >
-                  Publicar
+                  {updatingStatusId === e.id + 'PUBLICADA' ? '...' : 'Publicar'}
                 </button>
               )}
               {e.status === 'PUBLICADA' && (
                 <button
                   onClick={() => handleUpdateStatus(e, 'ENCERRADA')}
-                  className="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-100"
+                  disabled={updatingStatusId === e.id + 'ENCERRADA'}
+                  className="px-2 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-100 disabled:opacity-50 transition-all"
                 >
-                  Encerrar
+                  {updatingStatusId === e.id + 'ENCERRADA' ? '...' : 'Encerrar'}
                 </button>
               )}
 
@@ -361,7 +440,7 @@ export default function EscalasPage() {
 
               {/* Delete scale */}
               <button
-                onClick={() => handleDeleteScale(e)}
+                onClick={() => openDeleteConfirm(e)}
                 className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-red-600 transition-colors"
                 title="Excluir escala"
               >
@@ -378,6 +457,28 @@ export default function EscalasPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+
+      {/* Toast notifications */}
+      <div className="fixed top-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium border animate-in slide-in-from-right-4 duration-300 ${
+              t.type === 'success'
+                ? 'bg-white text-emerald-700 border-emerald-100'
+                : t.type === 'error'
+                ? 'bg-white text-red-700 border-red-100'
+                : 'bg-white text-indigo-700 border-indigo-100'
+            }`}
+          >
+            {t.type === 'success' && <span className="text-base">✅</span>}
+            {t.type === 'error' && <span className="text-base">❌</span>}
+            {t.type === 'info' && <span className="text-base">ℹ️</span>}
+            <span>{t.message}</span>
+          </div>
+        ))}
+      </div>
+
       <PageHeader
         title="Escalas de Serviço"
         description="Agende equipes de serviço nos ministérios, envie convites de confirmação e monitore presenças."
@@ -503,9 +604,55 @@ export default function EscalasPage() {
         emptyDescription="Crie uma nova escala de serviço para organizar as atribuições e funções do ministério."
       />
 
-      {/* Scale Creation Modal */}
+      {/* ─── Delete Confirmation Modal ─── */}
+      {isDeleteConfirmOpen && escalaToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-red-50 border border-red-100 flex items-center justify-center mx-auto">
+                <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-gray-800">Excluir escala?</h3>
+              <p className="text-sm text-gray-500">
+                Tem certeza que deseja excluir a escala{' '}
+                <span className="font-semibold text-gray-700">"{escalaToDelete.titulo}"</span>?
+                Todos os membros escalados também serão removidos. Esta ação não pode ser desfeita.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+              <button
+                onClick={() => {
+                  setIsDeleteConfirmOpen(false);
+                  setEscalaToDelete(null);
+                }}
+                disabled={isDeletingScale}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={isDeletingScale}
+                className="px-5 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs disabled:opacity-50 transition-all flex items-center gap-2"
+              >
+                {isDeletingScale && (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                )}
+                {isDeletingScale ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Scale Creation / Edit Modal ─── */}
       {isScaleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/20">
               <h2 className="text-lg font-bold text-gray-800">
@@ -565,7 +712,7 @@ export default function EscalasPage() {
                     value={ministerioId}
                     onChange={(e) => setMinisterioId(e.target.value)}
                     disabled={!!selectedEscala}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-700"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-700 disabled:opacity-60"
                   >
                     <option value="">Selecione um ministério...</option>
                     {ministerios.filter(m => m.ativo).map((m) => (
@@ -574,6 +721,9 @@ export default function EscalasPage() {
                       </option>
                     ))}
                   </select>
+                  {!!selectedEscala && (
+                    <p className="text-[11px] text-gray-400">O ministério não pode ser alterado após a criação.</p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -598,15 +748,22 @@ export default function EscalasPage() {
                     setIsScaleModalOpen(false);
                     setSelectedEscala(null);
                   }}
-                  className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-150 rounded-xl"
+                  className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs"
+                  disabled={isSavingScale}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs disabled:opacity-50 transition-all flex items-center gap-2"
                 >
-                  Salvar
+                  {isSavingScale && (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                  )}
+                  {isSavingScale ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </form>
@@ -614,9 +771,9 @@ export default function EscalasPage() {
         </div>
       )}
 
-      {/* Scale Item Team Management Modal */}
+      {/* ─── Scale Item Team Management Modal ─── */}
       {isTeamModalOpen && selectedEscala && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/20">
               <div>
@@ -639,13 +796,44 @@ export default function EscalasPage() {
             </div>
 
             <div className="p-6 space-y-6 max-h-[65vh] overflow-y-auto">
-              {/* Form to scale a member (only for leaders/admins) */}
+
+              {/* Resumo de confirmações */}
+              {selectedEscala.itens && selectedEscala.itens.length > 0 && (() => {
+                const s = getConfirmacaoSummary(selectedEscala.itens);
+                if (!s) return null;
+                return (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-150 rounded-2xl">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Confirmações:</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg">
+                      ✅ {s.confirmados} confirmados
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg">
+                      ⏳ {s.pendentes} pendentes
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 rounded-lg">
+                      ❌ {s.recusados} recusados
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Aviso de escala encerrada */}
+              {selectedEscala.status === 'ENCERRADA' && (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-500">
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Esta escala está encerrada. Não é possível adicionar ou remover membros.
+                </div>
+              )}
+
+              {/* Form to scale a member (only for leaders/admins and non-ENCERRADA) */}
               {canManage && selectedEscala.status !== 'ENCERRADA' && (
                 <form onSubmit={handleAddMemberItem} className="bg-gray-50 border border-gray-150 p-4 rounded-2xl">
                   <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
                     Escalar Membro do Ministério
                   </span>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                     <div className="space-y-1">
                       <label htmlFor="team-membro" className="text-[10px] font-bold text-gray-400 uppercase">Membro</label>
@@ -700,10 +888,16 @@ export default function EscalasPage() {
                   <div className="flex justify-end mt-3">
                     <button
                       type="submit"
-                      disabled={!selectedMembroId || !funcao.trim()}
-                      className="px-4 py-1.5 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-xs transition-all"
+                      disabled={!selectedMembroId || !funcao.trim() || isSavingItem}
+                      className="px-4 py-1.5 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-xs transition-all flex items-center gap-2"
                     >
-                      Adicionar à Escala
+                      {isSavingItem && (
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                      )}
+                      {isSavingItem ? 'Adicionando...' : 'Adicionar à Escala'}
                     </button>
                   </div>
                 </form>
@@ -720,9 +914,9 @@ export default function EscalasPage() {
                     Nenhum membro escalado ainda.
                   </p>
                 ) : (
-                  <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden bg-white shadow-3xs">
+                  <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden bg-white shadow-sm">
                     {selectedEscala.itens.map((item) => {
-                      const colors = {
+                      const colors: Record<string, string> = {
                         PENDENTE: 'text-amber-600 bg-amber-50 border-amber-200',
                         CONFIRMADO: 'text-emerald-600 bg-emerald-50 border-emerald-200',
                         RECUSADO: 'text-rose-600 bg-rose-50 border-rose-200',
@@ -792,7 +986,7 @@ export default function EscalasPage() {
                   setIsTeamModalOpen(false);
                   setSelectedEscala(null);
                 }}
-                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-150 rounded-xl"
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
               >
                 Fechar
               </button>

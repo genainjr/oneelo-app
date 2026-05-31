@@ -8,7 +8,7 @@ export type Role =
   | 'MEMBRO';
 
 export type StatusMembro = 'ATIVO' | 'INATIVO' | 'VISITANTE' | 'TRANSFERIDO';
-export type StatusEscala = 'RASCUNHO' | 'PUBLICADA' | 'CONCLUIDA';
+export type StatusEscala = 'RASCUNHO' | 'PUBLICADA' | 'ENCERRADA';
 export type StatusConfirmacao = 'PENDENTE' | 'CONFIRMADO' | 'RECUSADO';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -73,6 +73,7 @@ export interface EscalaItem {
   escalaId: string;
   membroId: string;
   funcao?: string;
+  observacoes?: string;
   statusConfirmacao: StatusConfirmacao;
   membro?: Pick<Membro, 'id' | 'nome' | 'email' | 'whatsapp'>;
 }
@@ -83,7 +84,7 @@ export interface Escala {
   ministerioId: string;
   titulo: string;
   data: string;
-  descricao?: string;
+  observacoes?: string;
   status: StatusEscala;
   createdAt: string;
   updatedAt: string;
@@ -127,6 +128,7 @@ export interface AuditLog {
   acao: string;
   entidade: string;
   entidadeId?: string;
+  ipAddress?: string;
   payloadBefore?: unknown;
   payloadAfter?: unknown;
   createdAt: string;

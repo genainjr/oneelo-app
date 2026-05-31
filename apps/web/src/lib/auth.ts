@@ -1,6 +1,6 @@
 import { AuthUser } from '@/types';
 
-const AUTH_COOKIE = 'auth_token';
+const AUTH_COOKIE = 'access_token';
 
 /**
  * Decodifica o payload do JWT sem verificar a assinatura.

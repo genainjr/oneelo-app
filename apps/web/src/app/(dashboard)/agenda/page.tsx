@@ -243,7 +243,7 @@ export default function AgendaPage() {
         <div className="space-y-4">
           {eventos.map((ev) => {
             const evStatus = (ev as any).status || 'AGENDADO';
-            const colors = {
+            const colors: Record<string, string> = {
               AGENDADO: 'bg-blue-50 text-blue-700 border-blue-150',
               REALIZADO: 'bg-emerald-50 text-emerald-700 border-emerald-150',
               CANCELADO: 'bg-rose-50 text-rose-700 border-rose-150',

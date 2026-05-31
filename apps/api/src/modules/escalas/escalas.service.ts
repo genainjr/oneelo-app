@@ -220,6 +220,19 @@ export class EscalasService {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
     }
 
+    // Validar transição de status (se status for alterado)
+    if (dto.status && dto.status !== escala.status) {
+      const transicaoValida =
+        (escala.status === StatusEscala.RASCUNHO && dto.status === StatusEscala.PUBLICADA) ||
+        (escala.status === StatusEscala.PUBLICADA && dto.status === StatusEscala.ENCERRADA);
+
+      if (!transicaoValida) {
+        throw new BadRequestException(
+          `Transição de status inválida: não é possível ir de "${escala.status}" para "${dto.status}".`,
+        );
+      }
+    }
+
     const data: any = {};
     if (dto.titulo) data.titulo = dto.titulo;
     if (dto.data) data.data = new Date(dto.data);
@@ -265,6 +278,13 @@ export class EscalasService {
     // Se for Líder de Ministério, validar liderança
     if (user.role === Role.LIDER_MINISTERIO) {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
+    }
+
+    // Não permite adicionar membros em escala encerrada
+    if (escala.status === StatusEscala.ENCERRADA) {
+      throw new BadRequestException(
+        'Não é possível adicionar membros a uma escala encerrada.',
+      );
     }
 
     // Validar membro no tenant
@@ -313,6 +333,13 @@ export class EscalasService {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
     }
 
+    // Não permite remover membros de escala encerrada
+    if (escala.status === StatusEscala.ENCERRADA) {
+      throw new BadRequestException(
+        'Não é possível remover membros de uma escala encerrada.',
+      );
+    }
+
     const item = await this.prisma.escalaItem.findUnique({
       where: {
         escalaId_membroId: {
@@ -357,7 +384,22 @@ export class EscalasService {
       );
     }
 
-    // 2. Verificar se está agendado nesta escala
+    // 2. Buscar a escala e validar que está PUBLICADA
+    const escala = await this.prisma.escala.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!escala) {
+      throw new NotFoundException('Escala não encontrada.');
+    }
+
+    if (escala.status !== StatusEscala.PUBLICADA) {
+      throw new BadRequestException(
+        'A confirmação de presença só é permitida em escalas publicadas.',
+      );
+    }
+
+    // 3. Verificar se está agendado nesta escala
     const item = await this.prisma.escalaItem.findUnique({
       where: {
         escalaId_membroId: {
@@ -371,7 +413,7 @@ export class EscalasService {
       throw new NotFoundException('Você não está escalado para esta escala.');
     }
 
-    // 3. Atualizar status de confirmação
+    // 4. Atualizar status de confirmação
     return this.prisma.escalaItem.update({
       where: {
         escalaId_membroId: {
@@ -385,6 +427,7 @@ export class EscalasService {
       },
     });
   }
+
 
   // ─── Alteração Direta do Status pelo Administrador/Líder/Secretário ───
 
