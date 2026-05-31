@@ -1,186 +1,92 @@
 # Decisões Arquiteturais
 
-Este documento registra as decisões arquiteturais e padrões de desenvolvimento adotados no projeto DBT.
+Este documento registra as decisões arquiteturais e os padrões de desenvolvimento adotados no desenvolvimento do projeto **SaaS de Gestão para Igrejas**.
 
-## Preservação de Histórico de Dados (Silver Layer)
+---
+
+## 1. Criação de Tenants via Seeders (Foco no MVP)
 
 ### Decisão
-**Não filtrar dados com `deleted_at IS NULL` na camada Silver**
+**Os Tenants (Igrejas) no MVP são criados apenas via Script de Seed.**
 
 ### Contexto
-KPIs e análises históricos precisam manter integridade de dados mesmo quando dimensões são desativadas. Filtrar registros deletados na Silver causaria perda de rastreabilidade histórica.
+O MVP é voltado para validação rápida com uma igreja piloto específica. Construir fluxos de checkout, cadastro público de tenant, escolha de planos e ativação adicionaria complexidade que não agrega valor operacional na fase de testes.
 
-### Solução Adotada
-1. **Mantém campos deletados intactos**: `deleted_at` é preservado em todas as CTEs de dimensão
-2. **Cria flags de status**: Derivadas programaticamente a partir de `deleted_at`
-   - `is_active = CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END`
-   - Aplicado para cada dimensão: `deposit_is_active`, `reason_is_active`, etc
-3. **Joins sem filtros**: Usa `LEFT JOIN` sem condição `WHERE deleted_at IS NULL`
-4. **Rastreabilidade**: Permite análise de eventos históricos com contexto temporal correto
+### Consequências
+- Não há endpoints públicos para criação de Tenants no MVP.
+- O cadastro de novos Tenants é feito administrativamente através de comandos ou do arquivo `prisma/seed.ts`.
+- Reduz o tempo de entrega e foca no fluxo de uso do usuário final (membros e pastores).
 
-### Benefícios
-- ✅ Histórico completo de movimentações de sucata mesmo com dimensões desativadas
-- ✅ Auditoria temporal precisa
-- ✅ Flexibilidade para análises: consumidor decide se inclui/exclui deletados
-- ✅ Não perde dados relacionados a períodos históricos
+---
 
-### Exemplo
-```sql
--- ❌ ANTES (Incorreto)
-FROM deposit d
-LEFT JOIN plant p ON d.plant_id = p.plant_id
-WHERE d.deleted_at IS NULL  -- Perde histórico!
-
--- ✅ DEPOIS (Correto)
-FROM deposit d
-LEFT JOIN plant p ON d.plant_id = p.plant_id
--- Sem filtro WHERE, mantém histórico
--- Consumidor usa is_active flag conforme necessário
-```
-
-## Organização de Modelos por Domínios
+## 2. Autenticação e Gestão de Sessão (JWT no Backend)
 
 ### Decisão
-**Agrupar modelos Silver por domínio de negócio (core, logistic, controllership, person)**
+**Utilizar tokens JWT trafegados por HTTP-only Cookies, implementados diretamente no NestJS (sem NextAuth.js).**
 
 ### Contexto
-Facilita manutenção, rastreabilidade e alinhamento com estrutura de schemas do banco de dados.
+A segurança e o controle de acesso de perfil (RBAC) precisam ser robustos desde o MVP. O backend NestJS deve ser a única fonte de verdade da sessão do usuário, simplificando validações, interceptores e auditoria.
 
-### Estrutura
-```
-models/
-├── 2_silver/
-│   ├── core/           (depósito, produto, turno)
-│   ├── logistic/       (motivo de sucata, movimentação)
-│   ├── controllership/  (faturamento)
-│   └── person/         (acidentes, horas trabalhadas)
-```
+### Consequências
+- O frontend Next.js não armazena tokens no localStorage.
+- O cookie `access_token` é configurado como `httpOnly: true`, `secure: true` (em produção) e `sameSite: 'lax'`, prevenindo ataques de XSS.
+- O `JwtAuthGuard` valida o token e resolve o `tenantId` a cada requisição.
 
-### Benefícios
-- ✅ Organização clara e previsível
-- ✅ Facilita busca de modelos relacionados
-- ✅ Alinhado com schemas do banco de dados
-- ✅ Suporta crescimento organizado
+---
 
-## CTEs para Enriquecimento em Silver
+## 3. Confirmação de Presença Autenticada
 
 ### Decisão
-**Usar Common Table Expressions (CTEs) para organizar joins com dimensões**
+**A confirmação de presença em escalas é feita estritamente dentro do painel autenticado do membro.**
 
-### Padrão
-```sql
-WITH tabela_principal AS (
-    SELECT ... FROM {{ ref('brz_*') }}
-),
-dimensao_1 AS (
-    SELECT ... FROM {{ ref('brz_*') }}
-),
-dimensao_2 AS (
-    SELECT ... FROM {{ ref('brz_*') }}
-)
-SELECT
-    tp.*,
-    d1.campo_1,
-    d2.campo_2
-FROM tabela_principal tp
-LEFT JOIN dimensao_1 d1 ON ...
-LEFT JOIN dimensao_2 d2 ON ...
-```
+### Contexto
+Oferecer links públicos/não autenticados para confirmação simplificaria o fluxo para o membro, mas exporia informações pessoais de escalas, nomes de membros e datas de eventos sem controle de auditoria de segurança.
 
-### Benefícios
-- ✅ Legibilidade clara da lógica
-- ✅ Fácil identificação de joins
-- ✅ Simplifica debugging
-- ✅ Reduz complexidade de queries aninhadas
+### Consequências
+- Todos os membros que escalados precisam fazer login no painel para aceitar ou recusar a escala.
+- Garante conformidade de dados e proteção de informações de menores de idade e escalas sensíveis da igreja.
 
-## Normalização de Nomenclatura em Silver
+---
+
+## 4. Exclusão de Filas e Mensageria (Redis e BullMQ) no MVP
 
 ### Decisão
-**Renomear campos para nomenclatura padrão e descritiva**
+**Não utilizar Redis ou infraestrutura de filas assíncronas no escopo do MVP.**
 
-### Padrão
-- Genéricos renomeados com sufixo: `name` → `{entity_name}` (ex: `deposit_name`, `product_name`)
-- Timestamps mantêm nome original: `created_at`, `updated_at`, `deleted_at`
-- IDs mantêm sufixo `_id`: nunca omitir ou abreviar
-- Flags booleanas usam `is_` ou status flags
+### Contexto
+Filas são necessárias para processamento assíncrono pesado e integrações (ex: envio em lote de mensagens de WhatsApp). No MVP, essas notificações automáticas não estão no escopo, logo adicionar Redis e BullMQ traria sobrecarga de infraestrutura desnecessária.
 
-### Exemplo
-```sql
-SELECT
-    id,
-    code,
-    name AS deposit_name,  -- Renomeado para clareza
-    plant_id,              -- ID mantido
-    created_at,            -- Timestamp original
-    CASE WHEN deleted_at IS NULL THEN 1 ELSE 0 END AS is_active  -- Flag de status
-FROM {{ ref('brz_deposit') }}
-```
+### Consequências
+- Simplifica a infraestrutura local (apenas container PostgreSQL 16 é exigido).
+- Tarefas comuns são executadas de forma síncrona.
+- O Redis será introduzido apenas na Fase 2 pós-MVP, juntamente com o gateway de WhatsApp.
 
-### Benefícios
-- ✅ Evita ambiguidade em joins múltiplos
-- ✅ Autodocumentação do schema
-- ✅ Facilita descoberta em ferramentas de BI
-- ✅ Consistência em toda a Silver layer
+---
 
-## Tratamento de Valores Nulos
+## 5. Validação de Limites de Plano na Camada de Aplicação
 
 ### Decisão
-**Usar TRIM e COALESCE para dados string; manter NULLs em campos opcionais**
+**A checagem do `limiteMembros` do Tenant é feita no NestJS Service antes da criação de novos membros.**
 
-### Padrão
-```sql
-TRIM(field) AS field_name                    -- Remove espaços
-COALESCE(field1, field2) AS field_fallback   -- Usa alternativa se nulo
-CASE WHEN field IS NULL THEN 0 ELSE field END -- Valor padrão para não-nulo
-```
+### Contexto
+Impedir a inserção de membros além do limite do plano contratado poderia ser feito por triggers no banco de dados. Contudo, tratar isso na camada de serviço (NestJS) permite retornar erros amigáveis (HTTP 403 Forbidden com texto explicativo) e facilita a escrita de testes de integração rápidos.
 
-### Aplicação
-- Product: `COALESCE(sap_name, name)` como `product_display_name`
-- Deposit, ScrapReason: `TRIM()` em strings
-- Billing: `CAST(total_amount AS DECIMAL(18,2))` com validação `WHERE total_amount > 0`
+### Consequências
+- A validação ocorre na função `create` do `MembrosService`.
+- Evita erros genéricos de banco de dados na resposta da API.
+- Facilita testes de e2e para limite de quota.
 
-### Benefícios
-- ✅ Dados limpos e padronizados
-- ✅ Evita comportamentos inesperados em agregações
-- ✅ Melhor compatibilidade com BI tools
+---
 
-## Decomposição de Data em Silver
+## 6. Soft Delete com Query Extensions do Prisma
 
 ### Decisão
-**Extrair year, month, day de timestamps para facilitar agregações em Gold**
+**Implementar Soft Delete na entidade `Membro` utilizando extensions programáticas do Prisma Client.**
 
-### Padrão
-```sql
-CAST(date AS DATE) AS event_date,
-YEAR(date) AS event_year,
-MONTH(date) AS event_month,
-DAY(date) AS event_day
-```
+### Contexto
+Igrejas necessitam de histórico e logs para relatórios anuais de frequência e membros ativos/inativos. A remoção física quebraria históricos de escalas passadas.
 
-### Benefícios
-- ✅ Facilita agregações temporais em Gold
-- ✅ Evita cálculos repetidos em múltiplos modelos
-- ✅ Melhora performance de queries analíticas
-- ✅ Padrão em data warehouses modernos
-
-## Materialização e Performance
-
-### Decisão
-**Bronze e Silver como views por padrão; avaliar tabelas materializadas caso necessário**
-
-### Raciocínio
-- Views reduzem armazenamento e mantém dados sempre atualizados
-- Tabelas materializadas usadas apenas em casos de performance crítica
-- Avaliado por modelo e KPI específico
-
-### Config no dbt_project.yml
-```yaml
-models:
-  dbt_dw:
-    1_bronze:
-      +materialized: view      # Views por padrão
-    2_silver:
-      +materialized: view      # Views para flexibilidade
-    3_gold:
-      +materialized: view      # Views, indexadas no SQL Server
-```
+### Consequências
+- O `MembrosService` apenas atualiza a coluna `deletedAt` com a data atual ao invés de usar `prisma.membro.delete()`.
+- O cliente Prisma é estendido globalmente no `PrismaService` (`this.prisma.client`) para filtrar automaticamente registros que possuem `deletedAt != null` nas operações de leitura.
+- Para outras tabelas operacionais menores, utiliza-se a flag booleana `ativo` para simplicidade.
