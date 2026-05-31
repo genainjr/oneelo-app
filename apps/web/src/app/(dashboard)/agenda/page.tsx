@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useEventos, FilterEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
-import { Evento } from '@/types';
+import { api } from '@/lib/api';
+import { Evento, AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { getCurrentUser } from '@/lib/auth';
 
 export default function AgendaPage() {
   const {
@@ -20,7 +20,7 @@ export default function AgendaPage() {
     deleteEvento,
   } = useEventos();
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -38,7 +38,9 @@ export default function AgendaPage() {
   const [filterEnd, setFilterEnd] = useState('');
 
   useEffect(() => {
-    setCurrentUser(getCurrentUser());
+    api.get<AuthUser>('/api/auth/me')
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
   }, []);
 
   const canManage = currentUser?.role === 'ADMIN_GERAL' || currentUser?.role === 'PASTOR' || currentUser?.role === 'SECRETARIO';

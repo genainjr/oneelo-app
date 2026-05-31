@@ -5,9 +5,8 @@ import { useEscalas, FilterEscalas } from '@/hooks/use-escalas';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { api } from '@/lib/api';
-import { Escala, EscalaItem, Ministerio } from '@/types';
+import { Escala, EscalaItem, Ministerio, AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { getCurrentUser } from '@/lib/auth';
 
 // ─── Toast inline ─────────────────────────────────────────────────────────────
 
@@ -39,7 +38,7 @@ export default function EscalasPage() {
     updateMembroItemStatus,
   } = useEscalas();
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
 
   // Toast notifications
@@ -84,7 +83,9 @@ export default function EscalasPage() {
   const [filterEnd, setFilterEnd] = useState('');
 
   useEffect(() => {
-    setCurrentUser(getCurrentUser());
+    api.get<AuthUser>('/api/auth/me')
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
 
     // Load ministries for filters & form
     api.get<Ministerio[]>('/api/ministerios')

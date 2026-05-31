@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/app/sidebar';
 import { Header } from '@/components/app/header';
-import { getCurrentUser } from '@/lib/auth';
+import { api } from '@/lib/api';
+import { AuthUser } from '@/types';
 
 export default function DashboardLayout({
   children,
@@ -11,7 +12,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const user = getCurrentUser();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    api.get<AuthUser>('/api/auth/me')
+      .then(setUser)
+      .catch(() => setUser(null));
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
