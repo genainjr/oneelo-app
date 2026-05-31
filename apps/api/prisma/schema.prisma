@@ -1,0 +1,276 @@
+// apps/api/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────
+
+enum Plano {
+  GRATUITO
+  BASICO
+  PROFISSIONAL
+}
+
+enum StatusAssinatura {
+  ATIVA
+  TRIAL
+  SUSPENSA
+  CANCELADA
+}
+
+enum Role {
+  ADMIN_GERAL
+  PASTOR
+  LIDER_MINISTERIO
+  SECRETARIO
+  MEMBRO
+}
+
+enum StatusMembro {
+  ATIVO
+  INATIVO
+  VISITANTE
+  TRANSFERIDO
+}
+
+enum StatusEscala {
+  RASCUNHO
+  PUBLICADA
+  ENCERRADA
+}
+
+enum StatusConfirmacao {
+  PENDENTE
+  CONFIRMADO
+  RECUSADO
+}
+
+enum StatusEvento {
+  AGENDADO
+  REALIZADO
+  CANCELADO
+}
+
+enum AcaoAuditoria {
+  CRIAR
+  ATUALIZAR
+  DELETAR
+  LOGIN
+  LOGOUT
+}
+
+// ─── Tenant ───────────────────────────────────────────────
+
+model Tenant {
+  id               String           @id @default(uuid())
+  nome             String
+  slug             String           @unique
+  plano            Plano            @default(GRATUITO)
+  statusAssinatura StatusAssinatura @default(TRIAL)
+  limiteMembros    Int              @default(50)
+  ativo            Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  users        User[]
+  membros      Membro[]
+  tags         Tag[]
+  ministerios  Ministerio[]
+  escalas      Escala[]
+  eventos      Evento[]
+  auditLogs    AuditLog[]
+}
+
+// ─── User ─────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  nome         String
+  email        String
+  senhaHash    String
+  role         Role     @default(MEMBRO)
+  ativo        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  ministeriosLiderados MinisterioLider[]
+  escalasItens         EscalaItem[]
+  auditLogs            AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+// ─── Membro ───────────────────────────────────────────────
+
+model Membro {
+  id              String       @id @default(uuid())
+  tenantId        String
+  nome            String
+  whatsapp        String?
+  email           String?
+  dataNascimento  DateTime?
+  status          StatusMembro @default(ATIVO)
+  observacoes     String?
+  deletedAt       DateTime?    // soft delete
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  tags         MembroTag[]
+  ministerios  MinisterioMembro[]
+  escalas      EscalaItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, deletedAt])
+}
+
+// ─── Tag ──────────────────────────────────────────────────
+
+model Tag {
+  id       String @id @default(uuid())
+  tenantId String
+  nome     String
+  corHex   String @default("#6366f1")
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id])
+  membros MembroTag[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId])
+}
+
+model MembroTag {
+  membroId String
+  tagId    String
+
+  membro Membro @relation(fields: [membroId], references: [id])
+  tag    Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([membroId, tagId])
+}
+
+// ─── Ministério ───────────────────────────────────────────
+
+model Ministerio {
+  id       String  @id @default(uuid())
+  tenantId String
+  nome     String
+  descricao String?
+  ativo    Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id])
+  lideres MinisterioLider[]
+  membros MinisterioMembro[]
+  escalas Escala[]
+
+  @@index([tenantId])
+}
+
+model MinisterioLider {
+  ministerioId String
+  userId       String
+
+  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@id([ministerioId, userId])
+}
+
+model MinisterioMembro {
+  ministerioId String
+  membroId     String
+
+  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
+  membro     Membro     @relation(fields: [membroId], references: [id])
+
+  @@id([ministerioId, membroId])
+}
+
+// ─── Escala ───────────────────────────────────────────────
+
+model Escala {
+  id           String       @id @default(uuid())
+  tenantId     String
+  ministerioId String
+  titulo       String
+  data         DateTime
+  status       StatusEscala @default(RASCUNHO)
+  observacoes  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  ministerio  Ministerio   @relation(fields: [ministerioId], references: [id])
+  itens       EscalaItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, data])
+}
+
+model EscalaItem {
+  id                 String            @id @default(uuid())
+  escalaId           String
+  membroId           String
+  userId             String?           // user que adicionou o item
+  funcao             String
+  statusConfirmacao  StatusConfirmacao  @default(PENDENTE)
+  observacoes        String?
+
+  escala Escala  @relation(fields: [escalaId], references: [id])
+  membro Membro  @relation(fields: [membroId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@unique([escalaId, membroId])
+}
+
+// ─── Evento ───────────────────────────────────────────────
+
+model Evento {
+  id          String       @id @default(uuid())
+  tenantId    String
+  titulo      String
+  descricao   String?
+  dataInicio  DateTime
+  dataFim     DateTime?
+  local       String?
+  status      StatusEvento @default(AGENDADO)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, dataInicio])
+}
+
+// ─── AuditLog ─────────────────────────────────────────────
+
+model AuditLog {
+  id            String        @id @default(uuid())
+  tenantId      String
+  userId        String?
+  entidade      String
+  entidadeId    String
+  acao          AcaoAuditoria
+  payloadBefore Json?
+  payloadAfter  Json?
+  ipAddress     String?
+  createdAt     DateTime      @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, entidade, entidadeId])
+}

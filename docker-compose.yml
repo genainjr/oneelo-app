@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: church_postgres
+    environment:
+      POSTGRES_DB: church_saas
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+    ports:
+      - "5433:5432" # Mapeado para 5433 no host para evitar conflito com banco local pré-existente
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - church_network
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: church_api
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://dev:dev@postgres:5432/church_saas?schema=public
+      - PORT=3000
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+    networks:
+      - church_network
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: church_web
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
+    networks:
+      - church_network
+
+volumes:
+  pgdata:
+
+networks:
+  church_network:
+    driver: bridge
