@@ -23,7 +23,7 @@ export class MinisteriosService {
   }
 
   async findAll(tenantId: string, user: JwtPayload) {
-    const where: any = { tenantId };
+    const where: any = { tenantId, ativo: true };
 
     // LIDER_MINISTERIO vê apenas os ministérios que lidera
     if (user.role === Role.LIDER_MINISTERIO) {
@@ -99,6 +99,16 @@ export class MinisteriosService {
     return this.prisma.ministerio.update({
       where: { id },
       data: dto,
+      include: {
+        lideres: {
+          include: {
+            user: { select: { id: true, nome: true, email: true, role: true } },
+          },
+        },
+        _count: {
+          select: { membros: true, escalas: true },
+        },
+      },
     });
   }
 

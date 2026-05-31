@@ -28,7 +28,7 @@ export function useMinisterios() {
 
   async function createMinisterio(data: Partial<Ministerio>) {
     const created = await api.post<Ministerio>('/api/ministerios', data);
-    setMinisterios((prev) => [created, ...prev]);
+    await fetch(); // Refetch para obter lista completa com _count e lideres
     return created;
   }
 
@@ -40,7 +40,7 @@ export function useMinisterios() {
 
   async function deleteMinisterio(id: string) {
     await api.delete(`/api/ministerios/${id}`);
-    setMinisterios((prev) => prev.filter((m) => m.id !== id));
+    await fetch(); // Refetch: backend faz soft-delete, lista deve refletir estado do servidor
   }
 
   // Manage members
