@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openspec new *)",
+      "Bash(openspec status *)",
+      "Bash(openspec instructions *)",
+      "Bash(uv add *)",
+      "Bash(python *)",
+      "Bash(uv run *)",
+      "Bash(openspec list *)",
+      "Bash(.venv\\\\Scripts\\\\python.exe -m mypy src --ignore-missing-imports)",
+      "Bash(.venv/Scripts/python.exe -m mypy src --ignore-missing-imports)",
+      "Bash(.venv/Scripts/python.exe *)",
+      "Bash(uv pip *)",
+      "Bash(uv sync *)",
+      "Bash(git stash *)",
+      "Bash(dir *)",
+      "Bash(.venv\\\\Scripts\\\\python -m pytest --tb=short)",
+      "Bash(.venv/Scripts/python *)",
+      "Bash(.venvScriptspython.exe -c ' *)"
+    ]
+  }
+}

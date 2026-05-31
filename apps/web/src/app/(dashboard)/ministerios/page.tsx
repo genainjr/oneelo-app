@@ -5,8 +5,7 @@ import { useMinisterios } from '@/hooks/use-ministerios';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { api } from '@/lib/api';
-import { Ministerio, Membro, User } from '@/types';
-import { getCurrentUser } from '@/lib/auth';
+import { Ministerio, Membro, User, AuthUser } from '@/types';
 
 export default function MinisteriosPage() {
   const {
@@ -23,14 +22,15 @@ export default function MinisteriosPage() {
     removeLider,
   } = useMinisterios();
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedMinisterio, setSelectedMinisterio] = useState<Ministerio | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Load current user role
+  // Carrega o usuário atual via API (cookie HTTP-only não é acessível via JS)
   useEffect(() => {
-    const user = getCurrentUser();
-    setCurrentUser(user);
+    api.get<AuthUser>('/api/auth/me')
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
   }, []);
 
   const canManage = currentUser?.role === 'ADMIN_GERAL' || currentUser?.role === 'PASTOR';
@@ -93,7 +93,7 @@ export default function MinisteriosPage() {
         setDetailedInfo(null);
       }
     }
-  }, [isModalOpen, selectedMinisterio]);
+  }, [isModalOpen, selectedMinisterio, currentUser]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -375,7 +375,7 @@ export default function MinisteriosPage() {
                         type="submit"
                         className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all"
                       >
-                        Salvar Alterações
+                        {selectedMinisterio ? 'Salvar Alterações' : 'Criar Ministério'}
                       </button>
                     </div>
                   )}
