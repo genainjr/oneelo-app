@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, HttpError } from '@/lib/api';
 import { AuthUser } from '@/types';
@@ -9,7 +9,7 @@ interface LoginResponse {
   user: AuthUser;
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') ?? '/';
@@ -131,5 +131,17 @@ export default function LoginPage() {
         © {new Date().getFullYear()} Lookup. Todos os direitos reservados.
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-md px-6 animate-pulse">
+        <div className="h-64 bg-white/10 rounded-2xl" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

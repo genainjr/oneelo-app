@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useMinisterios } from '@/hooks/use-ministerios';
+
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { api } from '@/lib/api';
@@ -38,7 +39,12 @@ export default function MinisteriosPage() {
   // Modal State for Creation/Edit
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [modalTab, setModalTab] = useState<'info' | 'membros' | 'lideres'>('info');
+  const [modalTab, setModalTab] = useState<'info' | 'membros' | 'lideres' | 'funcoes'>('info');
+
+  // Funções state
+  const [funcoes, setFuncoes] = useState<string[]>([]);
+  const [novaFuncao, setNovaFuncao] = useState('');
+  const [savingFuncoes, setSavingFuncoes] = useState(false);
 
   // Detailed view of selected ministry
   const [detailedInfo, setDetailedInfo] = useState<any>(null);
@@ -89,11 +95,19 @@ export default function MinisteriosPage() {
       } else {
         setNome('');
         setDescricao('');
+        setFuncoes([]);
         setModalTab('info');
         setDetailedInfo(null);
       }
     }
   }, [isModalOpen, selectedMinisterio, currentUser]);
+
+  // Sync funcoes when detailedInfo loads
+  useEffect(() => {
+    if (detailedInfo?.funcoes) {
+      setFuncoes(detailedInfo.funcoes.map((f: any) => f.nome));
+    }
+  }, [detailedInfo]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -103,13 +117,38 @@ export default function MinisteriosPage() {
       if (selectedMinisterio) {
         await updateMinisterio(selectedMinisterio.id, { nome, descricao });
       } else {
-        await createMinisterio({ nome, descricao });
+        await createMinisterio({ nome, descricao, funcoes: funcoes.filter(Boolean) });
       }
       setIsModalOpen(false);
       setSelectedMinisterio(null);
     } catch (err: any) {
       alert(err.message || 'Erro ao salvar ministério.');
     }
+  }
+
+  async function handleSaveFuncoes() {
+    if (!selectedMinisterio) return;
+    setSavingFuncoes(true);
+    try {
+      await updateMinisterio(selectedMinisterio.id, { funcoes: funcoes.filter(Boolean) });
+      await fetchDetails(selectedMinisterio.id);
+      alert('Funções salvas com sucesso!');
+    } catch (err: any) {
+      alert(err.message || 'Erro ao salvar funções.');
+    } finally {
+      setSavingFuncoes(false);
+    }
+  }
+
+  function handleAddFuncao() {
+    const trimmed = novaFuncao.trim();
+    if (!trimmed || funcoes.includes(trimmed)) return;
+    setFuncoes([...funcoes, trimmed]);
+    setNovaFuncao('');
+  }
+
+  function handleRemoveFuncao(nome: string) {
+    setFuncoes(funcoes.filter((f) => f !== nome));
   }
 
   async function handleDelete(m: Ministerio) {
@@ -326,9 +365,15 @@ export default function MinisteriosPage() {
                 </button>
                 <button
                   onClick={() => setModalTab('lideres')}
-                  className={`py-3 text-sm font-semibold border-b-2 px-1 transition-all ${modalTab === 'lideres' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                  className={`py-3 text-sm font-semibold border-b-2 px-1 transition-all mr-6 ${modalTab === 'lideres' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                 >
                   Líderes ({detailedInfo?.lideres?.length ?? 0})
+                </button>
+                <button
+                  onClick={() => setModalTab('funcoes')}
+                  className={`py-3 text-sm font-semibold border-b-2 px-1 transition-all ${modalTab === 'funcoes' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                >
+                  Funções ({funcoes.length})
                 </button>
               </div>
             )}
@@ -510,6 +555,76 @@ export default function MinisteriosPage() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab 4: Funções (Manage roles/positions) */}
+              {modalTab === 'funcoes' && selectedMinisterio && (
+                <div className="space-y-5">
+                  <p className="text-xs text-gray-500">Defina os cargos/funções fixos deste ministério (ex: Ministro, Teclado, Portaria). Eles serão as colunas da escala mensal.</p>
+
+                  {canManage && (
+                    <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
+                      <div className="flex-1 space-y-1">
+                        <label htmlFor="nova-funcao" className="text-xs font-bold text-gray-500 uppercase">Nova Função</label>
+                        <input
+                          id="nova-funcao"
+                          type="text"
+                          value={novaFuncao}
+                          onChange={(e) => setNovaFuncao(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); }}}
+                          placeholder="Ex: Ministro, Teclado, Back 1..."
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddFuncao}
+                        disabled={!novaFuncao.trim()}
+                        className="px-4 py-2 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all"
+                      >
+                        Adicionar
+                      </button>
+                    </div>
+                  )}
+
+                  {funcoes.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-6">Nenhuma função cadastrada. Adicione funções para organizar a escala.</p>
+                  ) : (
+                    <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
+                      {funcoes.map((f, idx) => (
+                        <div key={f} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-gray-400 w-5 text-right">{idx + 1}</span>
+                            <span className="text-sm font-semibold text-gray-800">{f}</span>
+                          </div>
+                          {canManage && (
+                            <button
+                              onClick={() => handleRemoveFuncao(f)}
+                              className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all"
+                              title="Remover função"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {canManage && (
+                    <div className="flex justify-end pt-2 border-t border-gray-100">
+                      <button
+                        onClick={handleSaveFuncoes}
+                        disabled={savingFuncoes}
+                        className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all disabled:opacity-50"
+                      >
+                        {savingFuncoes ? 'Salvando...' : 'Salvar Funções'}
+                      </button>
                     </div>
                   )}
                 </div>
