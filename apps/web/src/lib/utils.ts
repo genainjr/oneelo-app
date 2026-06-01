@@ -60,13 +60,13 @@ export const STATUS_MEMBRO_COLOR: Record<StatusMembro, string> = {
 export const STATUS_ESCALA_LABEL: Record<StatusEscala, string> = {
   RASCUNHO: 'Rascunho',
   PUBLICADA: 'Publicada',
-  CONCLUIDA: 'Concluída',
+  ENCERRADA: 'Encerrada',
 };
 
 export const STATUS_ESCALA_COLOR: Record<StatusEscala, string> = {
   RASCUNHO: 'bg-gray-100 text-gray-600',
   PUBLICADA: 'bg-blue-100 text-blue-800',
-  CONCLUIDA: 'bg-emerald-100 text-emerald-800',
+  ENCERRADA: 'bg-emerald-100 text-emerald-800',
 };
 
 export const STATUS_CONFIRMACAO_LABEL: Record<StatusConfirmacao, string> = {

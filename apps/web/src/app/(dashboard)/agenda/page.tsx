@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useEventos, FilterEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
-import { Evento } from '@/types';
+import { api } from '@/lib/api';
+import { Evento, AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { getCurrentUser } from '@/lib/auth';
 
 export default function AgendaPage() {
   const {
@@ -20,7 +20,7 @@ export default function AgendaPage() {
     deleteEvento,
   } = useEventos();
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -38,7 +38,9 @@ export default function AgendaPage() {
   const [filterEnd, setFilterEnd] = useState('');
 
   useEffect(() => {
-    setCurrentUser(getCurrentUser());
+    api.get<AuthUser>('/api/auth/me')
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
   }, []);
 
   const canManage = currentUser?.role === 'ADMIN_GERAL' || currentUser?.role === 'PASTOR' || currentUser?.role === 'SECRETARIO';
@@ -243,7 +245,7 @@ export default function AgendaPage() {
         <div className="space-y-4">
           {eventos.map((ev) => {
             const evStatus = (ev as any).status || 'AGENDADO';
-            const colors = {
+            const colors: Record<string, string> = {
               AGENDADO: 'bg-blue-50 text-blue-700 border-blue-150',
               REALIZADO: 'bg-emerald-50 text-emerald-700 border-emerald-150',
               CANCELADO: 'bg-rose-50 text-rose-700 border-rose-150',

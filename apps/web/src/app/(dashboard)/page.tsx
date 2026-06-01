@@ -2,7 +2,8 @@
 
 import { useDashboard } from '@/hooks/use-dashboard';
 import { StatCard } from '@/components/app/stat-card';
-import { getCurrentUser } from '@/lib/auth';
+import { api } from '@/lib/api';
+import { AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
@@ -66,11 +67,15 @@ const STATS_CONFIG = [
 
 export default function DashboardPage() {
   const { stats, loading, error } = useDashboard();
-  const user = getCurrentUser();
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [today, setToday] = useState('');
 
   useEffect(() => {
     setToday(formatDate(new Date()));
+
+    api.get<AuthUser>('/api/auth/me')
+      .then(setUser)
+      .catch(() => setUser(null));
   }, []);
 
   return (

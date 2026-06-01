@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
 
 export class UpdateMinisterioDto {
   @IsString()
@@ -12,4 +12,9 @@ export class UpdateMinisterioDto {
   @IsBoolean()
   @IsOptional()
   ativo?: boolean;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  funcoes?: string[];
 }

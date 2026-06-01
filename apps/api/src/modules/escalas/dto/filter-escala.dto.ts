@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { StatusEscala } from '@prisma/client';
 
 export class FilterEscalaDto {
@@ -10,13 +10,13 @@ export class FilterEscalaDto {
   @IsOptional()
   status?: StatusEscala;
 
-  @IsDateString()
+  @IsString()
   @IsOptional()
-  dataInicio?: string;
+  mes?: string;
 
-  @IsDateString()
+  @IsString()
   @IsOptional()
-  dataFim?: string;
+  ano?: string;
 
   @IsString()
   @IsOptional()
@@ -24,5 +24,5 @@ export class FilterEscalaDto {
 
   @IsString()
   @IsOptional()
-  pendentesApenas?: string; // Como vem via query, receberemos como string 'true' / 'false'
+  pendentesApenas?: string;
 }

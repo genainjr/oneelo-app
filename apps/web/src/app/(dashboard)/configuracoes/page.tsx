@@ -4,12 +4,11 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { api } from '@/lib/api';
-import { User, AuditLog } from '@/types';
-import { getCurrentUser } from '@/lib/auth';
+import { User, AuditLog, AuthUser } from '@/types';
 import { formatDateTime, ROLE_LABEL } from '@/lib/utils';
 
 export default function ConfiguracoesPage() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [activeTab, setActiveTab] = useState<'usuarios' | 'audit'>('usuarios');
 
   // Lists
@@ -19,7 +18,9 @@ export default function ConfiguracoesPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCurrentUser(getCurrentUser());
+    api.get<AuthUser>('/api/auth/me')
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
   }, []);
 
   const isAdmin = currentUser?.role === 'ADMIN_GERAL';
