@@ -33,10 +33,10 @@ export class DashboardService {
         where: { tenantId, status: StatusMembro.ATIVO },
       }),
 
-      // 2. Escalas da semana corrente
-      this.prisma.escala.count({
+      // 2. Dias de escala na semana corrente
+      this.prisma.escalaDia.count({
         where: {
-          tenantId,
+          escala: { tenantId },
           data: {
             gte: inicioDaSemana,
             lte: fimDaSemana,
@@ -53,10 +53,12 @@ export class DashboardService {
       this.prisma.escalaItem.count({
         where: {
           statusConfirmacao: StatusConfirmacao.PENDENTE,
-          escala: {
-            tenantId,
-            status: StatusEscala.PUBLICADA,
+          escalaDia: {
             data: { gte: hoje },
+            escala: {
+              tenantId,
+              status: StatusEscala.PUBLICADA,
+            }
           },
         },
       }),

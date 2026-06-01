@@ -3,11 +3,15 @@ import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 export class ManageEscalaItemDto {
   @IsString()
   @IsNotEmpty()
+  escalaDiaId: string;
+
+  @IsString()
+  @IsNotEmpty()
   membroId: string;
 
   @IsString()
   @IsNotEmpty()
-  funcao: string;
+  ministerioFuncaoId: string;
 
   @IsString()
   @IsOptional()

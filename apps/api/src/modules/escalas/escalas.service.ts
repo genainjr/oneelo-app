@@ -38,7 +38,6 @@ export class EscalasService {
   }
 
   async create(tenantId: string, dto: CreateEscalaDto, user: JwtPayload) {
-    // 1. Validar se o ministério existe e pertence ao tenant
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id: dto.ministerioId, tenantId },
     });
@@ -47,16 +46,28 @@ export class EscalasService {
       throw new NotFoundException('Ministério não encontrado.');
     }
 
-    // 2. Se for Líder de Ministério, validar liderança
     if (user.role === Role.LIDER_MINISTERIO) {
       await this.checkMinistryLeadership(dto.ministerioId, user.sub);
     }
 
-    // 3. Criar escala
+    const existing = await this.prisma.escala.findUnique({
+      where: {
+        ministerioId_mes_ano: {
+          ministerioId: dto.ministerioId,
+          mes: dto.mes,
+          ano: dto.ano,
+        }
+      }
+    });
+
+    if (existing) {
+      throw new BadRequestException('A escala mensal para este ministério neste mês e ano já existe.');
+    }
+
     return this.prisma.escala.create({
       data: {
-        titulo: dto.titulo,
-        data: new Date(dto.data),
+        mes: dto.mes,
+        ano: dto.ano,
         observacoes: dto.observacoes,
         ministerioId: dto.ministerioId,
         tenantId,
@@ -68,30 +79,20 @@ export class EscalasService {
   async findAll(tenantId: string, query: FilterEscalaDto, user: JwtPayload) {
     const where: any = { tenantId };
 
-    // Filtro por Ministério
     if (query.ministerioId) {
       where.ministerioId = query.ministerioId;
     }
-
-    // Filtro por Status da Escala
     if (query.status) {
       where.status = query.status;
     }
-
-    // Filtros de Período
-    if (query.dataInicio || query.dataFim) {
-      where.data = {};
-      if (query.dataInicio) {
-        where.data.gte = new Date(query.dataInicio);
-      }
-      if (query.dataFim) {
-        where.data.lte = new Date(query.dataFim);
-      }
+    if (query.mes) {
+      where.mes = parseInt(query.mes, 10);
+    }
+    if (query.ano) {
+      where.ano = parseInt(query.ano, 10);
     }
 
-    // Restrições de RBAC na listagem
     if (user.role === Role.LIDER_MINISTERIO) {
-      // Líder vê apenas as do ministério que lidera
       const liderados = await this.prisma.ministerioLider.findMany({
         where: { userId: user.sub },
         select: { ministerioId: true },
@@ -103,40 +104,17 @@ export class EscalasService {
           'Acesso negado: você não lidera o ministério solicitado.',
         );
       }
-
       where.ministerioId = { in: idsLiderados };
     } else if (user.role === Role.MEMBRO) {
-      // Membro vê apenas escalas nas quais está escalado
       const membro = await this.prisma.client.membro.findFirst({
         where: { email: user.email, tenantId },
       });
+      if (!membro) return [];
 
-      if (!membro) {
-        return [];
-      }
-
-      where.itens = {
-        some: { membroId: membro.id },
-      };
-    }
-
-    // Filtrar por histórico de escala de um membro específico
-    if (query.membroId) {
-      where.itens = {
-        ...where.itens,
-        some: { membroId: query.membroId },
-      };
-    }
-
-    // Filtrar apenas escalas com pendências futuras
-    if (query.pendentesApenas === 'true') {
-      where.data = {
-        ...where.data,
-        gte: new Date(),
-      };
-      where.itens = {
-        ...where.itens,
-        some: { statusConfirmacao: StatusConfirmacao.PENDENTE },
+      where.dias = {
+        some: {
+          itens: { some: { membroId: membro.id } }
+        }
       };
     }
 
@@ -146,15 +124,14 @@ export class EscalasService {
         ministerio: {
           select: { id: true, nome: true },
         },
-        itens: {
-          include: {
-            membro: {
-              select: { id: true, nome: true, email: true, whatsapp: true },
-            },
-          },
-        },
+        _count: {
+          select: { dias: true }
+        }
       },
-      orderBy: { data: 'asc' },
+      orderBy: [
+        { ano: 'desc' },
+        { mes: 'desc' },
+      ],
     });
   }
 
@@ -163,18 +140,22 @@ export class EscalasService {
       where: { id, tenantId },
       include: {
         ministerio: {
-          select: { id: true, nome: true },
-        },
-        itens: {
           include: {
-            membro: {
-              select: { id: true, nome: true, email: true, whatsapp: true },
-            },
-            user: {
-              select: { id: true, nome: true },
-            },
-          },
+            funcoes: { orderBy: { ordem: 'asc' } }
+          }
         },
+        dias: {
+          orderBy: { data: 'asc' },
+          include: {
+            itens: {
+              include: {
+                membro: { select: { id: true, nome: true, email: true, whatsapp: true } },
+                user: { select: { id: true, nome: true } },
+                funcao: true
+              }
+            }
+          }
+        }
       },
     });
 
@@ -182,45 +163,38 @@ export class EscalasService {
       throw new NotFoundException('Escala não encontrada.');
     }
 
-    // Restrições de RBAC nos detalhes
     if (user.role === Role.LIDER_MINISTERIO) {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
     } else if (user.role === Role.MEMBRO) {
       const membro = await this.prisma.client.membro.findFirst({
         where: { email: user.email, tenantId },
       });
-
       if (!membro) {
-        throw new ForbiddenException(
-          'Acesso negado: você não possui um membro vinculado.',
-        );
+        throw new ForbiddenException('Acesso negado: você não possui um membro vinculado.');
       }
-
-      const isEscalado = escala.itens.some((item) => item.membroId === membro.id);
+      
+      let isEscalado = false;
+      for(const d of escala.dias) {
+         if (d.itens.some((item) => item.membroId === membro.id)) {
+           isEscalado = true;
+           break;
+         }
+      }
       if (!isEscalado) {
-        throw new ForbiddenException(
-          'Acesso negado: você não está associado a esta escala.',
-        );
+        throw new ForbiddenException('Acesso negado: você não está associado a esta escala.');
       }
     }
 
     return escala;
   }
 
-  async update(
-    tenantId: string,
-    id: string,
-    dto: UpdateEscalaDto,
-    user: JwtPayload,
-  ) {
+  async update(tenantId: string, id: string, dto: UpdateEscalaDto, user: JwtPayload) {
     const escala = await this.findOne(tenantId, id, user);
 
-    // Se for Líder de Ministério, validar liderança
     if (user.role === Role.LIDER_MINISTERIO) {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
     }
 
-    // Validar transição de status (se status for alterado)
     if (dto.status && dto.status !== escala.status) {
       const transicaoValida =
         (escala.status === StatusEscala.RASCUNHO && dto.status === StatusEscala.PUBLICADA) ||
@@ -234,8 +208,6 @@ export class EscalasService {
     }
 
     const data: any = {};
-    if (dto.titulo) data.titulo = dto.titulo;
-    if (dto.data) data.data = new Date(dto.data);
     if (dto.status) data.status = dto.status;
     if (dto.observacoes !== undefined) data.observacoes = dto.observacoes;
 
@@ -248,15 +220,9 @@ export class EscalasService {
   async remove(tenantId: string, id: string, user: JwtPayload) {
     const escala = await this.findOne(tenantId, id, user);
 
-    // Se for Líder de Ministério, validar liderança
     if (user.role === Role.LIDER_MINISTERIO) {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
     }
-
-    // Deletar itens primeiro por causa das restrições de FK
-    await this.prisma.escalaItem.deleteMany({
-      where: { escalaId: id },
-    });
 
     await this.prisma.escala.delete({
       where: { id },
@@ -265,29 +231,63 @@ export class EscalasService {
     return { message: 'Escala removida com sucesso.' };
   }
 
+  // ─── Gestão de Dias ─────────────────────────────
+  async addDia(tenantId: string, escalaId: string, body: { data: string, titulo?: string }, user: JwtPayload) {
+    const escala = await this.findOne(tenantId, escalaId, user);
+    if (user.role === Role.LIDER_MINISTERIO) {
+      await this.checkMinistryLeadership(escala.ministerioId, user.sub);
+    }
+    
+    return this.prisma.escalaDia.create({
+      data: {
+        escalaId,
+        data: new Date(body.data),
+        titulo: body.titulo
+      }
+    });
+  }
+
+  async removeDia(tenantId: string, diaId: string, user: JwtPayload) {
+    const dia = await this.prisma.escalaDia.findUnique({
+      where: { id: diaId },
+      include: { escala: true }
+    });
+    if(!dia) throw new NotFoundException('Dia não encontrado.');
+
+    if (dia.escala.tenantId !== tenantId) throw new ForbiddenException();
+
+    if (user.role === Role.LIDER_MINISTERIO) {
+      await this.checkMinistryLeadership(dia.escala.ministerioId, user.sub);
+    }
+
+    await this.prisma.escalaDia.delete({ where: { id: diaId } });
+    return { message: 'Dia removido com sucesso.' };
+  }
+
   // ─── Gestão de Itens da Escala ─────────────────────────────
 
   async addMembro(
     tenantId: string,
-    id: string,
+    diaId: string,
     dto: ManageEscalaItemDto,
     user: JwtPayload,
   ) {
-    const escala = await this.findOne(tenantId, id, user);
+    const dia = await this.prisma.escalaDia.findUnique({
+      where: { id: diaId },
+      include: { escala: true }
+    });
+    if(!dia) throw new NotFoundException('Dia não encontrado.');
 
-    // Se for Líder de Ministério, validar liderança
+    const escala = dia.escala;
+
     if (user.role === Role.LIDER_MINISTERIO) {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
     }
 
-    // Não permite adicionar membros em escala encerrada
     if (escala.status === StatusEscala.ENCERRADA) {
-      throw new BadRequestException(
-        'Não é possível adicionar membros a uma escala encerrada.',
-      );
+      throw new BadRequestException('Não é possível adicionar membros a uma escala encerrada.');
     }
 
-    // Validar membro no tenant
     const membro = await this.prisma.client.membro.findFirst({
       where: { id: dto.membroId, tenantId },
     });
@@ -295,176 +295,145 @@ export class EscalasService {
     if (!membro) {
       throw new NotFoundException('Membro não encontrado neste tenant.');
     }
+    
+    // Verificar conflito
+    const hasConflito = await this.prisma.escalaItem.findFirst({
+       where: {
+         escalaDiaId: diaId,
+         membroId: dto.membroId,
+       }
+    });
 
-    // Adicionar/Atualizar item na escala
+    if (hasConflito && hasConflito.ministerioFuncaoId !== dto.ministerioFuncaoId) {
+        throw new BadRequestException('Membro já está escalado neste dia em outra função. Remova-o primeiro.');
+    }
+
     return this.prisma.escalaItem.upsert({
       where: {
-        escalaId_membroId: {
-          escalaId: id,
+        escalaDiaId_membroId_ministerioFuncaoId: {
+          escalaDiaId: dto.escalaDiaId,
           membroId: dto.membroId,
+          ministerioFuncaoId: dto.ministerioFuncaoId,
         },
       },
       create: {
-        escalaId: id,
+        escalaDiaId: dto.escalaDiaId,
         membroId: dto.membroId,
-        funcao: dto.funcao,
-        observacoes: dto.observacoes,
+        ministerioFuncaoId: dto.ministerioFuncaoId,
         userId: user.sub,
-        statusConfirmacao: StatusConfirmacao.PENDENTE,
+        observacoes: dto.observacoes,
       },
       update: {
-        funcao: dto.funcao,
         observacoes: dto.observacoes,
-        userId: user.sub,
       },
     });
   }
 
   async removeMembro(
     tenantId: string,
-    id: string,
-    membroId: string,
+    itemId: string,
     user: JwtPayload,
   ) {
-    const escala = await this.findOne(tenantId, id, user);
+    const item = await this.prisma.escalaItem.findUnique({
+      where: { id: itemId },
+      include: {
+        escalaDia: {
+          include: { escala: true }
+        }
+      }
+    });
+    if (!item) throw new NotFoundException('Item não encontrado.');
 
-    // Se for Líder de Ministério, validar liderança
+    const escala = item.escalaDia.escala;
+    if (escala.tenantId !== tenantId) throw new ForbiddenException();
+
     if (user.role === Role.LIDER_MINISTERIO) {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
     }
 
-    // Não permite remover membros de escala encerrada
     if (escala.status === StatusEscala.ENCERRADA) {
-      throw new BadRequestException(
-        'Não é possível remover membros de uma escala encerrada.',
-      );
-    }
-
-    const item = await this.prisma.escalaItem.findUnique({
-      where: {
-        escalaId_membroId: {
-          escalaId: id,
-          membroId,
-        },
-      },
-    });
-
-    if (!item) {
-      throw new NotFoundException('Membro não está escalado nesta escala.');
+      throw new BadRequestException('Não é possível remover membros de uma escala encerrada.');
     }
 
     await this.prisma.escalaItem.delete({
-      where: {
-        escalaId_membroId: {
-          escalaId: id,
-          membroId,
-        },
-      },
+      where: { id: itemId },
     });
 
     return { message: 'Membro removido da escala com sucesso.' };
   }
 
-  // ─── Confirmação de Presença pelo Membro ─────────────────────
+  // ─── Confirmação / Update Status ─────────────────────────────
 
   async confirmar(
     tenantId: string,
-    id: string,
+    itemId: string,
     dto: ConfirmarEscalaItemDto,
     user: JwtPayload,
   ) {
-    // 1. Localizar o Membro correspondente pelo e-mail do User autenticado
-    const membro = await this.prisma.client.membro.findFirst({
-      where: { email: user.email, tenantId },
-    });
-
-    if (!membro) {
-      throw new NotFoundException(
-        'Nenhum membro associado ao seu e-mail foi encontrado.',
-      );
-    }
-
-    // 2. Buscar a escala e validar que está PUBLICADA
-    const escala = await this.prisma.escala.findFirst({
-      where: { id, tenantId },
-    });
-
-    if (!escala) {
-      throw new NotFoundException('Escala não encontrada.');
-    }
-
-    if (escala.status !== StatusEscala.PUBLICADA) {
-      throw new BadRequestException(
-        'A confirmação de presença só é permitida em escalas publicadas.',
-      );
-    }
-
-    // 3. Verificar se está agendado nesta escala
     const item = await this.prisma.escalaItem.findUnique({
-      where: {
-        escalaId_membroId: {
-          escalaId: id,
-          membroId: membro.id,
+      where: { id: itemId },
+      include: {
+        escalaDia: {
+          include: { escala: true }
         },
-      },
+        membro: true
+      }
     });
 
     if (!item) {
-      throw new NotFoundException('Você não está escalado para esta escala.');
+      throw new NotFoundException('Item de escala não encontrado.');
     }
 
-    // 4. Atualizar status de confirmação
+    const escala = item.escalaDia.escala;
+
+    if (escala.tenantId !== tenantId) throw new ForbiddenException();
+
+    if (escala.status !== StatusEscala.PUBLICADA) {
+      throw new BadRequestException(
+        'Só é possível confirmar itens de uma escala publicada.',
+      );
+    }
+
+    if (item.membro.email !== user.email && user.role === Role.MEMBRO) {
+      throw new ForbiddenException(
+        'Você só pode confirmar ou recusar a sua própria escalação.',
+      );
+    }
+
     return this.prisma.escalaItem.update({
-      where: {
-        escalaId_membroId: {
-          escalaId: id,
-          membroId: membro.id,
-        },
-      },
+      where: { id: itemId },
       data: {
         statusConfirmacao: dto.statusConfirmacao,
-        observacoes: dto.observacoes,
+        observacoes: dto.observacoes || item.observacoes,
       },
     });
   }
 
-
-  // ─── Alteração Direta do Status pelo Administrador/Líder/Secretário ───
-
   async updateItemStatus(
     tenantId: string,
-    id: string,
-    membroId: string,
+    itemId: string,
     dto: ConfirmarEscalaItemDto,
     user: JwtPayload,
   ) {
-    const escala = await this.findOne(tenantId, id, user);
+    const item = await this.prisma.escalaItem.findUnique({
+      where: { id: itemId },
+      include: {
+        escalaDia: {
+          include: { escala: true }
+        }
+      }
+    });
 
-    // Se for Líder de Ministério, validar liderança
+    if (!item) throw new NotFoundException();
+    
+    const escala = item.escalaDia.escala;
+
     if (user.role === Role.LIDER_MINISTERIO) {
       await this.checkMinistryLeadership(escala.ministerioId, user.sub);
     }
 
-    const item = await this.prisma.escalaItem.findUnique({
-      where: {
-        escalaId_membroId: {
-          escalaId: id,
-          membroId,
-        },
-      },
-    });
-
-    if (!item) {
-      throw new NotFoundException('Membro não está escalado nesta escala.');
-    }
-
     return this.prisma.escalaItem.update({
-      where: {
-        escalaId_membroId: {
-          escalaId: id,
-          membroId,
-        },
-      },
+      where: { id: itemId },
       data: {
         statusConfirmacao: dto.statusConfirmacao,
         observacoes: dto.observacoes,

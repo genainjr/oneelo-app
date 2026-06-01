@@ -80,35 +80,61 @@ export class EscalasController {
     return this.escalasService.remove(tenantId, id, user);
   }
 
+  // ─── Gestão de Dias ─────────────────────────────
+
+  @Post(':id/dias')
+  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  addDia(
+    @Param('id') id: string,
+    @Body() body: { data: string; titulo?: string },
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.escalasService.addDia(tenantId, id, body, user);
+  }
+
+  @Delete('dias/:diaId')
+  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  removeDia(
+    @Param('diaId') diaId: string,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.escalasService.removeDia(tenantId, diaId, user);
+  }
+
   // ─── Gestão de Itens da Escala ─────────────────────────────
 
-  @Post(':id/itens')
+  @Post('dias/:diaId/itens')
   @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
   addMembro(
-    @Param('id') id: string,
+    @Param('diaId') diaId: string,
     @Body() manageEscalaItemDto: ManageEscalaItemDto,
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.escalasService.addMembro(tenantId, id, manageEscalaItemDto, user);
+    // Forçar que o DTO reflita a URL
+    manageEscalaItemDto.escalaDiaId = diaId;
+    return this.escalasService.addMembro(tenantId, diaId, manageEscalaItemDto, user);
   }
 
-  @Delete(':id/itens/:membroId')
+  @Delete('itens/:itemId')
   @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
   removeMembro(
-    @Param('id') id: string,
-    @Param('membroId') membroId: string,
+    @Param('itemId') itemId: string,
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.escalasService.removeMembro(tenantId, id, membroId, user);
+    return this.escalasService.removeMembro(tenantId, itemId, user);
   }
 
   // ─── Confirmação de Presença pelo Membro ─────────────────────
 
-  @Patch(':id/confirmar')
+  @Patch('itens/:itemId/confirmar')
   @Roles(
     Role.ADMIN_GERAL,
     Role.PASTOR,
@@ -117,22 +143,21 @@ export class EscalasController {
     Role.MEMBRO,
   )
   confirmar(
-    @Param('id') id: string,
+    @Param('itemId') itemId: string,
     @Body() confirmarEscalaItemDto: ConfirmarEscalaItemDto,
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.escalasService.confirmar(tenantId, id, confirmarEscalaItemDto, user);
+    return this.escalasService.confirmar(tenantId, itemId, confirmarEscalaItemDto, user);
   }
 
   // ─── Alteração Direta do Status pelo Administrador/Líder/Secretário ───
 
-  @Patch(':id/itens/:membroId/status')
+  @Patch('itens/:itemId/status')
   @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO, Role.LIDER_MINISTERIO)
   updateItemStatus(
-    @Param('id') id: string,
-    @Param('membroId') membroId: string,
+    @Param('itemId') itemId: string,
     @Body() confirmarEscalaItemDto: ConfirmarEscalaItemDto,
     @Req() req: Request,
   ) {
@@ -140,8 +165,7 @@ export class EscalasController {
     const user = req['user'] as JwtPayload;
     return this.escalasService.updateItemStatus(
       tenantId,
-      id,
-      membroId,
+      itemId,
       confirmarEscalaItemDto,
       user,
     );
