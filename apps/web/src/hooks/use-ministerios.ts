@@ -4,6 +4,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, HttpError } from '@/lib/api';
 import { Ministerio } from '@/types';
 
+export interface CreateMinisterioDto {
+  nome: string;
+  descricao?: string;
+  funcoes?: string[];
+}
+
+export interface UpdateMinisterioDto {
+  nome?: string;
+  descricao?: string;
+  ativo?: boolean;
+  funcoes?: string[];
+}
+
 export function useMinisterios() {
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,13 +39,13 @@ export function useMinisterios() {
     fetch();
   }, []);
 
-  async function createMinisterio(data: Partial<Ministerio>) {
+  async function createMinisterio(data: CreateMinisterioDto) {
     const created = await api.post<Ministerio>('/api/ministerios', data);
-    setMinisterios((prev) => [created, ...prev]);
+    await fetch(); // Refetch para obter lista completa com _count e lideres
     return created;
   }
 
-  async function updateMinisterio(id: string, data: Partial<Ministerio>) {
+  async function updateMinisterio(id: string, data: UpdateMinisterioDto) {
     const updated = await api.patch<Ministerio>(`/api/ministerios/${id}`, data);
     setMinisterios((prev) => prev.map((m) => (m.id === id ? updated : m)));
     return updated;
@@ -40,7 +53,7 @@ export function useMinisterios() {
 
   async function deleteMinisterio(id: string) {
     await api.delete(`/api/ministerios/${id}`);
-    setMinisterios((prev) => prev.filter((m) => m.id !== id));
+    await fetch(); // Refetch: backend faz soft-delete, lista deve refletir estado do servidor
   }
 
   // Manage members

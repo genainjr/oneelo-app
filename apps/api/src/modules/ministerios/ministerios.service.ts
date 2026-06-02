@@ -14,16 +14,29 @@ export class MinisteriosService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(tenantId: string, dto: CreateMinisterioDto) {
-    return this.prisma.ministerio.create({
+    const { funcoes, ...ministerioData } = dto;
+    const ministerio = await this.prisma.ministerio.create({
       data: {
-        ...dto,
+        ...ministerioData,
         tenantId,
       },
     });
+
+    if (funcoes && funcoes.length > 0) {
+      await this.prisma.ministerioFuncao.createMany({
+        data: funcoes.map((f, i) => ({
+          ministerioId: ministerio.id,
+          nome: f,
+          ordem: i
+        }))
+      });
+    }
+
+    return ministerio;
   }
 
   async findAll(tenantId: string, user: JwtPayload) {
-    const where: any = { tenantId };
+    const where: any = { tenantId, ativo: true };
 
     // LIDER_MINISTERIO vê apenas os ministérios que lidera
     if (user.role === Role.LIDER_MINISTERIO) {
@@ -43,6 +56,9 @@ export class MinisteriosService {
         _count: {
           select: { membros: true, escalas: true },
         },
+        funcoes: {
+          orderBy: { ordem: 'asc' }
+        }
       },
       orderBy: { nome: 'asc' },
     });
@@ -73,6 +89,9 @@ export class MinisteriosService {
         _count: {
           select: { escalas: true },
         },
+        funcoes: {
+          orderBy: { ordem: 'asc' }
+        }
       },
     });
 
@@ -95,11 +114,39 @@ export class MinisteriosService {
 
   async update(tenantId: string, id: string, dto: UpdateMinisterioDto, user: JwtPayload) {
     await this.findOne(tenantId, id, user);
+    
+    const { funcoes, ...ministerioData } = dto;
 
-    return this.prisma.ministerio.update({
+    await this.prisma.ministerio.update({
       where: { id },
-      data: dto,
+      data: ministerioData,
     });
+
+    if (funcoes) {
+      // Tentar deletar as funções que não estão na lista
+      try {
+        await this.prisma.ministerioFuncao.deleteMany({
+          where: {
+            ministerioId: id,
+            nome: { notIn: funcoes }
+          }
+        });
+      } catch (e) {
+        // Ignora possíveis erros de foreign key
+      }
+
+      // Upsert funções
+      for (let i = 0; i < funcoes.length; i++) {
+        const fNome = funcoes[i];
+        await this.prisma.ministerioFuncao.upsert({
+          where: { ministerioId_nome: { ministerioId: id, nome: fNome } },
+          create: { ministerioId: id, nome: fNome, ordem: i },
+          update: { ordem: i }
+        });
+      }
+    }
+
+    return this.findOne(tenantId, id, user);
   }
 
   async remove(tenantId: string, id: string, user: JwtPayload) {

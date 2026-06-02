@@ -1,13 +1,13 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsInt, IsOptional } from 'class-validator';
 
 export class CreateEscalaDto {
-  @IsString()
+  @IsInt()
   @IsNotEmpty()
-  titulo: string;
+  mes: number;
 
-  @IsDateString()
+  @IsInt()
   @IsNotEmpty()
-  data: string;
+  ano: number;
 
   @IsString()
   @IsNotEmpty()

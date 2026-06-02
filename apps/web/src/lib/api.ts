@@ -83,7 +83,7 @@ export const api = {
 
 // ─── Utilitário para query strings ───────────────────────────────────────────
 
-export function buildQuery(params: Record<string, unknown>): string {
+export function buildQuery(params: any): string {
   const q = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)

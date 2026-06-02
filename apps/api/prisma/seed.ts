@@ -2,6 +2,8 @@
 
 import { PrismaClient, Plano, StatusAssinatura, Role, StatusMembro, StatusEscala, StatusConfirmacao, StatusEvento } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -11,8 +13,10 @@ async function main() {
   // Limpar tabelas na ordem correta devido a chaves estrangeiras
   await prisma.auditLog.deleteMany();
   await prisma.escalaItem.deleteMany();
+  await prisma.escalaDia.deleteMany();
   await prisma.escala.deleteMany();
   await prisma.evento.deleteMany();
+  await prisma.ministerioFuncao.deleteMany();
   await prisma.ministerioMembro.deleteMany();
   await prisma.ministerioLider.deleteMany();
   await prisma.ministerio.deleteMany();
@@ -28,8 +32,8 @@ async function main() {
   console.log('Criando Tenant Piloto...');
   const tenant = await prisma.tenant.create({
     data: {
-      nome: 'Igreja Piloto',
-      slug: 'igreja-piloto',
+      nome: 'Comunidade Cristã Resgate de Vida',
+      slug: 'Resgatando Vidas',
       plano: Plano.PROFISSIONAL,
       statusAssinatura: StatusAssinatura.ATIVA,
       limiteMembros: 100,
@@ -48,22 +52,26 @@ async function main() {
   // 3. Criar Usuários (Users)
   console.log('Criando Usuários...');
   const adminUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Admin Geral', email: 'admin@igreja.com', senhaHash: senhaHashAdmin, role: Role.ADMIN_GERAL },
+    data: { tenantId: tenant.id, nome: 'Admin Geral', email: 'admin@ccrv.com', senhaHash: senhaHashAdmin, role: Role.ADMIN_GERAL },
   });
   const pastorUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Pr. Carlos', email: 'pastor@igreja.com', senhaHash: senhaHashPastor, role: Role.PASTOR },
+    data: { tenantId: tenant.id, nome: 'Pr. Carlos', email: 'pastor@ccrv.com', senhaHash: senhaHashPastor, role: Role.PASTOR },
   });
   const liderUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Mariana Louvor', email: 'lider@igreja.com', senhaHash: senhaHashLider, role: Role.LIDER_MINISTERIO },
+    data: { tenantId: tenant.id, nome: 'Mariana Louvor', email: 'lider@ccrv.com', senhaHash: senhaHashLider, role: Role.LIDER_MINISTERIO },
   });
   const secretarioUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Lucas Secretaria', email: 'secretario@igreja.com', senhaHash: senhaHashSecretario, role: Role.SECRETARIO },
+    data: { tenantId: tenant.id, nome: 'Lucas Secretaria', email: 'secretario@ccrv.com', senhaHash: senhaHashSecretario, role: Role.SECRETARIO },
   });
   const membroUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Membro Teste', email: 'membro@igreja.com', senhaHash: senhaHashMembro, role: Role.MEMBRO },
+    data: { tenantId: tenant.id, nome: 'Membro Teste', email: 'membro@ccrv.com', senhaHash: senhaHashMembro, role: Role.MEMBRO },
   });
 
-  // 4. Criar Tags Padrão
+  // Carregar dados reais
+  const seedDataPath = path.join(__dirname, 'seedData.json');
+  const seedData = JSON.parse(fs.readFileSync(seedDataPath, 'utf-8'));
+
+  // 4. Criar Tags
   console.log('Criando Tags...');
   const tagsData = [
     { nome: 'Jovens', corHex: '#3b82f6' },
@@ -75,167 +83,203 @@ async function main() {
     { nome: 'Discipulado', corHex: '#8b5cf6' },
   ];
 
+  // Adicionar tags vindas da planilha
+  const coresExtra = ['#64748b', '#78716c', '#0ea5e9', '#8b5cf6', '#d946ef', '#f43f5e', '#eab308', '#22c55e', '#14b8a6'];
+  let colorIndex = 0;
+  for (const t of seedData.tags || []) {
+    if (!tagsData.find(x => x.nome.toUpperCase() === t.toUpperCase())) {
+      tagsData.push({ nome: t, corHex: coresExtra[colorIndex % coresExtra.length] });
+      colorIndex++;
+    }
+  }
+
   const tags: Record<string, any> = {};
   for (const tag of tagsData) {
-    tags[tag.nome] = await prisma.tag.create({
+    tags[tag.nome.toUpperCase()] = await prisma.tag.create({
       data: { tenantId: tenant.id, nome: tag.nome, corHex: tag.corHex },
     });
   }
 
   // 5. Criar Ministérios
   console.log('Criando Ministérios...');
-  const ministeriosData = [
-    { nome: 'Louvor', descricao: 'Ministério de música e adoração nos cultos' },
-    { nome: 'Mídia', descricao: 'Operação de som, projeção, filmagem e redes sociais' },
-    { nome: 'Infantil', descricao: 'Pastoreio e ensino bíblico de crianças' },
-    { nome: 'Recepção', descricao: 'Acolhimento de membros e visitantes na entrada' },
-    { nome: 'Intercessão', descricao: 'Grupo de oração e suporte espiritual' },
-  ];
-
   const ministerios: Record<string, any> = {};
-  for (const min of ministeriosData) {
-    ministerios[min.nome] = await prisma.ministerio.create({
-      data: { tenantId: tenant.id, nome: min.nome, descricao: min.descricao, ativo: true },
+
+  // Vamos garantir que todos os ministérios do JSON sejam criados, 
+  // mais alguns fixos para manter compatibilidade com outras lógicas, se necessário.
+  const nomesMinisteriosParaCriar = Array.from(new Set([
+    ...seedData.ministerios,
+    'Mídia', 'Recepção'
+  ]));
+
+  for (const nomeMin of nomesMinisteriosParaCriar) {
+    ministerios[nomeMin as string] = await prisma.ministerio.create({
+      data: { tenantId: tenant.id, nome: nomeMin as string, descricao: `Ministério de ${nomeMin}`, ativo: true },
     });
   }
 
-  // Associar Líder ao Ministério de Louvor
-  await prisma.ministerioLider.create({
-    data: { ministerioId: ministerios['Louvor'].id, userId: liderUser.id },
-  });
+  // Associar Líder ao Ministério de Louvor se existir
+  if (ministerios['Louvor']) {
+    await prisma.ministerioLider.create({
+      data: { ministerioId: ministerios['Louvor'].id, userId: liderUser.id },
+    });
+  }
 
-  // 6. Criar 30 Membros
-  console.log('Criando 30 Membros fictícios...');
-  const nomesMembros = [
-    'Ana Souza', 'Bruno Lima', 'Carla Dias', 'Daniel Oliveira', 'Eduardo Santos',
-    'Fernanda Costa', 'Gabriel Jesus', 'Helena Roza', 'Igor Guimarães', 'Julia Melo',
-    'Kevin Rodrigues', 'Larissa Nobre', 'Mateus Silva', 'Nicole Xavier', 'Otávio Neto',
-    'Patricia Gomes', 'Rafael Ramos', 'Sofia Alencar', 'Tiago Abreu', 'Vanessa Pires',
-    'Willian Cardoso', 'Yasmin Mendes', 'Zeca Silva', 'Alice Fernandes', 'Arthur Rocha',
-    'Beatriz Albuquerque', 'Caio Valente', 'Diana Fontes', 'Emílio Castro', 'Flávia Rezende'
-  ];
-
+  // 6. Criar Membros reais e alocar em ministérios
+  console.log('Criando Membros a partir da planilha e associando aos Ministérios...');
   const membrosCriados: any[] = [];
-  for (let i = 0; i < nomesMembros.length; i++) {
-    const nome = nomesMembros[i];
-    const status = i % 10 === 0 ? StatusMembro.INATIVO : (i % 15 === 0 ? StatusMembro.VISITANTE : StatusMembro.ATIVO);
-    const whatsapp = `551199999${1000 + i}`;
-    const email = `${nome.toLowerCase().replace(/\s+/g, '.')}@example.com`;
+  
+  for (let i = 0; i < seedData.membros.length; i++) {
+    const memData = seedData.membros[i];
+    const nome = memData.nome;
+    const whatsapp = memData.telefone ? memData.telefone : null;
+    const email = `${nome.toLowerCase().replace(/[^a-z0-9]/g, '')}${i}@example.com`;
+    const status = StatusMembro.ATIVO;
     
-    // Gerar uma data de nascimento aleatória (entre 18 e 60 anos atrás)
-    const anosAtras = 18 + (i % 43);
-    const dataNascimento = new Date();
-    dataNascimento.setFullYear(dataNascimento.getFullYear() - anosAtras);
+    // Data de nascimento vinda do excel ou undefined
+    let dataNascimento: Date | undefined;
+    if (memData.dataNascimento) {
+      dataNascimento = new Date(memData.dataNascimento);
+    }
 
     const membro = await prisma.membro.create({
       data: {
         tenantId: tenant.id,
         nome,
-        whatsapp,
+        ...(whatsapp && { whatsapp }),
         email,
-        dataNascimento,
+        ...(dataNascimento && { dataNascimento }),
         status,
-        observacoes: `Membro inserido via seed para fins de teste operacional. Número sequencial: ${i + 1}`,
+        observacoes: `Membro inserido via importação do arquivo. Número sequencial: ${i + 1}`,
       },
     });
 
     membrosCriados.push(membro);
 
-    // Associação de Tags com base no índice
-    if (i % 3 === 0) {
-      await prisma.membroTag.create({ data: { membroId: membro.id, tagId: tags['Jovens'].id } });
-    }
-    if (i % 5 === 0 && status === StatusMembro.ATIVO) {
-      await prisma.membroTag.create({ data: { membroId: membro.id, tagId: tags['Músicos'].id } });
-    }
-    if (i % 4 === 0) {
-      await prisma.membroTag.create({ data: { membroId: membro.id, tagId: tags['Batizados'].id } });
-    }
-    if (status === StatusMembro.VISITANTE) {
-      await prisma.membroTag.create({ data: { membroId: membro.id, tagId: tags['Visitantes'].id } });
+    // Associação de Tags vindas do excel
+    if (memData.tags && memData.tags.length > 0) {
+      for (const t of memData.tags) {
+        const tagUpper = t.toUpperCase();
+        if (tags[tagUpper]) {
+          await prisma.membroTag.create({ data: { membroId: membro.id, tagId: tags[tagUpper].id } });
+        }
+      }
     }
 
-    // Associação de Ministérios
-    if (i % 5 === 0) {
-      await prisma.ministerioMembro.create({ data: { ministerioId: ministerios['Louvor'].id, membroId: membro.id } });
-    }
-    if (i % 6 === 0) {
-      await prisma.ministerioMembro.create({ data: { ministerioId: ministerios['Mídia'].id, membroId: membro.id } });
-    }
-    if (i % 7 === 0) {
-      await prisma.ministerioMembro.create({ data: { ministerioId: ministerios['Recepção'].id, membroId: membro.id } });
+    // Associação aos Ministérios Reais
+    for (const minNome of memData.ministerios) {
+      if (ministerios[minNome]) {
+        await prisma.ministerioMembro.create({
+          data: {
+            ministerioId: ministerios[minNome].id,
+            membroId: membro.id
+          }
+        });
+        
+        // Se entrou no Louvor, ganha tag de músicos também para ajudar nos filtros
+        if (minNome === 'Louvor') {
+          // verificar se ja tem a tag para n dar erro
+          const jaTemTag = await prisma.membroTag.findFirst({
+            where: { membroId: membro.id, tagId: tags['MÚSICOS'].id }
+          });
+          if (!jaTemTag) {
+            await prisma.membroTag.create({ data: { membroId: membro.id, tagId: tags['MÚSICOS'].id } });
+          }
+        }
+      }
     }
   }
 
-  // 7. Criar Escalas
-  console.log('Criando Escalas e Itens...');
+  // 6.5. Criar Funções dos Ministérios
+  console.log('Criando Funções (Cargos) dos Ministérios...');
+  const funcoesDict: Record<string, any> = {};
+
+  const funcoesBase = {
+    'Louvor': ['Ministro', 'Back 1', 'Back 2', 'Violão', 'Guitarra', 'Teclado', 'Baixo', 'Bateria', 'Mesa', 'Letra'],
+    'Obreiros': ['Portaria', 'Limpeza', 'Salão 1', 'Salão 2', 'Salão 3'],
+    'Infantil': ['2-3 anos', '4-6 anos', '7-9 anos']
+  };
+
+  for (const [minNome, nomesFunc] of Object.entries(funcoesBase)) {
+    if (ministerios[minNome]) {
+      for (let idx = 0; idx < nomesFunc.length; idx++) {
+        const fNome = nomesFunc[idx];
+        const func = await prisma.ministerioFuncao.create({
+          data: {
+            ministerioId: ministerios[minNome].id,
+            nome: fNome,
+            ordem: idx
+          }
+        });
+        funcoesDict[`${minNome}-${fNome}`] = func;
+      }
+    }
+  }
+
+  // 7. Criar Escalas Mensais
+  console.log('Criando Escalas e Itens (Visão Mensal)...');
   
-  // Escala Semana Atual (Domingo)
   const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
+
+  const escalaMensalLouvor = await prisma.escala.create({
+    data: {
+      tenantId: tenant.id,
+      ministerioId: ministerios['Louvor'].id,
+      mes: mesAtual,
+      ano: anoAtual,
+      status: StatusEscala.PUBLICADA,
+      observacoes: 'Escala mensal gerada automaticamente.'
+    },
+  });
+
   const proximoDomingo = new Date();
   proximoDomingo.setDate(hoje.getDate() + (7 - hoje.getDay()));
   proximoDomingo.setHours(18, 0, 0, 0);
 
-  const escalaSemanaAtual = await prisma.escala.create({
+  const escalaDia1 = await prisma.escalaDia.create({
     data: {
-      tenantId: tenant.id,
-      ministerioId: ministerios['Louvor'].id,
-      titulo: 'Culto da Família - Louvor Semanal',
+      escalaId: escalaMensalLouvor.id,
       data: proximoDomingo,
-      status: StatusEscala.PUBLICADA,
-      observacoes: 'Chegar às 16:30 para passagem de som.',
-    },
+      titulo: 'Culto da Família'
+    }
   });
 
-  // Encontrar alguns membros do Louvor
-  const musicosMembros = membrosCriados.filter((_, idx) => idx % 5 === 0).slice(0, 4);
-
-  // Escala Itens da semana atual
-  if (musicosMembros[0]) {
-    await prisma.escalaItem.create({
-      data: { escalaId: escalaSemanaAtual.id, membroId: musicosMembros[0].id, funcao: 'Ministro de Louvor', statusConfirmacao: StatusConfirmacao.CONFIRMADO },
-    });
-  }
-  if (musicosMembros[1]) {
-    await prisma.escalaItem.create({
-      data: { escalaId: escalaSemanaAtual.id, membroId: musicosMembros[1].id, funcao: 'Teclado', statusConfirmacao: StatusConfirmacao.CONFIRMADO },
-    });
-  }
-  if (musicosMembros[2]) {
-    await prisma.escalaItem.create({
-      data: { escalaId: escalaSemanaAtual.id, membroId: musicosMembros[2].id, funcao: 'Bateria', statusConfirmacao: StatusConfirmacao.PENDENTE },
-    });
-  }
-  if (musicosMembros[3]) {
-    await prisma.escalaItem.create({
-      data: { escalaId: escalaSemanaAtual.id, membroId: musicosMembros[3].id, funcao: 'Vocal 1', statusConfirmacao: StatusConfirmacao.RECUSADO, observacoes: 'Viajando a trabalho' },
-    });
-  }
-
-  // Escala Semana Seguinte (Domingo)
   const domingoSeguinte = new Date(proximoDomingo);
   domingoSeguinte.setDate(proximoDomingo.getDate() + 7);
-
-  const escalaSemanaSeguinte = await prisma.escala.create({
+  const escalaDia2 = await prisma.escalaDia.create({
     data: {
-      tenantId: tenant.id,
-      ministerioId: ministerios['Louvor'].id,
-      titulo: 'Culto de Celebração - Escala Futura',
+      escalaId: escalaMensalLouvor.id,
       data: domingoSeguinte,
-      status: StatusEscala.RASCUNHO,
-      observacoes: 'Escala em elaboração.',
-    },
+      titulo: 'Culto de Celebração'
+    }
   });
 
-  // Escala Itens da semana seguinte
-  if (musicosMembros[0]) {
+  // Encontrar alguns membros do Louvor usando os dados inseridos
+  const musicosMembros = await prisma.membro.findMany({
+    where: { ministerios: { some: { ministerioId: ministerios['Louvor'].id } } },
+    take: 4
+  });
+
+  // Escala Itens
+  if (musicosMembros[0] && funcoesDict['Louvor-Ministro']) {
     await prisma.escalaItem.create({
-      data: { escalaId: escalaSemanaSeguinte.id, membroId: musicosMembros[0].id, funcao: 'Violão / Voz', statusConfirmacao: StatusConfirmacao.PENDENTE },
+      data: { escalaDiaId: escalaDia1.id, membroId: musicosMembros[0].id, ministerioFuncaoId: funcoesDict['Louvor-Ministro'].id, statusConfirmacao: StatusConfirmacao.CONFIRMADO },
     });
   }
-  if (musicosMembros[3]) {
+  if (musicosMembros[1] && funcoesDict['Louvor-Teclado']) {
     await prisma.escalaItem.create({
-      data: { escalaId: escalaSemanaSeguinte.id, membroId: musicosMembros[3].id, funcao: 'Contrabaixo', statusConfirmacao: StatusConfirmacao.PENDENTE },
+      data: { escalaDiaId: escalaDia1.id, membroId: musicosMembros[1].id, ministerioFuncaoId: funcoesDict['Louvor-Teclado'].id, statusConfirmacao: StatusConfirmacao.CONFIRMADO },
+    });
+  }
+  if (musicosMembros[2] && funcoesDict['Louvor-Bateria']) {
+    await prisma.escalaItem.create({
+      data: { escalaDiaId: escalaDia1.id, membroId: musicosMembros[2].id, ministerioFuncaoId: funcoesDict['Louvor-Bateria'].id, statusConfirmacao: StatusConfirmacao.PENDENTE },
+    });
+  }
+  if (musicosMembros[3] && funcoesDict['Louvor-Back 1']) {
+    await prisma.escalaItem.create({
+      data: { escalaDiaId: escalaDia2.id, membroId: musicosMembros[3].id, ministerioFuncaoId: funcoesDict['Louvor-Back 1'].id, statusConfirmacao: StatusConfirmacao.RECUSADO, observacoes: 'Viajando a trabalho' },
     });
   }
 

@@ -173,8 +173,23 @@ model Ministerio {
   lideres MinisterioLider[]
   membros MinisterioMembro[]
   escalas Escala[]
+  funcoes MinisterioFuncao[]
 
   @@index([tenantId])
+}
+
+model MinisterioFuncao {
+  id           String @id @default(uuid())
+  ministerioId String
+  nome         String
+  descricao    String?
+  corHex       String?
+  ordem        Int    @default(0)
+
+  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
+  itens      EscalaItem[]
+
+  @@unique([ministerioId, nome])
 }
 
 model MinisterioLider {
@@ -203,8 +218,8 @@ model Escala {
   id           String       @id @default(uuid())
   tenantId     String
   ministerioId String
-  titulo       String
-  data         DateTime
+  mes          Int
+  ano          Int
   status       StatusEscala @default(RASCUNHO)
   observacoes  String?
   createdAt    DateTime     @default(now())
@@ -212,26 +227,40 @@ model Escala {
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id])
   ministerio  Ministerio   @relation(fields: [ministerioId], references: [id])
-  itens       EscalaItem[]
+  dias        EscalaDia[]
 
   @@index([tenantId])
-  @@index([tenantId, data])
+  @@unique([ministerioId, mes, ano])
+}
+
+model EscalaDia {
+  id           String       @id @default(uuid())
+  escalaId     String
+  data         DateTime
+  titulo       String?      // opcional (ex: Culto da Família)
+  eventoId     String?      // caso exista um evento de referência
+  observacoes  String?
+
+  escala Escala @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+  evento Evento? @relation(fields: [eventoId], references: [id], onDelete: SetNull)
+  itens  EscalaItem[]
 }
 
 model EscalaItem {
   id                 String            @id @default(uuid())
-  escalaId           String
+  escalaDiaId        String
   membroId           String
   userId             String?           // user que adicionou o item
-  funcao             String
+  ministerioFuncaoId String
   statusConfirmacao  StatusConfirmacao  @default(PENDENTE)
   observacoes        String?
 
-  escala Escala  @relation(fields: [escalaId], references: [id])
+  escalaDia EscalaDia @relation(fields: [escalaDiaId], references: [id], onDelete: Cascade)
   membro Membro  @relation(fields: [membroId], references: [id])
   user   User?   @relation(fields: [userId], references: [id])
+  funcao MinisterioFuncao @relation(fields: [ministerioFuncaoId], references: [id])
 
-  @@unique([escalaId, membroId])
+  @@unique([escalaDiaId, membroId, ministerioFuncaoId])
 }
 
 // ─── Evento ───────────────────────────────────────────────
@@ -249,6 +278,7 @@ model Evento {
   updatedAt   DateTime     @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+  escalasDias EscalaDia[]
 
   @@index([tenantId])
   @@index([tenantId, dataInicio])

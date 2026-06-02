@@ -7,8 +7,8 @@ import { Escala } from '@/types';
 export interface FilterEscalas {
   ministerioId?: string;
   status?: string;
-  dataInicio?: string;
-  dataFim?: string;
+  mes?: string;
+  ano?: string;
   pendentesApenas?: string;
   membroId?: string;
 }
@@ -36,7 +36,7 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     fetchEscalas(initialFilter);
   }, []);
 
-  async function createEscala(data: Partial<Escala>) {
+  async function createEscala(data: { mes: number; ano: number; ministerioId: string; observacoes?: string }) {
     const created = await api.post<Escala>('/api/escalas', data);
     setEscalas((prev) => [created, ...prev]);
     return created;
@@ -53,25 +53,35 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     setEscalas((prev) => prev.filter((e) => e.id !== id));
   }
 
-  async function confirmarPresenca(escalaId: string, statusConfirmacao: 'CONFIRMADO' | 'RECUSADO', observacoes?: string) {
-    const res = await api.patch<any>(`/api/escalas/${escalaId}/confirmar`, { statusConfirmacao, observacoes });
+  async function addDia(escalaId: string, data: string, titulo?: string) {
+    const res = await api.post<any>(`/api/escalas/${escalaId}/dias`, { data, titulo });
     await fetchEscalas(filter);
     return res;
   }
 
-  // Manage items inside scale
-  async function addMembroItem(escalaId: string, membroId: string, funcao: string, observacoes?: string) {
-    await api.post(`/api/escalas/${escalaId}/itens`, { membroId, funcao, observacoes });
+  async function removeDia(diaId: string) {
+    await api.delete(`/api/escalas/dias/${diaId}`);
     await fetchEscalas(filter);
   }
 
-  async function removeMembroItem(escalaId: string, membroId: string) {
-    await api.delete(`/api/escalas/${escalaId}/itens/${membroId}`);
+  async function addMembroItem(diaId: string, membroId: string, ministerioFuncaoId: string, observacoes?: string) {
+    await api.post(`/api/escalas/dias/${diaId}/itens`, { escalaDiaId: diaId, membroId, ministerioFuncaoId, observacoes });
     await fetchEscalas(filter);
   }
 
-  async function updateMembroItemStatus(escalaId: string, membroId: string, statusConfirmacao: 'PENDENTE' | 'CONFIRMADO' | 'RECUSADO', observacoes?: string) {
-    await api.patch(`/api/escalas/${escalaId}/itens/${membroId}/status`, { statusConfirmacao, observacoes });
+  async function removeMembroItem(itemId: string) {
+    await api.delete(`/api/escalas/itens/${itemId}`);
+    await fetchEscalas(filter);
+  }
+
+  async function confirmarPresenca(itemId: string, statusConfirmacao: 'CONFIRMADO' | 'RECUSADO', observacoes?: string) {
+    const res = await api.patch<any>(`/api/escalas/itens/${itemId}/confirmar`, { statusConfirmacao, observacoes });
+    await fetchEscalas(filter);
+    return res;
+  }
+
+  async function updateMembroItemStatus(itemId: string, statusConfirmacao: 'PENDENTE' | 'CONFIRMADO' | 'RECUSADO', observacoes?: string) {
+    await api.patch(`/api/escalas/itens/${itemId}/status`, { statusConfirmacao, observacoes });
     await fetchEscalas(filter);
   }
 
@@ -91,6 +101,8 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     createEscala,
     updateEscala,
     deleteEscala,
+    addDia,
+    removeDia,
     confirmarPresenca,
     addMembroItem,
     removeMembroItem,

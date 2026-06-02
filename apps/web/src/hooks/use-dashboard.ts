@@ -54,11 +54,7 @@ export function useDashboard() {
               : 0,
           pendenciasConfirmacao:
             pendencias.status === 'fulfilled' && Array.isArray(pendencias.value)
-              ? pendencias.value.reduce(
-                  (acc, e) =>
-                    acc + (e.itens?.filter((i) => i.statusConfirmacao === 'PENDENTE').length ?? 0),
-                  0,
-                )
+              ? pendencias.value.length
               : 0,
         });
       } catch {

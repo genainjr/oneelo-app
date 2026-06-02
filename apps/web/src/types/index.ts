@@ -8,7 +8,7 @@ export type Role =
   | 'MEMBRO';
 
 export type StatusMembro = 'ATIVO' | 'INATIVO' | 'VISITANTE' | 'TRANSFERIDO';
-export type StatusEscala = 'RASCUNHO' | 'PUBLICADA' | 'CONCLUIDA';
+export type StatusEscala = 'RASCUNHO' | 'PUBLICADA' | 'ENCERRADA';
 export type StatusConfirmacao = 'PENDENTE' | 'CONFIRMADO' | 'RECUSADO';
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -54,6 +54,15 @@ export interface Membro {
 
 // ─── Ministério ───────────────────────────────────────────────────────────────
 
+export interface MinisterioFuncao {
+  id: string;
+  ministerioId: string;
+  nome: string;
+  descricao?: string;
+  corHex?: string;
+  ordem: number;
+}
+
 export interface Ministerio {
   id: string;
   tenantId: string;
@@ -63,6 +72,7 @@ export interface Ministerio {
   createdAt: string;
   updatedAt: string;
   lideres?: { user: { id: string; nome: string; email: string } }[];
+  funcoes?: MinisterioFuncao[];
   _count?: { membros: number };
 }
 
@@ -70,26 +80,38 @@ export interface Ministerio {
 
 export interface EscalaItem {
   id: string;
-  escalaId: string;
+  escalaDiaId: string;
   membroId: string;
-  funcao?: string;
+  ministerioFuncaoId: string;
+  observacoes?: string;
   statusConfirmacao: StatusConfirmacao;
   membro?: Pick<Membro, 'id' | 'nome' | 'email' | 'whatsapp'>;
+  funcao?: MinisterioFuncao;
+}
+
+export interface EscalaDia {
+  id: string;
+  escalaId: string;
+  data: string;
+  titulo?: string;
+  eventoId?: string;
+  observacoes?: string;
+  itens?: EscalaItem[];
 }
 
 export interface Escala {
   id: string;
   tenantId: string;
   ministerioId: string;
-  titulo: string;
-  data: string;
-  descricao?: string;
+  mes: number;
+  ano: number;
+  observacoes?: string;
   status: StatusEscala;
   createdAt: string;
   updatedAt: string;
-  ministerio?: Pick<Ministerio, 'id' | 'nome'>;
-  itens?: EscalaItem[];
-  _count?: { itens: number };
+  ministerio?: Pick<Ministerio, 'id' | 'nome'> & { funcoes?: MinisterioFuncao[] };
+  dias?: EscalaDia[];
+  _count?: { dias: number };
 }
 
 // ─── Evento ───────────────────────────────────────────────────────────────────
@@ -127,6 +149,7 @@ export interface AuditLog {
   acao: string;
   entidade: string;
   entidadeId?: string;
+  ipAddress?: string;
   payloadBefore?: unknown;
   payloadAfter?: unknown;
   createdAt: string;

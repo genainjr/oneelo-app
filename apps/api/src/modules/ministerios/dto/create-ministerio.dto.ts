@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsArray } from 'class-validator';
 
 export class CreateMinisterioDto {
   @IsString()
@@ -7,4 +7,9 @@ export class CreateMinisterioDto {
   @IsString()
   @IsOptional()
   descricao?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  funcoes?: string[];
 }
