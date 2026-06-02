@@ -17,8 +17,8 @@ RUN npm install --legacy-peer-deps
 # Build da API
 WORKDIR /app/apps/api
 
-# Gera Prisma Client
-RUN npx prisma generate
+# Gera Prisma Client (sem conectar ao banco)
+RUN DATABASE_URL="postgresql://user:pass@localhost:5432/dummy" npx prisma generate
 
 # Build da aplicação
 RUN npm run build
