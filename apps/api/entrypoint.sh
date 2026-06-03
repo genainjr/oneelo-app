@@ -1,22 +1,28 @@
 #!/bin/sh
 
-# Script de entrypoint para o container no Render/produção
-# As migrations são executadas via "Release Command" no Render
-# O seed é executado apenas se a variável RUN_SEED estiver definida
-
 set -e
 
 echo "=========================================="
-echo "Iniciando a aplicação NestJS..."
+echo "Iniciando setup do banco de dados..."
 echo "=========================================="
 
-# Executar seed opcionalmente (defina RUN_SEED=true nas env vars do Render para rodar)
+# 1. Executar migrations
+echo ""
+echo "1. Executando migrations do Prisma..."
+npx prisma migrate deploy
+
+# 2. Executar seed (opcional - defina RUN_SEED=true nas env vars para rodar)
 if [ "$RUN_SEED" = "true" ]; then
   echo ""
-  echo "Executando seed do banco de dados..."
+  echo "2. Executando seed do banco de dados..."
   npx prisma db seed
   echo "Seed concluído!"
 fi
+
+echo ""
+echo "=========================================="
+echo "Setup do banco concluído com sucesso!"
+echo "=========================================="
 
 echo ""
 
