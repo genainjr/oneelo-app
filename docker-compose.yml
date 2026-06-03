@@ -12,6 +12,11 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - church_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d church_saas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -27,8 +32,10 @@ services:
     volumes:
       - ./apps/api:/app
       - /app/node_modules
+      - /app/dist
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - church_network
 
@@ -36,12 +43,14 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
     container_name: church_web
     restart: always
     ports:
       - "3001:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
     volumes:
       - ./apps/web:/app
       - /app/node_modules
