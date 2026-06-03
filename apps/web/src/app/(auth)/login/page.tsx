@@ -26,8 +26,7 @@ function LoginForm() {
 
     try {
       await api.post<LoginResponse>('/api/auth/login', { email, senha });
-      router.push(redirect);
-      router.refresh();
+      window.location.href = redirect;
     } catch (err) {
       if (err instanceof HttpError) {
         if (err.status === 401) {
