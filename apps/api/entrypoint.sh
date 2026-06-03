@@ -11,13 +11,22 @@ echo "=========================================="
 
 if [ -n "$DATABASE_URL" ]; then
   # Extrair o host e a porta de conexão do DATABASE_URL dinamicamente
-  # Exemplo: postgresql://dev:dev@postgres:5432/church_saas?schema=public
-  DB_HOST_PORT=$(echo "$DATABASE_URL" | sed -e 's|.*@||' -e 's|/.*||' -e 's|?.*||')
-  DB_HOST=$(echo "$DB_HOST_PORT" | cut -d: -f1)
-  DB_PORT=$(echo "$DB_HOST_PORT" | cut -d: -f2)
+  # Suporta os formatos:
+  #   postgresql://user:pass@host:5432/db?schema=public
+  #   postgresql://postgres.ref:pass@aws-1-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true
 
-  # Se a porta for igual ao host (significa que não há porta na string), define como 5432 por padrão
-  if [ "$DB_PORT" = "$DB_HOST" ] || [ -z "$DB_PORT" ]; then
+  # Remove o protocolo (postgresql:// ou postgres://)
+  DB_STRIPPED=$(echo "$DATABASE_URL" | sed 's|^postgresql://||; s|^postgres://||')
+  # Remove as credenciais (tudo antes do @)
+  DB_HOST_PART=$(echo "$DB_STRIPPED" | sed 's|.*@||')
+  # Remove o caminho e query string (tudo a partir de / ou ?)
+  DB_HOST_PORT=$(echo "$DB_HOST_PART" | cut -d'/' -f1 | cut -d'?' -f1)
+  # Extrai host e porta separadamente
+  DB_HOST=$(echo "$DB_HOST_PORT" | cut -d':' -f1)
+  DB_PORT=$(echo "$DB_HOST_PORT" | cut -d':' -f2)
+
+  # Se não houver porta, usa 5432 como padrão
+  if [ -z "$DB_PORT" ] || [ "$DB_PORT" = "$DB_HOST" ]; then
     DB_PORT=5432
   fi
 
