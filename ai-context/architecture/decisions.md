@@ -29,7 +29,7 @@ A segurança e o controle de acesso de perfil (RBAC) precisam ser robustos desde
 
 ### Consequências
 - O frontend Next.js não armazena tokens no localStorage.
-- O cookie `access_token` é configurado como `httpOnly: true`, `secure: true` (em produção) e `sameSite: 'lax'`, prevenindo ataques de XSS.
+- O cookie `access_token` é configurado como `httpOnly: true`, `secure: true` (em produção) e `sameSite: 'none'`, permitindo requisições cross-domain.
 - O `JwtAuthGuard` valida o token e resolve o `tenantId` a cada requisição.
 
 ---
