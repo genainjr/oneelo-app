@@ -40,9 +40,10 @@ export class AuthController {
     const { accessToken, user } = await this.authService.login(dto, ip);
 
     // Define o token como cookie HTTP-only seguro
+    // sameSite: 'none' requer secure: true (mesmo em desenvolvimento com proxy)
     res.cookie('access_token', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // Necessário para sameSite: 'none' em cross-domain
       sameSite: 'none',
       maxAge: 8 * 60 * 60 * 1000, // 8 horas em ms
     });

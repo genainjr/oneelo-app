@@ -25,10 +25,12 @@ async function bootstrap() {
     }),
   );
 
-  // CORS — permite o frontend Next.js acessar a API com cookies
+  // CORS — permite o frontend acessar a API com cookies em cross-domain
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3001',
-    credentials: true,
+    origin: (process.env.CORS_ORIGIN ?? 'http://localhost:3001').split(','),
+    credentials: true, // Permite envio/recebimento de cookies
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Configuração do Swagger
