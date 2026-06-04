@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, HttpError } from '@/lib/api';
-import { Ministerio } from '@/types';
+import { Ministerio, MinistryRole } from '@/types';
 
 export interface CreateMinisterioDto {
   nome: string;
@@ -41,7 +41,7 @@ export function useMinisterios() {
 
   async function createMinisterio(data: CreateMinisterioDto) {
     const created = await api.post<Ministerio>('/api/ministerios', data);
-    await fetch(); // Refetch para obter lista completa com _count e lideres
+    await fetch();
     return created;
   }
 
@@ -53,13 +53,12 @@ export function useMinisterios() {
 
   async function deleteMinisterio(id: string) {
     await api.delete(`/api/ministerios/${id}`);
-    await fetch(); // Refetch: backend faz soft-delete, lista deve refletir estado do servidor
+    await fetch();
   }
 
-  // Manage members
-  async function addMembro(ministerioId: string, membroId: string) {
-    await api.post(`/api/ministerios/${ministerioId}/membros`, { membroId });
-    await fetch(); // Refetch to get updated counts and relations
+  async function addMembro(ministerioId: string, membroId: string, role?: MinistryRole) {
+    await api.post(`/api/ministerios/${ministerioId}/membros`, { membroId, role });
+    await fetch();
   }
 
   async function removeMembro(ministerioId: string, membroId: string) {
@@ -67,14 +66,8 @@ export function useMinisterios() {
     await fetch();
   }
 
-  // Manage leaders
-  async function addLider(ministerioId: string, userId: string) {
-    await api.post(`/api/ministerios/${ministerioId}/lideres`, { userId });
-    await fetch();
-  }
-
-  async function removeLider(ministerioId: string, userId: string) {
-    await api.delete(`/api/ministerios/${ministerioId}/lideres/${userId}`);
+  async function updateMembroRole(ministerioId: string, membroId: string, role: MinistryRole) {
+    await api.patch(`/api/ministerios/${ministerioId}/membros/${membroId}`, { role });
     await fetch();
   }
 
@@ -88,7 +81,6 @@ export function useMinisterios() {
     deleteMinisterio,
     addMembro,
     removeMembro,
-    addLider,
-    removeLider,
+    updateMembroRole,
   };
 }

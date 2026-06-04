@@ -1,11 +1,11 @@
 import { ApiError } from '@/types';
 
 // Em produção no browser, usa caminho relativo (proxy do Next.js via rewrites)
-// No servidor (SSR/middleware) e em dev local, usa a URL direta da API
+// No servidor (SSR/middleware) e em dev local, usa a URL direta da API (suporta INTERNAL_API_URL no Docker)
 const API_BASE =
   typeof window !== 'undefined'
     ? ''
-    : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000');
+    : (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000');
 
 // ─── Tipos auxiliares ─────────────────────────────────────────────────────────
 

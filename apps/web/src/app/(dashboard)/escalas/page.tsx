@@ -394,7 +394,7 @@ export default function EscalasPage() {
     }
   }
 
-  const canManage = currentUser?.role === 'ADMIN_GERAL' || currentUser?.role === 'PASTOR' || currentUser?.role === 'LIDER_MINISTERIO';
+  const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF' || currentUser?.role === 'BASIC';
 
   const funcoes = detailedEscala?.ministerio?.funcoes || [];
   const anos = Array.from({ length: 4 }, (_, i) => hoje.getFullYear() - 1 + i);

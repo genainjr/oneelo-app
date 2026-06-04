@@ -82,11 +82,15 @@ export const STATUS_CONFIRMACAO_COLOR: Record<StatusConfirmacao, string> = {
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
-  ADMIN_GERAL: 'Admin Geral',
-  PASTOR: 'Pastor',
-  LIDER_MINISTERIO: 'Líder de Ministério',
-  SECRETARIO: 'Secretário',
-  MEMBRO: 'Membro',
+  ADMIN: 'Administrador',
+  STAFF: 'Equipe',
+  BASIC: 'Membro',
+};
+
+export const MINISTRY_ROLE_LABEL: Record<string, string> = {
+  LEADER: 'Líder',
+  ASSISTANT_LEADER: 'Co-líder',
+  MEMBER: 'Membro',
 };
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────

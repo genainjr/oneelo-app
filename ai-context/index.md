@@ -18,3 +18,4 @@ Este repositório contém a documentação de contexto da Inteligência Artifici
 ## Contextos Importantes
 - **[Visão Geral da Arquitetura](architecture/overview.md)**: Detalhes de guards, decorators, interceptors, soft delete e infraestrutura.
 - **[Plano de Desenvolvimento Original](../plano_desenvolvimento_ideal_markdown.md)**: O documento com especificações completas de regras de negócio, limites e roadmap de desenvolvimento do MVP.
+- **[Backlog Técnico](backlog/README.md)**: Correções de segurança, melhorias e débitos técnicos pendentes.

@@ -3,25 +3,40 @@
 set -e
 
 echo "=========================================="
-echo "Iniciando setup da aplicação NestJS..."
+echo "Iniciando a aplicação NestJS em background..."
 echo "=========================================="
+
+# Inicia o servidor em background
+if [ -f "dist/src/main.js" ]; then
+  node dist/src/main.js &
+else
+  node dist/main.js &
+fi
+
+SERVER_PID=$!
+
+# Aguarda a porta 3000 abrir para garantir que a API está online
+echo "Aguardando a porta 3000 responder..."
+while ! nc -z localhost 3000; do
+  sleep 0.5
+done
+echo "API está online! Iniciando tarefas de banco..."
 
 # 1. Rodar migrations (cria/atualiza schema do banco)
 echo "Running database migrations..."
 npx prisma migrate deploy
 
-# 2. Rodar seed (popula dados iniciais)
-echo "Running database seed..."
-npx prisma db seed
-
-# 3. Iniciar aplicação
-echo "=========================================="
-echo "Iniciando a aplicação NestJS..."
-echo "=========================================="
-
-# Detecta onde está o arquivo compilado (dist/main.js ou dist/src/main.js)
-if [ -f "dist/src/main.js" ]; then
-  exec node dist/src/main.js
+# 2. Rodar seed (popula dados iniciais, opcional)
+if [ "$RUN_SEED" = "true" ]; then
+  echo "Running database seed..."
+  npx prisma db seed
 else
-  exec node dist/main.js
+  echo "Skipping database seed (RUN_SEED is not set to true)..."
 fi
+
+echo "=========================================="
+echo "Setup concluído com sucesso!"
+echo "=========================================="
+
+# Mantém o processo do servidor rodando no foreground
+wait $SERVER_PID
