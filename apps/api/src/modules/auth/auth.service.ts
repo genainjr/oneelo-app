@@ -47,6 +47,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      memberId: user.memberId ?? undefined,
       tenantId: user.tenantId,
     };
 

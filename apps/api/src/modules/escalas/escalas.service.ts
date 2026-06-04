@@ -10,30 +10,32 @@ import { UpdateEscalaDto } from './dto/update-escala.dto';
 import { FilterEscalaDto } from './dto/filter-escala.dto';
 import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
-import { Role, StatusConfirmacao, StatusEscala } from '@prisma/client';
+import { Role, MinistryRole, StatusConfirmacao, StatusEscala } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 
 @Injectable()
 export class EscalasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async checkMinistryLeadership(
+  /**
+   * Verifica se o usuário BASIC tem role de LEADER ou ASSISTANT_LEADER no ministério.
+   */
+  private async checkMinistryAccess(
     ministerioId: string,
-    userId: string,
+    memberId: string | undefined,
   ): Promise<void> {
-    const isLider = await this.prisma.ministerioLider.findUnique({
+    if (!memberId) {
+      throw new ForbiddenException('Acesso negado: usuário não vinculado a um membro.');
+    }
+
+    const membership = await this.prisma.ministerioMembro.findUnique({
       where: {
-        ministerioId_userId: {
-          ministerioId,
-          userId,
-        },
+        ministerioId_membroId: { ministerioId, membroId: memberId },
       },
     });
 
-    if (!isLider) {
-      throw new ForbiddenException(
-        'Acesso negado: você não lidera este ministério.',
-      );
+    if (!membership || (membership.role !== MinistryRole.LEADER && membership.role !== MinistryRole.ASSISTANT_LEADER)) {
+      throw new ForbiddenException('Acesso negado: você não lidera este ministério.');
     }
   }
 
@@ -46,8 +48,8 @@ export class EscalasService {
       throw new NotFoundException('Ministério não encontrado.');
     }
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(dto.ministerioId, user.sub);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(dto.ministerioId, user.memberId);
     }
 
     const existing = await this.prisma.escala.findUnique({
@@ -92,30 +94,35 @@ export class EscalasService {
       where.ano = parseInt(query.ano, 10);
     }
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      const liderados = await this.prisma.ministerioLider.findMany({
-        where: { userId: user.sub },
+    if (user.role === Role.BASIC) {
+      if (!user.memberId) return [];
+
+      // Buscar ministérios onde é LEADER ou ASSISTANT_LEADER
+      const liderados = await this.prisma.ministerioMembro.findMany({
+        where: {
+          membroId: user.memberId,
+          role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+        },
         select: { ministerioId: true },
       });
       const idsLiderados = liderados.map((l) => l.ministerioId);
 
-      if (query.ministerioId && !idsLiderados.includes(query.ministerioId)) {
-        throw new ForbiddenException(
-          'Acesso negado: você não lidera o ministério solicitado.',
-        );
-      }
-      where.ministerioId = { in: idsLiderados };
-    } else if (user.role === Role.MEMBRO) {
-      const membro = await this.prisma.client.membro.findFirst({
-        where: { email: user.email, tenantId },
-      });
-      if (!membro) return [];
-
-      where.dias = {
-        some: {
-          itens: { some: { membroId: membro.id } }
+      if (idsLiderados.length > 0) {
+        // Líder/co-líder vê escalas dos seus ministérios
+        if (query.ministerioId && !idsLiderados.includes(query.ministerioId)) {
+          // Se pediu um ministério específico que não lidera, mostra só onde está escalado
+          where.dias = {
+            some: { itens: { some: { membroId: user.memberId } } }
+          };
+        } else {
+          where.ministerioId = { in: idsLiderados };
         }
-      };
+      } else {
+        // Membro comum: vê apenas escalas onde está escalado
+        where.dias = {
+          some: { itens: { some: { membroId: user.memberId } } }
+        };
+      }
     }
 
     return this.prisma.escala.findMany({
@@ -163,25 +170,33 @@ export class EscalasService {
       throw new NotFoundException('Escala não encontrada.');
     }
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(escala.ministerioId, user.sub);
-    } else if (user.role === Role.MEMBRO) {
-      const membro = await this.prisma.client.membro.findFirst({
-        where: { email: user.email, tenantId },
+    if (user.role === Role.BASIC) {
+      if (!user.memberId) {
+        throw new ForbiddenException('Acesso negado: usuário não vinculado a um membro.');
+      }
+
+      // Checar se é líder/co-líder do ministério
+      const membership = await this.prisma.ministerioMembro.findUnique({
+        where: {
+          ministerioId_membroId: { ministerioId: escala.ministerioId, membroId: user.memberId },
+        },
       });
-      if (!membro) {
-        throw new ForbiddenException('Acesso negado: você não possui um membro vinculado.');
-      }
-      
-      let isEscalado = false;
-      for(const d of escala.dias) {
-         if (d.itens.some((item) => item.membroId === membro.id)) {
-           isEscalado = true;
-           break;
-         }
-      }
-      if (!isEscalado) {
-        throw new ForbiddenException('Acesso negado: você não está associado a esta escala.');
+
+      const isLeaderOrAssistant = membership &&
+        (membership.role === MinistryRole.LEADER || membership.role === MinistryRole.ASSISTANT_LEADER);
+
+      if (!isLeaderOrAssistant) {
+        // Verificar se está escalado
+        let isEscalado = false;
+        for (const d of escala.dias) {
+          if (d.itens.some((item) => item.membroId === user.memberId)) {
+            isEscalado = true;
+            break;
+          }
+        }
+        if (!isEscalado) {
+          throw new ForbiddenException('Acesso negado: você não está associado a esta escala.');
+        }
       }
     }
 
@@ -191,8 +206,8 @@ export class EscalasService {
   async update(tenantId: string, id: string, dto: UpdateEscalaDto, user: JwtPayload) {
     const escala = await this.findOne(tenantId, id, user);
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(escala.ministerioId, user.sub);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
     if (dto.status && dto.status !== escala.status) {
@@ -220,8 +235,8 @@ export class EscalasService {
   async remove(tenantId: string, id: string, user: JwtPayload) {
     const escala = await this.findOne(tenantId, id, user);
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(escala.ministerioId, user.sub);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
     await this.prisma.escala.delete({
@@ -234,10 +249,10 @@ export class EscalasService {
   // ─── Gestão de Dias ─────────────────────────────
   async addDia(tenantId: string, escalaId: string, body: { data: string, titulo?: string }, user: JwtPayload) {
     const escala = await this.findOne(tenantId, escalaId, user);
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(escala.ministerioId, user.sub);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
-    
+
     return this.prisma.escalaDia.create({
       data: {
         escalaId,
@@ -252,12 +267,12 @@ export class EscalasService {
       where: { id: diaId },
       include: { escala: true }
     });
-    if(!dia) throw new NotFoundException('Dia não encontrado.');
+    if (!dia) throw new NotFoundException('Dia não encontrado.');
 
     if (dia.escala.tenantId !== tenantId) throw new ForbiddenException();
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(dia.escala.ministerioId, user.sub);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(dia.escala.ministerioId, user.memberId);
     }
 
     await this.prisma.escalaDia.delete({ where: { id: diaId } });
@@ -276,12 +291,12 @@ export class EscalasService {
       where: { id: diaId },
       include: { escala: true }
     });
-    if(!dia) throw new NotFoundException('Dia não encontrado.');
+    if (!dia) throw new NotFoundException('Dia não encontrado.');
 
     const escala = dia.escala;
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(escala.ministerioId, user.sub);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
     if (escala.status === StatusEscala.ENCERRADA) {
@@ -295,17 +310,17 @@ export class EscalasService {
     if (!membro) {
       throw new NotFoundException('Membro não encontrado neste tenant.');
     }
-    
+
     // Verificar conflito
     const hasConflito = await this.prisma.escalaItem.findFirst({
-       where: {
-         escalaDiaId: diaId,
-         membroId: dto.membroId,
-       }
+      where: {
+        escalaDiaId: diaId,
+        membroId: dto.membroId,
+      }
     });
 
     if (hasConflito && hasConflito.ministerioFuncaoId !== dto.ministerioFuncaoId) {
-        throw new BadRequestException('Membro já está escalado neste dia em outra função. Remova-o primeiro.');
+      throw new BadRequestException('Membro já está escalado neste dia em outra função. Remova-o primeiro.');
     }
 
     return this.prisma.escalaItem.upsert({
@@ -347,8 +362,8 @@ export class EscalasService {
     const escala = item.escalaDia.escala;
     if (escala.tenantId !== tenantId) throw new ForbiddenException();
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(escala.ministerioId, user.sub);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
     if (escala.status === StatusEscala.ENCERRADA) {
@@ -394,7 +409,8 @@ export class EscalasService {
       );
     }
 
-    if (item.membro.email !== user.email && user.role === Role.MEMBRO) {
+    // BASIC só pode confirmar a própria escalação
+    if (user.role === Role.BASIC && item.membroId !== user.memberId) {
       throw new ForbiddenException(
         'Você só pode confirmar ou recusar a sua própria escalação.',
       );
@@ -425,11 +441,11 @@ export class EscalasService {
     });
 
     if (!item) throw new NotFoundException();
-    
+
     const escala = item.escalaDia.escala;
 
-    if (user.role === Role.LIDER_MINISTERIO) {
-      await this.checkMinistryLeadership(escala.ministerioId, user.sub);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
     return this.prisma.escalaItem.update({
