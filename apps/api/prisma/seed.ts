@@ -43,27 +43,11 @@ async function main() {
   // 2. Criar Senhas Hashed
   const salt = await bcrypt.genSalt(10);
   const senhaHashAdmin = await bcrypt.hash('admin123', salt);
-  const senhaHashPastor = await bcrypt.hash('pastor123', salt);
-  const senhaHashLider = await bcrypt.hash('lider123', salt);
-  const senhaHashSecretario = await bcrypt.hash('secretario123', salt);
-  const senhaHashMembro = await bcrypt.hash('membro123', salt);
 
   // 3. Criar Usuários (Users)
   console.log('Criando Usuários...');
   const adminUser = await prisma.user.create({
     data: { tenantId: tenant.id, nome: 'Admin Geral', email: 'admin@ccrv.com', senhaHash: senhaHashAdmin, role: Role.ADMIN },
-  });
-  const pastorUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Pr. Carlos', email: 'pastor@ccrv.com', senhaHash: senhaHashPastor, role: Role.STAFF },
-  });
-  const liderUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Mariana Louvor', email: 'lider@ccrv.com', senhaHash: senhaHashLider, role: Role.BASIC },
-  });
-  const secretarioUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Lucas Secretaria', email: 'secretario@ccrv.com', senhaHash: senhaHashSecretario, role: Role.STAFF },
-  });
-  const membroUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Membro Teste', email: 'membro@ccrv.com', senhaHash: senhaHashMembro, role: Role.BASIC },
   });
 
   // Carregar dados reais
@@ -115,28 +99,28 @@ async function main() {
 
   // Associar Líder ao Ministério de Louvor como LEADER via MinisterioMembro
   // Primeiro precisamos criar um Membro para a líder (Mariana)
-  if (ministerios['Louvor']) {
-    const membroLider = await prisma.membro.create({
-      data: {
-        tenantId: tenant.id,
-        nome: 'Mariana Louvor',
-        email: 'lider@ccrv.com',
-        status: StatusMembro.ATIVO,
-        observacoes: 'Líder do ministério de Louvor',
-      },
-    });
+  // if (ministerios['Louvor']) {
+  //   const membroLider = await prisma.membro.create({
+  //     data: {
+  //       tenantId: tenant.id,
+  //       nome: 'Mariana Louvor',
+  //       email: 'lider@ccrv.com',
+  //       status: StatusMembro.ATIVO,
+  //       observacoes: 'Líder do ministério de Louvor',
+  //     },
+  //   });
 
     // Vincular User → Membro
-    await prisma.user.update({
-      where: { id: liderUser.id },
-      data: { memberId: membroLider.id },
-    });
+  //   await prisma.user.update({
+  //     where: { id: liderUser.id },
+  //     data: { memberId: membroLider.id },
+  //   });
 
-    // Adicionar como LEADER no ministério
-    await prisma.ministerioMembro.create({
-      data: { ministerioId: ministerios['Louvor'].id, membroId: membroLider.id, role: MinistryRole.LEADER },
-    });
-  }
+  //   // Adicionar como LEADER no ministério
+  //   await prisma.ministerioMembro.create({
+  //     data: { ministerioId: ministerios['Louvor'].id, membroId: membroLider.id, role: MinistryRole.LEADER },
+  //   });
+  // }
 
   // 6. Criar Membros reais e alocar em ministérios
   console.log('Criando Membros a partir da planilha e associando aos Ministérios...');
@@ -209,7 +193,7 @@ async function main() {
 
   const funcoesBase = {
     'Louvor': ['Ministro', 'Back 1', 'Back 2', 'Violão', 'Guitarra', 'Teclado', 'Baixo', 'Bateria', 'Mesa', 'Letra'],
-    'Obreiros': ['Portaria', 'Limpeza', 'Salão 1', 'Salão 2', 'Salão 3'],
+    'Obreiros': ['Portaria', 'Salão 1', 'Salão 2', 'Salão 3', 'Limpeza'],
     'Infantil': ['2-3 anos', '4-6 anos', '7-9 anos']
   };
 

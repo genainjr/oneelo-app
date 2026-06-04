@@ -2,11 +2,15 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
+  ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { AcaoAuditoria } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
@@ -128,7 +132,11 @@ export class AuthService {
         email: true,
         role: true,
         ativo: true,
+        memberId: true,
         createdAt: true,
+        membro: {
+          select: { id: true, nome: true },
+        },
       },
       orderBy: { nome: 'asc' },
     });
@@ -144,6 +152,195 @@ export class AuthService {
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
+    });
+  }
+
+  async createUser(
+    dto: CreateUserDto,
+    tenantId: string,
+    actorId: string,
+    ip?: string,
+  ) {
+    const existing = await this.prisma.user.findFirst({
+      where: { email: dto.email },
+    });
+    if (existing) {
+      throw new ConflictException('Já existe um usuário com este e-mail.');
+    }
+
+    const senhaHash = await bcrypt.hash(dto.senha, 10);
+
+    // Validar memberId se fornecido
+    if (dto.memberId) {
+      const membro = await this.prisma.membro.findFirst({
+        where: { id: dto.memberId, tenantId },
+        include: { user: true },
+      });
+      if (!membro) {
+        throw new NotFoundException('Membro não encontrado.');
+      }
+      if (membro.user) {
+        throw new ConflictException('Este membro já possui um usuário vinculado.');
+      }
+    }
+
+    const newUser = await this.prisma.user.create({
+      data: {
+        tenantId,
+        nome: dto.nome,
+        email: dto.email,
+        senhaHash,
+        role: dto.role,
+        ativo: dto.ativo ?? true,
+        memberId: dto.memberId ?? null,
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        ativo: true,
+        createdAt: true,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId: actorId,
+        entidade: 'usuarios',
+        entidadeId: newUser.id,
+        acao: AcaoAuditoria.CRIAR,
+        ipAddress: ip,
+      },
+    });
+
+    return newUser;
+  }
+
+  async updateUser(
+    id: string,
+    dto: UpdateUserDto,
+    tenantId: string,
+    actorId: string,
+    ip?: string,
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, tenantId },
+    });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    if (dto.email && dto.email !== user.email) {
+      const conflict = await this.prisma.user.findFirst({
+        where: { email: dto.email, NOT: { id } },
+      });
+      if (conflict) {
+        throw new ConflictException('Este e-mail já está em uso por outro usuário.');
+      }
+    }
+
+    const updateData: any = {};
+    if (dto.nome !== undefined) updateData.nome = dto.nome;
+    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.role !== undefined) updateData.role = dto.role;
+    if (dto.ativo !== undefined) updateData.ativo = dto.ativo;
+    if (dto.senha) updateData.senhaHash = await bcrypt.hash(dto.senha, 10);
+
+    // Tratar vínculo com membro
+    if (dto.memberId !== undefined) {
+      if (dto.memberId === null) {
+        // Desvincular
+        updateData.memberId = null;
+      } else {
+        // Validar e vincular
+        const membro = await this.prisma.membro.findFirst({
+          where: { id: dto.memberId, tenantId },
+          include: { user: true },
+        });
+        if (!membro) {
+          throw new NotFoundException('Membro não encontrado.');
+        }
+        if (membro.user && membro.user.id !== id) {
+          throw new ConflictException('Este membro já possui um usuário vinculado.');
+        }
+        updateData.memberId = dto.memberId;
+      }
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        ativo: true,
+        createdAt: true,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId: actorId,
+        entidade: 'usuarios',
+        entidadeId: id,
+        acao: AcaoAuditoria.ATUALIZAR,
+        ipAddress: ip,
+      },
+    });
+
+    return updated;
+  }
+
+  async deleteUser(
+    id: string,
+    tenantId: string,
+    actorId: string,
+    ip?: string,
+  ) {
+    if (id === actorId) {
+      throw new ForbiddenException('Você não pode remover sua própria conta.');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { id, tenantId },
+    });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
+
+    await this.prisma.user.update({
+      where: { id },
+      data: { ativo: false },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId: actorId,
+        entidade: 'usuarios',
+        entidadeId: id,
+        acao: AcaoAuditoria.DELETAR,
+        ipAddress: ip,
+      },
+    });
+
+    return { message: 'Usuário desativado com sucesso.' };
+  }
+
+  async findAvailableMembers(tenantId: string) {
+    return this.prisma.membro.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        user: null, // apenas membros sem user vinculado
+      },
+      select: { id: true, nome: true, email: true },
+      orderBy: { nome: 'asc' },
     });
   }
 }

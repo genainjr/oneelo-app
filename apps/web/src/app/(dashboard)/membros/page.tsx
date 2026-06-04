@@ -245,6 +245,13 @@ export default function MembrosPage() {
       ),
     },
     {
+      key: 'dataNascimento',
+      header: 'Nascimento',
+      render: (m) => (
+        <span className="text-xs text-gray-500">{formatDate(m.dataNascimento)}</span>
+      ),
+    },
+    {
       key: 'createdAt',
       header: 'Cadastro',
       render: (m) => (

@@ -15,7 +15,17 @@ export function cn(...inputs: ClassValue[]) {
 export function formatDate(date: string | Date | null | undefined, fmt = 'dd/MM/yyyy'): string {
   if (!date) return '—';
   try {
-    const d = typeof date === 'string' ? parseISO(date) : date;
+    let d: Date;
+    if (typeof date === 'string') {
+      const hasTimeTokens = /[Hhms]/.test(fmt);
+      if (!hasTimeTokens && date.includes('T')) {
+        d = parseISO(date.split('T')[0]);
+      } else {
+        d = parseISO(date);
+      }
+    } else {
+      d = date;
+    }
     if (!isValid(d)) return '—';
     return format(d, fmt, { locale: ptBR });
   } catch {
