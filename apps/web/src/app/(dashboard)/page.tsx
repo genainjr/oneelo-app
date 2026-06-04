@@ -83,7 +83,7 @@ export default function DashboardPage() {
       {/* Boas-vindas */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
-          Bom dia{user?.nome ? `, ${user.nome.split(' ')[0]}` : ''}! 👋
+          Olá{user?.nome ? `, ${user.nome.split(' ')[0]}` : ''}! 👋
         </h2>
         <p className="text-gray-500 text-sm mt-0.5">
           {today} · Aqui está o resumo da sua igreja.
