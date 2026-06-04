@@ -1,0 +1,22 @@
+# Backlog Técnico
+
+Este diretório registra correções, melhorias e débitos técnicos identificados durante o desenvolvimento. Serve como referência para priorização e contexto em futuras sessões de trabalho.
+
+## Formato das Entradas
+
+Cada item segue o formato:
+
+```markdown
+### [ID] Título curto
+- **Prioridade**: alta | média | baixa
+- **Categoria**: segurança | performance | DX | UX | infraestrutura
+- **Contexto**: Por que existe e como foi identificado
+- **Ação**: O que precisa ser feito
+- **Impacto**: O que melhora após a correção
+```
+
+## Arquivos
+
+- **[security.md](security.md)** — Correções de segurança pendentes
+- **[improvements.md](improvements.md)** — Melhorias gerais e débito técnico
+- **[permissions-matrix.md](permissions-matrix.md)** — Matriz de permissões por role e recurso (referência para implementação)

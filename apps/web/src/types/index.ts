@@ -1,11 +1,8 @@
 // Tipos e interfaces que espelham as respostas da API
 
-export type Role =
-  | 'ADMIN_GERAL'
-  | 'PASTOR'
-  | 'LIDER_MINISTERIO'
-  | 'SECRETARIO'
-  | 'MEMBRO';
+export type Role = 'ADMIN' | 'STAFF' | 'BASIC';
+
+export type MinistryRole = 'LEADER' | 'ASSISTANT_LEADER' | 'MEMBER';
 
 export type StatusMembro = 'ATIVO' | 'INATIVO' | 'VISITANTE' | 'TRANSFERIDO';
 export type StatusEscala = 'RASCUNHO' | 'PUBLICADA' | 'ENCERRADA';
@@ -63,6 +60,13 @@ export interface MinisterioFuncao {
   ordem: number;
 }
 
+export interface MinisterioMembro {
+  ministerioId: string;
+  membroId: string;
+  role: MinistryRole;
+  membro?: Pick<Membro, 'id' | 'nome' | 'email' | 'whatsapp' | 'status'>;
+}
+
 export interface Ministerio {
   id: string;
   tenantId: string;
@@ -71,9 +75,9 @@ export interface Ministerio {
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
-  lideres?: { user: { id: string; nome: string; email: string } }[];
+  membros?: MinisterioMembro[];
   funcoes?: MinisterioFuncao[];
-  _count?: { membros: number };
+  _count?: { membros: number; escalas?: number };
 }
 
 // ─── Escala ───────────────────────────────────────────────────────────────────

@@ -4,4 +4,16 @@ dist
 build
 .env
 .env.local
+.env*.local
 *.log
+*.md
+.git
+.gitignore
+.DS_Store
+.vscode
+.idea
+coverage
+.turbo
+.cache
+.opencode
+.claude

@@ -43,7 +43,7 @@ export default function AgendaPage() {
       .catch(() => setCurrentUser(null));
   }, []);
 
-  const canManage = currentUser?.role === 'ADMIN_GERAL' || currentUser?.role === 'PASTOR' || currentUser?.role === 'SECRETARIO';
+  const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
 
   // Handle Save
   async function handleSave(e: React.FormEvent) {
