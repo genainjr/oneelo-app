@@ -141,6 +141,8 @@ export interface User {
   email: string;
   role: Role;
   ativo: boolean;
+  memberId?: string | null;
+  membro?: { id: string; nome: string } | null;
   createdAt: string;
 }
 

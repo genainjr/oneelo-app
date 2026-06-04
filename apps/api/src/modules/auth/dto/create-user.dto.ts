@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsBoolean, IsOptional } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 
@@ -45,4 +45,13 @@ export class CreateUserDto {
   @IsBoolean()
   @IsOptional()
   ativo?: boolean;
+
+  @ApiProperty({
+    description: 'ID do membro do cadastro pastoral a vincular (opcional)',
+    example: 'uuid-do-membro',
+    required: false,
+  })
+  @IsUUID()
+  @IsOptional()
+  memberId?: string;
 }

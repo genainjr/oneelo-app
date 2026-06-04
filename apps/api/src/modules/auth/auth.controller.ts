@@ -84,6 +84,14 @@ export class AuthController {
     return this.authService.findAllUsers(user.tenantId);
   }
 
+  @Get('members-available')
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Lista membros disponíveis para viculamento a um usuário' })
+  async getAvailableMembers(@CurrentUser() user: JwtPayload) {
+    return this.authService.findAvailableMembers(user.tenantId);
+  }
+
   @Get('audit-logs')
   @UseGuards(JwtAuthGuard)
   @Roles(Role.ADMIN, Role.STAFF)

@@ -132,7 +132,11 @@ export class AuthService {
         email: true,
         role: true,
         ativo: true,
+        memberId: true,
         createdAt: true,
+        membro: {
+          select: { id: true, nome: true },
+        },
       },
       orderBy: { nome: 'asc' },
     });
@@ -166,6 +170,20 @@ export class AuthService {
 
     const senhaHash = await bcrypt.hash(dto.senha, 10);
 
+    // Validar memberId se fornecido
+    if (dto.memberId) {
+      const membro = await this.prisma.membro.findFirst({
+        where: { id: dto.memberId, tenantId },
+        include: { user: true },
+      });
+      if (!membro) {
+        throw new NotFoundException('Membro não encontrado.');
+      }
+      if (membro.user) {
+        throw new ConflictException('Este membro já possui um usuário vinculado.');
+      }
+    }
+
     const newUser = await this.prisma.user.create({
       data: {
         tenantId,
@@ -174,6 +192,7 @@ export class AuthService {
         senhaHash,
         role: dto.role,
         ativo: dto.ativo ?? true,
+        memberId: dto.memberId ?? null,
       },
       select: {
         id: true,
@@ -228,6 +247,27 @@ export class AuthService {
     if (dto.role !== undefined) updateData.role = dto.role;
     if (dto.ativo !== undefined) updateData.ativo = dto.ativo;
     if (dto.senha) updateData.senhaHash = await bcrypt.hash(dto.senha, 10);
+
+    // Tratar vínculo com membro
+    if (dto.memberId !== undefined) {
+      if (dto.memberId === null) {
+        // Desvincular
+        updateData.memberId = null;
+      } else {
+        // Validar e vincular
+        const membro = await this.prisma.membro.findFirst({
+          where: { id: dto.memberId, tenantId },
+          include: { user: true },
+        });
+        if (!membro) {
+          throw new NotFoundException('Membro não encontrado.');
+        }
+        if (membro.user && membro.user.id !== id) {
+          throw new ConflictException('Este membro já possui um usuário vinculado.');
+        }
+        updateData.memberId = dto.memberId;
+      }
+    }
 
     const updated = await this.prisma.user.update({
       where: { id },
@@ -290,5 +330,17 @@ export class AuthService {
     });
 
     return { message: 'Usuário desativado com sucesso.' };
+  }
+
+  async findAvailableMembers(tenantId: string) {
+    return this.prisma.membro.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        user: null, // apenas membros sem user vinculado
+      },
+      select: { id: true, nome: true, email: true },
+      orderBy: { nome: 'asc' },
+    });
   }
 }

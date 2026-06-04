@@ -165,6 +165,21 @@ export default function ConfiguracoesPage() {
       },
     },
     {
+      key: 'membro' as any,
+      header: 'Membro vinculado',
+      render: (u) =>
+        u.membro ? (
+          <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg font-medium">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            {u.membro.nome}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        ),
+    },
+    {
       key: 'ativo',
       header: 'Status',
       render: (u) => (
