@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateMinisterioDto } from './dto/create-ministerio.dto';
 import { UpdateMinisterioDto } from './dto/update-ministerio.dto';
-import { Role } from '@prisma/client';
+import { Role, MinistryRole } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 
 @Injectable()
@@ -38,19 +38,24 @@ export class MinisteriosService {
   async findAll(tenantId: string, user: JwtPayload) {
     const where: any = { tenantId, ativo: true };
 
-    // LIDER_MINISTERIO vê apenas os ministérios que lidera
-    if (user.role === Role.LIDER_MINISTERIO) {
-      where.lideres = {
-        some: { userId: user.sub },
+    // BASIC vê apenas os ministérios em que participa como LEADER ou ASSISTANT_LEADER
+    if (user.role === Role.BASIC) {
+      if (!user.memberId) return [];
+      where.membros = {
+        some: {
+          membroId: user.memberId,
+          role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+        },
       };
     }
 
     return this.prisma.ministerio.findMany({
       where,
       include: {
-        lideres: {
+        membros: {
+          where: { role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] } },
           include: {
-            user: { select: { id: true, nome: true, email: true, role: true } },
+            membro: { select: { id: true, nome: true, email: true } },
           },
         },
         _count: {
@@ -68,11 +73,6 @@ export class MinisteriosService {
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id, tenantId },
       include: {
-        lideres: {
-          include: {
-            user: { select: { id: true, nome: true, email: true, role: true } },
-          },
-        },
         membros: {
           include: {
             membro: {
@@ -99,13 +99,14 @@ export class MinisteriosService {
       throw new NotFoundException('Ministério não encontrado.');
     }
 
-    // LIDER_MINISTERIO só pode ver o próprio ministério
-    if (user.role === Role.LIDER_MINISTERIO) {
-      const isLider = ministerio.lideres.some((l) => l.userId === user.sub);
-      if (!isLider) {
-        throw new ForbiddenException(
-          'Acesso negado a este ministério.',
-        );
+    // BASIC só pode ver ministérios em que participa como LEADER/ASSISTANT_LEADER
+    if (user.role === Role.BASIC) {
+      const isLeader = ministerio.membros.some(
+        (m) => m.membroId === user.memberId &&
+          (m.role === MinistryRole.LEADER || m.role === MinistryRole.ASSISTANT_LEADER),
+      );
+      if (!isLeader) {
+        throw new ForbiddenException('Acesso negado a este ministério.');
       }
     }
 
@@ -114,7 +115,7 @@ export class MinisteriosService {
 
   async update(tenantId: string, id: string, dto: UpdateMinisterioDto, user: JwtPayload) {
     await this.findOne(tenantId, id, user);
-    
+
     const { funcoes, ...ministerioData } = dto;
 
     await this.prisma.ministerio.update({
@@ -123,7 +124,6 @@ export class MinisteriosService {
     });
 
     if (funcoes) {
-      // Tentar deletar as funções que não estão na lista
       try {
         await this.prisma.ministerioFuncao.deleteMany({
           where: {
@@ -135,7 +135,6 @@ export class MinisteriosService {
         // Ignora possíveis erros de foreign key
       }
 
-      // Upsert funções
       for (let i = 0; i < funcoes.length; i++) {
         const fNome = funcoes[i];
         await this.prisma.ministerioFuncao.upsert({
@@ -152,21 +151,18 @@ export class MinisteriosService {
   async remove(tenantId: string, id: string, user: JwtPayload) {
     await this.findOne(tenantId, id, user);
 
-    // Soft delete via campo ativo
     return this.prisma.ministerio.update({
       where: { id },
       data: { ativo: false },
     });
   }
 
-  async addMembro(tenantId: string, ministerioId: string, membroId: string) {
-    // Valida que o ministério pertence ao tenant
+  async addMembro(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole = MinistryRole.MEMBER) {
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id: ministerioId, tenantId },
     });
     if (!ministerio) throw new NotFoundException('Ministério não encontrado.');
 
-    // Valida que o membro pertence ao tenant (sem soft-delete no client estendido, pois é verificação)
     const membro = await this.prisma.client.membro.findFirst({
       where: { id: membroId, tenantId },
     });
@@ -176,18 +172,28 @@ export class MinisteriosService {
       where: {
         ministerioId_membroId: { ministerioId, membroId },
       },
-      create: { ministerioId, membroId },
-      update: {},
+      create: { ministerioId, membroId, role },
+      update: { role },
     });
 
     return { message: 'Membro adicionado ao ministério com sucesso.' };
   }
 
-  async removeMembro(tenantId: string, ministerioId: string, membroId: string) {
+  async removeMembro(tenantId: string, ministerioId: string, membroId: string, user: JwtPayload) {
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id: ministerioId, tenantId },
     });
     if (!ministerio) throw new NotFoundException('Ministério não encontrado.');
+
+    // LEADER não pode remover outro LEADER
+    if (user.role === Role.BASIC) {
+      const targetMember = await this.prisma.ministerioMembro.findUnique({
+        where: { ministerioId_membroId: { ministerioId, membroId } },
+      });
+      if (targetMember?.role === MinistryRole.LEADER) {
+        throw new ForbiddenException('Líderes não podem remover outros líderes.');
+      }
+    }
 
     await this.prisma.ministerioMembro.deleteMany({
       where: { ministerioId, membroId },
@@ -196,38 +202,32 @@ export class MinisteriosService {
     return { message: 'Membro removido do ministério com sucesso.' };
   }
 
-  async addLider(tenantId: string, ministerioId: string, userId: string) {
+  async updateMembroRole(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole, user: JwtPayload) {
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id: ministerioId, tenantId },
     });
     if (!ministerio) throw new NotFoundException('Ministério não encontrado.');
 
-    const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId },
+    // Apenas ADMIN/STAFF podem promover a LEADER
+    if (role === MinistryRole.LEADER && user.role === Role.BASIC) {
+      throw new ForbiddenException('Apenas administradores podem definir líderes.');
+    }
+
+    // LEADER não pode se auto-promover
+    if (user.memberId === membroId && role === MinistryRole.LEADER) {
+      throw new ForbiddenException('Você não pode se auto-promover a líder.');
+    }
+
+    const membership = await this.prisma.ministerioMembro.findUnique({
+      where: { ministerioId_membroId: { ministerioId, membroId } },
     });
-    if (!user) throw new NotFoundException('Usuário não encontrado.');
+    if (!membership) throw new NotFoundException('Membro não participa deste ministério.');
 
-    await this.prisma.ministerioLider.upsert({
-      where: {
-        ministerioId_userId: { ministerioId, userId },
-      },
-      create: { ministerioId, userId },
-      update: {},
-    });
-
-    return { message: 'Líder adicionado ao ministério com sucesso.' };
-  }
-
-  async removeLider(tenantId: string, ministerioId: string, userId: string) {
-    const ministerio = await this.prisma.ministerio.findFirst({
-      where: { id: ministerioId, tenantId },
-    });
-    if (!ministerio) throw new NotFoundException('Ministério não encontrado.');
-
-    await this.prisma.ministerioLider.deleteMany({
-      where: { ministerioId, userId },
+    await this.prisma.ministerioMembro.update({
+      where: { ministerioId_membroId: { ministerioId, membroId } },
+      data: { role },
     });
 
-    return { message: 'Líder removido do ministério com sucesso.' };
+    return { message: 'Função do membro atualizada com sucesso.' };
   }
 }

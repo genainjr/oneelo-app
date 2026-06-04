@@ -25,7 +25,7 @@ export class EscalasController {
   constructor(private readonly escalasService: EscalasService) {}
 
   @Post()
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   create(@Body() createEscalaDto: CreateEscalaDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -33,13 +33,6 @@ export class EscalasController {
   }
 
   @Get()
-  @Roles(
-    Role.ADMIN_GERAL,
-    Role.PASTOR,
-    Role.SECRETARIO,
-    Role.LIDER_MINISTERIO,
-    Role.MEMBRO,
-  )
   findAll(@Query() query: FilterEscalaDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -47,13 +40,6 @@ export class EscalasController {
   }
 
   @Get(':id')
-  @Roles(
-    Role.ADMIN_GERAL,
-    Role.PASTOR,
-    Role.SECRETARIO,
-    Role.LIDER_MINISTERIO,
-    Role.MEMBRO,
-  )
   findOne(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -61,7 +47,7 @@ export class EscalasController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   update(
     @Param('id') id: string,
     @Body() updateEscalaDto: UpdateEscalaDto,
@@ -73,7 +59,7 @@ export class EscalasController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   remove(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -83,7 +69,7 @@ export class EscalasController {
   // ─── Gestão de Dias ─────────────────────────────
 
   @Post(':id/dias')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   addDia(
     @Param('id') id: string,
     @Body() body: { data: string; titulo?: string },
@@ -95,7 +81,7 @@ export class EscalasController {
   }
 
   @Delete('dias/:diaId')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   removeDia(
     @Param('diaId') diaId: string,
     @Req() req: Request,
@@ -108,7 +94,7 @@ export class EscalasController {
   // ─── Gestão de Itens da Escala ─────────────────────────────
 
   @Post('dias/:diaId/itens')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   addMembro(
     @Param('diaId') diaId: string,
     @Body() manageEscalaItemDto: ManageEscalaItemDto,
@@ -116,13 +102,12 @@ export class EscalasController {
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    // Forçar que o DTO reflita a URL
     manageEscalaItemDto.escalaDiaId = diaId;
     return this.escalasService.addMembro(tenantId, diaId, manageEscalaItemDto, user);
   }
 
   @Delete('itens/:itemId')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   removeMembro(
     @Param('itemId') itemId: string,
     @Req() req: Request,
@@ -135,13 +120,6 @@ export class EscalasController {
   // ─── Confirmação de Presença pelo Membro ─────────────────────
 
   @Patch('itens/:itemId/confirmar')
-  @Roles(
-    Role.ADMIN_GERAL,
-    Role.PASTOR,
-    Role.SECRETARIO,
-    Role.LIDER_MINISTERIO,
-    Role.MEMBRO,
-  )
   confirmar(
     @Param('itemId') itemId: string,
     @Body() confirmarEscalaItemDto: ConfirmarEscalaItemDto,
@@ -152,10 +130,10 @@ export class EscalasController {
     return this.escalasService.confirmar(tenantId, itemId, confirmarEscalaItemDto, user);
   }
 
-  // ─── Alteração Direta do Status pelo Administrador/Líder/Secretário ───
+  // ─── Alteração Direta do Status pelo Administrador/Líder ───
 
   @Patch('itens/:itemId/status')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   updateItemStatus(
     @Param('itemId') itemId: string,
     @Body() confirmarEscalaItemDto: ConfirmarEscalaItemDto,

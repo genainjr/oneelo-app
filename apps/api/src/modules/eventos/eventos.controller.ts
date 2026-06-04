@@ -22,40 +22,26 @@ export class EventosController {
   constructor(private readonly eventosService: EventosService) {}
 
   @Post()
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO)
+  @Roles(Role.ADMIN, Role.STAFF)
   create(@Body() createEventoDto: CreateEventoDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.eventosService.create(tenantId, createEventoDto);
   }
 
   @Get()
-  @Roles(
-    Role.ADMIN_GERAL,
-    Role.PASTOR,
-    Role.SECRETARIO,
-    Role.LIDER_MINISTERIO,
-    Role.MEMBRO,
-  )
   findAll(@Query() query: FilterEventosDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.eventosService.findAll(tenantId, query);
   }
 
   @Get(':id')
-  @Roles(
-    Role.ADMIN_GERAL,
-    Role.PASTOR,
-    Role.SECRETARIO,
-    Role.LIDER_MINISTERIO,
-    Role.MEMBRO,
-  )
   findOne(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.eventosService.findOne(tenantId, id);
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO)
+  @Roles(Role.ADMIN, Role.STAFF)
   update(
     @Param('id') id: string,
     @Body() updateEventoDto: UpdateEventoDto,
@@ -66,7 +52,7 @@ export class EventosController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO)
+  @Roles(Role.ADMIN, Role.STAFF)
   remove(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.eventosService.remove(tenantId, id);

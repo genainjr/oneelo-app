@@ -25,11 +25,15 @@ enum StatusAssinatura {
 }
 
 enum Role {
-  ADMIN_GERAL
-  PASTOR
-  LIDER_MINISTERIO
-  SECRETARIO
-  MEMBRO
+  ADMIN
+  STAFF
+  BASIC
+}
+
+enum MinistryRole {
+  LEADER
+  ASSISTANT_LEADER
+  MEMBER
 }
 
 enum StatusMembro {
@@ -92,16 +96,17 @@ model Tenant {
 model User {
   id           String   @id @default(uuid())
   tenantId     String
+  memberId     String?  @unique
   nome         String
   email        String
   senhaHash    String
-  role         Role     @default(MEMBRO)
+  role         Role     @default(BASIC)
   ativo        Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id])
-  ministeriosLiderados MinisterioLider[]
+  membro              Membro?              @relation(fields: [memberId], references: [id])
   escalasItens         EscalaItem[]
   auditLogs            AuditLog[]
 
@@ -128,6 +133,7 @@ model Membro {
   tags         MembroTag[]
   ministerios  MinisterioMembro[]
   escalas      EscalaItem[]
+  user         User?
 
   @@index([tenantId])
   @@index([tenantId, deletedAt])
@@ -170,7 +176,6 @@ model Ministerio {
   updatedAt DateTime @updatedAt
 
   tenant  Tenant             @relation(fields: [tenantId], references: [id])
-  lideres MinisterioLider[]
   membros MinisterioMembro[]
   escalas Escala[]
   funcoes MinisterioFuncao[]
@@ -192,19 +197,10 @@ model MinisterioFuncao {
   @@unique([ministerioId, nome])
 }
 
-model MinisterioLider {
-  ministerioId String
-  userId       String
-
-  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
-  user       User       @relation(fields: [userId], references: [id])
-
-  @@id([ministerioId, userId])
-}
-
 model MinisterioMembro {
   ministerioId String
   membroId     String
+  role         MinistryRole @default(MEMBER)
 
   ministerio Ministerio @relation(fields: [ministerioId], references: [id])
   membro     Membro     @relation(fields: [membroId], references: [id])
