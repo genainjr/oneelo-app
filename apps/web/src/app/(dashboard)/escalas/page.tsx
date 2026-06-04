@@ -306,6 +306,7 @@ export default function EscalasPage() {
 
   // ─── Toast ───────────────────────────────────────────────────────────────────
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [aiToastOpen, setAiToastOpen] = useState(false);
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -416,21 +417,83 @@ export default function EscalasPage() {
         </div>
       )}
 
+      {/* Dialog: Escala com IA — Em breve */}
+      {aiToastOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white flex-shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800">Escala Automática com IA</h3>
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                  Em breve · Fase 2
+                </span>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Em breve você poderá gerar escalas completas automaticamente. A IA vai considerar disponibilidade dos membros, histórico de participação e funções no ministério para montar a grade do mês.
+            </p>
+            <div className="space-y-2">
+              {[
+                'Respeita disponibilidade e preferências de cada membro',
+                'Evita conflitos de data e funções duplicadas',
+                'O líder revisa e aprova antes de publicar',
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-2 text-xs text-gray-600">
+                  <svg className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setAiToastOpen(false)}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-all"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         title="Escalas"
         description="Gerencie as escalas mensais por ministério. Defina os cultos e aloque os membros por função."
         action={
           canManage ? (
-            <button
-              id="btn-nova-escala"
-              onClick={() => setIsCreateOpen(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm text-sm flex items-center gap-2 transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Nova Escala
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                title="Em breve: geração automática de escalas com IA"
+                onClick={() => setAiToastOpen(true)}
+                className="px-4 py-2 border border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-semibold rounded-xl text-sm flex items-center gap-2 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Gerar com IA
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-500 leading-none">
+                  Em breve
+                </span>
+              </button>
+              <button
+                id="btn-nova-escala"
+                onClick={() => setIsCreateOpen(true)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm text-sm flex items-center gap-2 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Nova Escala
+              </button>
+            </div>
           ) : undefined
         }
       />

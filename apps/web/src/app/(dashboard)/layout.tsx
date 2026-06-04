@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/app/sidebar';
 import { Header } from '@/components/app/header';
+import { ChatbotButton } from '@/components/app/chatbot-button';
 import { api } from '@/lib/api';
 import { AuthUser } from '@/types';
 
@@ -37,6 +38,8 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+
+      <ChatbotButton />
     </div>
   );
 }
