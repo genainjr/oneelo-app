@@ -74,14 +74,14 @@ export class AuthController {
 
   @Get('users')
   @UseGuards(JwtAuthGuard)
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR)
+  @Roles(Role.ADMIN)
   async getUsers(@CurrentUser() user: JwtPayload) {
     return this.authService.findAllUsers(user.tenantId);
   }
 
   @Get('audit-logs')
   @UseGuards(JwtAuthGuard)
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR)
+  @Roles(Role.ADMIN, Role.STAFF)
   async getAuditLogs(@CurrentUser() user: JwtPayload) {
     return this.authService.findAllAuditLogs(user.tenantId);
   }

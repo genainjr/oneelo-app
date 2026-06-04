@@ -11,10 +11,7 @@ import {
 import { MinisteriosService } from './ministerios.service';
 import { CreateMinisterioDto } from './dto/create-ministerio.dto';
 import { UpdateMinisterioDto } from './dto/update-ministerio.dto';
-import {
-  AddMembroMinisterioDto,
-  AddLiderMinisterioDto,
-} from './dto/manage-ministerio.dto';
+import { AddMembroMinisterioDto, UpdateMembroRoleDto } from './dto/manage-ministerio.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
@@ -25,14 +22,13 @@ export class MinisteriosController {
   constructor(private readonly ministeriosService: MinisteriosService) {}
 
   @Post()
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR)
+  @Roles(Role.ADMIN, Role.STAFF)
   create(@Body() createMinisterioDto: CreateMinisterioDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.ministeriosService.create(tenantId, createMinisterioDto);
   }
 
   @Get()
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO, Role.LIDER_MINISTERIO)
   findAll(@Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -40,7 +36,6 @@ export class MinisteriosController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO, Role.LIDER_MINISTERIO)
   findOne(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -48,7 +43,7 @@ export class MinisteriosController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR)
+  @Roles(Role.ADMIN, Role.STAFF)
   update(
     @Param('id') id: string,
     @Body() updateMinisterioDto: UpdateMinisterioDto,
@@ -60,7 +55,7 @@ export class MinisteriosController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR)
+  @Roles(Role.ADMIN, Role.STAFF)
   remove(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -69,47 +64,38 @@ export class MinisteriosController {
 
   // ─── Membros do ministério ────────────────────────────────
   @Post(':id/membros')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   addMembro(
     @Param('id') ministerioId: string,
     @Body() dto: AddMembroMinisterioDto,
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
-    return this.ministeriosService.addMembro(tenantId, ministerioId, dto.membroId);
+    return this.ministeriosService.addMembro(tenantId, ministerioId, dto.membroId, dto.role);
+  }
+
+  @Patch(':id/membros/:membroId')
+  @Roles(Role.ADMIN, Role.STAFF)
+  updateMembroRole(
+    @Param('id') ministerioId: string,
+    @Param('membroId') membroId: string,
+    @Body() dto: UpdateMembroRoleDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.ministeriosService.updateMembroRole(tenantId, ministerioId, membroId, dto.role, user);
   }
 
   @Delete(':id/membros/:membroId')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.LIDER_MINISTERIO)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   removeMembro(
     @Param('id') ministerioId: string,
     @Param('membroId') membroId: string,
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
-    return this.ministeriosService.removeMembro(tenantId, ministerioId, membroId);
-  }
-
-  // ─── Líderes do ministério ────────────────────────────────
-  @Post(':id/lideres')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR)
-  addLider(
-    @Param('id') ministerioId: string,
-    @Body() dto: AddLiderMinisterioDto,
-    @Req() req: Request,
-  ) {
-    const tenantId = req['tenantId'] as string;
-    return this.ministeriosService.addLider(tenantId, ministerioId, dto.userId);
-  }
-
-  @Delete(':id/lideres/:userId')
-  @Roles(Role.ADMIN_GERAL, Role.PASTOR)
-  removeLider(
-    @Param('id') ministerioId: string,
-    @Param('userId') userId: string,
-    @Req() req: Request,
-  ) {
-    const tenantId = req['tenantId'] as string;
-    return this.ministeriosService.removeLider(tenantId, ministerioId, userId);
+    const user = req['user'] as JwtPayload;
+    return this.ministeriosService.removeMembro(tenantId, ministerioId, membroId, user);
   }
 }

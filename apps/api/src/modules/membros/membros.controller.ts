@@ -19,7 +19,7 @@ import { Role } from '@prisma/client';
 import type { Request } from 'express';
 
 @Controller('membros')
-@Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO)
+@Roles(Role.ADMIN, Role.STAFF)
 export class MembrosController {
   constructor(private readonly membrosService: MembrosService) {}
 

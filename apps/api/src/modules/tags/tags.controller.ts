@@ -16,7 +16,7 @@ import { Role } from '@prisma/client';
 import type { Request } from 'express';
 
 @Controller('tags')
-@Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO)
+@Roles(Role.ADMIN, Role.STAFF)
 export class TagsController {
   constructor(private readonly tagsService: TagsService) {}
 

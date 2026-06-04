@@ -5,7 +5,7 @@ import { Role } from '@prisma/client';
 import type { Request } from 'express';
 
 @Controller('dashboard')
-@Roles(Role.ADMIN_GERAL, Role.PASTOR, Role.SECRETARIO, Role.LIDER_MINISTERIO)
+@Roles(Role.ADMIN, Role.STAFF)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 

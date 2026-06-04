@@ -4,4 +4,17 @@ dist
 build
 .env
 .env.local
+.env*.local
 *.log
+.git
+.gitignore
+.DS_Store
+.vscode
+.idea
+coverage
+test
+.test
+*.spec.ts
+jest.config.js
+.turbo
+README.md
