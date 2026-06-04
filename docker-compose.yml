@@ -1,19 +1,19 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: church_postgres
+    container_name: postgres
     environment:
-      POSTGRES_DB: church_saas
+      POSTGRES_DB: oneelo_saas
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
     ports:
-      - "5433:5432" # Mapeado para 5433 no host para evitar conflito com banco local pré-existente
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
-      - church_network
+      - network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dev -d church_saas"]
+      test: ["CMD-SHELL", "pg_isready -U dev -d oneelo_saas"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,47 +22,51 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
-    container_name: church_api
+    container_name: api
     restart: always
     ports:
       - "3000:3000"
+    env_file:
+      - ./apps/api/.env
     environment:
-      - DATABASE_URL=postgresql://dev:dev@postgres:5432/church_saas?schema=public
-      - PORT=3000
+      - DATABASE_URL=postgresql://dev:dev@postgres:5432/oneelo_saas
+      - RUN_SEED=true
     volumes:
-      - ./apps/api:/app
-      - /app/node_modules
-      - /app/dist
+      - ./apps/api/src:/app/src
+      - ./apps/api/prisma:/app/prisma
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      - church_network
+      - network
 
   web:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
-    container_name: church_web
+        - NEXT_PUBLIC_API_URL=http://localhost:3000
+        - INTERNAL_API_URL=http://api:3000
+    container_name: web
     restart: always
     ports:
       - "3001:3000"
+    env_file:
+      - ./apps/web/.env
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+      - INTERNAL_API_URL=http://api:3000
     volumes:
-      - ./apps/web:/app
-      - /app/node_modules
-      - /app/.next
+      - ./apps/web/src:/app/src
+      - ./apps/web/public:/app/public
     depends_on:
       - api
     networks:
-      - church_network
+      - network
 
 volumes:
   pgdata:
 
 networks:
-  church_network:
+  network:
     driver: bridge
+

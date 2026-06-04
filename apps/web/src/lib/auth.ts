@@ -73,7 +73,6 @@ export function hasRole(user: AuthUser | null, ...roles: AuthUser['role'][]): bo
  * Roles que têm acesso ao dashboard completo
  */
 export const ADMIN_ROLES: AuthUser['role'][] = [
-  'ADMIN_GERAL',
-  'PASTOR',
-  'SECRETARIO',
+  'ADMIN',
+  'STAFF',
 ];

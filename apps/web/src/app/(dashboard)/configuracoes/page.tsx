@@ -23,7 +23,7 @@ export default function ConfiguracoesPage() {
       .catch(() => setCurrentUser(null));
   }, []);
 
-  const isAdmin = currentUser?.role === 'ADMIN_GERAL';
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   async function loadData() {
     if (!isAdmin) return;
@@ -105,11 +105,9 @@ export default function ConfiguracoesPage() {
       header: 'Perfil / Permissão',
       render: (u) => {
         const badges: any = {
-          ADMIN_GERAL: 'bg-red-50 text-red-700 border-red-100',
-          PASTOR: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-          LIDER_MINISTERIO: 'bg-amber-50 text-amber-700 border-amber-100',
-          SECRETARIO: 'bg-blue-50 text-blue-700 border-blue-100',
-          MEMBRO: 'bg-gray-50 text-gray-600 border-gray-200',
+          ADMIN: 'bg-red-50 text-red-700 border-red-100',
+          STAFF: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+          BASIC: 'bg-gray-50 text-gray-600 border-gray-200',
         };
         return (
           <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-lg border ${badges[u.role] || 'bg-gray-50'}`}>

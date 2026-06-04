@@ -90,7 +90,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   };
 
   const visibleItems = navItems.filter(
-    (item) => !item.adminOnly || user?.role === 'ADMIN_GERAL',
+    (item) => !item.adminOnly || user?.role === 'ADMIN',
   );
 
   async function handleLogout() {
