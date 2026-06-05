@@ -36,7 +36,7 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     fetchEscalas(initialFilter);
   }, []);
 
-  async function createEscala(data: { mes: number; ano: number; ministerioId: string; observacoes?: string }) {
+  async function createEscala(data: { mes: number; ano: number; ministerioId: string; observacoes?: string; diasSemana?: number[] }) {
     const created = await api.post<Escala>('/api/escalas', data);
     setEscalas((prev) => [created, ...prev]);
     return created;
@@ -62,6 +62,10 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
   async function removeDia(diaId: string) {
     await api.delete(`/api/escalas/dias/${diaId}`);
     await fetchEscalas(filter);
+  }
+
+  async function reorderDias(escalaId: string, diaIds: string[]) {
+    await api.patch(`/api/escalas/${escalaId}/dias/order`, { diaIds });
   }
 
   async function addMembroItem(diaId: string, membroId: string, ministerioFuncaoId: string, observacoes?: string) {
@@ -103,6 +107,7 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     deleteEscala,
     addDia,
     removeDia,
+    reorderDias,
     confirmarPresenca,
     addMembroItem,
     removeMembroItem,

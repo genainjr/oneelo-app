@@ -15,6 +15,7 @@ import { UpdateEscalaDto } from './dto/update-escala.dto';
 import { FilterEscalaDto } from './dto/filter-escala.dto';
 import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
+import { ReorderDiasDto } from './dto/reorder-dias.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
@@ -67,6 +68,18 @@ export class EscalasController {
   }
 
   // ─── Gestão de Dias ─────────────────────────────
+
+  @Patch(':id/dias/order')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  reorderDias(
+    @Param('id') id: string,
+    @Body() dto: ReorderDiasDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.escalasService.reorderDias(tenantId, id, dto, user);
+  }
 
   @Post(':id/dias')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)

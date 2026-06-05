@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEscalas } from '@/hooks/use-escalas';
 import { PageHeader } from '@/components/app/page-header';
 import { api } from '@/lib/api';
-import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, AuthUser, Membro } from '@/types';
+import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, MinisterioMembro, AuthUser, Membro } from '@/types';
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
@@ -40,21 +40,27 @@ function formatDayDate(dateStr: string) {
 interface EscalaGridProps {
   escala: Escala;
   funcoes: MinisterioFuncao[];
-  ministryMembers: Membro[];
+  ministryMembers: MinisterioMembro[];
   canManage: boolean;
   onAddMembro: (diaId: string, membroId: string, funcaoId: string) => Promise<void>;
   onRemoveMembro: (itemId: string) => Promise<void>;
   onAddDia: (data: string, titulo?: string) => Promise<void>;
   onRemoveDia: (diaId: string) => Promise<void>;
+  onReorderDias: (diaIds: string[]) => Promise<void>;
 }
 
-function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, onRemoveMembro, onAddDia, onRemoveDia }: EscalaGridProps) {
+function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, onRemoveMembro, onAddDia, onRemoveDia, onReorderDias }: EscalaGridProps) {
   const [addingDia, setAddingDia] = useState(false);
   const [newDiaDate, setNewDiaDate] = useState('');
   const [newDiaTitulo, setNewDiaTitulo] = useState('');
   const [savingDia, setSavingDia] = useState(false);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragIdRef = React.useRef<string | null>(null);
 
-  const dias = (escala.dias || []).sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+  const [dias, setDias] = useState<EscalaDia[]>([]);
+  React.useEffect(() => {
+    setDias((escala.dias || []).slice().sort((a: any, b: any) => (a.ordem ?? 0) - (b.ordem ?? 0)));
+  }, [escala.dias]);
 
   if (funcoes.length === 0) {
     return (
@@ -107,14 +113,47 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
           ) : (
             dias.map((dia) => {
               const { dayName, day } = formatDayDate(dia.data);
+              const isDragOver = dragOverId === dia.id;
+              const canDrag = canManage && escala.status === 'RASCUNHO';
               return (
-                <tr key={dia.id} className="hover:bg-gray-50/60 transition-colors group">
+                <tr
+                  key={dia.id}
+                  draggable={canDrag}
+                  onDragStart={canDrag ? () => { dragIdRef.current = dia.id; } : undefined}
+                  onDragOver={canDrag ? (e) => { e.preventDefault(); setDragOverId(dia.id); } : undefined}
+                  onDragLeave={canDrag ? () => setDragOverId(null) : undefined}
+                  onDrop={canDrag ? async () => {
+                    setDragOverId(null);
+                    const fromId = dragIdRef.current;
+                    dragIdRef.current = null;
+                    if (!fromId || fromId === dia.id) return;
+                    const newOrder = dias.map(d => d.id);
+                    const fromIdx = newOrder.indexOf(fromId);
+                    const toIdx = newOrder.indexOf(dia.id);
+                    newOrder.splice(fromIdx, 1);
+                    newOrder.splice(toIdx, 0, fromId);
+                    setDias(dias.slice().sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id)));
+                    await onReorderDias(newOrder);
+                  } : undefined}
+                  className={`hover:bg-gray-50/60 transition-colors group ${isDragOver ? 'border-t-2 border-indigo-400' : ''}`}
+                >
                   <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50/60 px-4 py-3 border-r border-gray-100">
                     <div className="flex items-start justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-bold text-indigo-600">{dayName}</div>
-                        <div className="text-lg font-extrabold text-gray-800 leading-none">{day}</div>
-                        {dia.titulo && <div className="text-[11px] text-gray-400 mt-0.5 leading-tight">{dia.titulo}</div>}
+                      <div className="flex items-start gap-1.5">
+                        {canDrag && (
+                          <span className="mt-1 cursor-grab text-gray-300 hover:text-gray-400 shrink-0" title="Arrastar para reordenar">
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                              <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+                              <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                              <circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+                            </svg>
+                          </span>
+                        )}
+                        <div>
+                          <div className="text-xs font-bold text-indigo-600">{dayName}</div>
+                          <div className="text-lg font-extrabold text-gray-800 leading-none">{day}</div>
+                          {dia.titulo && <div className="text-[11px] text-gray-400 mt-0.5 leading-tight">{dia.titulo}</div>}
+                        </div>
                       </div>
                       {canManage && (
                         <button
@@ -225,7 +264,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
 interface CellMemberSelectProps {
   diaId: string;
   funcaoId: string;
-  membros: Membro[];
+  membros: MinisterioMembro[];
   alreadyAssigned: string[];
   onAdd: (diaId: string, membroId: string, funcaoId: string) => Promise<void>;
 }
@@ -234,7 +273,12 @@ function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd }: 
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const options = membros.filter(m => !alreadyAssigned.includes(m.id));
+  const options = membros.filter((mm) => {
+    if (alreadyAssigned.includes(mm.membroId)) return false;
+    // Sem funções configuradas = sem restrição (aparece em todas as células)
+    if (!mm.funcoesDisponiveis?.length) return true;
+    return mm.funcoesDisponiveis.some((fd) => fd.funcaoId === funcaoId);
+  });
 
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const membroId = e.target.value;
@@ -258,8 +302,8 @@ function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd }: 
       className="w-full text-xs border border-dashed border-gray-200 bg-transparent rounded-lg px-2 py-1 text-gray-400 hover:border-indigo-300 focus:outline-none focus:border-indigo-400 disabled:opacity-50 cursor-pointer transition-all"
     >
       <option value="">+ membro</option>
-      {options.map((m) => (
-        <option key={m.id} value={m.id}>{m.nome}</option>
+      {options.map((mm) => (
+        <option key={mm.membroId} value={mm.membroId}>{mm.membro?.nome}</option>
       ))}
     </select>
   );
@@ -279,6 +323,7 @@ export default function EscalasPage() {
     deleteEscala,
     addDia,
     removeDia,
+    reorderDias,
     addMembroItem,
     removeMembroItem,
   } = useEscalas();
@@ -288,7 +333,7 @@ export default function EscalasPage() {
   const [selectedEscala, setSelectedEscala] = useState<Escala | null>(null);
   const [detailedEscala, setDetailedEscala] = useState<Escala | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [ministryMembers, setMinistryMembers] = useState<Membro[]>([]);
+  const [ministryMembers, setMinistryMembers] = useState<MinisterioMembro[]>([]);
 
   // ─── Filter ──────────────────────────────────────────────────────────────────
   const hoje = new Date();
@@ -302,6 +347,7 @@ export default function EscalasPage() {
   const [newAno, setNewAno] = useState(hoje.getFullYear());
   const [newMinId, setNewMinId] = useState('');
   const [newObs, setNewObs] = useState('');
+  const [newDiasSemana, setNewDiasSemana] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
 
   // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -330,10 +376,10 @@ export default function EscalasPage() {
       const data = await api.get<Escala>(`/api/escalas/${escala.id}`);
       setDetailedEscala(data);
 
-      // Load ministry members
+      // Load ministry members com funcoesDisponiveis para filtro na grade
       if (data.ministerioId) {
         const min = await api.get<any>(`/api/ministerios/${data.ministerioId}`);
-        setMinistryMembers(min.membros?.map((mm: any) => mm.membro) || []);
+        setMinistryMembers(min.membros || []);
       }
     } catch {
       showToast('Erro ao carregar detalhes da escala.', 'error');
@@ -358,11 +404,19 @@ export default function EscalasPage() {
     if (!newMinId) return;
     setCreating(true);
     try {
-      await createEscala({ mes: newMes, ano: newAno, ministerioId: newMinId, observacoes: newObs || undefined });
+      const created = await createEscala({
+        mes: newMes,
+        ano: newAno,
+        ministerioId: newMinId,
+        observacoes: newObs || undefined,
+        diasSemana: newDiasSemana.length ? newDiasSemana : undefined,
+      });
       setIsCreateOpen(false);
       setNewMinId('');
       setNewObs('');
+      setNewDiasSemana([]);
       showToast('Escala mensal criada com sucesso!');
+      fetchDetail(created);
     } catch (err: any) {
       showToast(err.message || 'Erro ao criar escala.', 'error');
     } finally {
@@ -674,6 +728,9 @@ export default function EscalasPage() {
                   await removeDia(diaId);
                   await refreshDetail();
                 }}
+                onReorderDias={async (diaIds) => {
+                  await reorderDias(detailedEscala.id, diaIds);
+                }}
               />
             </div>
           ) : null}
@@ -732,6 +789,51 @@ export default function EscalasPage() {
                   <option value="">Selecione um ministério</option>
                   {ministerios.filter(m => m.ativo).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase">Dias da semana (opcional)</label>
+                <p className="text-xs text-gray-400">Selecione os dias que se repetem no mês para gerar automaticamente.</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {[
+                    { label: 'Dom', value: 0 },
+                    { label: 'Seg', value: 1 },
+                    { label: 'Ter', value: 2 },
+                    { label: 'Qua', value: 3 },
+                    { label: 'Qui', value: 4 },
+                    { label: 'Sex', value: 5 },
+                    { label: 'Sáb', value: 6 },
+                  ].map(({ label, value }) => {
+                    const selected = newDiasSemana.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setNewDiasSemana(prev =>
+                          selected ? prev.filter(d => d !== value) : [...prev, value]
+                        )}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all select-none ${
+                          selected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {newDiasSemana.length > 0 && (() => {
+                  const totalDias = new Date(newAno, newMes, 0).getDate();
+                  let count = 0;
+                  for (let d = 1; d <= totalDias; d++) {
+                    if (newDiasSemana.includes(new Date(newAno, newMes - 1, d).getDay())) count++;
+                  }
+                  return (
+                    <p className="text-xs text-indigo-600 font-semibold">
+                      {count} {count === 1 ? 'dia será gerado' : 'dias serão gerados'} automaticamente
+                    </p>
+                  );
+                })()}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-500 uppercase">Observações</label>

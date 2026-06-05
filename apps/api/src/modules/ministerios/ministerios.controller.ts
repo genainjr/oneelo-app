@@ -71,7 +71,7 @@ export class MinisteriosController {
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
-    return this.ministeriosService.addMembro(tenantId, ministerioId, dto.membroId, dto.role);
+    return this.ministeriosService.addMembro(tenantId, ministerioId, dto.membroId, dto.role, dto.funcaoIds);
   }
 
   @Patch(':id/membros/:membroId')
@@ -84,7 +84,7 @@ export class MinisteriosController {
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.ministeriosService.updateMembroRole(tenantId, ministerioId, membroId, dto.role, user);
+    return this.ministeriosService.updateMembroRole(tenantId, ministerioId, membroId, dto.role, dto.funcaoIds, user);
   }
 
   @Delete(':id/membros/:membroId')

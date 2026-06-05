@@ -49,6 +49,11 @@ export default function MinisteriosPage() {
   const [detailedInfo, setDetailedInfo] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
+  // Funções disponíveis por membro
+  const [expandedMembro, setExpandedMembro] = useState<string | null>(null);
+  const [funcoesPorMembro, setFuncoesPorMembro] = useState<Record<string, string[]>>({});
+  const [savingFuncoesMembro, setSavingFuncoesMembro] = useState<string | null>(null);
+
   // Dropdown options
   const [allMembros, setAllMembros] = useState<Membro[]>([]);
   const [selectedMembroToAdd, setSelectedMembroToAdd] = useState('');
@@ -96,6 +101,13 @@ export default function MinisteriosPage() {
   useEffect(() => {
     if (detailedInfo?.funcoes) {
       setFuncoes(detailedInfo.funcoes.map((f: any) => f.nome));
+    }
+    if (detailedInfo?.membros) {
+      const map: Record<string, string[]> = {};
+      for (const m of detailedInfo.membros) {
+        map[m.membroId] = (m.funcoesDisponiveis ?? []).map((fd: any) => fd.funcaoId);
+      }
+      setFuncoesPorMembro(map);
     }
   }, [detailedInfo]);
 
@@ -175,11 +187,33 @@ export default function MinisteriosPage() {
   async function handleChangeRole(membroId: string, role: MinistryRole) {
     if (!selectedMinisterio) return;
     try {
-      await updateMembroRole(selectedMinisterio.id, membroId, role);
+      await updateMembroRole(selectedMinisterio.id, membroId, role, undefined);
       fetchDetails(selectedMinisterio.id);
     } catch (err: any) {
       alert(err.message || 'Erro ao alterar função.');
     }
+  }
+
+  async function handleSaveFuncoesMembro(membroId: string) {
+    if (!selectedMinisterio) return;
+    setSavingFuncoesMembro(membroId);
+    try {
+      await updateMembroRole(selectedMinisterio.id, membroId, undefined, funcoesPorMembro[membroId] ?? []);
+      await fetchDetails(selectedMinisterio.id);
+      setExpandedMembro(null);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao salvar funções.');
+    } finally {
+      setSavingFuncoesMembro(null);
+    }
+  }
+
+  function toggleFuncaoMembro(membroId: string, funcaoId: string) {
+    setFuncoesPorMembro((prev) => {
+      const current = prev[membroId] ?? [];
+      const has = current.includes(funcaoId);
+      return { ...prev, [membroId]: has ? current.filter((id) => id !== funcaoId) : [...current, funcaoId] };
+    });
   }
 
   const membersOptions = allMembros.filter(
@@ -420,41 +454,98 @@ export default function MinisteriosPage() {
                     <p className="text-sm text-gray-400 text-center py-6">Nenhum membro neste ministério.</p>
                   ) : (
                     <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
-                      {detailedInfo.membros.map((item: any) => (
-                        <div key={item.membroId} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
-                              {item.membro?.nome?.substring(0, 2) ?? '??'}
+                      {detailedInfo.membros.map((item: any) => {
+                        const isExpanded = expandedMembro === item.membroId;
+                        const ministerioFuncoes: any[] = detailedInfo.funcoes ?? [];
+                        const selectedFuncoes = funcoesPorMembro[item.membroId] ?? [];
+                        return (
+                          <div key={item.membroId} className="divide-y divide-gray-50">
+                            <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
+                                  {item.membro?.nome?.substring(0, 2) ?? '??'}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-800">{item.membro?.nome}</p>
+                                  <p className="text-xs text-gray-400">{MINISTRY_ROLE_LABEL[item.role as MinistryRole] ?? item.role}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {canManage && (
+                                  <select
+                                    value={item.role}
+                                    onChange={(e) => handleChangeRole(item.membroId, e.target.value as MinistryRole)}
+                                    className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
+                                  >
+                                    <option value="MEMBER">Membro</option>
+                                    <option value="ASSISTANT_LEADER">Assistente</option>
+                                    <option value="LEADER">Líder</option>
+                                  </select>
+                                )}
+                                {ministerioFuncoes.length > 0 && (
+                                  <button
+                                    onClick={() => setExpandedMembro(isExpanded ? null : item.membroId)}
+                                    className={`p-1 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                                    title="Funções disponíveis"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleRemoveMembro(item.membroId)}
+                                  className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                  title="Remover"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-800">{item.membro?.nome}</p>
-                              <p className="text-xs text-gray-400">{MINISTRY_ROLE_LABEL[item.role as MinistryRole] ?? item.role}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {canManage && (
-                              <select
-                                value={item.role}
-                                onChange={(e) => handleChangeRole(item.membroId, e.target.value as MinistryRole)}
-                                className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
-                              >
-                                <option value="MEMBER">Membro</option>
-                                <option value="ASSISTANT_LEADER">Assistente</option>
-                                <option value="LEADER">Líder</option>
-                              </select>
+                            {isExpanded && (
+                              <div className="px-4 py-3 bg-indigo-50/40">
+                                <p className="text-xs font-bold text-gray-500 uppercase mb-2">Funções disponíveis</p>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                  {ministerioFuncoes.map((f: any) => {
+                                    const checked = selectedFuncoes.includes(f.id);
+                                    return (
+                                      <label key={f.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all select-none ${checked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
+                                        <input
+                                          type="checkbox"
+                                          className="sr-only"
+                                          checked={checked}
+                                          onChange={() => toggleFuncaoMembro(item.membroId, f.id)}
+                                          disabled={!canManage}
+                                        />
+                                        {checked && (
+                                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                          </svg>
+                                        )}
+                                        {f.nome}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                                {canManage && (
+                                  <div className="flex justify-end">
+                                    <button
+                                      onClick={() => handleSaveFuncoesMembro(item.membroId)}
+                                      disabled={savingFuncoesMembro === item.membroId}
+                                      className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 transition-colors"
+                                    >
+                                      {savingFuncoesMembro === item.membroId ? 'Salvando...' : 'Salvar'}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
-                            <button
-                              onClick={() => handleRemoveMembro(item.membroId)}
-                              className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                              title="Remover"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

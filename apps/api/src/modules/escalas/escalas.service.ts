@@ -10,6 +10,7 @@ import { UpdateEscalaDto } from './dto/update-escala.dto';
 import { FilterEscalaDto } from './dto/filter-escala.dto';
 import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
+import { ReorderDiasDto } from './dto/reorder-dias.dto';
 import { Role, MinistryRole, StatusConfirmacao, StatusEscala } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 
@@ -66,7 +67,7 @@ export class EscalasService {
       throw new BadRequestException('A escala mensal para este ministério neste mês e ano já existe.');
     }
 
-    return this.prisma.escala.create({
+    const escala = await this.prisma.escala.create({
       data: {
         mes: dto.mes,
         ano: dto.ano,
@@ -76,6 +77,29 @@ export class EscalasService {
         status: StatusEscala.RASCUNHO,
       },
     });
+
+    if (dto.diasSemana?.length) {
+      const datas = this.gerarDiasDoMes(dto.mes, dto.ano, dto.diasSemana);
+      if (datas.length > 0) {
+        await this.prisma.escalaDia.createMany({
+          data: datas.map((data) => ({ escalaId: escala.id, data })),
+        });
+      }
+    }
+
+    return escala;
+  }
+
+  private gerarDiasDoMes(mes: number, ano: number, diasSemana: number[]): Date[] {
+    const dias: Date[] = [];
+    const totalDias = new Date(ano, mes, 0).getDate();
+    for (let d = 1; d <= totalDias; d++) {
+      const dt = new Date(ano, mes - 1, d);
+      if (diasSemana.includes(dt.getDay())) {
+        dias.push(dt);
+      }
+    }
+    return dias;
   }
 
   async findAll(tenantId: string, query: FilterEscalaDto, user: JwtPayload) {
@@ -152,7 +176,7 @@ export class EscalasService {
           }
         },
         dias: {
-          orderBy: { data: 'asc' },
+          orderBy: { ordem: 'asc' },
           include: {
             itens: {
               include: {
@@ -253,13 +277,36 @@ export class EscalasService {
       await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
+    const last = await this.prisma.escalaDia.findFirst({
+      where: { escalaId },
+      orderBy: { ordem: 'desc' },
+      select: { ordem: true },
+    });
+    const ordem = (last?.ordem ?? -1) + 1;
+
     return this.prisma.escalaDia.create({
       data: {
         escalaId,
         data: new Date(body.data),
-        titulo: body.titulo
+        titulo: body.titulo,
+        ordem,
       }
     });
+  }
+
+  async reorderDias(tenantId: string, escalaId: string, dto: ReorderDiasDto, user: JwtPayload) {
+    const escala = await this.findOne(tenantId, escalaId, user);
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(escala.ministerioId, user.memberId);
+    }
+
+    await Promise.all(
+      dto.diaIds.map((id, index) =>
+        this.prisma.escalaDia.update({ where: { id }, data: { ordem: index } })
+      )
+    );
+
+    return { message: 'Dias reordenados com sucesso.' };
   }
 
   async removeDia(tenantId: string, diaId: string, user: JwtPayload) {
