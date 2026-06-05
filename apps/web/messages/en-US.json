@@ -100,6 +100,8 @@
   },
   "members": {
     "title": "Members",
+    "pageTitle": "Members",
+    "pageDescription": "Manage church membership, apply bulk tags and filter information quickly.",
     "description": "Manage your church members, contact information and status.",
     "new": "New Member",
     "searchPlaceholder": "Search by name, email or phone...",
@@ -107,11 +109,60 @@
     "noMembersDesc": "Add your church's first member.",
     "filterAll": "All",
     "errorLoading": "Error loading members.",
+    "reload": "Reload",
+    "deleteConfirm": "Are you sure you want to delete {name}?",
+    "deleteError": "Error deleting member.",
     "status": {
       "ATIVO": "Active",
       "INATIVO": "Inactive",
       "VISITANTE": "Visitor",
       "TRANSFERIDO": "Transferred"
+    },
+    "filter": {
+      "nameLabel": "Member Name",
+      "namePlaceholder": "Search by name...",
+      "whatsappLabel": "Phone",
+      "whatsappPlaceholder": "Search by phone...",
+      "statusLabel": "Status",
+      "allStatuses": "All statuses",
+      "apply": "Filter",
+      "clear": "Clear",
+      "tagsLabel": "Filter by Tags",
+      "compositeFilter": "Composite filter:",
+      "newTag": "+ New Tag"
+    },
+    "columns": {
+      "name": "Name",
+      "contact": "Contact",
+      "status": "Status",
+      "tags": "Tags",
+      "birthDate": "Birthday",
+      "registeredAt": "Registered"
+    },
+    "editTooltip": "Edit member",
+    "deleteTooltip": "Delete member",
+    "empty": {
+      "noResults": "No members found",
+      "noResultsDesc": "Try adjusting the filters or add a new member."
+    },
+    "bulk": {
+      "selected": "{count} members selected",
+      "addTag": "Add Tag",
+      "removeTag": "Remove Tag",
+      "selectTag": "Select a tag...",
+      "apply": "Apply",
+      "cancelSelection": "Cancel selection",
+      "success": "Bulk action applied successfully!",
+      "error": "Error applying bulk action."
+    },
+    "tag": {
+      "createTitle": "Create New Tag",
+      "nameLabel": "Tag Name",
+      "namePlaceholder": "E.g.: Youth, Sound, Ministry",
+      "colorLabel": "Tag Color",
+      "cancel": "Cancel",
+      "create": "Create",
+      "error": "Error creating tag."
     },
     "fields": {
       "name": "Full name",

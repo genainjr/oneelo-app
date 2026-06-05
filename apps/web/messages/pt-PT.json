@@ -100,6 +100,8 @@
   },
   "members": {
     "title": "Membros",
+    "pageTitle": "Membros",
+    "pageDescription": "Gira a membresia da igreja, aplique etiquetas em lote e filtre informações rapidamente.",
     "description": "Gira os membros da sua igreja, informações de contacto e estado.",
     "new": "Novo Membro",
     "searchPlaceholder": "Pesquisar por nome, e-mail ou telemóvel...",
@@ -107,11 +109,60 @@
     "noMembersDesc": "Adicione o primeiro membro da sua igreja.",
     "filterAll": "Todos",
     "errorLoading": "Erro ao carregar membros.",
+    "reload": "Recarregar",
+    "deleteConfirm": "Tem a certeza que deseja eliminar {name}?",
+    "deleteError": "Erro ao eliminar membro.",
     "status": {
       "ATIVO": "Ativo",
       "INATIVO": "Inativo",
       "VISITANTE": "Visitante",
       "TRANSFERIDO": "Transferido"
+    },
+    "filter": {
+      "nameLabel": "Nome do Membro",
+      "namePlaceholder": "Pesquisar por nome...",
+      "whatsappLabel": "Telemóvel",
+      "whatsappPlaceholder": "Pesquisar por telemóvel...",
+      "statusLabel": "Estado",
+      "allStatuses": "Todos os estados",
+      "apply": "Filtrar",
+      "clear": "Limpar",
+      "tagsLabel": "Filtro por Etiquetas",
+      "compositeFilter": "Filtro composto:",
+      "newTag": "+ Nova Etiqueta"
+    },
+    "columns": {
+      "name": "Nome",
+      "contact": "Contacto",
+      "status": "Estado",
+      "tags": "Etiquetas",
+      "birthDate": "Nascimento",
+      "registeredAt": "Registo"
+    },
+    "editTooltip": "Editar membro",
+    "deleteTooltip": "Eliminar membro",
+    "empty": {
+      "noResults": "Nenhum membro encontrado",
+      "noResultsDesc": "Tente alterar os filtros ou adicione um novo membro."
+    },
+    "bulk": {
+      "selected": "{count} membros selecionados",
+      "addTag": "Adicionar Etiqueta",
+      "removeTag": "Remover Etiqueta",
+      "selectTag": "Selecione a Etiqueta...",
+      "apply": "Aplicar",
+      "cancelSelection": "Cancelar seleção",
+      "success": "Ação em lote aplicada com sucesso!",
+      "error": "Erro ao aplicar ação em lote."
+    },
+    "tag": {
+      "createTitle": "Criar Nova Etiqueta",
+      "nameLabel": "Nome da Etiqueta",
+      "namePlaceholder": "Ex: Jovem, Som, Ministério",
+      "colorLabel": "Cor da Etiqueta",
+      "cancel": "Cancelar",
+      "create": "Criar",
+      "error": "Erro ao criar etiqueta."
     },
     "fields": {
       "name": "Nome completo",

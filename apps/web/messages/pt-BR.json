@@ -100,6 +100,8 @@
   },
   "members": {
     "title": "Membros",
+    "pageTitle": "Membros",
+    "pageDescription": "Gerencie a membresia da igreja, aplique tags em lote e filtre informações rapidamente.",
     "description": "Gerencie os membros da sua igreja, informações de contato e status.",
     "new": "Novo Membro",
     "searchPlaceholder": "Buscar por nome, e-mail ou whatsapp...",
@@ -107,11 +109,60 @@
     "noMembersDesc": "Adicione o primeiro membro da sua igreja.",
     "filterAll": "Todos",
     "errorLoading": "Erro ao carregar membros.",
+    "reload": "Recarregar",
+    "deleteConfirm": "Tem certeza que deseja excluir {name}?",
+    "deleteError": "Erro ao deletar membro.",
     "status": {
       "ATIVO": "Ativo",
       "INATIVO": "Inativo",
       "VISITANTE": "Visitante",
       "TRANSFERIDO": "Transferido"
+    },
+    "filter": {
+      "nameLabel": "Nome do Membro",
+      "namePlaceholder": "Buscar por nome...",
+      "whatsappLabel": "WhatsApp",
+      "whatsappPlaceholder": "Buscar por whatsapp...",
+      "statusLabel": "Status",
+      "allStatuses": "Todos os status",
+      "apply": "Filtrar",
+      "clear": "Limpar",
+      "tagsLabel": "Filtro por Tags",
+      "compositeFilter": "Filtro composto:",
+      "newTag": "+ Nova Tag"
+    },
+    "columns": {
+      "name": "Nome",
+      "contact": "Contato",
+      "status": "Status",
+      "tags": "Tags",
+      "birthDate": "Nascimento",
+      "registeredAt": "Cadastro"
+    },
+    "editTooltip": "Editar membro",
+    "deleteTooltip": "Excluir membro",
+    "empty": {
+      "noResults": "Nenhum membro encontrado",
+      "noResultsDesc": "Tente alterar os filtros ou adicione um novo membro."
+    },
+    "bulk": {
+      "selected": "{count} membros selecionados",
+      "addTag": "Adicionar Tag",
+      "removeTag": "Remover Tag",
+      "selectTag": "Selecione a Tag...",
+      "apply": "Aplicar",
+      "cancelSelection": "Cancelar seleção",
+      "success": "Ação em lote aplicada com sucesso!",
+      "error": "Erro ao aplicar ação em lote."
+    },
+    "tag": {
+      "createTitle": "Criar Nova Tag",
+      "nameLabel": "Nome da Tag",
+      "namePlaceholder": "Ex: Jovem, Som, Ministério",
+      "colorLabel": "Cor da Tag",
+      "cancel": "Cancelar",
+      "create": "Criar",
+      "error": "Erro ao criar tag."
     },
     "fields": {
       "name": "Nome completo",
