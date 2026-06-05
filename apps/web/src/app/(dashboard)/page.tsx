@@ -13,6 +13,7 @@ const STATS_CONFIG = [
     title: 'Membros Ativos',
     description: 'Status ATIVO no sistema',
     color: 'indigo' as const,
+    href: '/membros',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -24,6 +25,7 @@ const STATS_CONFIG = [
     title: 'Escalas da Semana',
     description: 'De hoje até domingo',
     color: 'blue' as const,
+    href: '/escalas',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -35,6 +37,7 @@ const STATS_CONFIG = [
     title: 'Aniversariantes',
     description: `Neste mês`,
     color: 'amber' as const,
+    href: '/membros',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-1.5-.454M9 6l3-3 3 3M9 22V12h6v10" />
@@ -46,6 +49,7 @@ const STATS_CONFIG = [
     title: 'Ministérios Ativos',
     description: 'Em funcionamento',
     color: 'emerald' as const,
+    href: '/ministerios',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -57,6 +61,7 @@ const STATS_CONFIG = [
     title: 'Pendências',
     description: 'Confirmações de escala',
     color: 'rose' as const,
+    href: '/escalas',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -111,6 +116,7 @@ export default function DashboardPage() {
             icon={cfg.icon}
             color={cfg.color}
             loading={loading}
+            href={cfg.href}
           />
         ))}
       </div>

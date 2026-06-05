@@ -22,7 +22,7 @@ export function Header({ onMenuClick }: HeaderProps) {
     Object.entries(PAGE_TITLES)
       .sort((a, b) => b[0].length - a[0].length)
       .find(([path]) => pathname === path || pathname.startsWith(path + '/'))?.[1] ??
-    'Lookup';
+    'One Elo';
 
   return (
     <header className="sticky top-0 z-10 flex items-center gap-4 h-14 px-4 md:px-6 bg-white border-b border-gray-200">
