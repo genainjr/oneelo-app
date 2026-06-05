@@ -7,10 +7,12 @@ import { DataTable, Column } from '@/components/app/data-table';
 import { UsuarioModal } from '@/components/app/usuario-modal';
 import { api } from '@/lib/api';
 import { User, AuditLog, AuthUser } from '@/types';
-import { formatDateTime, ROLE_LABEL } from '@/lib/utils';
+import { useDateFormatter } from '@/hooks/use-date-formatter';
 
 export default function ConfiguracoesPage() {
   const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
+  const { formatDateTime } = useDateFormatter();
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [activeTab, setActiveTab] = useState<'usuarios' | 'audit'>('usuarios');
@@ -153,7 +155,7 @@ export default function ConfiguracoesPage() {
         };
         return (
           <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-lg border ${badges[u.role] || 'bg-gray-50'}`}>
-            {ROLE_LABEL[u.role] || u.role}
+            {tCommon(`roles.${u.role}` as any) || u.role}
           </span>
         );
       },

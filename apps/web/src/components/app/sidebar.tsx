@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { api, HttpError } from '@/lib/api';
 import { AuthUser } from '@/types';
-import { ROLE_LABEL, getInitials, cn } from '@/lib/utils';
+import { getInitials, cn } from '@/lib/utils';
 import { locales, localeFlags, type Locale } from '@/i18n/config';
 
 // Icons extracted to module level to avoid re-creation on every render
@@ -87,6 +87,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations('nav');
+  const tCommon = useTranslations('common');
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [ministeriosOpen, setMinisteriosOpen] = useState(true);
@@ -375,7 +376,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-medium truncate">{user.nome}</p>
-                <p className="text-indigo-400 text-xs truncate">{ROLE_LABEL[user.role]}</p>
+                <p className="text-indigo-400 text-xs truncate">{tCommon(`roles.${user.role}` as any)}</p>
               </div>
             </div>
           )}

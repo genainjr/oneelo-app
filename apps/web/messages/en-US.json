@@ -1,5 +1,11 @@
 {
   "common": {
+    "at": "at",
+    "roles": {
+      "ADMIN": "Administrator",
+      "STAFF": "Staff",
+      "BASIC": "Member"
+    },
     "save": "Save",
     "saving": "Saving...",
     "cancel": "Cancel",

@@ -8,7 +8,6 @@ import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { api } from '@/lib/api';
 import { Ministerio, Membro, AuthUser, MinistryRole } from '@/types';
-import { MINISTRY_ROLE_LABEL } from '@/lib/utils';
 
 export default function MinisteriosPage() {
   const t = useTranslations('ministries');
@@ -455,7 +454,7 @@ export default function MinisteriosPage() {
                                 </div>
                                 <div>
                                   <p className="text-sm font-semibold text-gray-800">{item.membro?.nome}</p>
-                                  <p className="text-xs text-gray-400">{MINISTRY_ROLE_LABEL[item.role as MinistryRole] ?? item.role}</p>
+                                  <p className="text-xs text-gray-400">{t(`members.roles.${item.role}` as any) ?? item.role}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">

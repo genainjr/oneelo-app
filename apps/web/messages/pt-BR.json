@@ -1,5 +1,11 @@
 {
   "common": {
+    "at": "às",
+    "roles": {
+      "ADMIN": "Administrador",
+      "STAFF": "Equipe",
+      "BASIC": "Membro"
+    },
     "save": "Salvar",
     "saving": "Salvando...",
     "cancel": "Cancelar",
