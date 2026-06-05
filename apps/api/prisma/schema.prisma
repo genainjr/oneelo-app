@@ -194,6 +194,7 @@ model MinisterioFuncao {
   ministerio   Ministerio               @relation(fields: [ministerioId], references: [id])
   itens        EscalaItem[]
   membrosAptos MinisterioMembroFuncao[]
+  diasOcultos  EscalaDiaFuncaoOculta[]
 
   @@unique([ministerioId, nome])
 }
@@ -234,9 +235,9 @@ model Escala {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  ministerio  Ministerio   @relation(fields: [ministerioId], references: [id])
-  dias        EscalaDia[]
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
+  dias       EscalaDia[]
 
   @@index([tenantId])
   @@unique([ministerioId, mes, ano])
@@ -251,9 +252,20 @@ model EscalaDia {
   observacoes  String?
   ordem        Int          @default(0)
 
-  escala Escala @relation(fields: [escalaId], references: [id], onDelete: Cascade)
-  evento Evento? @relation(fields: [eventoId], references: [id], onDelete: SetNull)
-  itens  EscalaItem[]
+  escala         Escala                @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+  evento         Evento?               @relation(fields: [eventoId], references: [id], onDelete: SetNull)
+  itens          EscalaItem[]
+  funcoesOcultas EscalaDiaFuncaoOculta[]
+}
+
+model EscalaDiaFuncaoOculta {
+  diaId    String
+  funcaoId String
+
+  dia    EscalaDia        @relation(fields: [diaId], references: [id], onDelete: Cascade)
+  funcao MinisterioFuncao @relation(fields: [funcaoId], references: [id], onDelete: Cascade)
+
+  @@id([diaId, funcaoId])
 }
 
 model EscalaItem {

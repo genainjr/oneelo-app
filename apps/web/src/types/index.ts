@@ -107,6 +107,7 @@ export interface EscalaDia {
   eventoId?: string;
   observacoes?: string;
   itens?: EscalaItem[];
+  funcoesOcultas?: { funcaoId: string }[];
 }
 
 export interface Escala {

@@ -89,6 +89,10 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     await fetchEscalas(filter);
   }
 
+  async function toggleCelula(diaId: string, funcaoId: string, ocultar: boolean) {
+    return api.patch(`/api/escalas/dias/${diaId}/funcoes-ocultas`, { funcaoId, ocultar });
+  }
+
   function applyFilter(newFilter: FilterEscalas) {
     const merged = { ...filter, ...newFilter };
     setFilter(merged);
@@ -112,5 +116,6 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     addMembroItem,
     removeMembroItem,
     updateMembroItemStatus,
+    toggleCelula,
   };
 }

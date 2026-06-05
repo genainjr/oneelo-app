@@ -16,6 +16,7 @@ import { FilterEscalaDto } from './dto/filter-escala.dto';
 import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
 import { ReorderDiasDto } from './dto/reorder-dias.dto';
+import { ToggleDiaFuncaoOcultaDto } from './dto/toggle-dia-funcao-oculta.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
@@ -128,6 +129,20 @@ export class EscalasController {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
     return this.escalasService.removeMembro(tenantId, itemId, user);
+  }
+
+  // ─── Visibilidade de Célula (Dia × Função) ──────────────────
+
+  @Patch('dias/:diaId/funcoes-ocultas')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  toggleDiaFuncaoOculta(
+    @Param('diaId') diaId: string,
+    @Body() dto: ToggleDiaFuncaoOcultaDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.escalasService.toggleDiaFuncaoOculta(tenantId, diaId, dto, user);
   }
 
   // ─── Confirmação de Presença pelo Membro ─────────────────────

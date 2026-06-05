@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { api, HttpError } from '@/lib/api';
 import { AuthUser } from '@/types';
 import { getInitials, cn } from '@/lib/utils';
-import { locales, localeFlags, type Locale } from '@/i18n/config';
+import { locales, localeLabels, type Locale } from '@/i18n/config';
+import { FlagIcon } from '@/components/app/locale-flags';
 
 // Icons extracted to module level to avoid re-creation on every render
 const ICONS = {
@@ -92,10 +93,23 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [ministeriosOpen, setMinisteriosOpen] = useState(true);
   const [currentLocale, setCurrentLocale] = useState<Locale>('pt-BR');
+  const [localeOpen, setLocaleOpen] = useState(false);
+  const localeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCurrentLocale(readLocaleCookie());
   }, []);
+
+  useEffect(() => {
+    if (!localeOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (localeDropdownRef.current && !localeDropdownRef.current.contains(e.target as Node)) {
+        setLocaleOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [localeOpen]);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -164,7 +178,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 flex flex-col bg-indigo-950 transition-all duration-300 lg:translate-x-0 lg:static lg:z-auto overflow-hidden',
+          'fixed inset-y-0 left-0 z-30 flex flex-col bg-indigo-950 transition-all duration-300 lg:translate-x-0 lg:static lg:z-auto',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'w-16' : 'w-64',
         )}
@@ -330,40 +344,62 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Language switcher */}
-        <div className={cn(
-          'px-2 pb-1 flex-shrink-0',
-          collapsed ? 'flex flex-col items-center gap-1 py-2' : 'flex items-center gap-1 py-2',
-        )}>
+        <div
+          ref={localeDropdownRef}
+          className={cn('relative px-2 pb-2 flex-shrink-0', collapsed && 'flex justify-center')}
+        >
           {collapsed ? (
             <button
-              onClick={() => {
-                const idx = locales.indexOf(currentLocale);
-                const next = locales[(idx + 1) % locales.length];
-                handleLocaleChange(next);
-              }}
-              title={currentLocale}
-              className="flex items-center justify-center w-9 h-9 rounded-xl text-lg hover:bg-indigo-900 transition-all"
+              onClick={() => setLocaleOpen((o) => !o)}
+              title={localeLabels[currentLocale]}
+              className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-indigo-900 transition-all"
             >
-              {localeFlags[currentLocale]}
+              <FlagIcon locale={currentLocale} className="w-6 h-4 rounded-sm" />
             </button>
           ) : (
-            <>
+            <button
+              onClick={() => setLocaleOpen((o) => !o)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-indigo-300 hover:bg-indigo-900 hover:text-white text-xs transition-all"
+            >
+              <FlagIcon locale={currentLocale} className="w-5 h-3.5 rounded-sm flex-shrink-0" />
+              <span className="flex-1 text-left truncate">{localeLabels[currentLocale]}</span>
+              <svg
+                className={cn('w-3.5 h-3.5 flex-shrink-0 transition-transform', localeOpen && 'rotate-180')}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          )}
+
+          {localeOpen && (
+            <div className={cn(
+              'absolute z-50 rounded-xl bg-indigo-900 border border-indigo-800 shadow-xl overflow-hidden',
+              collapsed
+                ? 'bottom-0 left-full ml-2 w-52'
+                : 'bottom-full left-0 right-0 mb-1',
+            )}>
               {locales.map((locale) => (
                 <button
                   key={locale}
-                  onClick={() => handleLocaleChange(locale)}
-                  title={locale}
+                  onClick={() => { handleLocaleChange(locale); setLocaleOpen(false); }}
                   className={cn(
-                    'flex-1 flex items-center justify-center py-1.5 rounded-xl text-base transition-all',
-                    currentLocale === locale
-                      ? 'bg-indigo-800 ring-1 ring-indigo-600'
-                      : 'hover:bg-indigo-900 opacity-50 hover:opacity-100',
+                    'w-full flex items-center gap-2.5 px-3 py-2.5 text-xs transition-colors',
+                    locale === currentLocale
+                      ? 'bg-indigo-800 text-white'
+                      : 'text-indigo-300 hover:bg-indigo-800 hover:text-white',
                   )}
                 >
-                  {localeFlags[locale]}
+                  <FlagIcon locale={locale} className="w-5 h-3.5 rounded-sm flex-shrink-0" />
+                  <span className="flex-1 text-left">{localeLabels[locale]}</span>
+                  {locale === currentLocale && (
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
                 </button>
               ))}
-            </>
+            </div>
           )}
         </div>
 

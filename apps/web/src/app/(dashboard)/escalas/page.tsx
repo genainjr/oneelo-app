@@ -37,10 +37,11 @@ interface EscalaGridProps {
   onAddDia: (data: string, titulo?: string) => Promise<void>;
   onRemoveDia: (diaId: string) => Promise<void>;
   onReorderDias: (diaIds: string[]) => Promise<void>;
+  onToggleCelula: (diaId: string, funcaoId: string, ocultar: boolean) => void;
   tGrid: ReturnType<typeof useTranslations>;
 }
 
-function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, onRemoveMembro, onAddDia, onRemoveDia, onReorderDias, tGrid }: EscalaGridProps) {
+function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, onRemoveMembro, onAddDia, onRemoveDia, onReorderDias, onToggleCelula, tGrid }: EscalaGridProps) {
   const [addingDia, setAddingDia] = useState(false);
   const [newDiaDate, setNewDiaDate] = useState('');
   const [newDiaTitulo, setNewDiaTitulo] = useState('');
@@ -161,40 +162,69 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
                   </td>
                   {funcoes.map((funcao) => {
                     const cellItems = getMembrosForCell(dia, funcao.id);
+                    const isOculta = dia.funcoesOcultas?.some((o) => o.funcaoId === funcao.id) ?? false;
                     return (
                       <td key={funcao.id} className="px-3 py-2 align-top">
-                        <div className="space-y-1 min-h-[2rem]">
-                          {cellItems.map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 group/item"
-                            >
-                              <span className={`text-xs font-semibold truncate ${CONFIRMACAO_COLORS[item.statusConfirmacao]}`}>
-                                {item.membro?.nome || '—'}
-                              </span>
-                              {canManage && (
-                                <button
-                                  onClick={() => onRemoveMembro(item.id)}
-                                  className="opacity-0 group-hover/item:opacity-100 p-0.5 text-indigo-300 hover:text-red-400 transition-all shrink-0"
-                                >
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {canManage && escala.status !== 'ENCERRADA' && (
-                            <CellMemberSelect
-                              diaId={dia.id}
-                              funcaoId={funcao.id}
-                              membros={ministryMembers}
-                              alreadyAssigned={cellItems.map(i => i.membroId)}
-                              onAdd={onAddMembro}
-                              addMemberLabel={tGrid('addMember')}
-                            />
-                          )}
-                        </div>
+                        {isOculta ? (
+                          <div className="flex items-center gap-1.5 h-8">
+                            <span className="text-gray-300 font-bold">—</span>
+                            {canManage && (
+                              <button
+                                onClick={() => onToggleCelula(dia.id, funcao.id, false)}
+                                title={`Mostrar ${funcao.nome} neste dia`}
+                                className="text-gray-300 hover:text-indigo-500 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1 min-h-[2rem] relative group/cell">
+                            {canManage && escala.status !== 'ENCERRADA' && (
+                              <button
+                                onClick={() => onToggleCelula(dia.id, funcao.id, true)}
+                                title={`Ocultar ${funcao.nome} neste dia`}
+                                className="absolute top-0 right-0 opacity-0 group-hover/cell:opacity-100 p-0.5 text-gray-300 hover:text-red-400 transition-all"
+                              >
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                            {cellItems.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 group/item"
+                              >
+                                <span className={`text-xs font-semibold truncate ${CONFIRMACAO_COLORS[item.statusConfirmacao]}`}>
+                                  {item.membro?.nome || '—'}
+                                </span>
+                                {canManage && (
+                                  <button
+                                    onClick={() => onRemoveMembro(item.id)}
+                                    className="opacity-0 group-hover/item:opacity-100 p-0.5 text-indigo-300 hover:text-red-400 transition-all shrink-0"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {canManage && escala.status !== 'ENCERRADA' && (
+                              <CellMemberSelect
+                                diaId={dia.id}
+                                funcaoId={funcao.id}
+                                membros={ministryMembers}
+                                alreadyAssigned={cellItems.map(i => i.membroId)}
+                                onAdd={onAddMembro}
+                                addMemberLabel={tGrid('addMember')}
+                              />
+                            )}
+                          </div>
+                        )}
                       </td>
                     );
                   })}
@@ -320,6 +350,7 @@ export default function EscalasPage() {
     reorderDias,
     addMembroItem,
     removeMembroItem,
+    toggleCelula,
   } = useEscalas();
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -436,6 +467,31 @@ export default function EscalasPage() {
       showToast('Escala removida.');
     } catch (err: any) {
       showToast(err.message || 'Erro ao remover escala.', 'error');
+    }
+  }
+
+  async function handleToggleCelula(diaId: string, funcaoId: string, ocultar: boolean) {
+    // Atualização otimista
+    setDetailedEscala((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        dias: prev.dias?.map((dia) => {
+          if (dia.id !== diaId) return dia;
+          const atuais = dia.funcoesOcultas ?? [];
+          const novas = ocultar
+            ? [...atuais, { funcaoId }]
+            : atuais.filter((o) => o.funcaoId !== funcaoId);
+          return { ...dia, funcoesOcultas: novas };
+        }),
+      };
+    });
+
+    try {
+      await toggleCelula(diaId, funcaoId, ocultar);
+    } catch {
+      showToast('Erro ao atualizar célula.', 'error');
+      await refreshDetail();
     }
   }
 
@@ -709,6 +765,7 @@ export default function EscalasPage() {
                 ministryMembers={ministryMembers}
                 canManage={canManage}
                 tGrid={tGrid}
+                onToggleCelula={handleToggleCelula}
                 onAddMembro={async (diaId, membroId, funcaoId) => {
                   await addMembroItem(diaId, membroId, funcaoId);
                   await refreshDetail();

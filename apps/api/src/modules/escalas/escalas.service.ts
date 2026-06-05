@@ -11,6 +11,7 @@ import { FilterEscalaDto } from './dto/filter-escala.dto';
 import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
 import { ReorderDiasDto } from './dto/reorder-dias.dto';
+import { ToggleDiaFuncaoOcultaDto } from './dto/toggle-dia-funcao-oculta.dto';
 import { Role, MinistryRole, StatusConfirmacao, StatusEscala } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 
@@ -178,6 +179,7 @@ export class EscalasService {
         dias: {
           orderBy: { ordem: 'asc' },
           include: {
+            funcoesOcultas: { select: { funcaoId: true } },
             itens: {
               include: {
                 membro: { select: { id: true, nome: true, email: true, whatsapp: true } },
@@ -470,6 +472,38 @@ export class EscalasService {
         observacoes: dto.observacoes || item.observacoes,
       },
     });
+  }
+
+  async toggleDiaFuncaoOculta(
+    tenantId: string,
+    diaId: string,
+    dto: ToggleDiaFuncaoOcultaDto,
+    user: JwtPayload,
+  ) {
+    const dia = await this.prisma.escalaDia.findUnique({
+      where: { id: diaId },
+      include: { escala: true },
+    });
+    if (!dia) throw new NotFoundException('Dia não encontrado.');
+    if (dia.escala.tenantId !== tenantId) throw new ForbiddenException();
+
+    if (user.role === Role.BASIC) {
+      await this.checkMinistryAccess(dia.escala.ministerioId, user.memberId);
+    }
+
+    if (dto.ocultar) {
+      await this.prisma.escalaDiaFuncaoOculta.upsert({
+        where: { diaId_funcaoId: { diaId, funcaoId: dto.funcaoId } },
+        create: { diaId, funcaoId: dto.funcaoId },
+        update: {},
+      });
+    } else {
+      await this.prisma.escalaDiaFuncaoOculta.deleteMany({
+        where: { diaId, funcaoId: dto.funcaoId },
+      });
+    }
+
+    return { diaId, funcaoId: dto.funcaoId, ocultar: dto.ocultar };
   }
 
   async updateItemStatus(
