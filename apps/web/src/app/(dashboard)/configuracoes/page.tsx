@@ -1,28 +1,30 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { UsuarioModal } from '@/components/app/usuario-modal';
 import { api } from '@/lib/api';
 import { User, AuditLog, AuthUser } from '@/types';
-import { formatDateTime, ROLE_LABEL } from '@/lib/utils';
+import { useDateFormatter } from '@/hooks/use-date-formatter';
 
 export default function ConfiguracoesPage() {
+  const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
+  const { formatDateTime } = useDateFormatter();
+
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [activeTab, setActiveTab] = useState<'usuarios' | 'audit'>('usuarios');
 
-  // Lists
   const [users, setUsers] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  // Delete confirm state
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -47,19 +49,17 @@ export default function ConfiguracoesPage() {
         setAuditLogs(Array.isArray(data) ? data : []);
       }
     } catch (err: any) {
-      setError(err?.message || 'Erro ao carregar dados de configurações.');
+      setError(err?.message || t('errorLoading'));
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, activeTab]);
+  }, [isAdmin, activeTab, t]);
 
   useEffect(() => {
     if (currentUser) {
       loadData();
     }
   }, [currentUser, activeTab, loadData]);
-
-  // ─── Handlers CRUD ────────────────────────────────────────────────────────
 
   function openCreate() {
     setEditingUser(null);
@@ -88,14 +88,12 @@ export default function ConfiguracoesPage() {
       setDeletingUser(null);
       await loadData();
     } catch (err: any) {
-      setError(err?.message || 'Erro ao desativar usuário.');
+      setError(err?.message || t('errorDeactivate'));
       setDeletingUser(null);
     } finally {
       setDeleteLoading(false);
     }
   }
-
-  // ─── Loading / Access guards ───────────────────────────────────────────────
 
   if (!currentUser) {
     return (
@@ -121,36 +119,34 @@ export default function ConfiguracoesPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h2 className="text-lg font-bold text-gray-800 mb-2">Acesso Restrito</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-2">{t('accessRestricted.title')}</h2>
         <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-          Esta página está disponível apenas para administradores gerais do sistema. Caso necessite de acesso, entre em contato com o suporte ou gestor de TI da igreja.
+          {t('accessRestricted.description')}
         </p>
         <button
           onClick={() => window.location.href = '/'}
           className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-all shadow-sm"
         >
-          Voltar ao Dashboard
+          {t('accessRestricted.backToDashboard')}
         </button>
       </div>
     );
   }
 
-  // ─── Columns ───────────────────────────────────────────────────────────────
-
   const userColumns: Column<User>[] = [
     {
       key: 'nome',
-      header: 'Nome',
+      header: t('users.columns.name'),
       className: 'font-semibold text-gray-800',
     },
     {
       key: 'email',
-      header: 'E-mail',
+      header: t('users.columns.email'),
       render: (u) => <span className="text-gray-500">{u.email}</span>,
     },
     {
       key: 'role',
-      header: 'Perfil / Permissão',
+      header: t('users.columns.role'),
       render: (u) => {
         const badges: any = {
           ADMIN: 'bg-red-50 text-red-700 border-red-100',
@@ -159,14 +155,14 @@ export default function ConfiguracoesPage() {
         };
         return (
           <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-lg border ${badges[u.role] || 'bg-gray-50'}`}>
-            {ROLE_LABEL[u.role] || u.role}
+            {tCommon(`roles.${u.role}` as any) || u.role}
           </span>
         );
       },
     },
     {
       key: 'membro' as any,
-      header: 'Membro vinculado',
+      header: t('users.columns.member'),
       render: (u) =>
         u.membro ? (
           <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg font-medium">
@@ -181,26 +177,26 @@ export default function ConfiguracoesPage() {
     },
     {
       key: 'ativo',
-      header: 'Status',
+      header: t('users.columns.status'),
       render: (u) => (
         <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${u.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-250'}`}>
-          {u.ativo ? 'Ativo' : 'Inativo'}
+          {u.ativo ? t('users.status.active') : t('users.status.inactive')}
         </span>
       ),
     },
     {
       key: 'createdAt',
-      header: 'Cadastro',
+      header: t('users.columns.registeredAt'),
       render: (u) => <span className="text-xs text-gray-400">{formatDateTime(u.createdAt)}</span>,
     },
     {
       key: 'id',
-      header: 'Ações',
+      header: t('users.columns.actions'),
       render: (u) => (
         <div className="flex items-center gap-2">
           <button
             onClick={() => openEdit(u)}
-            title="Editar usuário"
+            title={t('users.editTooltip')}
             className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -210,7 +206,7 @@ export default function ConfiguracoesPage() {
           {u.id !== currentUser?.id && (
             <button
               onClick={() => setDeletingUser(u)}
-              title="Desativar usuário"
+              title={t('users.deactivateTooltip')}
               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -226,22 +222,22 @@ export default function ConfiguracoesPage() {
   const auditColumns: Column<AuditLog>[] = [
     {
       key: 'createdAt',
-      header: 'Data / Hora',
+      header: t('audit.columns.dateTime'),
       render: (log) => <span className="text-xs text-gray-500">{formatDateTime(log.createdAt)}</span>,
     },
     {
       key: 'user',
-      header: 'Operador',
+      header: t('audit.columns.operator'),
       render: (log) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-gray-800 text-xs">{log.user?.nome || 'Sistema'}</span>
+          <span className="font-semibold text-gray-800 text-xs">{log.user?.nome || t('audit.system')}</span>
           {log.user?.email && <span className="text-[10px] text-gray-400">{log.user.email}</span>}
         </div>
       ),
     },
     {
       key: 'acao',
-      header: 'Operação',
+      header: t('audit.columns.operation'),
       render: (log) => {
         const badges: any = {
           CRIAR: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -259,7 +255,7 @@ export default function ConfiguracoesPage() {
     },
     {
       key: 'entidade',
-      header: 'Recurso',
+      header: t('audit.columns.resource'),
       render: (log) => (
         <div className="flex flex-col gap-0.5">
           <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">{log.entidade}</span>
@@ -269,30 +265,28 @@ export default function ConfiguracoesPage() {
     },
     {
       key: 'ipAddress',
-      header: 'IP Address',
+      header: t('audit.columns.ipAddress'),
       render: (log) => <span className="text-[11px] text-gray-400 font-mono">{log.ipAddress || '—'}</span>,
     },
   ];
 
-  // ─── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <PageHeader
-        title="Painel de Configurações"
-        description="Controle os perfis de acesso dos usuários e confira os relatórios de auditoria."
+        title={t('pageTitle')}
+        description={t('pageDescription')}
       />
 
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => loadData()} className="underline font-semibold hover:text-red-800">
-            Tentar Novamente
+            {t('retry')}
           </button>
         </div>
       )}
 
-      {/* Tabs Menu */}
+      {/* Tabs */}
       <div className="flex border-b border-gray-100 bg-white rounded-t-2xl px-5 border-t border-x shadow-2xs">
         <button
           onClick={() => setActiveTab('usuarios')}
@@ -301,7 +295,7 @@ export default function ConfiguracoesPage() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
-          Usuários do Sistema ({users.length})
+          {t('tabs.users')} ({users.length})
         </button>
         <button
           onClick={() => setActiveTab('audit')}
@@ -310,10 +304,9 @@ export default function ConfiguracoesPage() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          Log de Auditoria ({auditLogs.length})
+          {t('tabs.audit')} ({auditLogs.length})
         </button>
 
-        {/* Spacer + Add button */}
         {activeTab === 'usuarios' && (
           <div className="ml-auto flex items-center">
             <button
@@ -323,21 +316,20 @@ export default function ConfiguracoesPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Novo Usuário
+              {t('users.new')}
             </button>
           </div>
         )}
       </div>
 
-      {/* Tables */}
       {activeTab === 'usuarios' ? (
         <DataTable
           columns={userColumns}
           data={users}
           loading={loading}
           itemsPerPage={15}
-          emptyTitle="Nenhum usuário cadastrado"
-          emptyDescription="Os usuários têm login e senha para gerenciar o sistema."
+          emptyTitle={t('users.noUsers')}
+          emptyDescription={t('users.noUsersDesc')}
         />
       ) : (
         <DataTable
@@ -345,12 +337,11 @@ export default function ConfiguracoesPage() {
           data={auditLogs}
           loading={loading}
           itemsPerPage={15}
-          emptyTitle="Nenhum registro de auditoria"
-          emptyDescription="Ações de mutação em membros, ministérios e escalas aparecerão aqui."
+          emptyTitle={t('audit.noLogs')}
+          emptyDescription={t('audit.noLogsDesc')}
         />
       )}
 
-      {/* Create / Edit Modal */}
       <UsuarioModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -359,7 +350,6 @@ export default function ConfiguracoesPage() {
         currentUserId={currentUser?.id}
       />
 
-      {/* Delete Confirmation Modal */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
@@ -370,12 +360,12 @@ export default function ConfiguracoesPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-gray-800">Desativar usuário</h3>
-                <p className="text-xs text-gray-500">Esta ação pode ser revertida editando o usuário.</p>
+                <h3 className="font-bold text-gray-800">{t('deactivate.title')}</h3>
+                <p className="text-xs text-gray-500">{t('deactivate.subtitle')}</p>
               </div>
             </div>
             <p className="text-sm text-gray-600">
-              Tem certeza que deseja desativar o usuário <strong>{deletingUser.nome}</strong>? Ele perderá o acesso ao sistema imediatamente.
+              {t('deactivate.message', { name: deletingUser.nome })}
             </p>
             <div className="flex justify-end gap-3 pt-2">
               <button
@@ -383,7 +373,7 @@ export default function ConfiguracoesPage() {
                 disabled={deleteLoading}
                 className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
               >
-                Cancelar
+                {t('deactivate.cancel')}
               </button>
               <button
                 onClick={handleDelete}
@@ -396,7 +386,7 @@ export default function ConfiguracoesPage() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
                 )}
-                Desativar
+                {deleteLoading ? t('deactivate.confirming') : t('deactivate.confirm')}
               </button>
             </div>
           </div>

@@ -1,20 +1,22 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useMembros, FilterMembros } from '@/hooks/use-membros';
+import { useTranslations } from 'next-intl';
+import { useMembros } from '@/hooks/use-membros';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
-import { Membro, Tag, StatusMembro } from '@/types';
+import { Membro, Tag } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 
 export default function MembrosPage() {
+  const t = useTranslations('members');
+
   const {
     membros,
     loading,
     error,
-    filter,
     applyFilter,
     createMembro,
     updateMembro,
@@ -22,7 +24,6 @@ export default function MembrosPage() {
     bulkTag,
   } = useMembros();
 
-  // Local States
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMembro, setEditingMembro] = useState<Membro | null>(null);
@@ -30,15 +31,13 @@ export default function MembrosPage() {
   const [tagsList, setTagsList] = useState<Tag[]>([]);
   const [selectedBulkTag, setSelectedBulkTag] = useState('');
   const [bulkAction, setBulkAction] = useState<'ADD' | 'REMOVE'>('ADD');
-  
-  // Tag creations inside the page for convenience
+
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#4f46e5');
 
   const itemsPerPage = 10;
 
-  // Load tags
   async function fetchTags() {
     try {
       const data = await api.get<Tag[]>('/api/tags');
@@ -52,14 +51,12 @@ export default function MembrosPage() {
     fetchTags();
   }, []);
 
-  // Sync selected filters
   const [searchName, setSearchName] = useState('');
   const [searchPhone, setSearchPhone] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagOp, setTagOp] = useState<'AND' | 'OR'>('OR');
 
-  // Trigger search filter
   function handleFilterSubmit(e: React.FormEvent) {
     e.preventDefault();
     setCurrentPage(1);
@@ -72,7 +69,6 @@ export default function MembrosPage() {
     });
   }
 
-  // Clear filters
   function handleClearFilters() {
     setSearchName('');
     setSearchPhone('');
@@ -80,23 +76,14 @@ export default function MembrosPage() {
     setSelectedTags([]);
     setTagOp('OR');
     setCurrentPage(1);
-    applyFilter({
-      nome: undefined,
-      whatsapp: undefined,
-      status: undefined,
-      tags: undefined,
-      operacao: 'OR',
-    });
+    applyFilter({ nome: undefined, whatsapp: undefined, status: undefined, tags: undefined, operacao: 'OR' });
   }
 
-  // Handle Tag toggle in filter
   function handleToggleTagFilter(tagNome: string) {
     setSelectedTags(prev => {
       const next = prev.includes(tagNome)
         ? prev.filter(t => t !== tagNome)
         : [...prev, tagNome];
-      
-      // Auto-apply filters when tag is clicked
       applyFilter({
         nome: searchName || undefined,
         whatsapp: searchPhone || undefined,
@@ -104,40 +91,35 @@ export default function MembrosPage() {
         tags: next.join(',') || undefined,
         operacao: tagOp,
       });
-
       return next;
     });
   }
 
-  // Pagination slice of data
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return membros.slice(start, start + itemsPerPage);
   }, [membros, currentPage]);
 
-  // Handle Save (Create or Update)
   async function handleSaveMembro(data: Partial<Membro>) {
     if (editingMembro) {
       await updateMembro(editingMembro.id, data);
     } else {
       await createMembro(data);
     }
-    fetchTags(); // Refetch tags list in case there were changes
+    fetchTags();
   }
 
-  // Handle Delete
   async function handleDelete(membro: Membro) {
-    if (confirm(`Tem certeza que deseja excluir ${membro.nome}?`)) {
+    if (confirm(t('deleteConfirm', { name: membro.nome }))) {
       try {
         await deleteMembro(membro.id);
         setSelectedIds(prev => prev.filter(id => id !== membro.id));
       } catch (err: any) {
-        alert(err.message || 'Erro ao deletar membro.');
+        alert(err.message || t('deleteError'));
       }
     }
   }
 
-  // Create Tag
   async function handleCreateTag(e: React.FormEvent) {
     e.preventDefault();
     if (!newTagName.trim()) return;
@@ -150,28 +132,26 @@ export default function MembrosPage() {
       setNewTagName('');
       setShowNewTagInput(false);
     } catch (err: any) {
-      alert(err.message || 'Erro ao criar tag.');
+      alert(err.message || t('tag.error'));
     }
   }
 
-  // Execute Bulk Action
   async function handleBulkApply() {
     if (selectedIds.length === 0 || !selectedBulkTag) return;
     try {
       await bulkTag(selectedIds, [selectedBulkTag], bulkAction);
       setSelectedIds([]);
       setSelectedBulkTag('');
-      alert('Ação em lote aplicada com sucesso!');
+      alert(t('bulk.success'));
     } catch (err: any) {
-      alert(err.message || 'Erro ao aplicar ação em lote.');
+      alert(err.message || t('bulk.error'));
     }
   }
 
-  // Define columns
   const columns: Column<Membro>[] = [
     {
       key: 'nome',
-      header: 'Nome',
+      header: t('columns.name'),
       className: 'font-medium text-gray-900',
       render: (m) => (
         <div className="flex items-center gap-3">
@@ -191,7 +171,7 @@ export default function MembrosPage() {
     },
     {
       key: 'contato',
-      header: 'Contato',
+      header: t('columns.contact'),
       render: (m) => (
         <div className="flex flex-col gap-0.5">
           {m.whatsapp && (
@@ -208,7 +188,7 @@ export default function MembrosPage() {
     },
     {
       key: 'status',
-      header: 'Status',
+      header: t('columns.status'),
       render: (m) => {
         const colors = {
           ATIVO: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -218,14 +198,14 @@ export default function MembrosPage() {
         };
         return (
           <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${colors[m.status] || 'bg-gray-50'}`}>
-            {m.status}
+            {t(`status.${m.status}` as any)}
           </span>
         );
       },
     },
     {
       key: 'tags',
-      header: 'Tags',
+      header: t('columns.tags'),
       render: (m) => (
         <div className="flex flex-wrap gap-1">
           {m.tags && m.tags.length > 0 ? (
@@ -246,14 +226,14 @@ export default function MembrosPage() {
     },
     {
       key: 'dataNascimento',
-      header: 'Nascimento',
+      header: t('columns.birthDate'),
       render: (m) => (
         <span className="text-xs text-gray-500">{formatDate(m.dataNascimento)}</span>
       ),
     },
     {
       key: 'createdAt',
-      header: 'Cadastro',
+      header: t('columns.registeredAt'),
       render: (m) => (
         <span className="text-xs text-gray-500">{formatDate(m.createdAt)}</span>
       ),
@@ -270,7 +250,7 @@ export default function MembrosPage() {
               setIsModalOpen(true);
             }}
             className="p-1 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition-colors"
-            title="Editar membro"
+            title={t('editTooltip')}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -279,7 +259,7 @@ export default function MembrosPage() {
           <button
             onClick={() => handleDelete(m)}
             className="p-1 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-red-600 transition-colors"
-            title="Excluir membro"
+            title={t('deleteTooltip')}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -293,8 +273,8 @@ export default function MembrosPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <PageHeader
-        title="Membros"
-        description="Gerencie a membresia da igreja, aplique tags em lote e filtre informações rapidamente."
+        title={t('pageTitle')}
+        description={t('pageDescription')}
         action={
           <button
             onClick={() => {
@@ -306,7 +286,7 @@ export default function MembrosPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Novo Membro
+            {t('new')}
           </button>
         }
       />
@@ -315,48 +295,45 @@ export default function MembrosPage() {
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => window.location.reload()} className="underline font-semibold hover:text-red-800">
-            Recarregar
+            {t('reload')}
           </button>
         </div>
       )}
 
-      {/* Filters Section */}
+      {/* Filters */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
         <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Nome */}
           <div className="space-y-1.5">
             <label htmlFor="search-nome" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Nome do Membro
+              {t('filter.nameLabel')}
             </label>
             <input
               id="search-nome"
               type="text"
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
-              placeholder="Buscar por nome..."
+              placeholder={t('filter.namePlaceholder')}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
             />
           </div>
 
-          {/* WhatsApp */}
           <div className="space-y-1.5">
             <label htmlFor="search-whatsapp" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              WhatsApp
+              {t('filter.whatsappLabel')}
             </label>
             <input
               id="search-whatsapp"
               type="text"
               value={searchPhone}
               onChange={(e) => setSearchPhone(e.target.value)}
-              placeholder="Buscar por whatsapp..."
+              placeholder={t('filter.whatsappPlaceholder')}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
             />
           </div>
 
-          {/* Status */}
           <div className="space-y-1.5">
             <label htmlFor="search-status" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Status
+              {t('filter.statusLabel')}
             </label>
             <select
               id="search-status"
@@ -364,53 +341,52 @@ export default function MembrosPage() {
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all text-gray-700"
             >
-              <option value="">Todos os status</option>
-              <option value="ATIVO">Ativo</option>
-              <option value="INATIVO">Inativo</option>
-              <option value="VISITANTE">Visitante</option>
-              <option value="TRANSFERIDO">Transferido</option>
+              <option value="">{t('filter.allStatuses')}</option>
+              <option value="ATIVO">{t('status.ATIVO')}</option>
+              <option value="INATIVO">{t('status.INATIVO')}</option>
+              <option value="VISITANTE">{t('status.VISITANTE')}</option>
+              <option value="TRANSFERIDO">{t('status.TRANSFERIDO')}</option>
             </select>
           </div>
 
-          {/* Ações Filtro */}
           <div className="flex items-end gap-3">
             <button
               type="submit"
               className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-semibold rounded-xl text-sm transition-all shadow-sm"
             >
-              Filtrar
+              {t('filter.apply')}
             </button>
             <button
               type="button"
               onClick={handleClearFilters}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold rounded-xl text-sm transition-all"
             >
-              Limpar
+              {t('filter.clear')}
             </button>
           </div>
         </form>
 
-        {/* Tags filters and operations */}
+        {/* Tags filter */}
         <div className="pt-2 border-t border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">
-              Filtro por Tags
+              {t('filter.tagsLabel')}
             </span>
             <div className="flex flex-wrap gap-2">
-              {tagsList.map((t) => {
-                const active = selectedTags.includes(t.nome);
+              {tagsList.map((tag) => {
+                const active = selectedTags.includes(tag.nome);
                 return (
                   <button
-                    key={t.id}
-                    onClick={() => handleToggleTagFilter(t.nome)}
+                    key={tag.id}
+                    onClick={() => handleToggleTagFilter(tag.nome)}
                     style={{
-                      backgroundColor: active ? t.cor : 'transparent',
-                      color: active ? '#ffffff' : t.cor,
-                      borderColor: t.cor,
+                      backgroundColor: active ? tag.cor : 'transparent',
+                      color: active ? '#ffffff' : tag.cor,
+                      borderColor: tag.cor,
                     }}
                     className="px-2.5 py-1 text-xs font-semibold border rounded-lg transition-all shadow-2xs hover:shadow-xs"
                   >
-                    {t.nome}
+                    {tag.nome}
                   </button>
                 );
               })}
@@ -419,15 +395,14 @@ export default function MembrosPage() {
                 onClick={() => setShowNewTagInput(true)}
                 className="px-2 py-1 text-xs font-medium border border-dashed border-gray-300 hover:border-indigo-500 rounded-lg text-gray-500 hover:text-indigo-600 transition-all flex items-center gap-1"
               >
-                + Nova Tag
+                {t('filter.newTag')}
               </button>
             </div>
           </div>
 
-          {/* Tag operator */}
           {selectedTags.length > 1 && (
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 p-1.5 rounded-xl self-start md:self-auto">
-              <span className="text-xs font-medium text-gray-500 px-1">Filtro composto:</span>
+              <span className="text-xs font-medium text-gray-500 px-1">{t('filter.compositeFilter')}</span>
               <button
                 onClick={() => {
                   setTagOp('AND');
@@ -463,25 +438,25 @@ export default function MembrosPage() {
         </div>
       </div>
 
-      {/* New Tag Input Inline Modal */}
+      {/* New Tag Modal */}
       {showNewTagInput && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
-            <h3 className="font-bold text-gray-800 text-base mb-4">Criar Nova Tag</h3>
+            <h3 className="font-bold text-gray-800 text-base mb-4">{t('tag.createTitle')}</h3>
             <form onSubmit={handleCreateTag} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Nome da Tag</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('tag.nameLabel')}</label>
                 <input
                   type="text"
                   required
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
-                  placeholder="Ex: Jovem, Som, Ministério"
+                  placeholder={t('tag.namePlaceholder')}
                   className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Cor da Tag</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('tag.colorLabel')}</label>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -503,13 +478,13 @@ export default function MembrosPage() {
                   onClick={() => setShowNewTagInput(false)}
                   className="px-4 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl"
                 >
-                  Cancelar
+                  {t('tag.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs"
                 >
-                  Criar
+                  {t('tag.create')}
                 </button>
               </div>
             </form>
@@ -517,7 +492,7 @@ export default function MembrosPage() {
         </div>
       )}
 
-      {/* Main Members Data Table */}
+      {/* Members Table */}
       <DataTable
         columns={columns}
         data={paginatedData}
@@ -528,18 +503,18 @@ export default function MembrosPage() {
         totalItems={membros.length}
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
-        emptyTitle="Nenhum membro encontrado"
-        emptyDescription="Tente alterar os filtros ou adicione um novo membro."
+        emptyTitle={t('empty.noResults')}
+        emptyDescription={t('empty.noResultsDesc')}
       />
 
-      {/* Sticky Bulk Action Banner */}
+      {/* Bulk Action Banner */}
       {selectedIds.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900 text-white rounded-2xl shadow-xl px-5 py-3.5 flex items-center gap-4 animate-in slide-in-from-bottom-6 duration-300 max-w-2xl w-full border border-gray-800">
           <div className="flex-shrink-0 text-sm font-medium">
             <span className="bg-indigo-500 text-white font-bold rounded-lg px-2.5 py-1 text-xs mr-2">
               {selectedIds.length}
             </span>
-            membros selecionados
+            {t('bulk.selected', { count: selectedIds.length })}
           </div>
 
           <div className="h-4 w-px bg-gray-700" />
@@ -550,8 +525,8 @@ export default function MembrosPage() {
               onChange={(e) => setBulkAction(e.target.value as 'ADD' | 'REMOVE')}
               className="bg-gray-800 text-white border border-gray-700 px-3 py-1.5 rounded-xl text-xs focus:outline-none"
             >
-              <option value="ADD">Adicionar Tag</option>
-              <option value="REMOVE">Remover Tag</option>
+              <option value="ADD">{t('bulk.addTag')}</option>
+              <option value="REMOVE">{t('bulk.removeTag')}</option>
             </select>
 
             <select
@@ -559,10 +534,10 @@ export default function MembrosPage() {
               onChange={(e) => setSelectedBulkTag(e.target.value)}
               className="bg-gray-800 text-white border border-gray-700 px-3 py-1.5 rounded-xl text-xs focus:outline-none flex-1 max-w-[160px] truncate"
             >
-              <option value="">Selecione a Tag...</option>
-              {tagsList.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome}
+              <option value="">{t('bulk.selectTag')}</option>
+              {tagsList.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.nome}
                 </option>
               ))}
             </select>
@@ -572,14 +547,14 @@ export default function MembrosPage() {
               disabled={!selectedBulkTag}
               className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-xs transition-all flex-shrink-0"
             >
-              Aplicar
+              {t('bulk.apply')}
             </button>
           </div>
 
           <button
             onClick={() => setSelectedIds([])}
             className="p-1 text-gray-400 hover:text-white transition-colors"
-            title="Cancelar seleção"
+            title={t('bulk.cancelSelection')}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -588,7 +563,6 @@ export default function MembrosPage() {
         </div>
       )}
 
-      {/* Member Edit/Create Modal */}
       <MembroModal
         isOpen={isModalOpen}
         onClose={() => {

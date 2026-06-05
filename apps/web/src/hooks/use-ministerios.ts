@@ -66,8 +66,8 @@ export function useMinisterios() {
     await fetch();
   }
 
-  async function updateMembroRole(ministerioId: string, membroId: string, role: MinistryRole) {
-    await api.patch(`/api/ministerios/${ministerioId}/membros/${membroId}`, { role });
+  async function updateMembroRole(ministerioId: string, membroId: string, role?: MinistryRole, funcaoIds?: string[]) {
+    await api.patch(`/api/ministerios/${ministerioId}/membros/${membroId}`, { role, funcaoIds });
     await fetch();
   }
 

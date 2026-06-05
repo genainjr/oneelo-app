@@ -191,8 +191,10 @@ model MinisterioFuncao {
   corHex       String?
   ordem        Int    @default(0)
 
-  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
-  itens      EscalaItem[]
+  ministerio   Ministerio               @relation(fields: [ministerioId], references: [id])
+  itens        EscalaItem[]
+  membrosAptos MinisterioMembroFuncao[]
+  diasOcultos  EscalaDiaFuncaoOculta[]
 
   @@unique([ministerioId, nome])
 }
@@ -202,10 +204,22 @@ model MinisterioMembro {
   membroId     String
   role         MinistryRole @default(MEMBER)
 
-  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
-  membro     Membro     @relation(fields: [membroId], references: [id])
+  ministerio          Ministerio               @relation(fields: [ministerioId], references: [id])
+  membro              Membro                   @relation(fields: [membroId], references: [id])
+  funcoesDisponiveis  MinisterioMembroFuncao[]
 
   @@id([ministerioId, membroId])
+}
+
+model MinisterioMembroFuncao {
+  ministerioId String
+  membroId     String
+  funcaoId     String
+
+  ministerioMembro MinisterioMembro @relation(fields: [ministerioId, membroId], references: [ministerioId, membroId], onDelete: Cascade)
+  funcao           MinisterioFuncao @relation(fields: [funcaoId], references: [id], onDelete: Cascade)
+
+  @@id([ministerioId, membroId, funcaoId])
 }
 
 // ─── Escala ───────────────────────────────────────────────
@@ -221,9 +235,9 @@ model Escala {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  ministerio  Ministerio   @relation(fields: [ministerioId], references: [id])
-  dias        EscalaDia[]
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
+  dias       EscalaDia[]
 
   @@index([tenantId])
   @@unique([ministerioId, mes, ano])
@@ -236,10 +250,22 @@ model EscalaDia {
   titulo       String?      // opcional (ex: Culto da Família)
   eventoId     String?      // caso exista um evento de referência
   observacoes  String?
+  ordem        Int          @default(0)
 
-  escala Escala @relation(fields: [escalaId], references: [id], onDelete: Cascade)
-  evento Evento? @relation(fields: [eventoId], references: [id], onDelete: SetNull)
-  itens  EscalaItem[]
+  escala         Escala                @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+  evento         Evento?               @relation(fields: [eventoId], references: [id], onDelete: SetNull)
+  itens          EscalaItem[]
+  funcoesOcultas EscalaDiaFuncaoOculta[]
+}
+
+model EscalaDiaFuncaoOculta {
+  diaId    String
+  funcaoId String
+
+  dia    EscalaDia        @relation(fields: [diaId], references: [id], onDelete: Cascade)
+  funcao MinisterioFuncao @relation(fields: [funcaoId], references: [id], onDelete: Cascade)
+
+  @@id([diaId, funcaoId])
 }
 
 model EscalaItem {
