@@ -96,11 +96,10 @@ export default function AgendaPage() {
     setSelectedEvento(ev);
     setTitulo(ev.titulo);
     setDescricao(ev.descricao || '');
-    // Convert backend datetime fields
-    setDataInicio(toLocalDatetimeString(ev.inicio)); // Wait, backend returned 'inicio' according to types
-    setDataFim(toLocalDatetimeString(ev.fim)); // and 'fim'
+    setDataInicio(toLocalDatetimeString(ev.dataInicio));
+    setDataFim(toLocalDatetimeString(ev.dataFim));
     setLocal(ev.local || '');
-    setStatus((ev as any).status || 'AGENDADO');
+    setStatus(ev.status);
     setIsModalOpen(true);
   }
 
@@ -244,7 +243,7 @@ export default function AgendaPage() {
       ) : (
         <div className="space-y-4">
           {eventos.map((ev) => {
-            const evStatus = (ev as any).status || 'AGENDADO';
+            const evStatus = ev.status;
             const colors: Record<string, string> = {
               AGENDADO: 'bg-blue-50 text-blue-700 border-blue-150',
               REALIZADO: 'bg-emerald-50 text-emerald-700 border-emerald-150',
@@ -274,14 +273,14 @@ export default function AgendaPage() {
                       <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Início: {formatDate(ev.inicio)}
+                      Início: {formatDate(ev.dataInicio)}
                     </span>
-                    {ev.fim && (
+                    {ev.dataFim && (
                       <span className="flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Fim: {formatDate(ev.fim)}
+                        Fim: {formatDate(ev.dataFim)}
                       </span>
                     )}
                     {ev.local && (
