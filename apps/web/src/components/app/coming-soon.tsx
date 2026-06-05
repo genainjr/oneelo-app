@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface ComingSoonFeature {
   label: string;
   description: string;
@@ -14,11 +16,13 @@ interface ComingSoonProps {
 }
 
 export function ComingSoon({ title, description, icon, features, phase }: ComingSoonProps) {
+  const t = useTranslations('comingSoon');
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-6">
         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-        Em breve{phase ? ` · ${phase}` : ''}
+        {t('badge')}{phase ? ` · ${phase}` : ''}
       </span>
 
       <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center mb-6 shadow-lg text-white">
@@ -55,7 +59,7 @@ export function ComingSoon({ title, description, icon, features, phase }: Coming
         </div>
       )}
 
-      <p className="text-xs text-gray-400">Estamos trabalhando para trazer isso em breve.</p>
+      <p className="text-xs text-gray-400">{t('defaultDescription')}</p>
     </div>
   );
 }

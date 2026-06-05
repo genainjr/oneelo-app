@@ -78,6 +78,12 @@
     "greeting": "Hello{name}!",
     "subtitle": "{date} · Here's your church summary.",
     "quickAccess": "Quick Access",
+    "quickLinks": {
+      "viewMembers": "Members",
+      "viewSchedules": "Schedules",
+      "ministries": "Ministries",
+      "agenda": "Calendar"
+    },
     "errorLoading": "Error loading dashboard data.",
     "stats": {
       "activeMembers": "Active Members",
@@ -282,33 +288,114 @@
   },
   "agenda": {
     "title": "Calendar",
-    "description": "View and manage your church events.",
-    "new": "New Event",
-    "noEvents": "No events registered.",
-    "noEventsDesc": "Add events to see them in the calendar.",
+    "pageTitle": "Church Calendar",
+    "pageDescription": "Track services, rehearsals, meetings and official church events.",
+    "newEvent": "New Event",
+    "reload": "Reload",
+    "noEvents": "No events scheduled",
+    "noEventsDesc": "Create new events and official church services to populate the shared calendar.",
     "errorLoading": "Error loading events.",
+    "errorSave": "Error saving event.",
+    "errorDelete": "Error deleting event.",
+    "deleteConfirm": "Are you sure you want to delete the event \"{title}\"?",
     "status": {
       "AGENDADO": "Scheduled",
       "REALIZADO": "Completed",
       "CANCELADO": "Cancelled"
     },
-    "fields": {
-      "title": "Title",
-      "description": "Description",
-      "start": "Start date and time",
-      "end": "End date and time",
-      "location": "Location",
-      "status": "Status"
+    "filter": {
+      "statusLabel": "Status",
+      "allStatuses": "All statuses",
+      "from": "From (Date)",
+      "to": "To (Date)",
+      "apply": "Filter",
+      "clear": "Clear"
+    },
+    "event": {
+      "start": "Start",
+      "end": "End",
+      "location": "Location"
+    },
+    "modal": {
+      "editTitle": "Edit Event",
+      "createTitle": "New Church Event",
+      "titleLabel": "Event Title *",
+      "titlePlaceholder": "E.g.: Youth Service, Leaders Meeting",
+      "startTime": "Start Time *",
+      "endTime": "End Time",
+      "locationLabel": "Location / Venue",
+      "locationPlaceholder": "E.g.: Main Sanctuary, Room 3",
+      "statusLabel": "Event Status",
+      "descriptionLabel": "Description / Agenda",
+      "descriptionPlaceholder": "Additional info or event schedule...",
+      "editTooltip": "Edit event",
+      "deleteTooltip": "Delete event",
+      "cancel": "Cancel",
+      "save": "Save"
     }
   },
   "settings": {
     "title": "Settings",
+    "pageTitle": "Settings Panel",
+    "pageDescription": "Manage user access profiles and review audit reports.",
     "description": "Manage your account and system settings.",
+    "errorLoading": "Error loading settings data.",
+    "retry": "Try Again",
     "language": {
       "title": "Language",
       "description": "Choose the system display language.",
       "save": "Save preference"
-    }
+    },
+    "accessRestricted": {
+      "title": "Restricted Access",
+      "description": "This page is only available to system administrators. If you need access, please contact support or your church IT manager.",
+      "backToDashboard": "Back to Dashboard"
+    },
+    "tabs": {
+      "users": "System Users",
+      "audit": "Audit Log"
+    },
+    "users": {
+      "new": "New User",
+      "noUsers": "No users registered",
+      "noUsersDesc": "Users have login credentials to manage the system.",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role / Permission",
+        "member": "Linked member",
+        "status": "Status",
+        "registeredAt": "Registered",
+        "actions": "Actions"
+      },
+      "editTooltip": "Edit user",
+      "deactivateTooltip": "Deactivate user",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      }
+    },
+    "audit": {
+      "noLogs": "No audit records",
+      "noLogsDesc": "Mutation actions on members, ministries and schedules will appear here.",
+      "columns": {
+        "dateTime": "Date / Time",
+        "operator": "Operator",
+        "operation": "Operation",
+        "resource": "Resource",
+        "ipAddress": "IP Address"
+      },
+      "system": "System"
+    },
+    "deactivate": {
+      "title": "Deactivate user",
+      "subtitle": "This action can be reversed by editing the user.",
+      "message": "Are you sure you want to deactivate {name}? They will immediately lose access to the system.",
+      "cancel": "Cancel",
+      "confirm": "Deactivate",
+      "confirming": "Deactivating..."
+    },
+    "errorDeactivate": "Error deactivating user."
   },
   "integrations": {
     "title": "Integrations",

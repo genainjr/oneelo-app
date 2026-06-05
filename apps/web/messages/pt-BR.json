@@ -78,6 +78,12 @@
     "greeting": "Olá{name}!",
     "subtitle": "{date} · Aqui está o resumo da sua igreja.",
     "quickAccess": "Acesso Rápido",
+    "quickLinks": {
+      "viewMembers": "Ver Membros",
+      "viewSchedules": "Ver Escalas",
+      "ministries": "Ministérios",
+      "agenda": "Agenda"
+    },
     "errorLoading": "Erro ao carregar dados do painel.",
     "stats": {
       "activeMembers": "Membros Ativos",
@@ -282,33 +288,114 @@
   },
   "agenda": {
     "title": "Agenda",
-    "description": "Visualize e gerencie os eventos da sua igreja.",
-    "new": "Novo Evento",
-    "noEvents": "Nenhum evento cadastrado.",
-    "noEventsDesc": "Adicione eventos para visualizá-los na agenda.",
+    "pageTitle": "Agenda da Igreja",
+    "pageDescription": "Acompanhe cultos, ensaios, reuniões e eventos oficiais da igreja.",
+    "newEvent": "Novo Evento",
+    "reload": "Recarregar",
+    "noEvents": "Nenhum evento agendado",
+    "noEventsDesc": "Você pode criar novos eventos e cultos oficiais da igreja para alimentar a agenda compartilhada.",
     "errorLoading": "Erro ao carregar eventos.",
+    "errorSave": "Erro ao salvar evento.",
+    "errorDelete": "Erro ao deletar evento.",
+    "deleteConfirm": "Tem certeza que deseja deletar o evento \"{title}\"?",
     "status": {
       "AGENDADO": "Agendado",
       "REALIZADO": "Realizado",
       "CANCELADO": "Cancelado"
     },
-    "fields": {
-      "title": "Título",
-      "description": "Descrição",
-      "start": "Data e hora de início",
-      "end": "Data e hora de fim",
-      "location": "Local",
-      "status": "Status"
+    "filter": {
+      "statusLabel": "Status",
+      "allStatuses": "Todos os status",
+      "from": "A partir de (Data)",
+      "to": "Até (Data)",
+      "apply": "Filtrar",
+      "clear": "Limpar"
+    },
+    "event": {
+      "start": "Início",
+      "end": "Fim",
+      "location": "Local"
+    },
+    "modal": {
+      "editTitle": "Editar Evento",
+      "createTitle": "Novo Evento da Igreja",
+      "titleLabel": "Título do Evento *",
+      "titlePlaceholder": "Ex: Culto de Jovens, Reunião de Líderes",
+      "startTime": "Horário Início *",
+      "endTime": "Horário Fim",
+      "locationLabel": "Local / Templo",
+      "locationPlaceholder": "Ex: Templo Principal, Sala 3",
+      "statusLabel": "Status Evento",
+      "descriptionLabel": "Descrição / Pautas",
+      "descriptionPlaceholder": "Informações extras ou cronograma do evento...",
+      "editTooltip": "Editar evento",
+      "deleteTooltip": "Excluir evento",
+      "cancel": "Cancelar",
+      "save": "Salvar"
     }
   },
   "settings": {
     "title": "Configurações",
+    "pageTitle": "Painel de Configurações",
+    "pageDescription": "Controle os perfis de acesso dos usuários e confira os relatórios de auditoria.",
     "description": "Gerencie as configurações da sua conta e do sistema.",
+    "errorLoading": "Erro ao carregar dados de configurações.",
+    "retry": "Tentar Novamente",
     "language": {
       "title": "Idioma",
       "description": "Escolha o idioma de exibição do sistema.",
       "save": "Salvar preferência"
-    }
+    },
+    "accessRestricted": {
+      "title": "Acesso Restrito",
+      "description": "Esta página está disponível apenas para administradores gerais do sistema. Caso necessite de acesso, entre em contato com o suporte ou gestor de TI da igreja.",
+      "backToDashboard": "Voltar ao Dashboard"
+    },
+    "tabs": {
+      "users": "Usuários do Sistema",
+      "audit": "Log de Auditoria"
+    },
+    "users": {
+      "new": "Novo Usuário",
+      "noUsers": "Nenhum usuário cadastrado",
+      "noUsersDesc": "Os usuários têm login e senha para gerenciar o sistema.",
+      "columns": {
+        "name": "Nome",
+        "email": "E-mail",
+        "role": "Perfil / Permissão",
+        "member": "Membro vinculado",
+        "status": "Status",
+        "registeredAt": "Cadastro",
+        "actions": "Ações"
+      },
+      "editTooltip": "Editar usuário",
+      "deactivateTooltip": "Desativar usuário",
+      "status": {
+        "active": "Ativo",
+        "inactive": "Inativo"
+      }
+    },
+    "audit": {
+      "noLogs": "Nenhum registro de auditoria",
+      "noLogsDesc": "Ações de mutação em membros, ministérios e escalas aparecerão aqui.",
+      "columns": {
+        "dateTime": "Data / Hora",
+        "operator": "Operador",
+        "operation": "Operação",
+        "resource": "Recurso",
+        "ipAddress": "IP Address"
+      },
+      "system": "Sistema"
+    },
+    "deactivate": {
+      "title": "Desativar usuário",
+      "subtitle": "Esta ação pode ser revertida editando o usuário.",
+      "message": "Tem certeza que deseja desativar o usuário {name}? Ele perderá o acesso ao sistema imediatamente.",
+      "cancel": "Cancelar",
+      "confirm": "Desativar",
+      "confirming": "Desativando..."
+    },
+    "errorDeactivate": "Erro ao desativar usuário."
   },
   "integrations": {
     "title": "Integrações",

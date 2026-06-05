@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useEventos, FilterEventos } from '@/hooks/use-eventos';
+import { useTranslations } from 'next-intl';
+import { useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { api } from '@/lib/api';
@@ -9,6 +10,8 @@ import { Evento, AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
 
 export default function AgendaPage() {
+  const t = useTranslations('agenda');
+
   const {
     eventos,
     loading,
@@ -24,7 +27,6 @@ export default function AgendaPage() {
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Form states
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [dataInicio, setDataInicio] = useState('');
@@ -32,7 +34,6 @@ export default function AgendaPage() {
   const [local, setLocal] = useState('');
   const [status, setStatus] = useState<'AGENDADO' | 'REALIZADO' | 'CANCELADO'>('AGENDADO');
 
-  // Filter states
   const [filterStatus, setFilterStatus] = useState('');
   const [filterStart, setFilterStart] = useState('');
   const [filterEnd, setFilterEnd] = useState('');
@@ -45,7 +46,6 @@ export default function AgendaPage() {
 
   const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
 
-  // Handle Save
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!titulo.trim() || !dataInicio) return;
@@ -68,28 +68,25 @@ export default function AgendaPage() {
       setIsModalOpen(false);
       setSelectedEvento(null);
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar evento.');
+      alert(err.message || t('errorSave'));
     }
   }
 
-  // Handle Delete
   async function handleDelete(ev: Evento) {
-    if (confirm(`Tem certeza que deseja deletar o evento "${ev.titulo}"?`)) {
+    if (confirm(t('deleteConfirm', { title: ev.titulo }))) {
       try {
         await deleteEvento(ev.id);
       } catch (err: any) {
-        alert(err.message || 'Erro ao deletar evento.');
+        alert(err.message || t('errorDelete'));
       }
     }
   }
 
-  // Helper to format ISO datetime to local string format required by input type="datetime-local" (YYYY-MM-DDThh:mm)
   function toLocalDatetimeString(isoString?: string) {
     if (!isoString) return '';
     const date = new Date(isoString);
-    const tzoffset = date.getTimezoneOffset() * 60000; //offset in milliseconds
-    const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
-    return localISOTime;
+    const tzoffset = date.getTimezoneOffset() * 60000;
+    return (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
   }
 
   function openEdit(ev: Evento) {
@@ -114,7 +111,6 @@ export default function AgendaPage() {
     setIsModalOpen(true);
   }
 
-  // Apply filters
   function handleFilterSubmit(e: React.FormEvent) {
     e.preventDefault();
     applyFilter({
@@ -124,7 +120,6 @@ export default function AgendaPage() {
     });
   }
 
-  // Clear filters
   function handleClear() {
     setFilterStatus('');
     setFilterStart('');
@@ -135,8 +130,8 @@ export default function AgendaPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <PageHeader
-        title="Agenda da Igreja"
-        description="Acompanhe cultos, ensaios, reuniões e eventos oficiais da igreja."
+        title={t('pageTitle')}
+        description={t('pageDescription')}
         action={
           canManage ? (
             <button
@@ -146,7 +141,7 @@ export default function AgendaPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Novo Evento
+              {t('newEvent')}
             </button>
           ) : undefined
         }
@@ -156,18 +151,17 @@ export default function AgendaPage() {
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => refetch()} className="underline font-semibold hover:text-red-800">
-            Recarregar
+            {t('reload')}
           </button>
         </div>
       )}
 
-      {/* Filters Form */}
+      {/* Filters */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          {/* Status */}
           <div className="space-y-1.5">
             <label htmlFor="filter-status" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Status
+              {t('filter.statusLabel')}
             </label>
             <select
               id="filter-status"
@@ -175,17 +169,16 @@ export default function AgendaPage() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-700"
             >
-              <option value="">Todos os status</option>
-              <option value="AGENDADO">Agendado</option>
-              <option value="REALIZADO">Realizado</option>
-              <option value="CANCELADO">Cancelado</option>
+              <option value="">{t('filter.allStatuses')}</option>
+              <option value="AGENDADO">{t('status.AGENDADO')}</option>
+              <option value="REALIZADO">{t('status.REALIZADO')}</option>
+              <option value="CANCELADO">{t('status.CANCELADO')}</option>
             </select>
           </div>
 
-          {/* Start date */}
           <div className="space-y-1.5">
             <label htmlFor="filter-start" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              A partir de (Data)
+              {t('filter.from')}
             </label>
             <input
               id="filter-start"
@@ -196,10 +189,9 @@ export default function AgendaPage() {
             />
           </div>
 
-          {/* End date */}
           <div className="space-y-1.5">
             <label htmlFor="filter-end" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Até (Data)
+              {t('filter.to')}
             </label>
             <input
               id="filter-end"
@@ -210,20 +202,19 @@ export default function AgendaPage() {
             />
           </div>
 
-          {/* Buttons */}
           <div className="flex gap-2">
             <button
               type="submit"
               className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-semibold rounded-xl text-sm transition-all shadow-sm"
             >
-              Filtrar
+              {t('filter.apply')}
             </button>
             <button
               type="button"
               onClick={handleClear}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold rounded-xl text-sm transition-all"
             >
-              Limpar
+              {t('filter.clear')}
             </button>
           </div>
         </form>
@@ -237,8 +228,8 @@ export default function AgendaPage() {
         </div>
       ) : eventos.length === 0 ? (
         <EmptyState
-          title="Nenhum evento agendado"
-          description="Você pode criar novos eventos e cultos oficiais da igreja para alimentar a agenda compartilhada."
+          title={t('noEvents')}
+          description={t('noEventsDesc')}
         />
       ) : (
         <div className="space-y-4">
@@ -258,7 +249,7 @@ export default function AgendaPage() {
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold border rounded-lg ${colors[evStatus]}`}>
-                      {evStatus}
+                      {t(`status.${evStatus}` as any)}
                     </span>
                     <h3 className="text-base font-bold text-gray-800">{ev.titulo}</h3>
                   </div>
@@ -267,20 +258,19 @@ export default function AgendaPage() {
                     <p className="text-sm text-gray-500 max-w-2xl">{ev.descricao}</p>
                   )}
 
-                  {/* Datetime and local info */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400 font-medium">
                     <span className="flex items-center gap-1.5">
                       <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Início: {formatDate(ev.dataInicio)}
+                      {t('event.start')}: {formatDate(ev.dataInicio)}
                     </span>
                     {ev.dataFim && (
                       <span className="flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Fim: {formatDate(ev.dataFim)}
+                        {t('event.end')}: {formatDate(ev.dataFim)}
                       </span>
                     )}
                     {ev.local && (
@@ -289,19 +279,18 @@ export default function AgendaPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        Local: {ev.local}
+                        {t('event.location')}: {ev.local}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Actions */}
                 {canManage && (
                   <div className="flex gap-2 items-center justify-end self-end md:self-auto">
                     <button
                       onClick={() => openEdit(ev)}
                       className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
-                      title="Editar evento"
+                      title={t('modal.editTooltip')}
                     >
                       <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -310,7 +299,7 @@ export default function AgendaPage() {
                     <button
                       onClick={() => handleDelete(ev)}
                       className="p-2 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 transition-all flex items-center justify-center"
-                      title="Excluir evento"
+                      title={t('modal.deleteTooltip')}
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -324,13 +313,13 @@ export default function AgendaPage() {
         </div>
       )}
 
-      {/* Event Details/Create/Edit Modal */}
+      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/20">
               <h2 className="text-lg font-bold text-gray-800">
-                {selectedEvento ? 'Editar Evento' : 'Novo Evento da Igreja'}
+                {selectedEvento ? t('modal.editTitle') : t('modal.createTitle')}
               </h2>
               <button
                 onClick={() => {
@@ -349,7 +338,7 @@ export default function AgendaPage() {
               <div className="p-6 space-y-4">
                 <div className="space-y-1.5">
                   <label htmlFor="ev-titulo" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Título do Evento *
+                    {t('modal.titleLabel')}
                   </label>
                   <input
                     id="ev-titulo"
@@ -357,7 +346,7 @@ export default function AgendaPage() {
                     required
                     value={titulo}
                     onChange={(e) => setTitulo(e.target.value)}
-                    placeholder="Ex: Culto de Jovens, Reunião de Líderes"
+                    placeholder={t('modal.titlePlaceholder')}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
                   />
                 </div>
@@ -365,7 +354,7 @@ export default function AgendaPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label htmlFor="ev-inicio" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Horário Início *
+                      {t('modal.startTime')}
                     </label>
                     <input
                       id="ev-inicio"
@@ -379,7 +368,7 @@ export default function AgendaPage() {
 
                   <div className="space-y-1.5">
                     <label htmlFor="ev-fim" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Horário Fim
+                      {t('modal.endTime')}
                     </label>
                     <input
                       id="ev-fim"
@@ -394,21 +383,21 @@ export default function AgendaPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label htmlFor="ev-local" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Local / Templo
+                      {t('modal.locationLabel')}
                     </label>
                     <input
                       id="ev-local"
                       type="text"
                       value={local}
                       onChange={(e) => setLocal(e.target.value)}
-                      placeholder="Ex: Templo Principal, Sala 3"
+                      placeholder={t('modal.locationPlaceholder')}
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
                     />
                   </div>
 
                   <div className="space-y-1.5">
                     <label htmlFor="ev-status" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Status Evento
+                      {t('modal.statusLabel')}
                     </label>
                     <select
                       id="ev-status"
@@ -416,23 +405,23 @@ export default function AgendaPage() {
                       onChange={(e) => setStatus(e.target.value as any)}
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-700"
                     >
-                      <option value="AGENDADO">Agendado</option>
-                      <option value="REALIZADO">Realizado</option>
-                      <option value="CANCELADO">Cancelado</option>
+                      <option value="AGENDADO">{t('status.AGENDADO')}</option>
+                      <option value="REALIZADO">{t('status.REALIZADO')}</option>
+                      <option value="CANCELADO">{t('status.CANCELADO')}</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label htmlFor="ev-desc" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Descrição / Pautas
+                    {t('modal.descriptionLabel')}
                   </label>
                   <textarea
                     id="ev-desc"
                     rows={3}
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
-                    placeholder="Informações extras ou cronograma do evento..."
+                    placeholder={t('modal.descriptionPlaceholder')}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"
                   />
                 </div>
@@ -447,13 +436,13 @@ export default function AgendaPage() {
                   }}
                   className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-150 rounded-xl"
                 >
-                  Cancelar
+                  {t('modal.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs"
                 >
-                  Salvar
+                  {t('modal.save')}
                 </button>
               </div>
             </form>
