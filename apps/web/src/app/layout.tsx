@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getLocale } from 'next-intl/server';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -16,15 +18,20 @@ export const metadata: Metadata = {
   description: 'One Elo — plataforma de gestão para igrejas da Lookup Labs.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="pt-BR" className={`${inter.variable} h-full`}>
+    <html lang={locale} className={`${inter.variable} h-full`}>
       <body className="min-h-full bg-gray-50 font-sans antialiased">
-        {children}
+        <NextIntlClientProvider messages={messages}>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

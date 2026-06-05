@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api, HttpError } from '@/lib/api';
 import { AuthUser } from '@/types';
 import { ROLE_LABEL, getInitials, cn } from '@/lib/utils';
+import { locales, localeFlags, type Locale } from '@/i18n/config';
 
 interface NavItem {
   href: string;
@@ -131,6 +132,13 @@ const navItems: NavItem[] = [
   },
 ];
 
+function readLocaleCookie(): Locale {
+  if (typeof document === 'undefined') return 'pt-BR';
+  const match = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]+)/);
+  const val = match?.[1];
+  return locales.includes(val as Locale) ? (val as Locale) : 'pt-BR';
+}
+
 interface SidebarProps {
   user: AuthUser | null;
   isOpen: boolean;
@@ -143,6 +151,11 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [ministeriosOpen, setMinisteriosOpen] = useState(true);
+  const [currentLocale, setCurrentLocale] = useState<Locale>('pt-BR');
+
+  useEffect(() => {
+    setCurrentLocale(readLocaleCookie());
+  }, []);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -164,6 +177,16 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       router.push('/login');
       router.refresh();
     }
+  }
+
+  async function handleLocaleChange(locale: Locale) {
+    await fetch('/locale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale }),
+    });
+    setCurrentLocale(locale);
+    router.refresh();
   }
 
   return (
@@ -348,6 +371,44 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             );
           })}
         </nav>
+
+        {/* Language switcher */}
+        <div className={cn(
+          'px-2 pb-1 flex-shrink-0',
+          collapsed ? 'flex flex-col items-center gap-1 py-2' : 'flex items-center gap-1 py-2',
+        )}>
+          {collapsed ? (
+            <button
+              onClick={() => {
+                const idx = locales.indexOf(currentLocale);
+                const next = locales[(idx + 1) % locales.length];
+                handleLocaleChange(next);
+              }}
+              title={currentLocale}
+              className="flex items-center justify-center w-9 h-9 rounded-xl text-lg hover:bg-indigo-900 transition-all"
+            >
+              {localeFlags[currentLocale]}
+            </button>
+          ) : (
+            <>
+              {locales.map((locale) => (
+                <button
+                  key={locale}
+                  onClick={() => handleLocaleChange(locale)}
+                  title={locale}
+                  className={cn(
+                    'flex-1 flex items-center justify-center py-1.5 rounded-xl text-base transition-all',
+                    currentLocale === locale
+                      ? 'bg-indigo-800 ring-1 ring-indigo-600'
+                      : 'hover:bg-indigo-900 opacity-50 hover:opacity-100',
+                  )}
+                >
+                  {localeFlags[locale]}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
 
         {/* Usuário e logout */}
         <div className={cn('p-2 border-t border-indigo-900 flex-shrink-0', collapsed && 'flex flex-col items-center')}>

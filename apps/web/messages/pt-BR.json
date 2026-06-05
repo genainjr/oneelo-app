@@ -1,0 +1,323 @@
+{
+  "common": {
+    "save": "Salvar",
+    "saving": "Salvando...",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "remove": "Remover",
+    "archive": "Arquivar",
+    "edit": "Editar",
+    "add": "Adicionar",
+    "create": "Criar",
+    "creating": "Criando...",
+    "close": "Fechar",
+    "back": "Voltar",
+    "confirm": "Confirmar",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "noResults": "Nenhum resultado encontrado.",
+    "optional": "opcional",
+    "yes": "Sim",
+    "no": "Não",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "archived": "Arquivado",
+    "reload": "Recarregar",
+    "notes": "Observações",
+    "actions": "Ações",
+    "manage": "Gerenciar",
+    "publish": "Publicar",
+    "published": "Publicado",
+    "draft": "Rascunho",
+    "closed": "Encerrado"
+  },
+  "language": {
+    "label": "Idioma",
+    "ptBR": "Português (Brasil)",
+    "ptPT": "Português (Portugal)",
+    "enUS": "English (US)"
+  },
+  "auth": {
+    "login": {
+      "heading": "Entrar na sua conta",
+      "brand": "One Elo",
+      "company": "Lookup Labs",
+      "email": "E-mail",
+      "emailPlaceholder": "seu@email.com",
+      "password": "Senha",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Entrar",
+      "submitting": "Entrando...",
+      "errorInvalid": "E-mail ou senha incorretos.",
+      "errorServer": "Erro ao fazer login. Tente novamente.",
+      "errorConnection": "Erro de conexão. Verifique se o servidor está rodando.",
+      "copyright": "© {year} Lookup Labs. Todos os direitos reservados."
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "members": "Membros",
+    "ministries": "Ministérios",
+    "manage": "Gerenciar",
+    "schedules": "Escalas",
+    "agenda": "Agenda",
+    "integrations": "Integrações",
+    "settings": "Configurações",
+    "comingSoon": "Em breve",
+    "logout": "Sair",
+    "loggingOut": "Saindo...",
+    "collapse": "Recolher menu",
+    "expand": "Expandir menu",
+    "collapseModules": "Recolher módulos",
+    "expandModules": "Expandir módulos"
+  },
+  "dashboard": {
+    "greeting": "Olá{name}!",
+    "subtitle": "{date} · Aqui está o resumo da sua igreja.",
+    "quickAccess": "Acesso Rápido",
+    "errorLoading": "Erro ao carregar dados do painel.",
+    "stats": {
+      "activeMembers": "Membros Ativos",
+      "activeMembersDesc": "Status ATIVO no sistema",
+      "weeklySchedules": "Escalas da Semana",
+      "weeklySchedulesDesc": "De hoje até domingo",
+      "birthdays": "Aniversariantes",
+      "birthdaysDesc": "Neste mês",
+      "activeMinistries": "Ministérios Ativos",
+      "activeMinistriesDesc": "Em funcionamento",
+      "pending": "Pendências",
+      "pendingDesc": "Confirmações de escala"
+    }
+  },
+  "members": {
+    "title": "Membros",
+    "description": "Gerencie os membros da sua igreja, informações de contato e status.",
+    "new": "Novo Membro",
+    "searchPlaceholder": "Buscar por nome, e-mail ou whatsapp...",
+    "noMembers": "Nenhum membro cadastrado",
+    "noMembersDesc": "Adicione o primeiro membro da sua igreja.",
+    "filterAll": "Todos",
+    "errorLoading": "Erro ao carregar membros.",
+    "status": {
+      "ATIVO": "Ativo",
+      "INATIVO": "Inativo",
+      "VISITANTE": "Visitante",
+      "TRANSFERIDO": "Transferido"
+    },
+    "fields": {
+      "name": "Nome completo",
+      "namePlaceholder": "Nome completo",
+      "email": "E-mail",
+      "emailPlaceholder": "email@exemplo.com",
+      "whatsapp": "WhatsApp",
+      "whatsappPlaceholder": "(00) 90000-0000",
+      "birthDate": "Data de nascimento",
+      "status": "Status",
+      "notes": "Observações",
+      "notesPlaceholder": "Informações adicionais...",
+      "tags": "Tags"
+    },
+    "modal": {
+      "titleNew": "Novo Membro",
+      "titleEdit": "Editar Membro",
+      "subtitleNew": "Preencha os dados do novo membro",
+      "subtitleEdit": "Atualize as informações do membro",
+      "saveChanges": "Salvar Alterações",
+      "createMember": "Cadastrar Membro",
+      "deleteConfirm": "Tem certeza que deseja excluir este membro? Esta ação não pode ser desfeita.",
+      "tabs": {
+        "personal": "Dados Pessoais",
+        "tags": "Tags"
+      }
+    },
+    "birthday": "Aniversário"
+  },
+  "ministries": {
+    "title": "Ministérios",
+    "description": "Gerencie as equipes de serviço, departamentos da igreja, líderes e participantes.",
+    "new": "Novo Ministério",
+    "noMinistries": "Nenhum ministério cadastrado",
+    "noMinistriesDesc": "Os ministérios organizam os membros e as escalas de serviço.",
+    "errorLoading": "Erro ao carregar ministérios.",
+    "status": {
+      "active": "Ativo",
+      "archived": "Arquivado"
+    },
+    "card": {
+      "members": "{count} membro",
+      "members_plural": "{count} membros",
+      "leadership": "Liderança:",
+      "noLeader": "Sem líder"
+    },
+    "modal": {
+      "titleNew": "Novo Ministério",
+      "titleEdit": "Editar ministério",
+      "subtitleNew": "Preencha os dados para criar um novo ministério",
+      "subtitleEdit": "Edite as informações do ministério",
+      "saveChanges": "Salvar Alterações",
+      "createMinistry": "Criar Ministério",
+      "archiveConfirm": "Tem certeza que deseja arquivar/inativar o ministério {name}?",
+      "tabs": {
+        "info": "Informações",
+        "members": "Membros",
+        "functions": "Funções"
+      },
+      "fields": {
+        "name": "Nome do Ministério",
+        "namePlaceholder": "Ex: Ministério de Louvor",
+        "description": "Descrição",
+        "descriptionPlaceholder": "Descreva o propósito deste ministério..."
+      }
+    },
+    "members": {
+      "add": "Adicionar Membro",
+      "selectMember": "Selecione um membro...",
+      "role": "Papel",
+      "noMembers": "Nenhum membro neste ministério.",
+      "availableFunctions": "Funções disponíveis",
+      "saveFunctions": "Salvar",
+      "saving": "Salvando...",
+      "roles": {
+        "LEADER": "Líder",
+        "ASSISTANT_LEADER": "Assistente",
+        "MEMBER": "Membro"
+      }
+    },
+    "functions": {
+      "description": "Defina os cargos/funções fixos deste ministério. Eles serão as colunas da escala mensal.",
+      "noFunctions": "Nenhuma função cadastrada.",
+      "newFunction": "Nova Função",
+      "functionPlaceholder": "Ex: Ministro, Teclado...",
+      "add": "Adicionar",
+      "save": "Salvar Funções",
+      "saving": "Salvando..."
+    }
+  },
+  "schedules": {
+    "title": "Escalas",
+    "description": "Gerencie as escalas mensais por ministério. Defina os cultos e aloque os membros por função.",
+    "new": "Nova Escala",
+    "generateAI": "Gerar com IA",
+    "aiComingSoon": "Em breve",
+    "errorLoading": "Erro ao carregar escalas.",
+    "noSchedules": "Nenhuma escala para este período.",
+    "noSchedulesDesc": "Crie uma nova escala para começar.",
+    "selectSchedule": "Selecione uma escala ao lado",
+    "selectScheduleDesc": "para visualizar e editar a grade mensal",
+    "deleteConfirm": "Deletar a escala de {month}/{year}?",
+    "errorLoadDetail": "Erro ao carregar detalhes da escala.",
+    "status": {
+      "RASCUNHO": "Rascunho",
+      "PUBLICADA": "Publicada",
+      "ENCERRADA": "Encerrada"
+    },
+    "filter": {
+      "month": "Mês",
+      "year": "Ano",
+      "ministry": "Ministério",
+      "all": "Todos"
+    },
+    "modal": {
+      "title": "Nova Escala Mensal",
+      "month": "Mês",
+      "year": "Ano",
+      "ministry": "Ministério",
+      "ministryPlaceholder": "Selecione um ministério",
+      "weekdays": "Dias da semana (opcional)",
+      "weekdaysDesc": "Selecione os dias que se repetem no mês para gerar automaticamente.",
+      "daysGenerated": "{count} dias serão gerados automaticamente",
+      "dayGenerated": "{count} dia será gerado automaticamente",
+      "notes": "Observações",
+      "notesPlaceholder": "Notas gerais para esta escala...",
+      "create": "Criar Escala",
+      "creating": "Criando...",
+      "days": {
+        "0": "Dom",
+        "1": "Seg",
+        "2": "Ter",
+        "3": "Qua",
+        "4": "Qui",
+        "5": "Sex",
+        "6": "Sáb"
+      }
+    },
+    "grid": {
+      "date": "Data",
+      "noFunctions": "Nenhuma função cadastrada neste ministério.",
+      "noFunctionsDesc": "Vá em Ministérios → Funções para adicionar as colunas da escala.",
+      "noDays": "Nenhum dia adicionado. Use o botão abaixo para adicionar cultos/eventos ao mês.",
+      "addDay": "Adicionar Dia",
+      "addDayTitlePlaceholder": "Título (ex: Culto da Família)",
+      "addMember": "+ membro",
+      "removeDay": "Remover dia",
+      "removeDayConfirm": "Remover este dia e todas as alocações?",
+      "dragHandle": "Arrastar para reordenar"
+    },
+    "ai": {
+      "title": "Escala Automática com IA",
+      "badge": "Em breve · Fase 2",
+      "description": "Em breve você poderá gerar escalas completas automaticamente. A IA vai considerar disponibilidade dos membros, histórico de participação e funções no ministério para montar a grade do mês.",
+      "feature1": "Respeita disponibilidade e preferências de cada membro",
+      "feature2": "Evita conflitos de data e funções duplicadas",
+      "feature3": "O líder revisa e aprova antes de publicar",
+      "understood": "Entendido"
+    },
+    "months": {
+      "1": "Janeiro",
+      "2": "Fevereiro",
+      "3": "Março",
+      "4": "Abril",
+      "5": "Maio",
+      "6": "Junho",
+      "7": "Julho",
+      "8": "Agosto",
+      "9": "Setembro",
+      "10": "Outubro",
+      "11": "Novembro",
+      "12": "Dezembro"
+    }
+  },
+  "agenda": {
+    "title": "Agenda",
+    "description": "Visualize e gerencie os eventos da sua igreja.",
+    "new": "Novo Evento",
+    "noEvents": "Nenhum evento cadastrado.",
+    "noEventsDesc": "Adicione eventos para visualizá-los na agenda.",
+    "errorLoading": "Erro ao carregar eventos.",
+    "status": {
+      "AGENDADO": "Agendado",
+      "REALIZADO": "Realizado",
+      "CANCELADO": "Cancelado"
+    },
+    "fields": {
+      "title": "Título",
+      "description": "Descrição",
+      "start": "Data e hora de início",
+      "end": "Data e hora de fim",
+      "location": "Local",
+      "status": "Status"
+    }
+  },
+  "settings": {
+    "title": "Configurações",
+    "description": "Gerencie as configurações da sua conta e do sistema.",
+    "language": {
+      "title": "Idioma",
+      "description": "Escolha o idioma de exibição do sistema.",
+      "save": "Salvar preferência"
+    }
+  },
+  "integrations": {
+    "title": "Integrações",
+    "description": "Conecte o One Elo com outras ferramentas e serviços."
+  },
+  "comingSoon": {
+    "badge": "Em breve",
+    "defaultTitle": "Funcionalidade em desenvolvimento",
+    "defaultDescription": "Esta funcionalidade estará disponível em breve.",
+    "backToDashboard": "Voltar ao Dashboard"
+  }
+}

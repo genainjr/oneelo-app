@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { api, HttpError } from '@/lib/api';
 import { AuthUser } from '@/types';
 
@@ -10,6 +11,7 @@ interface LoginResponse {
 }
 
 function LoginForm() {
+  const t = useTranslations('auth.login');
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') ?? '/';
@@ -30,12 +32,12 @@ function LoginForm() {
     } catch (err) {
       if (err instanceof HttpError) {
         if (err.status === 401) {
-          setError('E-mail ou senha incorretos.');
+          setError(t('errorInvalid'));
         } else {
-          setError('Erro ao fazer login. Tente novamente.');
+          setError(t('errorServer'));
         }
       } else {
-        setError('Erro de conexão. Verifique se o servidor está rodando.');
+        setError(t('errorConnection'));
       }
     } finally {
       setLoading(false);
@@ -51,19 +53,19 @@ function LoginForm() {
           alt="One Elo"
           className="w-16 h-16 rounded-2xl object-cover mb-4 shadow-lg shadow-indigo-500/30"
         />
-        <h1 className="text-3xl font-bold text-white tracking-tight">One Elo</h1>
-        <p className="text-indigo-300 mt-1 text-sm">Lookup Labs</p>
+        <h1 className="text-3xl font-bold text-white tracking-tight">{t('brand')}</h1>
+        <p className="text-indigo-300 mt-1 text-sm">{t('company')}</p>
       </div>
 
       {/* Card do formulário */}
       <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 shadow-2xl">
-        <h2 className="text-xl font-semibold text-white mb-6">Entrar na sua conta</h2>
+        <h2 className="text-xl font-semibold text-white mb-6">{t('heading')}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4" id="login-form">
           {/* E-mail */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-indigo-200 mb-1.5">
-              E-mail
+              {t('email')}
             </label>
             <input
               id="email"
@@ -72,7 +74,7 @@ function LoginForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
+              placeholder={t('emailPlaceholder')}
               className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-indigo-300/60 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
             />
           </div>
@@ -80,7 +82,7 @@ function LoginForm() {
           {/* Senha */}
           <div>
             <label htmlFor="senha" className="block text-sm font-medium text-indigo-200 mb-1.5">
-              Senha
+              {t('password')}
             </label>
             <input
               id="senha"
@@ -89,7 +91,7 @@ function LoginForm() {
               required
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              placeholder="••••••••"
+              placeholder={t('passwordPlaceholder')}
               className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-indigo-300/60 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
             />
           </div>
@@ -117,17 +119,17 @@ function LoginForm() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Entrando...
+                {t('submitting')}
               </>
             ) : (
-              'Entrar'
+              t('submit')
             )}
           </button>
         </form>
       </div>
 
       <p className="text-center text-indigo-400/60 text-xs mt-6">
-        © {new Date().getFullYear()} Lookup Labs. Todos os direitos reservados.
+        {t('copyright', { year: new Date().getFullYear() })}
       </p>
     </div>
   );
