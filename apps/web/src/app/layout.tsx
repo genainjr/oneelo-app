@@ -10,10 +10,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Lookup — Gestão de Igrejas',
-    template: '%s | Lookup',
+    default: 'One Elo',
+    template: '%s | One Elo',
   },
-  description: 'Sistema de gestão para igrejas: membros, escalas, ministérios e mais.',
+  description: 'One Elo — plataforma de gestão para igrejas da Lookup Labs.',
 };
 
 export default function RootLayout({

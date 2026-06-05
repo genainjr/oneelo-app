@@ -9,11 +9,12 @@ const PUBLIC_PATHS = ['/login'];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Permite rotas públicas e assets do Next.js
+  // Permite rotas públicas, assets do Next.js e arquivos estáticos
   if (
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon')
+    pathname.startsWith('/favicon') ||
+    /\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$/.test(pathname)
   ) {
     return NextResponse.next();
   }
@@ -31,5 +32,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/).*)',],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$).*)'],
 };
