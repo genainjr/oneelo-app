@@ -120,16 +120,19 @@ export interface Escala {
 
 // ─── Evento ───────────────────────────────────────────────────────────────────
 
+export type StatusEvento = 'AGENDADO' | 'REALIZADO' | 'CANCELADO';
+
 export interface Evento {
   id: string;
   tenantId: string;
   titulo: string;
   descricao?: string;
   local?: string;
-  inicio: string;
-  fim?: string;
-  ativo: boolean;
+  dataInicio: string;
+  dataFim?: string;
+  status: StatusEvento;
   createdAt: string;
+  updatedAt: string;
 }
 
 // ─── User (Sistema) ───────────────────────────────────────────────────────────
