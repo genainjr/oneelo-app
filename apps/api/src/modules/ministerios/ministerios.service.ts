@@ -84,6 +84,9 @@ export class MinisteriosService {
                 status: true,
               },
             },
+            funcoesDisponiveis: {
+              include: { funcao: { select: { id: true, nome: true } } },
+            },
           },
         },
         _count: {
@@ -157,7 +160,7 @@ export class MinisteriosService {
     });
   }
 
-  async addMembro(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole = MinistryRole.MEMBER) {
+  async addMembro(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole = MinistryRole.MEMBER, funcaoIds?: string[]) {
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id: ministerioId, tenantId },
     });
@@ -176,7 +179,23 @@ export class MinisteriosService {
       update: { role },
     });
 
+    if (funcaoIds !== undefined) {
+      await this.syncFuncoesDisponiveis(ministerioId, membroId, funcaoIds);
+    }
+
     return { message: 'Membro adicionado ao ministério com sucesso.' };
+  }
+
+  private async syncFuncoesDisponiveis(ministerioId: string, membroId: string, funcaoIds: string[]) {
+    await this.prisma.ministerioMembroFuncao.deleteMany({
+      where: { ministerioId, membroId, funcaoId: { notIn: funcaoIds } },
+    });
+    if (funcaoIds.length > 0) {
+      await this.prisma.ministerioMembroFuncao.createMany({
+        data: funcaoIds.map((funcaoId) => ({ ministerioId, membroId, funcaoId })),
+        skipDuplicates: true,
+      });
+    }
   }
 
   async removeMembro(tenantId: string, ministerioId: string, membroId: string, user: JwtPayload) {
@@ -202,32 +221,36 @@ export class MinisteriosService {
     return { message: 'Membro removido do ministério com sucesso.' };
   }
 
-  async updateMembroRole(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole, user: JwtPayload) {
+  async updateMembroRole(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole | undefined, funcaoIds: string[] | undefined, user: JwtPayload) {
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id: ministerioId, tenantId },
     });
     if (!ministerio) throw new NotFoundException('Ministério não encontrado.');
-
-    // Apenas ADMIN/STAFF podem promover a LEADER
-    if (role === MinistryRole.LEADER && user.role === Role.BASIC) {
-      throw new ForbiddenException('Apenas administradores podem definir líderes.');
-    }
-
-    // LEADER não pode se auto-promover
-    if (user.memberId === membroId && role === MinistryRole.LEADER) {
-      throw new ForbiddenException('Você não pode se auto-promover a líder.');
-    }
 
     const membership = await this.prisma.ministerioMembro.findUnique({
       where: { ministerioId_membroId: { ministerioId, membroId } },
     });
     if (!membership) throw new NotFoundException('Membro não participa deste ministério.');
 
-    await this.prisma.ministerioMembro.update({
-      where: { ministerioId_membroId: { ministerioId, membroId } },
-      data: { role },
-    });
+    if (role !== undefined) {
+      // Apenas ADMIN/STAFF podem promover a LEADER
+      if (role === MinistryRole.LEADER && user.role === Role.BASIC) {
+        throw new ForbiddenException('Apenas administradores podem definir líderes.');
+      }
+      // LEADER não pode se auto-promover
+      if (user.memberId === membroId && role === MinistryRole.LEADER) {
+        throw new ForbiddenException('Você não pode se auto-promover a líder.');
+      }
+      await this.prisma.ministerioMembro.update({
+        where: { ministerioId_membroId: { ministerioId, membroId } },
+        data: { role },
+      });
+    }
 
-    return { message: 'Função do membro atualizada com sucesso.' };
+    if (funcaoIds !== undefined) {
+      await this.syncFuncoesDisponiveis(ministerioId, membroId, funcaoIds);
+    }
+
+    return { message: 'Membro atualizado com sucesso.' };
   }
 }

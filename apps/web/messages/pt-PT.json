@@ -1,0 +1,467 @@
+{
+  "common": {
+    "at": "às",
+    "roles": {
+      "ADMIN": "Administrador",
+      "STAFF": "Equipa",
+      "BASIC": "Membro"
+    },
+    "save": "Guardar",
+    "saving": "A guardar...",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "remove": "Remover",
+    "archive": "Arquivar",
+    "edit": "Editar",
+    "add": "Adicionar",
+    "create": "Criar",
+    "creating": "A criar...",
+    "close": "Fechar",
+    "back": "Voltar",
+    "confirm": "Confirmar",
+    "loading": "A carregar...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "search": "Pesquisar",
+    "filter": "Filtrar",
+    "noResults": "Nenhum resultado encontrado.",
+    "optional": "opcional",
+    "yes": "Sim",
+    "no": "Não",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "archived": "Arquivado",
+    "reload": "Recarregar",
+    "notes": "Observações",
+    "actions": "Ações",
+    "manage": "Gerir",
+    "publish": "Publicar",
+    "published": "Publicado",
+    "draft": "Rascunho",
+    "closed": "Encerrado"
+  },
+  "language": {
+    "label": "Idioma",
+    "ptBR": "Português (Brasil)",
+    "ptPT": "Português (Portugal)",
+    "enUS": "English (US)"
+  },
+  "auth": {
+    "login": {
+      "heading": "Entrar na sua conta",
+      "brand": "One Elo",
+      "company": "Lookup Labs",
+      "email": "E-mail",
+      "emailPlaceholder": "o.seu@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Entrar",
+      "submitting": "A entrar...",
+      "errorInvalid": "E-mail ou password incorretos.",
+      "errorServer": "Erro ao iniciar sessão. Tente novamente.",
+      "errorConnection": "Erro de ligação. Verifique se o servidor está a funcionar.",
+      "copyright": "© {year} Lookup Labs. Todos os direitos reservados."
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "members": "Membros",
+    "ministries": "Ministérios",
+    "manage": "Gerir",
+    "schedules": "Escalas",
+    "agenda": "Agenda",
+    "integrations": "Integrações",
+    "settings": "Definições",
+    "comingSoon": "Em breve",
+    "logout": "Sair",
+    "loggingOut": "A sair...",
+    "collapse": "Recolher menu",
+    "expand": "Expandir menu",
+    "collapseModules": "Recolher módulos",
+    "expandModules": "Expandir módulos"
+  },
+  "dashboard": {
+    "greeting": "Olá{name}!",
+    "subtitle": "{date} · Aqui está o resumo da sua igreja.",
+    "quickAccess": "Acesso Rápido",
+    "quickLinks": {
+      "viewMembers": "Ver Membros",
+      "viewSchedules": "Ver Escalas",
+      "ministries": "Ministérios",
+      "agenda": "Agenda"
+    },
+    "errorLoading": "Erro ao carregar dados do painel.",
+    "stats": {
+      "activeMembers": "Membros Ativos",
+      "activeMembersDesc": "Estado ATIVO no sistema",
+      "weeklySchedules": "Escalas da Semana",
+      "weeklySchedulesDesc": "De hoje até domingo",
+      "birthdays": "Aniversariantes",
+      "birthdaysDesc": "Neste mês",
+      "activeMinistries": "Ministérios Ativos",
+      "activeMinistriesDesc": "Em funcionamento",
+      "pending": "Pendências",
+      "pendingDesc": "Confirmações de escala"
+    }
+  },
+  "members": {
+    "title": "Membros",
+    "pageTitle": "Membros",
+    "pageDescription": "Gira a membresia da igreja, aplique etiquetas em lote e filtre informações rapidamente.",
+    "description": "Gira os membros da sua igreja, informações de contacto e estado.",
+    "new": "Novo Membro",
+    "searchPlaceholder": "Pesquisar por nome, e-mail ou telemóvel...",
+    "noMembers": "Nenhum membro registado",
+    "noMembersDesc": "Adicione o primeiro membro da sua igreja.",
+    "filterAll": "Todos",
+    "errorLoading": "Erro ao carregar membros.",
+    "reload": "Recarregar",
+    "deleteConfirm": "Tem a certeza que deseja eliminar {name}?",
+    "deleteError": "Erro ao eliminar membro.",
+    "status": {
+      "ATIVO": "Ativo",
+      "INATIVO": "Inativo",
+      "VISITANTE": "Visitante",
+      "TRANSFERIDO": "Transferido"
+    },
+    "filter": {
+      "nameLabel": "Nome do Membro",
+      "namePlaceholder": "Pesquisar por nome...",
+      "whatsappLabel": "Telemóvel",
+      "whatsappPlaceholder": "Pesquisar por telemóvel...",
+      "statusLabel": "Estado",
+      "allStatuses": "Todos os estados",
+      "apply": "Filtrar",
+      "clear": "Limpar",
+      "tagsLabel": "Filtro por Etiquetas",
+      "compositeFilter": "Filtro composto:",
+      "newTag": "+ Nova Etiqueta"
+    },
+    "columns": {
+      "name": "Nome",
+      "contact": "Contacto",
+      "status": "Estado",
+      "tags": "Etiquetas",
+      "birthDate": "Nascimento",
+      "registeredAt": "Registo"
+    },
+    "editTooltip": "Editar membro",
+    "deleteTooltip": "Eliminar membro",
+    "empty": {
+      "noResults": "Nenhum membro encontrado",
+      "noResultsDesc": "Tente alterar os filtros ou adicione um novo membro."
+    },
+    "bulk": {
+      "selected": "{count} membros selecionados",
+      "addTag": "Adicionar Etiqueta",
+      "removeTag": "Remover Etiqueta",
+      "selectTag": "Selecione a Etiqueta...",
+      "apply": "Aplicar",
+      "cancelSelection": "Cancelar seleção",
+      "success": "Ação em lote aplicada com sucesso!",
+      "error": "Erro ao aplicar ação em lote."
+    },
+    "tag": {
+      "createTitle": "Criar Nova Etiqueta",
+      "nameLabel": "Nome da Etiqueta",
+      "namePlaceholder": "Ex: Jovem, Som, Ministério",
+      "colorLabel": "Cor da Etiqueta",
+      "cancel": "Cancelar",
+      "create": "Criar",
+      "error": "Erro ao criar etiqueta."
+    },
+    "fields": {
+      "name": "Nome completo",
+      "namePlaceholder": "Nome completo",
+      "email": "E-mail",
+      "emailPlaceholder": "email@exemplo.com",
+      "whatsapp": "Telemóvel",
+      "whatsappPlaceholder": "+351 912 345 678",
+      "birthDate": "Data de nascimento",
+      "status": "Estado",
+      "notes": "Observações",
+      "notesPlaceholder": "Informações adicionais...",
+      "tags": "Etiquetas"
+    },
+    "modal": {
+      "titleNew": "Novo Membro",
+      "titleEdit": "Editar Membro",
+      "subtitleNew": "Preencha os dados do novo membro",
+      "subtitleEdit": "Atualize as informações do membro",
+      "saveChanges": "Guardar Alterações",
+      "createMember": "Registar Membro",
+      "deleteConfirm": "Tem a certeza que deseja eliminar este membro? Esta ação não pode ser revertida.",
+      "tabs": {
+        "personal": "Dados Pessoais",
+        "tags": "Etiquetas"
+      }
+    },
+    "birthday": "Aniversário"
+  },
+  "ministries": {
+    "title": "Ministérios",
+    "description": "Gira as equipas de serviço, departamentos da igreja, líderes e participantes.",
+    "new": "Novo Ministério",
+    "noMinistries": "Nenhum ministério registado",
+    "noMinistriesDesc": "Os ministérios organizam os membros e as escalas de serviço.",
+    "errorLoading": "Erro ao carregar ministérios.",
+    "status": {
+      "active": "Ativo",
+      "archived": "Arquivado"
+    },
+    "card": {
+      "members": "{count} membro",
+      "members_plural": "{count} membros",
+      "leadership": "Liderança:",
+      "noLeader": "Sem líder"
+    },
+    "modal": {
+      "titleNew": "Novo Ministério",
+      "titleEdit": "Editar ministério",
+      "subtitleNew": "Preencha os dados para criar um novo ministério",
+      "subtitleEdit": "Edite as informações do ministério",
+      "saveChanges": "Guardar Alterações",
+      "createMinistry": "Criar Ministério",
+      "archiveConfirm": "Tem a certeza que deseja arquivar/inativar o ministério {name}?",
+      "tabs": {
+        "info": "Informações",
+        "members": "Membros",
+        "functions": "Funções"
+      },
+      "fields": {
+        "name": "Nome do Ministério",
+        "namePlaceholder": "Ex: Ministério de Louvor",
+        "description": "Descrição",
+        "descriptionPlaceholder": "Descreva o propósito deste ministério..."
+      }
+    },
+    "members": {
+      "add": "Adicionar Membro",
+      "selectMember": "Selecione um membro...",
+      "role": "Função",
+      "noMembers": "Nenhum membro neste ministério.",
+      "availableFunctions": "Funções disponíveis",
+      "saveFunctions": "Guardar",
+      "saving": "A guardar...",
+      "roles": {
+        "LEADER": "Líder",
+        "ASSISTANT_LEADER": "Assistente",
+        "MEMBER": "Membro"
+      }
+    },
+    "functions": {
+      "description": "Defina os cargos/funções fixos deste ministério. Serão as colunas da escala mensal.",
+      "noFunctions": "Nenhuma função registada.",
+      "newFunction": "Nova Função",
+      "functionPlaceholder": "Ex: Ministro, Teclado...",
+      "add": "Adicionar",
+      "save": "Guardar Funções",
+      "saving": "A guardar..."
+    }
+  },
+  "schedules": {
+    "title": "Escalas",
+    "description": "Gira as escalas mensais por ministério. Defina os cultos e aloque os membros por função.",
+    "new": "Nova Escala",
+    "generateAI": "Gerar com IA",
+    "aiComingSoon": "Em breve",
+    "errorLoading": "Erro ao carregar escalas.",
+    "noSchedules": "Nenhuma escala para este período.",
+    "noSchedulesDesc": "Crie uma nova escala para começar.",
+    "selectSchedule": "Selecione uma escala ao lado",
+    "selectScheduleDesc": "para visualizar e editar a grelha mensal",
+    "deleteConfirm": "Eliminar a escala de {month}/{year}?",
+    "errorLoadDetail": "Erro ao carregar detalhes da escala.",
+    "status": {
+      "RASCUNHO": "Rascunho",
+      "PUBLICADA": "Publicada",
+      "ENCERRADA": "Encerrada"
+    },
+    "filter": {
+      "month": "Mês",
+      "year": "Ano",
+      "ministry": "Ministério",
+      "all": "Todos"
+    },
+    "modal": {
+      "title": "Nova Escala Mensal",
+      "month": "Mês",
+      "year": "Ano",
+      "ministry": "Ministério",
+      "ministryPlaceholder": "Selecione um ministério",
+      "weekdays": "Dias da semana (opcional)",
+      "weekdaysDesc": "Selecione os dias que se repetem no mês para gerar automaticamente.",
+      "daysGenerated": "{count} dias serão gerados automaticamente",
+      "dayGenerated": "{count} dia será gerado automaticamente",
+      "notes": "Observações",
+      "notesPlaceholder": "Notas gerais para esta escala...",
+      "create": "Criar Escala",
+      "creating": "A criar...",
+      "days": {
+        "0": "Dom",
+        "1": "Seg",
+        "2": "Ter",
+        "3": "Qua",
+        "4": "Qui",
+        "5": "Sex",
+        "6": "Sáb"
+      }
+    },
+    "grid": {
+      "date": "Data",
+      "noFunctions": "Nenhuma função registada neste ministério.",
+      "noFunctionsDesc": "Vá em Ministérios → Funções para adicionar as colunas da escala.",
+      "noDays": "Nenhum dia adicionado. Use o botão abaixo para adicionar cultos/eventos ao mês.",
+      "addDay": "Adicionar Dia",
+      "addDayTitlePlaceholder": "Título (ex: Culto da Família)",
+      "addMember": "+ membro",
+      "removeDay": "Remover dia",
+      "removeDayConfirm": "Remover este dia e todas as alocações?",
+      "dragHandle": "Arrastar para reordenar"
+    },
+    "ai": {
+      "title": "Escala Automática com IA",
+      "badge": "Em breve · Fase 2",
+      "description": "Em breve poderá gerar escalas completas automaticamente. A IA vai considerar a disponibilidade dos membros, histórico de participação e funções no ministério para montar a grelha do mês.",
+      "feature1": "Respeita disponibilidade e preferências de cada membro",
+      "feature2": "Evita conflitos de data e funções duplicadas",
+      "feature3": "O líder revê e aprova antes de publicar",
+      "understood": "Entendido"
+    },
+    "months": {
+      "1": "Janeiro",
+      "2": "Fevereiro",
+      "3": "Março",
+      "4": "Abril",
+      "5": "Maio",
+      "6": "Junho",
+      "7": "Julho",
+      "8": "Agosto",
+      "9": "Setembro",
+      "10": "Outubro",
+      "11": "Novembro",
+      "12": "Dezembro"
+    }
+  },
+  "agenda": {
+    "title": "Agenda",
+    "pageTitle": "Agenda da Igreja",
+    "pageDescription": "Acompanhe cultos, ensaios, reuniões e eventos oficiais da igreja.",
+    "newEvent": "Novo Evento",
+    "reload": "Recarregar",
+    "noEvents": "Nenhum evento agendado",
+    "noEventsDesc": "Pode criar novos eventos e cultos oficiais da igreja para alimentar a agenda partilhada.",
+    "errorLoading": "Erro ao carregar eventos.",
+    "errorSave": "Erro ao guardar evento.",
+    "errorDelete": "Erro ao eliminar evento.",
+    "deleteConfirm": "Tem a certeza que deseja eliminar o evento \"{title}\"?",
+    "status": {
+      "AGENDADO": "Agendado",
+      "REALIZADO": "Realizado",
+      "CANCELADO": "Cancelado"
+    },
+    "filter": {
+      "statusLabel": "Estado",
+      "allStatuses": "Todos os estados",
+      "from": "A partir de (Data)",
+      "to": "Até (Data)",
+      "apply": "Filtrar",
+      "clear": "Limpar"
+    },
+    "event": {
+      "start": "Início",
+      "end": "Fim",
+      "location": "Local"
+    },
+    "modal": {
+      "editTitle": "Editar Evento",
+      "createTitle": "Novo Evento da Igreja",
+      "titleLabel": "Título do Evento *",
+      "titlePlaceholder": "Ex: Culto de Jovens, Reunião de Líderes",
+      "startTime": "Hora de Início *",
+      "endTime": "Hora de Fim",
+      "locationLabel": "Local / Templo",
+      "locationPlaceholder": "Ex: Templo Principal, Sala 3",
+      "statusLabel": "Estado do Evento",
+      "descriptionLabel": "Descrição / Pontos de Pauta",
+      "descriptionPlaceholder": "Informações adicionais ou cronograma do evento...",
+      "editTooltip": "Editar evento",
+      "deleteTooltip": "Eliminar evento",
+      "cancel": "Cancelar",
+      "save": "Guardar"
+    }
+  },
+  "settings": {
+    "title": "Definições",
+    "pageTitle": "Painel de Definições",
+    "pageDescription": "Controle os perfis de acesso dos utilizadores e consulte os relatórios de auditoria.",
+    "description": "Gira as definições da sua conta e do sistema.",
+    "errorLoading": "Erro ao carregar dados de configurações.",
+    "retry": "Tentar novamente",
+    "language": {
+      "title": "Idioma",
+      "description": "Escolha o idioma de apresentação do sistema.",
+      "save": "Guardar preferência"
+    },
+    "accessRestricted": {
+      "title": "Acesso Restrito",
+      "description": "Esta página está disponível apenas para administradores gerais do sistema. Caso necessite de acesso, entre em contacto com o suporte ou gestor de TI da igreja.",
+      "backToDashboard": "Voltar ao Dashboard"
+    },
+    "tabs": {
+      "users": "Utilizadores do Sistema",
+      "audit": "Registo de Auditoria"
+    },
+    "users": {
+      "new": "Novo Utilizador",
+      "noUsers": "Nenhum utilizador registado",
+      "noUsersDesc": "Os utilizadores têm login e password para gerir o sistema.",
+      "columns": {
+        "name": "Nome",
+        "email": "E-mail",
+        "role": "Perfil / Permissão",
+        "member": "Membro associado",
+        "status": "Estado",
+        "registeredAt": "Registo",
+        "actions": "Ações"
+      },
+      "editTooltip": "Editar utilizador",
+      "deactivateTooltip": "Desativar utilizador",
+      "status": {
+        "active": "Ativo",
+        "inactive": "Inativo"
+      }
+    },
+    "audit": {
+      "noLogs": "Nenhum registo de auditoria",
+      "noLogsDesc": "Ações de mutação em membros, ministérios e escalas aparecerão aqui.",
+      "columns": {
+        "dateTime": "Data / Hora",
+        "operator": "Operador",
+        "operation": "Operação",
+        "resource": "Recurso",
+        "ipAddress": "Endereço IP"
+      },
+      "system": "Sistema"
+    },
+    "deactivate": {
+      "title": "Desativar utilizador",
+      "subtitle": "Esta ação pode ser revertida editando o utilizador.",
+      "message": "Tem a certeza que deseja desativar o utilizador {name}? Ele perderá o acesso ao sistema imediatamente.",
+      "cancel": "Cancelar",
+      "confirm": "Desativar",
+      "confirming": "A desativar..."
+    },
+    "errorDeactivate": "Erro ao desativar utilizador."
+  },
+  "integrations": {
+    "title": "Integrações",
+    "description": "Ligue o One Elo a outras ferramentas e serviços."
+  },
+  "comingSoon": {
+    "badge": "Em breve",
+    "defaultTitle": "Funcionalidade em desenvolvimento",
+    "defaultDescription": "Esta funcionalidade estará disponível em breve.",
+    "backToDashboard": "Voltar ao Dashboard"
+  }
+}

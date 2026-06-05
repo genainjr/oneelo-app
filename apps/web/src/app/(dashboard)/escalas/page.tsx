@@ -1,26 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEscalas } from '@/hooks/use-escalas';
+import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
 import { api } from '@/lib/api';
-import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, AuthUser, Membro } from '@/types';
-
-// ─── Utils ────────────────────────────────────────────────────────────────────
-
-const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, MinisterioMembro, AuthUser } from '@/types';
 
 const STATUS_COLORS: Record<string, string> = {
   RASCUNHO: 'bg-gray-100 text-gray-600 border-gray-200',
   PUBLICADA: 'bg-green-50 text-green-700 border-green-200',
   ENCERRADA: 'bg-red-50 text-red-700 border-red-200',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  RASCUNHO: 'Rascunho',
-  PUBLICADA: 'Publicada',
-  ENCERRADA: 'Encerrada',
 };
 
 const CONFIRMACAO_COLORS: Record<string, string> = {
@@ -40,27 +30,35 @@ function formatDayDate(dateStr: string) {
 interface EscalaGridProps {
   escala: Escala;
   funcoes: MinisterioFuncao[];
-  ministryMembers: Membro[];
+  ministryMembers: MinisterioMembro[];
   canManage: boolean;
   onAddMembro: (diaId: string, membroId: string, funcaoId: string) => Promise<void>;
   onRemoveMembro: (itemId: string) => Promise<void>;
   onAddDia: (data: string, titulo?: string) => Promise<void>;
   onRemoveDia: (diaId: string) => Promise<void>;
+  onReorderDias: (diaIds: string[]) => Promise<void>;
+  onToggleCelula: (diaId: string, funcaoId: string, ocultar: boolean) => void;
+  tGrid: ReturnType<typeof useTranslations>;
 }
 
-function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, onRemoveMembro, onAddDia, onRemoveDia }: EscalaGridProps) {
+function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, onRemoveMembro, onAddDia, onRemoveDia, onReorderDias, onToggleCelula, tGrid }: EscalaGridProps) {
   const [addingDia, setAddingDia] = useState(false);
   const [newDiaDate, setNewDiaDate] = useState('');
   const [newDiaTitulo, setNewDiaTitulo] = useState('');
   const [savingDia, setSavingDia] = useState(false);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragIdRef = React.useRef<string | null>(null);
 
-  const dias = (escala.dias || []).sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+  const [dias, setDias] = useState<EscalaDia[]>([]);
+  React.useEffect(() => {
+    setDias((escala.dias || []).slice().sort((a: any, b: any) => (a.ordem ?? 0) - (b.ordem ?? 0)));
+  }, [escala.dias]);
 
   if (funcoes.length === 0) {
     return (
       <div className="text-center py-12 text-sm text-gray-400">
-        <p className="font-medium">Nenhuma função cadastrada neste ministério.</p>
-        <p className="text-xs mt-1">Vá em Ministérios → Funções para adicionar as colunas da escala.</p>
+        <p className="font-medium">{tGrid('noFunctions')}</p>
+        <p className="text-xs mt-1">{tGrid('noFunctionsDesc')}</p>
       </div>
     );
   }
@@ -88,7 +86,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
         <thead>
           <tr className="bg-gray-50 border-b border-gray-200">
             <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-28 border-r border-gray-200">
-              Data
+              {tGrid('date')}
             </th>
             {funcoes.map((f) => (
               <th key={f.id} className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap min-w-[160px]">
@@ -101,26 +99,59 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
           {dias.length === 0 ? (
             <tr>
               <td colSpan={funcoes.length + 1} className="text-center py-10 text-sm text-gray-400">
-                Nenhum dia adicionado. Use o botão abaixo para adicionar cultos/eventos ao mês.
+                {tGrid('noDays')}
               </td>
             </tr>
           ) : (
             dias.map((dia) => {
               const { dayName, day } = formatDayDate(dia.data);
+              const isDragOver = dragOverId === dia.id;
+              const canDrag = canManage && escala.status === 'RASCUNHO';
               return (
-                <tr key={dia.id} className="hover:bg-gray-50/60 transition-colors group">
+                <tr
+                  key={dia.id}
+                  draggable={canDrag}
+                  onDragStart={canDrag ? () => { dragIdRef.current = dia.id; } : undefined}
+                  onDragOver={canDrag ? (e) => { e.preventDefault(); setDragOverId(dia.id); } : undefined}
+                  onDragLeave={canDrag ? () => setDragOverId(null) : undefined}
+                  onDrop={canDrag ? async () => {
+                    setDragOverId(null);
+                    const fromId = dragIdRef.current;
+                    dragIdRef.current = null;
+                    if (!fromId || fromId === dia.id) return;
+                    const newOrder = dias.map(d => d.id);
+                    const fromIdx = newOrder.indexOf(fromId);
+                    const toIdx = newOrder.indexOf(dia.id);
+                    newOrder.splice(fromIdx, 1);
+                    newOrder.splice(toIdx, 0, fromId);
+                    setDias(dias.slice().sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id)));
+                    await onReorderDias(newOrder);
+                  } : undefined}
+                  className={`hover:bg-gray-50/60 transition-colors group ${isDragOver ? 'border-t-2 border-indigo-400' : ''}`}
+                >
                   <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50/60 px-4 py-3 border-r border-gray-100">
                     <div className="flex items-start justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-bold text-indigo-600">{dayName}</div>
-                        <div className="text-lg font-extrabold text-gray-800 leading-none">{day}</div>
-                        {dia.titulo && <div className="text-[11px] text-gray-400 mt-0.5 leading-tight">{dia.titulo}</div>}
+                      <div className="flex items-start gap-1.5">
+                        {canDrag && (
+                          <span className="mt-1 cursor-grab text-gray-300 hover:text-gray-400 shrink-0" title={tGrid('dragHandle')}>
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                              <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+                              <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                              <circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+                            </svg>
+                          </span>
+                        )}
+                        <div>
+                          <div className="text-xs font-bold text-indigo-600">{dayName}</div>
+                          <div className="text-lg font-extrabold text-gray-800 leading-none">{day}</div>
+                          {dia.titulo && <div className="text-[11px] text-gray-400 mt-0.5 leading-tight">{dia.titulo}</div>}
+                        </div>
                       </div>
                       {canManage && (
                         <button
                           onClick={() => onRemoveDia(dia.id)}
                           className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-red-400 transition-all"
-                          title="Remover dia"
+                          title={tGrid('removeDay')}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -131,40 +162,69 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
                   </td>
                   {funcoes.map((funcao) => {
                     const cellItems = getMembrosForCell(dia, funcao.id);
+                    const isOculta = dia.funcoesOcultas?.some((o) => o.funcaoId === funcao.id) ?? false;
                     return (
                       <td key={funcao.id} className="px-3 py-2 align-top">
-                        <div className="space-y-1 min-h-[2rem]">
-                          {cellItems.map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 group/item"
-                            >
-                              <span className={`text-xs font-semibold truncate ${CONFIRMACAO_COLORS[item.statusConfirmacao]}`}>
-                                {item.membro?.nome || '—'}
-                              </span>
-                              {canManage && (
-                                <button
-                                  onClick={() => onRemoveMembro(item.id)}
-                                  className="opacity-0 group-hover/item:opacity-100 p-0.5 text-indigo-300 hover:text-red-400 transition-all shrink-0"
-                                  title="Remover"
-                                >
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {canManage && escala.status !== 'ENCERRADA' && (
-                            <CellMemberSelect
-                              diaId={dia.id}
-                              funcaoId={funcao.id}
-                              membros={ministryMembers}
-                              alreadyAssigned={cellItems.map(i => i.membroId)}
-                              onAdd={onAddMembro}
-                            />
-                          )}
-                        </div>
+                        {isOculta ? (
+                          <div className="flex items-center gap-1.5 h-8">
+                            <span className="text-gray-300 font-bold">—</span>
+                            {canManage && (
+                              <button
+                                onClick={() => onToggleCelula(dia.id, funcao.id, false)}
+                                title={`Mostrar ${funcao.nome} neste dia`}
+                                className="text-gray-300 hover:text-indigo-500 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1 min-h-[2rem] relative group/cell">
+                            {canManage && escala.status !== 'ENCERRADA' && (
+                              <button
+                                onClick={() => onToggleCelula(dia.id, funcao.id, true)}
+                                title={`Ocultar ${funcao.nome} neste dia`}
+                                className="absolute top-0 right-0 opacity-0 group-hover/cell:opacity-100 p-0.5 text-gray-300 hover:text-red-400 transition-all"
+                              >
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                            {cellItems.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 group/item"
+                              >
+                                <span className={`text-xs font-semibold truncate ${CONFIRMACAO_COLORS[item.statusConfirmacao]}`}>
+                                  {item.membro?.nome || '—'}
+                                </span>
+                                {canManage && (
+                                  <button
+                                    onClick={() => onRemoveMembro(item.id)}
+                                    className="opacity-0 group-hover/item:opacity-100 p-0.5 text-indigo-300 hover:text-red-400 transition-all shrink-0"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {canManage && escala.status !== 'ENCERRADA' && (
+                              <CellMemberSelect
+                                diaId={dia.id}
+                                funcaoId={funcao.id}
+                                membros={ministryMembers}
+                                alreadyAssigned={cellItems.map(i => i.membroId)}
+                                onAdd={onAddMembro}
+                                addMemberLabel={tGrid('addMember')}
+                              />
+                            )}
+                          </div>
+                        )}
                       </td>
                     );
                   })}
@@ -189,7 +249,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
                 type="text"
                 value={newDiaTitulo}
                 onChange={(e) => setNewDiaTitulo(e.target.value)}
-                placeholder="Título (ex: Culto da Família)"
+                placeholder={tGrid('addDayTitlePlaceholder')}
                 className="flex-1 min-w-[180px] px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
               />
               <button
@@ -197,7 +257,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
                 disabled={!newDiaDate || savingDia}
                 className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all"
               >
-                {savingDia ? 'Salvando...' : 'Adicionar Dia'}
+                {tGrid('addDay')}
               </button>
               <button onClick={() => setAddingDia(false)} className="text-sm text-gray-400 hover:text-gray-600">
                 Cancelar
@@ -211,7 +271,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Adicionar Dia
+              {tGrid('addDay')}
             </button>
           )}
         </div>
@@ -225,16 +285,21 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
 interface CellMemberSelectProps {
   diaId: string;
   funcaoId: string;
-  membros: Membro[];
+  membros: MinisterioMembro[];
   alreadyAssigned: string[];
   onAdd: (diaId: string, membroId: string, funcaoId: string) => Promise<void>;
+  addMemberLabel: string;
 }
 
-function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd }: CellMemberSelectProps) {
+function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd, addMemberLabel }: CellMemberSelectProps) {
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const options = membros.filter(m => !alreadyAssigned.includes(m.id));
+  const options = membros.filter((mm) => {
+    if (alreadyAssigned.includes(mm.membroId)) return false;
+    if (!mm.funcoesDisponiveis?.length) return true;
+    return mm.funcoesDisponiveis.some((fd) => fd.funcaoId === funcaoId);
+  });
 
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const membroId = e.target.value;
@@ -257,9 +322,9 @@ function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd }: 
       disabled={saving}
       className="w-full text-xs border border-dashed border-gray-200 bg-transparent rounded-lg px-2 py-1 text-gray-400 hover:border-indigo-300 focus:outline-none focus:border-indigo-400 disabled:opacity-50 cursor-pointer transition-all"
     >
-      <option value="">+ membro</option>
-      {options.map((m) => (
-        <option key={m.id} value={m.id}>{m.nome}</option>
+      <option value="">{addMemberLabel}</option>
+      {options.map((mm) => (
+        <option key={mm.membroId} value={mm.membroId}>{mm.membro?.nome}</option>
       ))}
     </select>
   );
@@ -268,6 +333,9 @@ function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd }: 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function EscalasPage() {
+  const t = useTranslations('schedules');
+  const tGrid = useTranslations('schedules.grid');
+
   const {
     escalas,
     loading,
@@ -279,8 +347,10 @@ export default function EscalasPage() {
     deleteEscala,
     addDia,
     removeDia,
+    reorderDias,
     addMembroItem,
     removeMembroItem,
+    toggleCelula,
   } = useEscalas();
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -288,31 +358,29 @@ export default function EscalasPage() {
   const [selectedEscala, setSelectedEscala] = useState<Escala | null>(null);
   const [detailedEscala, setDetailedEscala] = useState<Escala | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [ministryMembers, setMinistryMembers] = useState<Membro[]>([]);
+  const [ministryMembers, setMinistryMembers] = useState<MinisterioMembro[]>([]);
 
-  // ─── Filter ──────────────────────────────────────────────────────────────────
   const hoje = new Date();
   const [filterMes, setFilterMes] = useState(String(hoje.getMonth() + 1));
   const [filterAno, setFilterAno] = useState(String(hoje.getFullYear()));
   const [filterMinId, setFilterMinId] = useState('');
 
-  // ─── Create Modal ─────────────────────────────────────────────────────────────
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newMes, setNewMes] = useState(hoje.getMonth() + 1);
   const [newAno, setNewAno] = useState(hoje.getFullYear());
   const [newMinId, setNewMinId] = useState('');
   const [newObs, setNewObs] = useState('');
+  const [newDiasSemana, setNewDiasSemana] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
 
-  // ─── Toast ───────────────────────────────────────────────────────────────────
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [aiToastOpen, setAiToastOpen] = useState(false);
+
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }
 
-  // ─── Load data ───────────────────────────────────────────────────────────────
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me').then(setCurrentUser).catch(() => setCurrentUser(null));
     api.get<Ministerio[]>('/api/ministerios').then(d => setMinisterios(Array.isArray(d) ? d : [])).catch(() => {});
@@ -329,14 +397,12 @@ export default function EscalasPage() {
     try {
       const data = await api.get<Escala>(`/api/escalas/${escala.id}`);
       setDetailedEscala(data);
-
-      // Load ministry members
       if (data.ministerioId) {
         const min = await api.get<any>(`/api/ministerios/${data.ministerioId}`);
-        setMinistryMembers(min.membros?.map((mm: any) => mm.membro) || []);
+        setMinistryMembers(min.membros || []);
       }
     } catch {
-      showToast('Erro ao carregar detalhes da escala.', 'error');
+      showToast(t('errorLoadDetail'), 'error');
     } finally {
       setLoadingDetail(false);
     }
@@ -358,11 +424,19 @@ export default function EscalasPage() {
     if (!newMinId) return;
     setCreating(true);
     try {
-      await createEscala({ mes: newMes, ano: newAno, ministerioId: newMinId, observacoes: newObs || undefined });
+      const created = await createEscala({
+        mes: newMes,
+        ano: newAno,
+        ministerioId: newMinId,
+        observacoes: newObs || undefined,
+        diasSemana: newDiasSemana.length ? newDiasSemana : undefined,
+      });
       setIsCreateOpen(false);
       setNewMinId('');
       setNewObs('');
+      setNewDiasSemana([]);
       showToast('Escala mensal criada com sucesso!');
+      fetchDetail(created);
     } catch (err: any) {
       showToast(err.message || 'Erro ao criar escala.', 'error');
     } finally {
@@ -384,7 +458,8 @@ export default function EscalasPage() {
 
   async function handleDelete() {
     if (!selectedEscala) return;
-    if (!confirm(`Deletar a escala de ${MESES[selectedEscala.mes - 1]}/${selectedEscala.ano}?`)) return;
+    const mesNome = t(`months.${selectedEscala.mes}` as any);
+    if (!confirm(t('deleteConfirm', { month: mesNome, year: selectedEscala.ano }))) return;
     try {
       await deleteEscala(selectedEscala.id);
       setSelectedEscala(null);
@@ -395,14 +470,54 @@ export default function EscalasPage() {
     }
   }
 
-  const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF' || currentUser?.role === 'BASIC';
+  async function handleToggleCelula(diaId: string, funcaoId: string, ocultar: boolean) {
+    // Atualização otimista
+    setDetailedEscala((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        dias: prev.dias?.map((dia) => {
+          if (dia.id !== diaId) return dia;
+          const atuais = dia.funcoesOcultas ?? [];
+          const novas = ocultar
+            ? [...atuais, { funcaoId }]
+            : atuais.filter((o) => o.funcaoId !== funcaoId);
+          return { ...dia, funcoesOcultas: novas };
+        }),
+      };
+    });
 
+    try {
+      await toggleCelula(diaId, funcaoId, ocultar);
+    } catch {
+      showToast('Erro ao atualizar célula.', 'error');
+      await refreshDetail();
+    }
+  }
+
+  const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF' || currentUser?.role === 'BASIC';
   const funcoes = detailedEscala?.ministerio?.funcoes || [];
   const anos = Array.from({ length: 4 }, (_, i) => hoje.getFullYear() - 1 + i);
 
+  const MESES_KEYS = [1,2,3,4,5,6,7,8,9,10,11,12] as const;
+  const DIAS_SEMANA = [
+    { key: '0', value: 0 },
+    { key: '1', value: 1 },
+    { key: '2', value: 2 },
+    { key: '3', value: 3 },
+    { key: '4', value: 4 },
+    { key: '5', value: 5 },
+    { key: '6', value: 6 },
+  ];
+
+  const STATUS_LABELS: Record<string, string> = {
+    RASCUNHO: t('status.RASCUNHO'),
+    PUBLICADA: t('status.PUBLICADA'),
+    ENCERRADA: t('status.ENCERRADA'),
+  };
+
   return (
     <div className="p-6 max-w-full mx-auto space-y-6">
-      {/* Toast */}
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-medium border animate-in slide-in-from-bottom-3 ${
           toast.type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'
@@ -428,22 +543,16 @@ export default function EscalasPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-gray-800">Escala Automática com IA</h3>
+                <h3 className="font-bold text-gray-800">{t('ai.title')}</h3>
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                  Em breve · Fase 2
+                  {t('ai.badge')}
                 </span>
               </div>
             </div>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              Em breve você poderá gerar escalas completas automaticamente. A IA vai considerar disponibilidade dos membros, histórico de participação e funções no ministério para montar a grade do mês.
-            </p>
+            <p className="text-sm text-gray-500 leading-relaxed">{t('ai.description')}</p>
             <div className="space-y-2">
-              {[
-                'Respeita disponibilidade e preferências de cada membro',
-                'Evita conflitos de data e funções duplicadas',
-                'O líder revisa e aprova antes de publicar',
-              ].map((item) => (
+              {[t('ai.feature1'), t('ai.feature2'), t('ai.feature3')].map((item) => (
                 <div key={item} className="flex items-center gap-2 text-xs text-gray-600">
                   <svg className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -457,7 +566,7 @@ export default function EscalasPage() {
                 onClick={() => setAiToastOpen(false)}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-all"
               >
-                Entendido
+                {t('ai.understood')}
               </button>
             </div>
           </div>
@@ -465,22 +574,22 @@ export default function EscalasPage() {
       )}
 
       <PageHeader
-        title="Escalas"
-        description="Gerencie as escalas mensais por ministério. Defina os cultos e aloque os membros por função."
+        title={t('title')}
+        description={t('description')}
         action={
           canManage ? (
             <div className="flex items-center gap-2">
               <button
-                title="Em breve: geração automática de escalas com IA"
+                title={t('aiComingSoon')}
                 onClick={() => setAiToastOpen(true)}
                 className="px-4 py-2 border border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-semibold rounded-xl text-sm flex items-center gap-2 transition-all"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Gerar com IA
+                {t('generateAI')}
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-500 leading-none">
-                  Em breve
+                  {t('aiComingSoon')}
                 </span>
               </button>
               <button
@@ -491,7 +600,7 @@ export default function EscalasPage() {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                Nova Escala
+                {t('new')}
               </button>
             </div>
           ) : undefined
@@ -501,18 +610,18 @@ export default function EscalasPage() {
       {/* ─── Filters ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3 items-center bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-xs">
         <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-gray-500 uppercase">Mês</label>
+          <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.month')}</label>
           <select
             id="filter-mes"
             value={filterMes}
             onChange={(e) => setFilterMes(e.target.value)}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
           >
-            {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            {MESES_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-gray-500 uppercase">Ano</label>
+          <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.year')}</label>
           <select
             id="filter-ano"
             value={filterAno}
@@ -523,14 +632,14 @@ export default function EscalasPage() {
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-gray-500 uppercase">Ministério</label>
+          <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.ministry')}</label>
           <select
             id="filter-ministerio"
             value={filterMinId}
             onChange={(e) => setFilterMinId(e.target.value)}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
           >
-            <option value="">Todos</option>
+            <option value="">{t('filter.all')}</option>
             {ministerios.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </select>
         </div>
@@ -538,7 +647,7 @@ export default function EscalasPage() {
 
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex justify-between items-center">
-          {error}
+          {t('errorLoading')}
           <button onClick={refetch} className="underline font-semibold hover:text-red-800">Recarregar</button>
         </div>
       )}
@@ -547,7 +656,7 @@ export default function EscalasPage() {
         {/* ─── Lista de Escalas ─────────────────────────────────────────────── */}
         <div className="space-y-3">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-1">
-            {MESES[parseInt(filterMes) - 1]} / {filterAno}
+            {t(`months.${parseInt(filterMes)}` as any)} / {filterAno}
           </h2>
 
           {loading ? (
@@ -556,8 +665,8 @@ export default function EscalasPage() {
             </div>
           ) : escalas.length === 0 ? (
             <div className="text-center py-10 text-sm text-gray-400 bg-gray-50 rounded-2xl border border-gray-100">
-              <p className="font-medium">Nenhuma escala para este período.</p>
-              {canManage && <p className="text-xs mt-1">Crie uma nova escala para começar.</p>}
+              <p className="font-medium">{t('noSchedules')}</p>
+              {canManage && <p className="text-xs mt-1">{t('noSchedulesDesc')}</p>}
             </div>
           ) : (
             escalas.map((e) => (
@@ -574,7 +683,7 @@ export default function EscalasPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-bold text-gray-800 text-sm">{e.ministerio?.nome || '—'}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{MESES[e.mes - 1]} / {e.ano}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t(`months.${e.mes}` as any)} / {e.ano}</p>
                   </div>
                   <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLORS[e.status]}`}>
                     {STATUS_LABELS[e.status]}
@@ -596,8 +705,8 @@ export default function EscalasPage() {
                 <svg className="w-10 h-10 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <p className="font-medium">Selecione uma escala ao lado</p>
-                <p className="text-xs">para visualizar e editar a grade mensal</p>
+                <p className="font-medium">{t('selectSchedule')}</p>
+                <p className="text-xs">{t('selectScheduleDesc')}</p>
               </div>
             </div>
           ) : loadingDetail ? (
@@ -607,11 +716,10 @@ export default function EscalasPage() {
             </div>
           ) : detailedEscala ? (
             <div className="space-y-4">
-              {/* Header */}
               <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-xs flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h2 className="text-base font-bold text-gray-800">
-                    {detailedEscala.ministerio?.nome} — {MESES[detailedEscala.mes - 1]} {detailedEscala.ano}
+                    {detailedEscala.ministerio?.nome} — {t(`months.${detailedEscala.mes}` as any)} {detailedEscala.ano}
                   </h2>
                   {detailedEscala.observacoes && (
                     <p className="text-xs text-gray-500 mt-0.5">{detailedEscala.observacoes}</p>
@@ -629,7 +737,7 @@ export default function EscalasPage() {
                           onClick={() => handleUpdateStatus('PUBLICADA')}
                           className="px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all"
                         >
-                          Publicar
+                          {t('status.PUBLICADA')}
                         </button>
                       )}
                       {detailedEscala.status === 'PUBLICADA' && (
@@ -637,7 +745,7 @@ export default function EscalasPage() {
                           onClick={() => handleUpdateStatus('ENCERRADA')}
                           className="px-3 py-1.5 text-xs font-semibold text-white bg-gray-700 hover:bg-gray-800 rounded-xl transition-all"
                         >
-                          Encerrar
+                          {t('status.ENCERRADA')}
                         </button>
                       )}
                       <button
@@ -651,12 +759,13 @@ export default function EscalasPage() {
                 </div>
               </div>
 
-              {/* Grid */}
               <EscalaGrid
                 escala={detailedEscala}
                 funcoes={funcoes}
                 ministryMembers={ministryMembers}
                 canManage={canManage}
+                tGrid={tGrid}
+                onToggleCelula={handleToggleCelula}
                 onAddMembro={async (diaId, membroId, funcaoId) => {
                   await addMembroItem(diaId, membroId, funcaoId);
                   await refreshDetail();
@@ -670,9 +779,12 @@ export default function EscalasPage() {
                   await refreshDetail();
                 }}
                 onRemoveDia={async (diaId) => {
-                  if (!confirm('Remover este dia e todas as alocações?')) return;
+                  if (!confirm(tGrid('removeDayConfirm'))) return;
                   await removeDia(diaId);
                   await refreshDetail();
+                }}
+                onReorderDias={async (diaIds) => {
+                  await reorderDias(detailedEscala.id, diaIds);
                 }}
               />
             </div>
@@ -685,7 +797,7 @@ export default function EscalasPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-bold text-gray-800">Nova Escala Mensal</h2>
+              <h2 className="text-base font-bold text-gray-800">{t('modal.title')}</h2>
               <button
                 onClick={() => setIsCreateOpen(false)}
                 className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
@@ -698,18 +810,18 @@ export default function EscalasPage() {
             <form onSubmit={handleCreate} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase">Mês *</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.month')} *</label>
                   <select
                     id="create-mes"
                     value={newMes}
                     onChange={(e) => setNewMes(parseInt(e.target.value))}
                     className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
                   >
-                    {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                    {MESES_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase">Ano *</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.year')} *</label>
                   <select
                     id="create-ano"
                     value={newAno}
@@ -721,7 +833,7 @@ export default function EscalasPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Ministério *</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.ministry')} *</label>
                 <select
                   id="create-ministerio"
                   value={newMinId}
@@ -729,17 +841,54 @@ export default function EscalasPage() {
                   onChange={(e) => setNewMinId(e.target.value)}
                   className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
                 >
-                  <option value="">Selecione um ministério</option>
+                  <option value="">{t('modal.ministryPlaceholder')}</option>
                   {ministerios.filter(m => m.ativo).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
               </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.weekdays')}</label>
+                <p className="text-xs text-gray-400">{t('modal.weekdaysDesc')}</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {DIAS_SEMANA.map(({ key, value }) => {
+                    const selected = newDiasSemana.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setNewDiasSemana(prev =>
+                          selected ? prev.filter(d => d !== value) : [...prev, value]
+                        )}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all select-none ${
+                          selected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                        }`}
+                      >
+                        {t(`modal.days.${key}` as any)}
+                      </button>
+                    );
+                  })}
+                </div>
+                {newDiasSemana.length > 0 && (() => {
+                  const totalDias = new Date(newAno, newMes, 0).getDate();
+                  let count = 0;
+                  for (let d = 1; d <= totalDias; d++) {
+                    if (newDiasSemana.includes(new Date(newAno, newMes - 1, d).getDay())) count++;
+                  }
+                  return (
+                    <p className="text-xs text-indigo-600 font-semibold">
+                      {count === 1 ? t('modal.dayGenerated', { count }) : t('modal.daysGenerated', { count })}
+                    </p>
+                  );
+                })()}
+              </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">Observações</label>
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.notes')}</label>
                 <textarea
                   value={newObs}
                   onChange={(e) => setNewObs(e.target.value)}
                   rows={2}
-                  placeholder="Notas gerais para esta escala..."
+                  placeholder={t('modal.notesPlaceholder')}
                   className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 resize-none"
                 />
               </div>
@@ -757,7 +906,7 @@ export default function EscalasPage() {
                   disabled={creating || !newMinId}
                   className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all disabled:opacity-50"
                 >
-                  {creating ? 'Criando...' : 'Criar Escala'}
+                  {creating ? t('modal.creating') : t('modal.create')}
                 </button>
               </div>
             </form>

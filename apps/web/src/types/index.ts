@@ -60,11 +60,17 @@ export interface MinisterioFuncao {
   ordem: number;
 }
 
+export interface MinisterioMembroFuncao {
+  funcaoId: string;
+  funcao: { id: string; nome: string };
+}
+
 export interface MinisterioMembro {
   ministerioId: string;
   membroId: string;
   role: MinistryRole;
   membro?: Pick<Membro, 'id' | 'nome' | 'email' | 'whatsapp' | 'status'>;
+  funcoesDisponiveis?: MinisterioMembroFuncao[];
 }
 
 export interface Ministerio {
@@ -101,6 +107,7 @@ export interface EscalaDia {
   eventoId?: string;
   observacoes?: string;
   itens?: EscalaItem[];
+  funcoesOcultas?: { funcaoId: string }[];
 }
 
 export interface Escala {

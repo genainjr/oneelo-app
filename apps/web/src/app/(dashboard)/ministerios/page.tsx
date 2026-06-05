@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useMinisterios } from '@/hooks/use-ministerios';
+import { useTranslations } from 'next-intl';
 
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { api } from '@/lib/api';
 import { Ministerio, Membro, AuthUser, MinistryRole } from '@/types';
-import { MINISTRY_ROLE_LABEL } from '@/lib/utils';
 
 export default function MinisteriosPage() {
+  const t = useTranslations('ministries');
   const {
     ministerios,
     loading,
@@ -35,21 +36,21 @@ export default function MinisteriosPage() {
 
   const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
 
-  // Modal State
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
   const [modalTab, setModalTab] = useState<'info' | 'membros' | 'funcoes'>('info');
 
-  // Funções state
   const [funcoes, setFuncoes] = useState<string[]>([]);
   const [novaFuncao, setNovaFuncao] = useState('');
   const [savingFuncoes, setSavingFuncoes] = useState(false);
 
-  // Detailed view
   const [detailedInfo, setDetailedInfo] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Dropdown options
+  const [expandedMembro, setExpandedMembro] = useState<string | null>(null);
+  const [funcoesPorMembro, setFuncoesPorMembro] = useState<Record<string, string[]>>({});
+  const [savingFuncoesMembro, setSavingFuncoesMembro] = useState<string | null>(null);
+
   const [allMembros, setAllMembros] = useState<Membro[]>([]);
   const [selectedMembroToAdd, setSelectedMembroToAdd] = useState('');
   const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<MinistryRole>('MEMBER');
@@ -97,6 +98,13 @@ export default function MinisteriosPage() {
     if (detailedInfo?.funcoes) {
       setFuncoes(detailedInfo.funcoes.map((f: any) => f.nome));
     }
+    if (detailedInfo?.membros) {
+      const map: Record<string, string[]> = {};
+      for (const m of detailedInfo.membros) {
+        map[m.membroId] = (m.funcoesDisponiveis ?? []).map((fd: any) => fd.funcaoId);
+      }
+      setFuncoesPorMembro(map);
+    }
   }, [detailedInfo]);
 
   async function handleSave(e: React.FormEvent) {
@@ -141,7 +149,7 @@ export default function MinisteriosPage() {
   }
 
   async function handleDelete(m: Ministerio) {
-    if (confirm(`Tem certeza que deseja arquivar/inativar o ministério ${m.nome}?`)) {
+    if (confirm(t('modal.archiveConfirm', { name: m.nome }))) {
       try {
         await deleteMinisterio(m.id);
       } catch (err: any) {
@@ -175,28 +183,44 @@ export default function MinisteriosPage() {
   async function handleChangeRole(membroId: string, role: MinistryRole) {
     if (!selectedMinisterio) return;
     try {
-      await updateMembroRole(selectedMinisterio.id, membroId, role);
+      await updateMembroRole(selectedMinisterio.id, membroId, role, undefined);
       fetchDetails(selectedMinisterio.id);
     } catch (err: any) {
       alert(err.message || 'Erro ao alterar função.');
     }
   }
 
+  async function handleSaveFuncoesMembro(membroId: string) {
+    if (!selectedMinisterio) return;
+    setSavingFuncoesMembro(membroId);
+    try {
+      await updateMembroRole(selectedMinisterio.id, membroId, undefined, funcoesPorMembro[membroId] ?? []);
+      await fetchDetails(selectedMinisterio.id);
+      setExpandedMembro(null);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao salvar funções.');
+    } finally {
+      setSavingFuncoesMembro(null);
+    }
+  }
+
+  function toggleFuncaoMembro(membroId: string, funcaoId: string) {
+    setFuncoesPorMembro((prev) => {
+      const current = prev[membroId] ?? [];
+      const has = current.includes(funcaoId);
+      return { ...prev, [membroId]: has ? current.filter((id) => id !== funcaoId) : [...current, funcaoId] };
+    });
+  }
+
   const membersOptions = allMembros.filter(
     (m) => !detailedInfo?.membros?.some((dm: any) => dm.membroId === m.id)
   );
 
-  // Helpers para exibição
-  const leaderNames = (detailedInfo?.membros ?? ministerios.find(m => m.id === selectedMinisterio?.id)?.membros ?? [])
-    .filter((m: any) => m.role === 'LEADER' || m.role === 'ASSISTANT_LEADER')
-    .map((m: any) => m.membro?.nome)
-    .filter(Boolean);
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <PageHeader
-        title="Ministérios"
-        description="Gerencie as equipes de serviço, departamentos da igreja, líderes e participantes."
+        title={t('title')}
+        description={t('description')}
         action={
           canManage ? (
             <button
@@ -206,7 +230,7 @@ export default function MinisteriosPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Novo Ministério
+              {t('new')}
             </button>
           ) : undefined
         }
@@ -214,7 +238,7 @@ export default function MinisteriosPage() {
 
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
-          <span>{error}</span>
+          <span>{t('errorLoading')}</span>
           <button onClick={() => refetch()} className="underline font-semibold hover:text-red-800">Recarregar</button>
         </div>
       )}
@@ -226,7 +250,7 @@ export default function MinisteriosPage() {
           ))}
         </div>
       ) : ministerios.length === 0 ? (
-        <EmptyState title="Nenhum ministério cadastrado" description="Os ministérios organizam os membros e as escalas de serviço." />
+        <EmptyState title={t('noMinistries')} description={t('noMinistriesDesc')} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {ministerios.map((m) => {
@@ -238,7 +262,7 @@ export default function MinisteriosPage() {
               <div key={m.id} className={`bg-white rounded-2xl border border-gray-150 shadow-xs hover:shadow-md transition-all flex flex-col p-5 justify-between relative overflow-hidden ${!isAtivo && 'opacity-65'}`}>
                 <div className="absolute top-4 right-4">
                   <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${isAtivo ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                    {isAtivo ? 'Ativo' : 'Arquivado'}
+                    {isAtivo ? t('status.active') : t('status.archived')}
                   </span>
                 </div>
                 <div className="space-y-2 pr-12">
@@ -246,19 +270,19 @@ export default function MinisteriosPage() {
                   <p className="text-sm text-gray-500 line-clamp-2 h-10">{m.descricao || 'Sem descrição cadastrada.'}</p>
                 </div>
                 <div className="border-t border-gray-100 my-4 pt-3 flex items-center justify-between text-xs text-gray-500 font-medium">
-                  <span>{numMembros} {numMembros === 1 ? 'membro' : 'membros'}</span>
+                  <span>{numMembros} {numMembros === 1 ? t('card.members', { count: numMembros }) : t('card.members_plural', { count: numMembros })}</span>
                   <div className="truncate max-w-[150px] text-right">
-                    <span className="font-semibold text-gray-700">Liderança: </span>
-                    {cardLeaders.length > 0 ? cardLeaders.join(', ') : 'Sem líder'}
+                    <span className="font-semibold text-gray-700">{t('card.leadership')} </span>
+                    {cardLeaders.length > 0 ? cardLeaders.join(', ') : t('card.noLeader')}
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => { setSelectedMinisterio(m); setIsModalOpen(true); }} className="px-3 py-1.5 border border-gray-200 hover:border-gray-300 rounded-xl text-xs font-semibold text-gray-600 bg-white transition-all flex items-center gap-1.5">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                    Gerenciar
+                    {t('modal.titleEdit') === 'Editar ministério' ? 'Gerenciar' : 'Manage'}
                   </button>
                   {canManage && isAtivo && (
-                    <button onClick={() => handleDelete(m)} className="p-1.5 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 transition-colors" title="Arquivar ministério">
+                    <button onClick={() => handleDelete(m)} className="p-1.5 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 transition-colors" title={t('modal.archiveConfirm', { name: m.nome })}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   )}
@@ -274,14 +298,13 @@ export default function MinisteriosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
 
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
                 <h2 className="text-base font-bold text-gray-800">
-                  {selectedMinisterio ? selectedMinisterio.nome : 'Novo Ministério'}
+                  {selectedMinisterio ? selectedMinisterio.nome : t('modal.titleNew')}
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {selectedMinisterio ? 'Edite as informações do ministério' : 'Preencha os dados para criar um novo ministério'}
+                  {selectedMinisterio ? t('modal.subtitleEdit') : t('modal.subtitleNew')}
                 </p>
               </div>
               <button
@@ -294,7 +317,6 @@ export default function MinisteriosPage() {
               </button>
             </div>
 
-            {/* Tabs */}
             {selectedMinisterio && (
               <div className="flex border-b border-gray-100 px-6">
                 {(['info', 'membros', 'funcoes'] as const).map((tab) => (
@@ -307,55 +329,54 @@ export default function MinisteriosPage() {
                         : 'border-transparent text-gray-400 hover:text-gray-600'
                     }`}
                   >
-                    {tab === 'info' ? 'Informações' : tab === 'membros' ? 'Membros' : 'Funções'}
+                    {tab === 'info' ? t('modal.tabs.info') : tab === 'membros' ? t('modal.tabs.members') : t('modal.tabs.functions')}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Body */}
             <div className="overflow-y-auto flex-1 px-6 py-5">
 
               {/* Tab: Info */}
               {modalTab === 'info' && (
                 <form id="ministerio-form" onSubmit={handleSave} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label htmlFor="min-nome" className="text-xs font-bold text-gray-500 uppercase">Nome do Ministério *</label>
+                    <label htmlFor="min-nome" className="text-xs font-bold text-gray-500 uppercase">{t('modal.fields.name')} *</label>
                     <input
                       id="min-nome"
                       type="text"
                       required
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
-                      placeholder="Ex: Ministério de Louvor"
+                      placeholder={t('modal.fields.namePlaceholder')}
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label htmlFor="min-descricao" className="text-xs font-bold text-gray-500 uppercase">Descrição</label>
+                    <label htmlFor="min-descricao" className="text-xs font-bold text-gray-500 uppercase">{t('modal.fields.description')}</label>
                     <textarea
                       id="min-descricao"
                       value={descricao}
                       onChange={(e) => setDescricao(e.target.value)}
-                      placeholder="Descreva o propósito deste ministério..."
+                      placeholder={t('modal.fields.descriptionPlaceholder')}
                       rows={3}
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none"
                     />
                   </div>
                   {!selectedMinisterio && (
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase">Funções / Cargos (opcional)</label>
-                      <p className="text-xs text-gray-400">Defina os cargos do ministério. Eles serão as colunas da escala mensal.</p>
+                      <label className="text-xs font-bold text-gray-500 uppercase">{t('functions.newFunction')}</label>
+                      <p className="text-xs text-gray-400">{t('functions.description')}</p>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={novaFuncao}
                           onChange={(e) => setNovaFuncao(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
-                          placeholder="Ex: Ministro, Teclado..."
+                          placeholder={t('functions.functionPlaceholder')}
                           className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
                         />
-                        <button type="button" onClick={handleAddFuncao} className="px-3 py-2 bg-gray-800 text-white text-sm font-semibold rounded-xl hover:bg-gray-900">Adicionar</button>
+                        <button type="button" onClick={handleAddFuncao} className="px-3 py-2 bg-gray-800 text-white text-sm font-semibold rounded-xl hover:bg-gray-900">{t('functions.add')}</button>
                       </div>
                       {funcoes.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-1">
@@ -378,30 +399,30 @@ export default function MinisteriosPage() {
                   {canManage && (
                     <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
                       <div className="flex-1 space-y-1">
-                        <label htmlFor="add-membro" className="text-xs font-bold text-gray-500 uppercase">Adicionar Membro</label>
+                        <label htmlFor="add-membro" className="text-xs font-bold text-gray-500 uppercase">{t('members.add')}</label>
                         <select
                           id="add-membro"
                           value={selectedMembroToAdd}
                           onChange={(e) => setSelectedMembroToAdd(e.target.value)}
                           className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
                         >
-                          <option value="">Selecione um membro...</option>
+                          <option value="">{t('members.selectMember')}</option>
                           {membersOptions.map((m) => (
                             <option key={m.id} value={m.id}>{m.nome}</option>
                           ))}
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label htmlFor="add-role" className="text-xs font-bold text-gray-500 uppercase">Papel</label>
+                        <label htmlFor="add-role" className="text-xs font-bold text-gray-500 uppercase">{t('members.role')}</label>
                         <select
                           id="add-role"
                           value={selectedRoleToAdd}
                           onChange={(e) => setSelectedRoleToAdd(e.target.value as MinistryRole)}
                           className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
                         >
-                          <option value="MEMBER">Membro</option>
-                          <option value="ASSISTANT_LEADER">Assistente</option>
-                          <option value="LEADER">Líder</option>
+                          <option value="MEMBER">{t('members.roles.MEMBER')}</option>
+                          <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
+                          <option value="LEADER">{t('members.roles.LEADER')}</option>
                         </select>
                       </div>
                       <button
@@ -410,51 +431,108 @@ export default function MinisteriosPage() {
                         disabled={!selectedMembroToAdd}
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm"
                       >
-                        Adicionar
+                        {t('functions.add')}
                       </button>
                     </div>
                   )}
                   {loadingDetails ? (
                     <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
                   ) : !detailedInfo?.membros?.length ? (
-                    <p className="text-sm text-gray-400 text-center py-6">Nenhum membro neste ministério.</p>
+                    <p className="text-sm text-gray-400 text-center py-6">{t('members.noMembers')}</p>
                   ) : (
                     <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
-                      {detailedInfo.membros.map((item: any) => (
-                        <div key={item.membroId} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
-                              {item.membro?.nome?.substring(0, 2) ?? '??'}
+                      {detailedInfo.membros.map((item: any) => {
+                        const isExpanded = expandedMembro === item.membroId;
+                        const ministerioFuncoes: any[] = detailedInfo.funcoes ?? [];
+                        const selectedFuncoes = funcoesPorMembro[item.membroId] ?? [];
+                        return (
+                          <div key={item.membroId} className="divide-y divide-gray-50">
+                            <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
+                                  {item.membro?.nome?.substring(0, 2) ?? '??'}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-800">{item.membro?.nome}</p>
+                                  <p className="text-xs text-gray-400">{t(`members.roles.${item.role}` as any) ?? item.role}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {canManage && (
+                                  <select
+                                    value={item.role}
+                                    onChange={(e) => handleChangeRole(item.membroId, e.target.value as MinistryRole)}
+                                    className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
+                                  >
+                                    <option value="MEMBER">{t('members.roles.MEMBER')}</option>
+                                    <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
+                                    <option value="LEADER">{t('members.roles.LEADER')}</option>
+                                  </select>
+                                )}
+                                {ministerioFuncoes.length > 0 && (
+                                  <button
+                                    onClick={() => setExpandedMembro(isExpanded ? null : item.membroId)}
+                                    className={`p-1 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                                    title={t('members.availableFunctions')}
+                                  >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleRemoveMembro(item.membroId)}
+                                  className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                  title="Remover"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-800">{item.membro?.nome}</p>
-                              <p className="text-xs text-gray-400">{MINISTRY_ROLE_LABEL[item.role as MinistryRole] ?? item.role}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {canManage && (
-                              <select
-                                value={item.role}
-                                onChange={(e) => handleChangeRole(item.membroId, e.target.value as MinistryRole)}
-                                className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
-                              >
-                                <option value="MEMBER">Membro</option>
-                                <option value="ASSISTANT_LEADER">Assistente</option>
-                                <option value="LEADER">Líder</option>
-                              </select>
+                            {isExpanded && (
+                              <div className="px-4 py-3 bg-indigo-50/40">
+                                <p className="text-xs font-bold text-gray-500 uppercase mb-2">{t('members.availableFunctions')}</p>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                  {ministerioFuncoes.map((f: any) => {
+                                    const checked = selectedFuncoes.includes(f.id);
+                                    return (
+                                      <label key={f.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all select-none ${checked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
+                                        <input
+                                          type="checkbox"
+                                          className="sr-only"
+                                          checked={checked}
+                                          onChange={() => toggleFuncaoMembro(item.membroId, f.id)}
+                                          disabled={!canManage}
+                                        />
+                                        {checked && (
+                                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                          </svg>
+                                        )}
+                                        {f.nome}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                                {canManage && (
+                                  <div className="flex justify-end">
+                                    <button
+                                      onClick={() => handleSaveFuncoesMembro(item.membroId)}
+                                      disabled={savingFuncoesMembro === item.membroId}
+                                      className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 transition-colors"
+                                    >
+                                      {savingFuncoesMembro === item.membroId ? t('members.saving') : t('members.saveFunctions')}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
-                            <button
-                              onClick={() => handleRemoveMembro(item.membroId)}
-                              className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                              title="Remover"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -463,26 +541,26 @@ export default function MinisteriosPage() {
               {/* Tab: Funções */}
               {modalTab === 'funcoes' && selectedMinisterio && (
                 <div className="space-y-5">
-                  <p className="text-xs text-gray-500">Defina os cargos/funções fixos deste ministério. Eles serão as colunas da escala mensal.</p>
+                  <p className="text-xs text-gray-500">{t('functions.description')}</p>
                   {canManage && (
                     <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
                       <div className="flex-1 space-y-1">
-                        <label htmlFor="nova-funcao" className="text-xs font-bold text-gray-500 uppercase">Nova Função</label>
+                        <label htmlFor="nova-funcao" className="text-xs font-bold text-gray-500 uppercase">{t('functions.newFunction')}</label>
                         <input
                           id="nova-funcao"
                           type="text"
                           value={novaFuncao}
                           onChange={(e) => setNovaFuncao(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
-                          placeholder="Ex: Ministro, Teclado..."
+                          placeholder={t('functions.functionPlaceholder')}
                           className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
                         />
                       </div>
-                      <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="px-4 py-2 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-sm">Adicionar</button>
+                      <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="px-4 py-2 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-sm">{t('functions.add')}</button>
                     </div>
                   )}
                   {funcoes.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center py-6">Nenhuma função cadastrada.</p>
+                    <p className="text-sm text-gray-400 text-center py-6">{t('functions.noFunctions')}</p>
                   ) : (
                     <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
                       {funcoes.map((f, idx) => (
@@ -503,7 +581,7 @@ export default function MinisteriosPage() {
                   {canManage && (
                     <div className="flex justify-end pt-2 border-t border-gray-100">
                       <button onClick={handleSaveFuncoes} disabled={savingFuncoes} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs disabled:opacity-50">
-                        {savingFuncoes ? 'Salvando...' : 'Salvar Funções'}
+                        {savingFuncoes ? t('functions.saving') : t('functions.save')}
                       </button>
                     </div>
                   )}
@@ -539,7 +617,7 @@ export default function MinisteriosPage() {
                       form="ministerio-form"
                       className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all"
                     >
-                      {selectedMinisterio ? 'Salvar Alterações' : 'Criar Ministério'}
+                      {selectedMinisterio ? t('modal.saveChanges') : t('modal.createMinistry')}
                     </button>
                   )}
                 </div>

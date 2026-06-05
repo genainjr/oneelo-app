@@ -1,8 +1,15 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, parseISO, isValid } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS } from 'date-fns/locale';
+import type { Locale } from 'date-fns';
 import type { StatusConfirmacao, StatusEscala, StatusMembro, Role } from '@/types';
+
+export const DATE_FNS_LOCALES: Record<string, Locale> = {
+  'pt-BR': ptBR,
+  'pt-PT': ptBR,
+  'en-US': enUS,
+};
 
 // ─── Classnames ───────────────────────────────────────────────────────────────
 
@@ -12,7 +19,7 @@ export function cn(...inputs: ClassValue[]) {
 
 // ─── Formatação de datas ──────────────────────────────────────────────────────
 
-export function formatDate(date: string | Date | null | undefined, fmt = 'dd/MM/yyyy'): string {
+export function formatDate(date: string | Date | null | undefined, fmt = 'dd/MM/yyyy', dfLocale: Locale = ptBR): string {
   if (!date) return '—';
   try {
     let d: Date;
@@ -27,14 +34,14 @@ export function formatDate(date: string | Date | null | undefined, fmt = 'dd/MM/
       d = date;
     }
     if (!isValid(d)) return '—';
-    return format(d, fmt, { locale: ptBR });
+    return format(d, fmt, { locale: dfLocale });
   } catch {
     return '—';
   }
 }
 
-export function formatDateTime(date: string | Date | null | undefined): string {
-  return formatDate(date, "dd/MM/yyyy 'às' HH:mm");
+export function formatDateTime(date: string | Date | null | undefined, at = 'às', dfLocale: Locale = ptBR): string {
+  return formatDate(date, `dd/MM/yyyy '${at}' HH:mm`, dfLocale);
 }
 
 // ─── Formatação de telefone ───────────────────────────────────────────────────
