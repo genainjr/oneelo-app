@@ -63,7 +63,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
   ) {
-    await this.authService.logout(user.sub, user.tenantId, req.ip);
+    await this.authService.logout(user.sub, user.tenantId!, req.ip);
 
     // Remove o cookie de sessão
     res.clearCookie('access_token');
@@ -74,14 +74,14 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() user: JwtPayload) {
-    return this.authService.me(user.sub, user.tenantId);
+    return this.authService.me(user.sub, user.tenantId!);
   }
 
   @Get('users')
   @UseGuards(JwtAuthGuard)
   @Roles(Role.ADMIN)
   async getUsers(@CurrentUser() user: JwtPayload) {
-    return this.authService.findAllUsers(user.tenantId);
+    return this.authService.findAllUsers(user.tenantId!);
   }
 
   @Get('members-available')
@@ -89,14 +89,14 @@ export class AuthController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Lista membros disponíveis para viculamento a um usuário' })
   async getAvailableMembers(@CurrentUser() user: JwtPayload) {
-    return this.authService.findAvailableMembers(user.tenantId);
+    return this.authService.findAvailableMembers(user.tenantId!);
   }
 
   @Get('audit-logs')
   @UseGuards(JwtAuthGuard)
   @Roles(Role.ADMIN, Role.STAFF)
   async getAuditLogs(@CurrentUser() user: JwtPayload) {
-    return this.authService.findAllAuditLogs(user.tenantId);
+    return this.authService.findAllAuditLogs(user.tenantId!);
   }
 
   @Post('users')
@@ -109,7 +109,7 @@ export class AuthController {
     @CurrentUser() actor: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.authService.createUser(dto, actor.tenantId, actor.sub, (req as any).ip);
+    return this.authService.createUser(dto, actor.tenantId!, actor.sub, (req as any).ip);
   }
 
   @Patch('users/:id')
@@ -122,7 +122,7 @@ export class AuthController {
     @CurrentUser() actor: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.authService.updateUser(id, dto, actor.tenantId, actor.sub, (req as any).ip);
+    return this.authService.updateUser(id, dto, actor.tenantId!, actor.sub, (req as any).ip);
   }
 
   @Delete('users/:id')
@@ -134,6 +134,6 @@ export class AuthController {
     @CurrentUser() actor: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.authService.deleteUser(id, actor.tenantId, actor.sub, (req as any).ip);
+    return this.authService.deleteUser(id, actor.tenantId!, actor.sub, (req as any).ip);
   }
 }

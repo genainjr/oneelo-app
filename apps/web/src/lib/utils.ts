@@ -102,6 +102,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'Administrador',
   STAFF: 'Equipe',
   BASIC: 'Membro',
+  SUPER_ADMIN: 'Super Admin',
 };
 
 export const MINISTRY_ROLE_LABEL: Record<string, string> = {
