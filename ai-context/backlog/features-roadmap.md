@@ -1,8 +1,28 @@
-# Backlog — Features de Produto (Pós-MVP)
+# Backlog — Features de Produto
 
-Features planejadas para as fases seguintes ao MVP. Cada uma já tem tela "Em breve" no frontend — o componente `<ComingSoon />` está em `apps/web/src/components/app/coming-soon.tsx`.
+Features planejadas para homologação e fases seguintes. As pós-MVP têm tela "Em breve" no frontend — o componente `<ComingSoon />` está em `apps/web/src/components/app/coming-soon.tsx`.
 
 ---
+
+## Necessárias para Homologação / Pré-lançamento
+
+### FT-000 Painel Super Admin
+
+- **Prioridade**: crítica — bloqueia homologação
+- **Fase**: pré-lançamento
+- **Categoria**: infraestrutura / operação
+- **Contexto**: A Lookup Labs precisa de um painel separado para cadastrar e gerenciar as igrejas clientes (tenants). Hoje, a criação de tenants é feita diretamente no banco — impossível de operar em produção. Esse painel é necessário para cadastrar as igrejas piloto antes de homologar.
+- **Ação**: Criar grupo de rotas `/admin/*` no Next.js (separado de `/dashboard/*`). Criar role `SUPER_ADMIN` sem `tenantId` no model `User`. Criar endpoints NestJS `/admin/*` com guard exclusivo `SUPER_ADMIN` que não filtra por tenant. Telas mínimas: listagem/criação/edição de Tenants (com ativação/desativação) e criação do primeiro usuário ADMIN de cada tenant.
+- **Impacto**: Permite cadastrar igrejas piloto sem acesso direto ao banco. Operação de produção sustentável.
+- **Depende de**: IMP-001 (campos email/phone/language no Tenant). Claim `SUPER_ADMIN` no JWT sem `tenantId`.
+- **Arquivos a criar**:
+  - `apps/web/src/app/admin/` (grupo de rotas)
+  - `apps/api/src/modules/admin/` (controller + service + guard)
+  - Migration: adicionar enum value `SUPER_ADMIN` ao campo `role` de `User`
+
+---
+
+## Pós-MVP (por fase)
 
 ### FT-001 Integração com WhatsApp
 - **Prioridade**: alta

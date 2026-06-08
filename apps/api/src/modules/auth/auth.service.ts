@@ -30,11 +30,11 @@ export class AuthService {
       include: { tenant: true },
     });
 
-    if (!user) {
+    if (!user || user.role === 'SUPER_ADMIN') {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    if (!user.tenant.ativo) {
+    if (!user.tenant?.ativo) {
       throw new ForbiddenException(
         'Acesso suspenso. Entre em contato com o administrador.',
       );
@@ -52,7 +52,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       memberId: user.memberId ?? undefined,
-      tenantId: user.tenantId,
+      tenantId: user.tenantId ?? undefined,
     };
 
     // 4. Gerar token
@@ -86,7 +86,7 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string, tenantId: string, ip?: string) {
+  async logout(userId: string, tenantId?: string, ip?: string) {
     // Registrar audit log de logout
     await this.prisma.auditLog.create({
       data: {

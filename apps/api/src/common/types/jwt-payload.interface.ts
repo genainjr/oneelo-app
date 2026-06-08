@@ -3,5 +3,5 @@ export interface JwtPayload {
   email: string;
   role: string;
   memberId?: string; // vínculo com Membro (quando existir)
-  tenantId: string;
+  tenantId?: string;
 }

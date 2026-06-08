@@ -13,6 +13,7 @@ async function main() {
   // Limpar tabelas na ordem correta devido a chaves estrangeiras
   await prisma.auditLog.deleteMany();
   await prisma.escalaItem.deleteMany();
+  await prisma.escalaDiaFuncaoOculta.deleteMany();
   await prisma.escalaDia.deleteMany();
   await prisma.escala.deleteMany();
   await prisma.evento.deleteMany();
@@ -43,8 +44,21 @@ async function main() {
   // 2. Criar Senhas Hashed
   const salt = await bcrypt.genSalt(10);
   const senhaHashAdmin = await bcrypt.hash('admin123', salt);
+  const senhaHashSuperAdmin = await bcrypt.hash('superadmin123', salt);
 
-  // 3. Criar Usuários (Users)
+  // 3. Criar Super Admin global (sem tenantId)
+  console.log('Criando Super Admin...');
+  await prisma.user.create({
+    data: {
+      tenantId: null,
+      nome: 'Super Admin',
+      email: 'superadmin@lookuplabs.com',
+      senhaHash: senhaHashSuperAdmin,
+      role: Role.SUPER_ADMIN,
+    },
+  });
+
+  // 4. Criar Usuários do Tenant
   console.log('Criando Usuários...');
   const adminUser = await prisma.user.create({
     data: { tenantId: tenant.id, nome: 'Admin Geral', email: 'admin@ccrv.com', senhaHash: senhaHashAdmin, role: Role.ADMIN },

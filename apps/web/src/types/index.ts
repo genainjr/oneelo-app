@@ -1,6 +1,24 @@
 // Tipos e interfaces que espelham as respostas da API
 
-export type Role = 'ADMIN' | 'STAFF' | 'BASIC';
+export type Role = 'ADMIN' | 'STAFF' | 'BASIC' | 'SUPER_ADMIN';
+
+export type Plano = 'GRATUITO' | 'BASICO' | 'PROFISSIONAL';
+
+// ─── Tenant (Super Admin) ─────────────────────────────────────────────────────
+
+export interface Tenant {
+  id: string;
+  nome: string;
+  slug: string;
+  plano: Plano;
+  statusAssinatura: string;
+  ativo: boolean;
+  email?: string;
+  telefone?: string;
+  idioma?: string;
+  createdAt: string;
+  _count?: { users: number };
+}
 
 export type MinistryRole = 'LEADER' | 'ASSISTANT_LEADER' | 'MEMBER';
 
