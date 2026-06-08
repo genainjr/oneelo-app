@@ -9,7 +9,9 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { SuperAdminService } from './super-admin.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -17,7 +19,9 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
+import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import type { Response, Request } from 'express';
 
 @Controller('admin')
@@ -28,6 +32,8 @@ export class SuperAdminController {
   @Public()
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   async login(
     @Body() dto: AdminLoginDto,
     @Res({ passthrough: true }) res: Response,
@@ -52,13 +58,22 @@ export class SuperAdminController {
 
   @Post('tenants')
   @HttpCode(HttpStatus.CREATED)
-  async createTenant(@Body() dto: CreateTenantDto) {
-    return this.superAdminService.createTenant(dto);
+  async createTenant(
+    @Body() dto: CreateTenantDto,
+    @CurrentUser() admin: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.superAdminService.createTenant(dto, admin.sub, req.ip);
   }
 
   @Patch('tenants/:id')
-  async updateTenant(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
-    return this.superAdminService.updateTenant(id, dto);
+  async updateTenant(
+    @Param('id') id: string,
+    @Body() dto: UpdateTenantDto,
+    @CurrentUser() admin: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.superAdminService.updateTenant(id, dto, admin.sub, req.ip);
   }
 
   @Post('tenants/:id/usuarios')
@@ -66,7 +81,9 @@ export class SuperAdminController {
   async createTenantUser(
     @Param('id') tenantId: string,
     @Body() dto: CreateTenantUserDto,
+    @CurrentUser() admin: JwtPayload,
+    @Req() req: Request,
   ) {
-    return this.superAdminService.createTenantUser(tenantId, dto);
+    return this.superAdminService.createTenantUser(tenantId, dto, admin.sub, req.ip);
   }
 }

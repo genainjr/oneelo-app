@@ -1,7 +1,8 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
 
 export class CreateTagDto {
   @IsString()
+  @IsNotEmpty({ message: 'Nome é obrigatório.' })
   nome: string;
 
   @IsString()
