@@ -12,7 +12,7 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
-import { Role } from '@prisma/client';
+import { Role, AcaoAuditoria } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -69,14 +69,14 @@ export class SuperAdminService {
     });
   }
 
-  async createTenant(dto: CreateTenantDto) {
+  async createTenant(dto: CreateTenantDto, adminId: string, ip?: string) {
     const slugExists = await this.prisma.tenant.findUnique({ where: { slug: dto.slug } });
     if (slugExists) throw new ConflictException('Slug já está em uso.');
 
     const emailExists = await this.prisma.user.findFirst({ where: { email: dto.adminEmail } });
     if (emailExists) throw new ConflictException('E-mail do administrador já está em uso.');
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
           nome: dto.nome,
@@ -100,15 +100,28 @@ export class SuperAdminService {
         select: { id: true, nome: true, email: true, role: true },
       });
 
+      await tx.auditLog.create({
+        data: {
+          userId: adminId,
+          entidade: 'Tenant',
+          entidadeId: tenant.id,
+          acao: AcaoAuditoria.CRIAR,
+          ipAddress: ip ?? null,
+          payloadAfter: { nome: dto.nome, slug: dto.slug, plano: dto.plano },
+        },
+      });
+
       return { tenant, adminUser };
     });
+
+    return result;
   }
 
-  async updateTenant(id: string, dto: UpdateTenantDto) {
+  async updateTenant(id: string, dto: UpdateTenantDto, adminId: string, ip?: string) {
     const tenant = await this.prisma.tenant.findUnique({ where: { id } });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
 
-    return this.prisma.tenant.update({
+    const updated = await this.prisma.tenant.update({
       where: { id },
       data: {
         ...(dto.nome !== undefined && { nome: dto.nome }),
@@ -131,9 +144,24 @@ export class SuperAdminService {
         createdAt: true,
       },
     });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        tenantId: id,
+        entidade: 'Tenant',
+        entidadeId: id,
+        acao: AcaoAuditoria.ATUALIZAR,
+        ipAddress: ip ?? null,
+        payloadBefore: { nome: tenant.nome, plano: tenant.plano, ativo: tenant.ativo },
+        payloadAfter: dto as any,
+      },
+    });
+
+    return updated;
   }
 
-  async createTenantUser(tenantId: string, dto: CreateTenantUserDto) {
+  async createTenantUser(tenantId: string, dto: CreateTenantUserDto, adminId: string, ip?: string) {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
 
@@ -141,7 +169,7 @@ export class SuperAdminService {
     if (emailExists) throw new ConflictException('E-mail já está em uso.');
 
     const senhaHash = await bcrypt.hash(dto.senha, 10);
-    return this.prisma.user.create({
+    const newUser = await this.prisma.user.create({
       data: {
         tenantId,
         nome: dto.nome,
@@ -151,5 +179,19 @@ export class SuperAdminService {
       },
       select: { id: true, nome: true, email: true, role: true, createdAt: true },
     });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        tenantId,
+        entidade: 'User',
+        entidadeId: newUser.id,
+        acao: AcaoAuditoria.CRIAR,
+        ipAddress: ip ?? null,
+        payloadAfter: { nome: dto.nome, email: dto.email, role: dto.role },
+      },
+    });
+
+    return newUser;
   }
 }

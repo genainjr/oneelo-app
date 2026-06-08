@@ -78,7 +78,10 @@
     "collapse": "Recolher menu",
     "expand": "Expandir menu",
     "collapseModules": "Recolher módulos",
-    "expandModules": "Expandir módulos"
+    "expandModules": "Expandir módulos",
+    "export": "Exportação",
+    "groups": "Grupo de Crescimento",
+    "finance": "Financeiro"
   },
   "dashboard": {
     "greeting": "Olá{name}!",

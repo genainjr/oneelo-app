@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsDateString, IsNotEmpty } from 'class-validator';
 
 export enum StatusEvento {
   AGENDADO = 'AGENDADO',
@@ -8,6 +8,7 @@ export enum StatusEvento {
 
 export class CreateEventoDto {
   @IsString()
+  @IsNotEmpty({ message: 'Título é obrigatório.' })
   titulo: string;
 
   @IsString()
