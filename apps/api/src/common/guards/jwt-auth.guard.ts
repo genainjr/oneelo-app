@@ -44,9 +44,10 @@ export class JwtAuthGuard implements CanActivate {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
 
-      // Injeta usuário e tenantId no request para uso nos controllers/services
       request['user'] = payload;
-      request['tenantId'] = payload.tenantId;
+      if (payload.tenantId) {
+        request['tenantId'] = payload.tenantId;
+      }
     } catch {
       throw new UnauthorizedException('Token de acesso inválido ou expirado.');
     }

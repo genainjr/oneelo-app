@@ -9,6 +9,8 @@ import { MinisteriosModule } from './modules/ministerios/ministerios.module';
 import { EventosModule } from './modules/eventos/eventos.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EscalasModule } from './modules/escalas/escalas.module';
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
+import { LeadsModule } from './modules/leads/leads.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -29,6 +31,8 @@ import { RolesGuard } from './common/guards/roles.guard';
     EventosModule,
     DashboardModule,
     EscalasModule,
+    SuperAdminModule,
+    LeadsModule,
   ],
   providers: [
     // Filtro global de exceções HTTP

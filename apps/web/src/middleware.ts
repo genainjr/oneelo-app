@@ -5,7 +5,7 @@ import { locales, defaultLocale, type Locale } from './i18n/config';
 const AUTH_COOKIE = 'access_token';
 const LOCALE_COOKIE = 'NEXT_LOCALE';
 
-const PUBLIC_PATHS = ['/login', '/locale'];
+const PUBLIC_PATHS = ['/', '/login', '/locale', '/admin/login'];
 
 function detectLocale(request: NextRequest): Locale {
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
@@ -25,11 +25,21 @@ function detectLocale(request: NextRequest): Locale {
   return defaultLocale;
 }
 
+function decodeJwtRole(token: string): string | null {
+  try {
+    const payloadB64 = token.split('.')[1];
+    const decoded = JSON.parse(atob(payloadB64));
+    return decoded.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
-    PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
+    PUBLIC_PATHS.some((p) => pathname === p || (p !== '/' && pathname.startsWith(p))) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     /\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$/.test(pathname)
@@ -40,9 +50,23 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE)?.value;
 
   if (!token) {
-    const loginUrl = new URL('/login', request.url);
+    const isAdminRoute = pathname.startsWith('/admin');
+    const loginUrl = new URL(isAdminRoute ? '/admin/login' : '/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  const role = decodeJwtRole(token);
+  const isSuperAdmin = role === 'SUPER_ADMIN';
+
+  // SUPER_ADMIN fora de /admin → redireciona para o painel admin
+  if (isSuperAdmin && !pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+
+  // Usuário comum tentando acessar /admin → redireciona para dashboard
+  if (!isSuperAdmin && pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   const response = NextResponse.next();

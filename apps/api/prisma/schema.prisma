@@ -28,6 +28,7 @@ enum Role {
   ADMIN
   STAFF
   BASIC
+  SUPER_ADMIN
 }
 
 enum MinistryRole {
@@ -79,6 +80,9 @@ model Tenant {
   statusAssinatura StatusAssinatura @default(TRIAL)
   limiteMembros    Int              @default(50)
   ativo            Boolean          @default(true)
+  email            String?
+  telefone         String?
+  idioma           String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -95,22 +99,21 @@ model Tenant {
 
 model User {
   id           String   @id @default(uuid())
-  tenantId     String
+  tenantId     String?
   memberId     String?  @unique
   nome         String
-  email        String
+  email        String   @unique
   senhaHash    String
   role         Role     @default(BASIC)
   ativo        Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  tenant              Tenant?              @relation(fields: [tenantId], references: [id])
   membro              Membro?              @relation(fields: [memberId], references: [id])
   escalasItens         EscalaItem[]
   auditLogs            AuditLog[]
 
-  @@unique([tenantId, email])
   @@index([tenantId])
 }
 
@@ -310,7 +313,7 @@ model Evento {
 
 model AuditLog {
   id            String        @id @default(uuid())
-  tenantId      String
+  tenantId      String?
   userId        String?
   entidade      String
   entidadeId    String
@@ -320,9 +323,22 @@ model AuditLog {
   ipAddress     String?
   createdAt     DateTime      @default(now())
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  user   User?  @relation(fields: [userId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
   @@index([tenantId, entidade, entidadeId])
+}
+
+// ─── Lead ─────────────────────────────────────────────────
+
+model Lead {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String
+  telefone  String?
+  mensagem  String?
+  createdAt DateTime @default(now())
+
+  @@index([email])
 }
