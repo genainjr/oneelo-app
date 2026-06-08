@@ -2,16 +2,24 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useMembros } from '@/hooks/use-membros';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
-import { Membro, Tag } from '@/types';
+import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 
 export default function MembrosPage() {
   const t = useTranslations('members');
+  const router = useRouter();
+
+  useEffect(() => {
+    api.get<AuthUser>('/api/auth/me').then((me) => {
+      if (me.role === 'BASIC') router.replace('/dashboard');
+    }).catch(() => {});
+  }, [router]);
 
   const {
     membros,

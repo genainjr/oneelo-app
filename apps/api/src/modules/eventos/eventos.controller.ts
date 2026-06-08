@@ -29,12 +29,14 @@ export class EventosController {
   }
 
   @Get()
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   findAll(@Query() query: FilterEventosDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.eventosService.findAll(tenantId, query);
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   findOne(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.eventosService.findOne(tenantId, id);

@@ -29,6 +29,7 @@ export class MinisteriosController {
   }
 
   @Get()
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   findAll(@Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -36,6 +37,7 @@ export class MinisteriosController {
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   findOne(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;

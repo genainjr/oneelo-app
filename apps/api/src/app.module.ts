@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MembrosModule } from './modules/membros/membros.module';
@@ -20,6 +21,8 @@ import { RolesGuard } from './common/guards/roles.guard';
   imports: [
     // Carrega variáveis de ambiente globalmente
     ConfigModule.forRoot({ isGlobal: true }),
+    // Rate limiting global — login usa configuração mais restritiva via @Throttle()
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
     // Banco de dados global
     PrismaModule,
     // Módulos de funcionalidade — Fase 2

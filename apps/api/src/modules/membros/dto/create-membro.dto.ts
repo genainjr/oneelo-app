@@ -1,8 +1,9 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsNotEmpty } from 'class-validator';
 import { StatusMembro } from '@prisma/client';
 
 export class CreateMembroDto {
   @IsString()
+  @IsNotEmpty({ message: 'Nome é obrigatório.' })
   nome: string;
 
   @IsString()
