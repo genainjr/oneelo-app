@@ -112,7 +112,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   }, [localeOpen]);
 
   const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
+    if (href === '/dashboard') return pathname === '/dashboard';
     if (href === '/ministerios') return pathname === '/ministerios';
     return pathname.startsWith(href);
   };
@@ -125,7 +125,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   ];
 
   const navItems = [
-    { href: '/', label: t('dashboard'), icon: ICONS.dashboard },
+    { href: '/dashboard', label: t('dashboard'), icon: ICONS.dashboard },
     { href: '/membros', label: t('members'), icon: ICONS.members },
     {
       href: '/ministerios',
