@@ -10,7 +10,6 @@ import { getInitials, cn } from '@/lib/utils';
 import { locales, localeLabels, type Locale } from '@/i18n/config';
 import { FlagIcon } from '@/components/app/locale-flags';
 
-// Icons extracted to module level to avoid re-creation on every render
 const ICONS = {
   dashboard: (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -25,27 +24,6 @@ const ICONS = {
   ministries: (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-    </svg>
-  ),
-  manage: (
-    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  ),
-  louvor: (
-    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-    </svg>
-  ),
-  infantil: (
-    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-    </svg>
-  ),
-  midia: (
-    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
   ),
   schedules: (
@@ -69,6 +47,32 @@ const ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
+  manage: (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  export: (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+  ),
+  louvor: (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+    </svg>
+  ),
+  infantil: (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  ),
+  midia: (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  ),
 };
 
 function readLocaleCookie(): Locale {
@@ -78,11 +82,31 @@ function readLocaleCookie(): Locale {
   return locales.includes(val as Locale) ? (val as Locale) : 'pt-BR';
 }
 
+interface NavChild {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  comingSoon?: boolean;
+  divider?: boolean;
+}
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  comingSoon?: boolean;
+  adminOnly?: boolean;
+  children?: NavChild[];
+}
+
 interface SidebarProps {
   user: AuthUser | null;
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Roots where isActive must be an exact match (not startsWith)
+const EXACT_ROOTS = ['/dashboard', '/membros', '/ministerios', '/escalas', '/agenda'];
 
 export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
@@ -91,7 +115,12 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const tCommon = useTranslations('common');
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [ministeriosOpen, setMinisteriosOpen] = useState(true);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    '/membros': true,
+    '/ministerios': true,
+    '/escalas': true,
+    '/agenda': true,
+  });
   const [currentLocale, setCurrentLocale] = useState<Locale>('pt-BR');
   const [localeOpen, setLocaleOpen] = useState(false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
@@ -112,29 +141,54 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   }, [localeOpen]);
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') return pathname === '/dashboard';
-    if (href === '/ministerios') return pathname === '/ministerios';
+    if (EXACT_ROOTS.includes(href)) return pathname === href;
     return pathname.startsWith(href);
   };
 
-  const ministeriosSubs = [
-    { href: '/ministerios', label: t('manage'), icon: ICONS.manage },
-    { href: '/ministerios/louvor', label: 'Louvor', comingSoon: true, divider: true, icon: ICONS.louvor },
-    { href: '/ministerios/infantil', label: 'Infantil', comingSoon: true, icon: ICONS.infantil },
-    { href: '/ministerios/midia', label: 'Mídia', comingSoon: true, icon: ICONS.midia },
-  ];
+  const toggleSection = (href: string) =>
+    setOpenSections((prev) => ({ ...prev, [href]: !prev[href] }));
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { href: '/dashboard', label: t('dashboard'), icon: ICONS.dashboard },
-    { href: '/membros', label: t('members'), icon: ICONS.members },
+    {
+      href: '/membros',
+      label: t('members'),
+      icon: ICONS.members,
+      children: [
+        { href: '/membros', label: t('manage'), icon: ICONS.manage },
+        { href: '/membros/exportacao', label: t('export'), icon: ICONS.export },
+      ],
+    },
     {
       href: '/ministerios',
       label: t('ministries'),
       icon: ICONS.ministries,
-      children: ministeriosSubs,
+      children: [
+        { href: '/ministerios', label: t('manage'), icon: ICONS.manage },
+        { href: '/ministerios/exportacao', label: t('export'), icon: ICONS.export },
+        { href: '/ministerios/louvor', label: 'Louvor', comingSoon: true, divider: true, icon: ICONS.louvor },
+        { href: '/ministerios/infantil', label: 'Infantil', comingSoon: true, icon: ICONS.infantil },
+        { href: '/ministerios/midia', label: 'Mídia', comingSoon: true, icon: ICONS.midia },
+      ],
     },
-    { href: '/escalas', label: t('schedules'), icon: ICONS.schedules },
-    { href: '/agenda', label: t('agenda'), icon: ICONS.agenda },
+    {
+      href: '/escalas',
+      label: t('schedules'),
+      icon: ICONS.schedules,
+      children: [
+        { href: '/escalas', label: t('manage'), icon: ICONS.manage },
+        { href: '/escalas/exportacao', label: t('export'), icon: ICONS.export },
+      ],
+    },
+    {
+      href: '/agenda',
+      label: t('agenda'),
+      icon: ICONS.agenda,
+      children: [
+        { href: '/agenda', label: t('manage'), icon: ICONS.manage },
+        { href: '/agenda/exportacao', label: t('export'), icon: ICONS.export },
+      ],
+    },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
@@ -232,15 +286,16 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           {visibleItems.map((item) => {
             const hasChildren = item.children && item.children.length > 0;
             const active = isActive(item.href);
+            const sectionOpen = openSections[item.href] ?? true;
+            const sectionActive = pathname.startsWith(item.href) && item.href !== '/dashboard';
 
             if (hasChildren) {
-              const sectionActive = pathname.startsWith('/ministerios');
               return (
                 <div key={item.href}>
                   {!collapsed && (
                     <button
-                      onClick={() => setMinisteriosOpen((v) => !v)}
-                      title={ministeriosOpen ? t('collapseModules') : t('expandModules')}
+                      onClick={() => toggleSection(item.href)}
+                      title={sectionOpen ? t('collapseModules') : t('expandModules')}
                       className={cn(
                         'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
                         sectionActive
@@ -251,7 +306,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                       {item.icon}
                       <span className="flex-1 truncate text-left">{item.label}</span>
                       <svg
-                        className={cn('w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200', ministeriosOpen ? 'rotate-180' : '')}
+                        className={cn('w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200', sectionOpen ? 'rotate-180' : '')}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -264,7 +319,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
                   {collapsed && (
                     <Link
-                      href={item.href}
+                      href={item.children![0].href}
                       onClick={onClose}
                       title={item.label}
                       className={cn(
@@ -278,7 +333,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                     </Link>
                   )}
 
-                  {!collapsed && ministeriosOpen && (
+                  {!collapsed && sectionOpen && (
                     <div className="mt-0.5 ml-3 pl-3 border-l border-indigo-900 space-y-0.5">
                       {item.children!.map((child) => (
                         <div key={child.href}>

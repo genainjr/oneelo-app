@@ -78,7 +78,8 @@
     "collapse": "Collapse menu",
     "expand": "Expand menu",
     "collapseModules": "Collapse modules",
-    "expandModules": "Expand modules"
+    "expandModules": "Expand modules",
+    "export": "Export"
   },
   "dashboard": {
     "greeting": "Hello{name}!",
