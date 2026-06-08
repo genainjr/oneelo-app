@@ -14,7 +14,7 @@ function LoginForm() {
   const t = useTranslations('auth.login');
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') ?? '/';
+  const redirect = searchParams.get('redirect') ?? '/dashboard';
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
