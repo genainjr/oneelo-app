@@ -1,50 +1,69 @@
-# Backlog — Melhorias Gerais
+# Backlog - Melhorias Gerais
 
 ---
 
 ### IMP-001 Adicionar campos email, phone e language ao Tenant
 
+- **Status**: pendente
 - **Prioridade**: alta
-- **Categoria**: infraestrutura / homologação
-- **Contexto**: O Tenant já existe com isolamento multi-tenant completo. O ROADMAP_ONEELO_HOMOLOGACAO.md previa os campos `email`, `phone` e `language` na entidade Church (hoje Tenant), mas eles nunca foram adicionados. São necessários para o Painel Super Admin exibir e gerir dados de contato de cada igreja e para suportar idioma padrão por tenant no futuro.
-- **Ação**: Adicionar migration Prisma com os campos opcionais `email String?`, `phone String?` e `language String?` ao model `Tenant`. Atualizar DTO de criação/edição de tenant quando o Super Admin for implementado.
-- **Impacto**: Desbloqueia informações de contato no Super Admin. Permite futura configuração de idioma padrão por tenant (hoje o idioma é por sessão/cookie do usuário).
+- **Categoria**: infraestrutura / homologacao
+- **Contexto**: O Tenant ja existe com isolamento multi-tenant completo. O roadmap previa campos de contato e idioma padrao para a entidade Tenant.
+- **Acao**: Confirmar o estado atual do schema. Se ainda faltar algo, adicionar migration Prisma e atualizar DTOs de criacao/edicao de tenant.
+- **Impacto**: Desbloqueia informacoes de contato no Super Admin e futura configuracao de idioma padrao por tenant.
 - **Arquivos afetados**:
-  - `apps/api/prisma/schema.prisma` (model Tenant)
-  - Nova migration em `apps/api/prisma/migrations/`
+  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/super-admin/`
 
 ---
 
-### IMP-002 Landing Page — tornar rota `/` pública no middleware
+### IMP-002 Landing Page publica no middleware
 
+- **Status**: revisar estado atual
 - **Prioridade**: alta
-- **Categoria**: infraestrutura / homologação
-- **Contexto**: Atualmente o middleware redireciona qualquer rota não autenticada (incluindo `/`) para `/login`. Quando a Landing Page for criada em `apps/web/src/app/page.tsx`, ela precisa ser pública. O array `PUBLIC_PATHS` no middleware precisa incluir `/`.
-- **Ação**: Adicionar `'/'` ao array `PUBLIC_PATHS` em `apps/web/src/middleware.ts`. Garantir que a lógica de redirect para `/login` não captura a rota raiz. Criar `apps/web/src/app/page.tsx` com o componente da Landing Page.
-- **Impacto**: Qualquer visitante acessa a Landing Page sem estar autenticado. Fluxo correto: `/` → landing → `/login` → `/dashboard`.
+- **Categoria**: infraestrutura / homologacao
+- **Contexto**: A landing page precisa ser publica em `/`. O plano da landing esta marcado como concluido, entao este item deve ser reconciliado com o codigo atual.
+- **Acao**: Validar se `/` esta em `PUBLIC_PATHS` no middleware. Se estiver, marcar como concluido; se nao estiver, ajustar.
+- **Impacto**: Visitantes acessam a landing sem autenticacao.
 - **Arquivos afetados**:
   - `apps/web/src/middleware.ts`
-  - `apps/web/src/app/page.tsx` (novo)
+  - `apps/web/src/app/page.tsx`
 
 ---
 
-### IMP-003 Fluxo Git — branches devem partir de `development`, não de `main`
+### IMP-003 Fluxo Git - branches devem partir de `development`
 
-- **Prioridade**: média
+- **Status**: documentado
+- **Prioridade**: media
 - **Categoria**: DX
-- **Contexto**: O ROADMAP define que todo desenvolvimento deve partir de `development` e nunca de `main`. O branch `feat/coming-soon-screens` (onde a maioria das features recentes foi implementada) foi criado a partir de `main`. O branch `development` existe no repositório mas não está sendo usado como base de features.
-- **Ação**: Alinhar equipe para sempre fazer `git checkout development && git pull` antes de criar branches. Configurar proteção de branch no GitHub para `main` e `development` (require PR, no direct push). Avaliar se `feat/coming-soon-screens` precisa ser rebased em `development` antes do merge.
-- **Impacto**: Histórico limpo. `main` só recebe releases aprovados via `development`. Features não chegam a `main` sem passar por `development` primeiro.
+- **Contexto**: O fluxo padrao de trabalho deve partir sempre de `development` atualizado.
+- **Acao**: Manter o workflow documentado em `ai-context/workflows/feature-development.md` e configurar protecao de branch no GitHub quando aplicavel.
+- **Impacto**: Historico mais limpo e menor risco de features partirem de base incorreta.
 
 ---
 
-### IMP-004 AuditLog registra IP do proxy Vercel em vez do IP real do cliente
+### IMP-004 AuditLog registra IP do proxy em vez do IP real do cliente
 
+- **Status**: implementado em `fix/member-audit-cookie-backlog`
 - **Prioridade**: alta
-- **Categoria**: segurança
-- **Contexto**: Ver `security.md` SEC-001. Após adoção do proxy reverso via Next.js Rewrites, `req.ip` no backend retorna o IP do edge node do Vercel, não o do cliente real. Compromete rastreabilidade nos logs de auditoria.
-- **Ação**: Ler header `x-forwarded-for` (ou `x-real-ip`) no auth controller e no AuditInterceptor. Aplicar fallback para `req.ip` em dev local.
-- **Impacto**: Logs de auditoria voltam a registrar o IP real. Rastreabilidade para conformidade e investigação de incidentes.
+- **Categoria**: seguranca
+- **Contexto**: Duplicado funcional de `SEC-001`. Mantido aqui apenas como referencia historica.
+- **Acao**: Resolvido por helper compartilhado que prioriza `x-forwarded-for`, depois `x-real-ip`, depois `req.ip`.
+- **Impacto**: Logs de auditoria voltam a registrar o IP real quando headers de proxy estao presentes.
 - **Arquivos afetados**:
+  - `apps/api/src/common/utils/request-ip.ts`
   - `apps/api/src/modules/auth/auth.controller.ts`
   - `apps/api/src/common/interceptors/audit.interceptor.ts`
+
+---
+
+### IMP-005 Membro excluido continua vinculado e visivel em ministerios
+
+- **Status**: implementado em `fix/member-audit-cookie-backlog`
+- **Prioridade**: alta
+- **Categoria**: consistencia de dados / UX
+- **Contexto**: Ao excluir ou arquivar um membro que participa de um ministerio, o membro continuava aparecendo no gerenciamento de ministerios.
+- **Acao**: Ao fazer soft delete do membro, remover vinculos em `MinisterioMembroFuncao` e `MinisterioMembro`. Nas consultas de ministerios, filtrar membros com `deletedAt = null` e `status = ATIVO`.
+- **Impacto**: Evita inconsistencia visual e operacional no gerenciamento de ministerios.
+- **Arquivos afetados**:
+  - `apps/api/src/modules/membros/membros.service.ts`
+  - `apps/api/src/modules/ministerios/ministerios.service.ts`

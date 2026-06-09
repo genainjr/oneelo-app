@@ -53,17 +53,30 @@ export class MinisteriosService {
       };
     }
 
-    return this.prisma.ministerio.findMany({
+    const ministerios = await this.prisma.ministerio.findMany({
       where,
       include: {
         membros: {
-          where: { role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] } },
+          where: {
+            role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+            membro: { deletedAt: null, status: StatusMembro.ATIVO },
+          },
+          orderBy: {
+            membro: { nome: 'asc' },
+          },
           include: {
             membro: { select: { id: true, nome: true, email: true } },
           },
         },
         _count: {
-          select: { membros: true, escalas: true },
+          select: {
+            membros: {
+              where: {
+                membro: { deletedAt: null, status: StatusMembro.ATIVO },
+              },
+            },
+            escalas: true,
+          },
         },
         funcoes: {
           orderBy: { ordem: 'asc' }
@@ -71,6 +84,21 @@ export class MinisteriosService {
       },
       orderBy: { nome: 'asc' },
     });
+
+    const roleOrder: Record<MinistryRole, number> = {
+      LEADER: 0,
+      ASSISTANT_LEADER: 1,
+      MEMBER: 2,
+    };
+
+    return ministerios.map((ministerio) => ({
+      ...ministerio,
+      membros: ministerio.membros.slice().sort((a, b) => {
+        const roleDiff = roleOrder[a.role] - roleOrder[b.role];
+        if (roleDiff !== 0) return roleDiff;
+        return (a.membro?.nome ?? '').localeCompare(b.membro?.nome ?? '', 'pt-BR');
+      }),
+    }));
   }
 
   async findOne(tenantId: string, id: string, user: JwtPayload) {
@@ -78,6 +106,12 @@ export class MinisteriosService {
       where: { id, tenantId },
       include: {
         membros: {
+          where: {
+            membro: { deletedAt: null, status: StatusMembro.ATIVO },
+          },
+          orderBy: {
+            membro: { nome: 'asc' },
+          },
           include: {
             membro: {
               select: {
@@ -216,7 +250,7 @@ export class MinisteriosService {
     }
 
     const membro = await this.prisma.client.membro.findFirst({
-      where: { id: membroId, tenantId },
+      where: { id: membroId, tenantId, status: StatusMembro.ATIVO },
     });
     if (!membro) throw new NotFoundException('Membro não encontrado.');
 

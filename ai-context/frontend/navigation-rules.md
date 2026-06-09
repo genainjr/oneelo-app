@@ -24,6 +24,7 @@ Pode acessar a experiencia administrativa do tenant:
 - `/ministerios`
 - `/escalas`
 - `/agenda`
+- `/meu-perfil`
 - `/configuracoes`
 - demais modulos administrativos liberados.
 
@@ -36,6 +37,7 @@ Pode acessar a operacao global do tenant:
 - `/ministerios`
 - `/escalas`
 - `/agenda`
+- `/meu-perfil`
 
 Nao deve acessar areas exclusivas de `ADMIN`, como configuracoes sensiveis quando assim definido.
 
@@ -46,7 +48,8 @@ Fluxo principal:
 - login deve cair em `/minhas-escalas`;
 - pode acessar `/minhas-escalas`;
 - pode acessar `/agenda`;
-- pode acessar `/meu-perfil`.
+- pode acessar `/meu-perfil`;
+- pode alterar a propria senha em `/meu-perfil`.
 
 Nao deve acessar:
 
@@ -86,7 +89,7 @@ Regras:
 
 - Secoes com filhos devem iniciar fechadas.
 - Usuario pode expandir/recolher manualmente.
-- Quando a sidebar inteira estiver colapsada, itens com filhos podem apontar para a primeira rota filha.
+- Quando a sidebar inteira estiver colapsada, itens com filhos devem abrir um submenu lateral flutuante, sem expandir a sidebar e sem navegar direto para a primeira rota filha.
 - Labels de roles devem vir de i18n, nao do enum bruto quando exibidas ao usuario final.
 
 Menu BASIC comum:
@@ -105,6 +108,21 @@ Ministerios
 Escalas
 Agenda
 Meu Perfil
+```
+
+Menu ADMIN/STAFF:
+
+```txt
+Dashboard
+Membros
+Ministerios
+Escalas
+Agenda
+Grupos
+Financeiro
+Integracoes
+Meu Perfil
+Configuracoes (ADMIN)
 ```
 
 ---

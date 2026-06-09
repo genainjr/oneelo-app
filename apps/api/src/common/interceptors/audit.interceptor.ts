@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../types/jwt-payload.interface';
 import { AcaoAuditoria } from '@prisma/client';
 import { Request } from 'express';
+import { getClientIp } from '../utils/request-ip';
 
 // Entidades que serão auditadas automaticamente
 const AUDITED_PATHS = ['membros', 'escalas', 'ministerios', 'usuarios'];
@@ -28,7 +29,8 @@ export class AuditInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest<Request>();
-    const { method, url, body, ip } = request;
+    const { method, url, body } = request;
+    const ip = getClientIp(request);
 
     const acao = METHOD_ACTION_MAP[method];
 
