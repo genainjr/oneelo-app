@@ -1,26 +1,31 @@
-# Backlog — Segurança
+# Backlog - Seguranca
 
 ---
 
-### SEC-001 Auditoria registra IP do Vercel em vez do IP real do usuário
+### SEC-001 Auditoria registra IP do proxy em vez do IP real do usuario
 
+- **Status**: implementado em `fix/member-audit-cookie-backlog`
 - **Prioridade**: alta
-- **Categoria**: segurança
-- **Contexto**: Após a adoção do proxy reverso via Next.js Rewrites (ADR #7), o `req.ip` no backend retorna o IP do edge node do Vercel, não o do cliente real. Isso compromete os logs de auditoria (`AuditLog`) e o registro de IP no login.
-- **Ação**: Ler o header `x-forwarded-for` (ou `x-real-ip`) no auth controller e no AuditInterceptor. Aplicar fallback para `req.ip` quando o header não estiver presente (dev local).
-- **Impacto**: Logs de auditoria voltam a registrar o IP real do usuário, mantendo rastreabilidade para conformidade e investigação de incidentes.
+- **Categoria**: seguranca
+- **Contexto**: Apos a adocao do proxy reverso via Next.js Rewrites, `req.ip` no backend pode retornar o IP do proxy/edge em vez do cliente real. Isso compromete os logs de auditoria (`AuditLog`) e o registro de IP no login.
+- **Acao**: Ler `x-forwarded-for` ou `x-real-ip`, com fallback para `req.ip` em desenvolvimento/local.
+- **Impacto**: Logs de auditoria registram o IP real quando os headers de proxy estao presentes.
 - **Arquivos afetados**:
-  - `apps/api/src/modules/auth/auth.controller.ts` (linha do `req.ip`)
+  - `apps/api/src/common/utils/request-ip.ts`
+  - `apps/api/src/modules/auth/auth.controller.ts`
+  - `apps/api/src/modules/super-admin/super-admin.controller.ts`
   - `apps/api/src/common/interceptors/audit.interceptor.ts`
 
 ---
 
-### SEC-002 Cookie em produção usa sameSite: 'none' desnecessariamente
+### SEC-002 Cookie em producao usa sameSite restritivo
 
-- **Prioridade**: média
-- **Categoria**: segurança
-- **Contexto**: Com o proxy reverso ativo, todas as requisições do browser são same-origin (Vercel → Vercel). O cookie não precisa mais de `sameSite: 'none'`, que é a configuração menos restritiva e permite envio do cookie em contextos cross-site desnecessários.
-- **Ação**: Alterar o cookie em produção para `sameSite: 'lax'` + `secure: true`. Isso bloqueia o envio do cookie em requisições cross-site (proteção CSRF) sem quebrar o fluxo atual.
-- **Impacto**: Reduz superfície de ataque CSRF. O cookie só é enviado em navegações top-level e requisições same-origin.
+- **Status**: implementado em `fix/member-audit-cookie-backlog`
+- **Prioridade**: media
+- **Categoria**: seguranca
+- **Contexto**: Com o proxy reverso ativo, as requisicoes do browser sao same-origin. O cookie nao precisa de `sameSite: 'none'`.
+- **Acao**: Usar `sameSite: 'lax'` nos cookies de autenticacao e manter `secure: true` em producao.
+- **Impacto**: Reduz superficie de ataque CSRF sem quebrar o fluxo atual de login.
 - **Arquivos afetados**:
-  - `apps/api/src/modules/auth/auth.controller.ts` (configuração do `res.cookie`)
+  - `apps/api/src/modules/auth/auth.controller.ts`
+  - `apps/api/src/modules/super-admin/super-admin.controller.ts`

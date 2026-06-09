@@ -11,8 +11,9 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
-import { AcaoAuditoria } from '@prisma/client';
+import { AcaoAuditoria, StatusMembro } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -112,6 +113,7 @@ export class AuthService {
         memberId: true,
         createdAt: true,
         membro: {
+          where: { deletedAt: null, status: StatusMembro.ATIVO },
           select: {
             id: true,
             nome: true,
@@ -120,6 +122,9 @@ export class AuthService {
             dataNascimento: true,
             status: true,
             ministerios: {
+              where: {
+                ministerio: { ativo: true },
+              },
               select: {
                 role: true,
                 ministerio: {
@@ -143,6 +148,47 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async changePassword(
+    userId: string,
+    tenantId: string,
+    dto: ChangePasswordDto,
+    ip?: string,
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, ativo: true },
+      select: { id: true, senhaHash: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Sessao invalida.');
+    }
+
+    const senhaAtualValida = await bcrypt.compare(dto.senhaAtual, user.senhaHash);
+    if (!senhaAtualValida) {
+      throw new UnauthorizedException('Senha atual invalida.');
+    }
+
+    const senhaHash = await bcrypt.hash(dto.novaSenha, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { senhaHash },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        entidade: 'usuarios',
+        entidadeId: userId,
+        acao: AcaoAuditoria.ATUALIZAR,
+        ipAddress: ip,
+      },
+    });
+
+    return { message: 'Senha alterada com sucesso.' };
   }
 
   async findAllUsers(tenantId: string) {

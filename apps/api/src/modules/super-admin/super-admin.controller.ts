@@ -20,6 +20,7 @@ import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { getClientIp } from '../../common/utils/request-ip';
 import { Role } from '@prisma/client';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import type { Response, Request } from 'express';
@@ -44,7 +45,7 @@ export class SuperAdminController {
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      sameSite: 'lax',
       maxAge: 8 * 60 * 60 * 1000,
     });
 
@@ -63,7 +64,7 @@ export class SuperAdminController {
     @CurrentUser() admin: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.superAdminService.createTenant(dto, admin.sub, req.ip);
+    return this.superAdminService.createTenant(dto, admin.sub, getClientIp(req));
   }
 
   @Patch('tenants/:id')
@@ -73,7 +74,7 @@ export class SuperAdminController {
     @CurrentUser() admin: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.superAdminService.updateTenant(id, dto, admin.sub, req.ip);
+    return this.superAdminService.updateTenant(id, dto, admin.sub, getClientIp(req));
   }
 
   @Post('tenants/:id/usuarios')
@@ -84,6 +85,6 @@ export class SuperAdminController {
     @CurrentUser() admin: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.superAdminService.createTenantUser(tenantId, dto, admin.sub, req.ip);
+    return this.superAdminService.createTenantUser(tenantId, dto, admin.sub, getClientIp(req));
   }
 }

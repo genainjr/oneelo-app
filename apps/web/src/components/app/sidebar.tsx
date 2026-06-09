@@ -139,8 +139,14 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   });
   const [currentLocale, setCurrentLocale] = useState<Locale>('pt-BR');
   const [localeOpen, setLocaleOpen] = useState(false);
+  const [collapsedSectionOpen, setCollapsedSectionOpen] = useState<{
+    href: string;
+    top: number;
+    left: number;
+  } | null>(null);
   const [basicHasLeadership, setBasicHasLeadership] = useState(false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setCurrentLocale(readLocaleCookie());
@@ -167,6 +173,17 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [localeOpen]);
+
+  useEffect(() => {
+    if (!collapsedSectionOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setCollapsedSectionOpen(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [collapsedSectionOpen]);
 
   const isActive = (href: string) => {
     if (EXACT_ROOTS.includes(href)) return pathname === href;
@@ -221,6 +238,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true },
     { href: '/financeiro', label: t('finance'), icon: ICONS.finance, comingSoon: true },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
+    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 
@@ -328,10 +346,13 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden">
+        <nav ref={navRef} className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-visible">
           {collapsed && (
             <button
-              onClick={() => setCollapsed(false)}
+              onClick={() => {
+                setCollapsedSectionOpen(null);
+                setCollapsed(false);
+              }}
               title={t('expand')}
               className="flex items-center justify-center w-full p-2.5 rounded-xl text-indigo-400 hover:bg-indigo-900 hover:text-white transition-all mb-1"
             >
@@ -376,19 +397,77 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   )}
 
                   {collapsed && (
-                    <Link
-                      href={item.children![0].href}
-                      onClick={onClose}
-                      title={item.label}
-                      className={cn(
-                        'flex items-center justify-center px-0 py-2.5 rounded-xl text-sm font-medium transition-all',
-                        sectionActive
-                          ? 'bg-indigo-500 text-white shadow-sm'
-                          : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setCollapsedSectionOpen((current) =>
+                            current?.href === item.href
+                              ? null
+                              : {
+                                  href: item.href,
+                                  top: rect.top,
+                                  left: rect.right + 8,
+                                },
+                          );
+                        }}
+                        title={item.label}
+                        className={cn(
+                          'flex items-center justify-center w-full px-0 py-2.5 rounded-xl text-sm font-medium transition-all',
+                          sectionActive || collapsedSectionOpen?.href === item.href
+                            ? 'bg-indigo-500 text-white shadow-sm'
+                            : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
+                        )}
+                      >
+                        {item.icon}
+                      </button>
+
+                      {collapsedSectionOpen?.href === item.href && (
+                        <div
+                          className="fixed z-50 w-56 rounded-xl bg-indigo-900 border border-indigo-800 shadow-xl overflow-hidden"
+                          style={{
+                            top: collapsedSectionOpen.top,
+                            left: collapsedSectionOpen.left,
+                            maxHeight: 'calc(100vh - 16px)',
+                          }}
+                        >
+                          <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-indigo-300 border-b border-indigo-800">
+                            {item.label}
+                          </div>
+                          <div className="py-1">
+                            {item.children!.map((child) => (
+                              <div key={child.href}>
+                                {child.divider && (
+                                  <div className="my-1 border-t border-indigo-800/80" />
+                                )}
+                                <Link
+                                  href={child.href}
+                                  onClick={() => {
+                                    setCollapsedSectionOpen(null);
+                                    onClose();
+                                  }}
+                                  className={cn(
+                                    'flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors',
+                                    isActive(child.href)
+                                      ? 'bg-indigo-800 text-white'
+                                      : 'text-indigo-300 hover:bg-indigo-800 hover:text-white',
+                                  )}
+                                >
+                                  {child.icon}
+                                  <span className="flex-1">{child.label}</span>
+                                  {child.comingSoon && (
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-950 text-indigo-400 leading-none">
+                                      {t('comingSoon')}
+                                    </span>
+                                  )}
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                    >
-                      {item.icon}
-                    </Link>
+                    </div>
                   )}
 
                   {!collapsed && sectionOpen && (
@@ -428,7 +507,10 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onClose}
+                onClick={() => {
+                  setCollapsedSectionOpen(null);
+                  onClose();
+                }}
                 title={collapsed ? item.label : undefined}
                 className={cn(
                   'flex items-center gap-3 rounded-xl text-sm font-medium transition-all',
@@ -463,7 +545,10 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         >
           {collapsed ? (
             <button
-              onClick={() => setLocaleOpen((o) => !o)}
+              onClick={() => {
+                setCollapsedSectionOpen(null);
+                setLocaleOpen((o) => !o);
+              }}
               title={localeLabels[currentLocale]}
               className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-indigo-900 transition-all"
             >

@@ -65,6 +65,7 @@ Decisao de produto: os enums tecnicos nao devem ser renomeados. Termos como "Adm
 | Agenda - listar | sim | sim | sim | sim | sim |
 | Agenda - gerir eventos globais | sim | sim | pendente decisao | pendente decisao | nao |
 | Meu Perfil | sim | sim | sim | sim | sim |
+| Meu Perfil - alterar propria senha | sim | sim | sim | sim | sim |
 | Usuarios do tenant | sim | nao | nao | nao | nao |
 | Auditoria | sim | sim | nao | nao | nao |
 

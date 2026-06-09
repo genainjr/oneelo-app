@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
+import { MembroSearchCombobox, MembroOption } from '@/components/app/membro-search-combobox';
 import { api } from '@/lib/api';
 import { Ministerio, Membro, AuthUser, MinistryRole } from '@/types';
 
@@ -55,6 +56,7 @@ export default function MinisteriosPage() {
 
   const [allMembros, setAllMembros] = useState<Membro[]>([]);
   const [selectedMembroToAdd, setSelectedMembroToAdd] = useState('');
+  const [membroSearchToAdd, setMembroSearchToAdd] = useState('');
   const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<MinistryRole>('MEMBER');
 
   async function fetchDetails(id: string) {
@@ -185,6 +187,7 @@ export default function MinisteriosPage() {
         roleToAdd,
       );
       setSelectedMembroToAdd('');
+      setMembroSearchToAdd('');
       setSelectedRoleToAdd('MEMBER');
       await fetchDetails(selectedMinisterio.id);
       await loadOptions(selectedMinisterio.id);
@@ -238,6 +241,8 @@ export default function MinisteriosPage() {
   const membersOptions = allMembros.filter(
     (m) => !detailedInfo?.membros?.some((dm: any) => dm.membroId === m.id)
   );
+  const selectedMemberOptionToAdd =
+    (membersOptions.find((m) => m.id === selectedMembroToAdd) as MembroOption | undefined) ?? null;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -279,24 +284,59 @@ export default function MinisteriosPage() {
           {ministerios.map((m) => {
             const numMembros = m._count?.membros ?? 0;
             const isAtivo = m.ativo;
-            const cardLeaders = m.membros?.filter((mm) => mm.role === 'LEADER' || mm.role === 'ASSISTANT_LEADER').map((mm) => mm.membro?.nome).filter(Boolean) || [];
+            const cardLeaders = (m.membros ?? [])
+              .filter((mm) => mm.role === 'LEADER' || mm.role === 'ASSISTANT_LEADER')
+              .map((mm) => ({
+                nome: mm.membro?.nome,
+                role: mm.role,
+              }))
+              .filter((item): item is { nome: string; role: MinistryRole } => Boolean(item.nome))
+              .sort((a, b) => {
+                const roleOrder: Record<MinistryRole, number> = {
+                  LEADER: 0,
+                  ASSISTANT_LEADER: 1,
+                  MEMBER: 2,
+                };
+                return roleOrder[a.role] - roleOrder[b.role] || a.nome.localeCompare(b.nome, 'pt-BR');
+              });
 
             return (
               <div key={m.id} className={`bg-white rounded-2xl border border-gray-150 shadow-xs hover:shadow-md transition-all flex flex-col p-5 justify-between relative overflow-hidden ${!isAtivo && 'opacity-65'}`}>
-                <div className="absolute top-4 right-4">
+                <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
                   <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${isAtivo ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                     {isAtivo ? t('status.active') : t('status.archived')}
                   </span>
+                  <span className="inline-flex items-center rounded-lg border border-gray-100 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-600">
+                    {numMembros === 1 ? t('card.members', { count: numMembros }) : t('card.members_plural', { count: numMembros })}
+                  </span>
                 </div>
-                <div className="space-y-2 pr-12">
+                <div className="space-y-2 pr-28">
                   <h3 className="text-base font-bold text-gray-800 tracking-tight">{m.nome}</h3>
                   <p className="text-sm text-gray-500 line-clamp-2 h-10">{m.descricao || 'Sem descrição cadastrada.'}</p>
                 </div>
-                <div className="border-t border-gray-100 my-4 pt-3 flex items-center justify-between text-xs text-gray-500 font-medium">
-                  <span>{numMembros} {numMembros === 1 ? t('card.members', { count: numMembros }) : t('card.members_plural', { count: numMembros })}</span>
-                  <div className="truncate max-w-[150px] text-right">
-                    <span className="font-semibold text-gray-700">{t('card.leadership')} </span>
-                    {cardLeaders.length > 0 ? cardLeaders.join(', ') : t('card.noLeader')}
+                <div className="border-t border-gray-100 my-4 pt-3 text-xs text-gray-500 font-medium">
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold text-gray-600">{t('card.leadership')}</p>
+                    {cardLeaders.length > 0 ? (
+                      <div className="space-y-1">
+                        {cardLeaders.map((leader) => (
+                          <div
+                            key={`${leader.role}-${leader.nome}`}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1"
+                            title={`${leader.nome} - ${t(`members.roles.${leader.role}` as any)}`}
+                          >
+                            <span className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-indigo-800">
+                              {leader.nome}
+                            </span>
+                            <span className="shrink-0 rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600">
+                              {t(`members.roles.${leader.role}` as any)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">{t('card.noLeader')}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
@@ -422,18 +462,28 @@ export default function MinisteriosPage() {
                   {canManageSelectedMinisterio && (
                     <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
                       <div className="flex-1 space-y-1">
-                        <label htmlFor="add-membro" className="text-xs font-bold text-gray-500 uppercase">{t('members.add')}</label>
-                        <select
-                          id="add-membro"
-                          value={selectedMembroToAdd}
-                          onChange={(e) => setSelectedMembroToAdd(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="">{t('members.selectMember')}</option>
-                          {membersOptions.map((m) => (
-                            <option key={m.id} value={m.id}>{m.nome}</option>
-                          ))}
-                        </select>
+                        <MembroSearchCombobox
+                          label={t('members.add')}
+                          placeholder="Buscar membro pelo nome..."
+                          loading={loadingDetails}
+                          options={membersOptions}
+                          selected={selectedMemberOptionToAdd}
+                          search={membroSearchToAdd}
+                          emptyMessage="Nenhum membro disponivel encontrado."
+                          selectedPrefix="Selecionado"
+                          onSearchChange={(value) => {
+                            setMembroSearchToAdd(value);
+                            setSelectedMembroToAdd('');
+                          }}
+                          onSelect={(membro) => {
+                            setSelectedMembroToAdd(membro.id);
+                            setMembroSearchToAdd(membro.nome);
+                          }}
+                          onClear={() => {
+                            setSelectedMembroToAdd('');
+                            setMembroSearchToAdd('');
+                          }}
+                        />
                       </div>
                       {canManageSelectedMinisterio && (
                         <div className="space-y-1">

@@ -33,6 +33,7 @@ Papeis ministeriais:
 | Gerir escalas do proprio ministerio | sim | sim | sim | nao |
 | Confirmar/recusar propria escala | sim | sim | sim | sim |
 | Ver perfil proprio | sim | sim | sim | sim |
+| Alterar propria senha | sim | sim | sim | sim |
 
 Detalhes completos: `ai-context/backlog/permissions-matrix.md`.
 
@@ -102,6 +103,7 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 
 - `email`: obrigatorio e unico no escopo correto.
 - `senha`: minimo definido pelo DTO; persistida como `senhaHash`.
+- Alteracao da propria senha exige senha atual valida e nova senha com minimo definido pelo DTO.
 - `role`: valor valido de `Role`.
 - `memberId`: opcional; quando usado por `BASIC`, viabiliza permissoes contextuais de ministerio.
 
