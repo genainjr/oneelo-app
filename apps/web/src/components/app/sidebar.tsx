@@ -83,6 +83,11 @@ const ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
     </svg>
   ),
+  profile: (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0" />
+    </svg>
+  ),
 };
 
 function readLocaleCookie(): Locale {
@@ -117,7 +122,7 @@ interface SidebarProps {
 }
 
 // Roots where isActive must be an exact match (not startsWith)
-const EXACT_ROOTS = ['/dashboard', '/membros', '/ministerios', '/escalas', '/agenda'];
+const EXACT_ROOTS = ['/dashboard', '/membros', '/ministerios', '/escalas', '/agenda', '/minhas-escalas', '/meu-perfil'];
 
 export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
@@ -127,18 +132,30 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    '/membros': true,
-    '/ministerios': true,
-    '/escalas': true,
-    '/agenda': true,
+    '/membros': false,
+    '/ministerios': false,
+    '/escalas': false,
+    '/agenda': false,
   });
   const [currentLocale, setCurrentLocale] = useState<Locale>('pt-BR');
   const [localeOpen, setLocaleOpen] = useState(false);
+  const [basicHasLeadership, setBasicHasLeadership] = useState(false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCurrentLocale(readLocaleCookie());
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== 'BASIC') {
+      setBasicHasLeadership(false);
+      return;
+    }
+
+    api.get<unknown[]>('/api/ministerios')
+      .then((data) => setBasicHasLeadership(Array.isArray(data) && data.length > 0))
+      .catch(() => setBasicHasLeadership(false));
+  }, [user?.role]);
 
   useEffect(() => {
     if (!localeOpen) return;
@@ -207,7 +224,32 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 
-  const visibleItems = navItems.filter((item) => {
+  const basicNavItems: NavItem[] = [
+    { href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules },
+    ...(basicHasLeadership ? [
+      {
+        href: '/ministerios',
+        label: t('ministries'),
+        icon: ICONS.ministries,
+        children: [
+          { href: '/ministerios', label: t('manage'), icon: ICONS.manage },
+        ],
+      },
+      {
+        href: '/escalas',
+        label: t('schedules'),
+        icon: ICONS.schedules,
+        children: [
+          { href: '/escalas', label: t('manage'), icon: ICONS.manage },
+        ],
+      },
+    ] satisfies NavItem[] : []),
+    { href: '/agenda', label: t('agenda'), icon: ICONS.agenda },
+    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
+  ];
+
+  const baseItems = user?.role === 'BASIC' ? basicNavItems : navItems;
+  const visibleItems = baseItems.filter((item) => {
     if (item.adminOnly && user?.role !== 'ADMIN') return false;
     if (item.staffOnly && user?.role === 'BASIC') return false;
     return true;

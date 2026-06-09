@@ -1,77 +1,142 @@
-# Regras de Negócio e Validações do SaaS
+# Regras de Negocio e Validacoes do SaaS
 
-Este documento detalha as regras de negócio operacionais, controle de permissões (RBAC) e restrições de validação de dados aplicadas no **SaaS de Gestão para Igrejas**.
-
----
-
-## 1. Matriz de Permissões (RBAC)
-
-As permissões do sistema são verificadas na camada de entrada do backend via `RolesGuard` e filtradas na camada de serviço (`MembrosService`, `EscalasService`, etc.) para verificar propriedade dos registros:
-
-| Recurso / Ação | Admin Geral | Pastor | Líder de Ministério | Secretário | Membro |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| **CRUD Membros** | ✅ | ✅ | ❌ | ✅ | ❌ |
-| **Visualizar Membros** | ✅ | ✅ | ⚠️ Apenas do seu ministério | ✅ | ❌ |
-| **CRUD Ministérios** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **CRUD Escalas** | ✅ | ✅ | ⚠️ Apenas do seu ministério | ❌ | ❌ |
-| **Visualizar Escalas** | ✅ | ✅ | ⚠️ Apenas do seu ministério | ✅ | ⚠️ Apenas as suas |
-| **Confirmar Presença** | ✅ | ✅ | ✅ | ✅ | ⚠️ Apenas as suas |
-| **CRUD Eventos** | ✅ | ✅ | ❌ | ✅ | ❌ |
-| **Audit Logs** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Gestão de Usuários** | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-### Regra Específica: Líder de Ministério
-O perfil `LIDER_MINISTERIO` tem acesso limitado de escrita e leitura de escalas e membros.
-- A validação é aplicada no backend interceptando a requisição e checando se o ID do ministério da escala está contido na lista de ministérios liderados pelo usuário (`User.ministeriosLiderados`).
-- Caso tente atualizar uma escala de outro ministério, a API retorna `403 Forbidden`.
+Este documento descreve regras operacionais, validacoes estruturais e controle de permissao do SaaS de gestao para igrejas.
 
 ---
 
-## 2. Limitação de Membros Ativos por Plano
+## 1. Permissoes e RBAC
 
-Para fins de monetização e controle de uso do SaaS, a inserção de membros é limitada pelo plano do Tenant:
+O backend e a fonte de verdade para autorizacao. O frontend pode ocultar menus e acoes, mas nunca deve ser considerado barreira de seguranca.
 
-- **Regra**:
-  `totalAtivos < limiteMembros`
-- **Fluxo de Validação**:
-  1. O backend busca o `limiteMembros` do Tenant logado.
-  2. Executa a contagem (`count`) de membros cujo status no tenant seja ativo (com o filtro implícito `deletedAt: null`).
-  3. Se a quantidade atual de membros for igual ou superior ao limite do plano, a rota retorna `403 Forbidden` com a mensagem descritiva:
-     *"Limite de membros (X) atingido para o plano Y. Faça um upgrade."*
-- **Exceção**: Apenas o cadastro de novos membros é bloqueado; atualizações em membros existentes não passam por essa checagem de quota.
+Perfis globais:
+
+- `ADMIN`: administrador do tenant.
+- `STAFF`: equipe operacional global do tenant.
+- `BASIC`: membro comum; pode ganhar poderes contextuais por ministerio.
+- `SUPER_ADMIN`: administrador da plataforma Lookup Labs.
+
+Papeis ministeriais:
+
+- `LEADER`: lider do ministerio.
+- `ASSISTANT_LEADER`: co-lider do ministerio.
+- `MEMBER`: participante.
+
+### Matriz resumida
+
+| Acao | ADMIN | STAFF | BASIC lider/co-lider | BASIC comum |
+|---|---:|---:|---:|---:|
+| Gerir membros globais | sim | sim | nao | nao |
+| Gerir ministerios | sim | sim | nao | nao |
+| Gerir membros do proprio ministerio | sim | sim | sim | nao |
+| Promover alguem a `LEADER` | sim | sim | nao | nao |
+| Promover alguem a `ASSISTANT_LEADER` | sim | sim | sim, com restricoes | nao |
+| Gerir escalas do proprio ministerio | sim | sim | sim | nao |
+| Confirmar/recusar propria escala | sim | sim | sim | sim |
+| Ver perfil proprio | sim | sim | sim | sim |
+
+Detalhes completos: `ai-context/backlog/permissions-matrix.md`.
+
+### Regra contextual de ministerio
+
+Um usuario `BASIC` so pode gerir um ministerio quando:
+
+1. possui `memberId`;
+2. participa do ministerio por `MinisterioMembro`;
+3. seu `MinisterioMembro.role` e `LEADER` ou `ASSISTANT_LEADER`.
+
+A validacao deve ser feita no backend via `AuthorizationService` quando a regra depende de carregar uma entidade para descobrir o `ministerioId`.
+
+Regras de seguranca para lider/co-lider:
+
+- Pode adicionar membros ao proprio ministerio.
+- Pode adicionar como `MEMBER` ou `ASSISTANT_LEADER`.
+- Nao pode definir `LEADER`.
+- Nao pode alterar/remover outro `LEADER`.
+- Nao pode alterar o proprio papel ministerial.
+- Nao pode agir em ministerios onde nao lidera/co-lidera.
 
 ---
 
-## 3. Regra de Soft Delete e Inatividade de Membros
+## 2. Limitacao de Membros Ativos por Plano
 
-A exclusão física de registros de membros é proibida para preservar históricos de relatórios.
+Para controle de uso do SaaS, a insercao de membros respeita `Tenant.limiteMembros`.
 
-- **Exclusão Lógica**: O campo `deletedAt` recebe a data e hora atual.
-- **Leitura**: O cliente Prisma estendido injeta automaticamente a cláusula `deletedAt: null` em todas as buscas de membros.
-- **Validação de Atualização**: Ao tentar atualizar ou visualizar um membro que possua `deletedAt != null`, a API retorna `404 Not Found` (como se o registro não existisse), impedindo modificações em dados legados ou excluídos.
+Regra:
+
+```txt
+totalAtivos < limiteMembros
+```
+
+Fluxo:
+
+1. Buscar o tenant autenticado.
+2. Contar membros ativos do tenant, respeitando `deletedAt: null`.
+3. Se o limite foi atingido, retornar `403 Forbidden`.
+
+A quota bloqueia criacao de novos membros, mas nao deve bloquear atualizacao de membros existentes.
 
 ---
 
-## 4. Validação Estrutural e Sanitização (DTOs)
+## 3. Soft Delete e Inatividade de Membros
 
-Todas as requisições de escrita que chegam à API são validadas na camada de DTOs via `ValidationPipe` global:
+Membros nao devem ser removidos fisicamente quando ha historico operacional associado.
 
-### Entidade: Membro
-- **nome**: Obrigatório, string sem espaços vazios extras (`TRIM` aplicado automaticamente).
-- **email**: Opcional. Se fornecido, deve obedecer ao formato de e-mail padrão.
-- **whatsapp**: Opcional, deve conter apenas números e caracteres válidos de telefone (máximo 15 dígitos).
-- **status**: Obrigatório, deve corresponder a um valor válido do enum (`ATIVO`, `INATIVO`, `VISITANTE`, `TRANSFERIDO`).
+- Exclusao logica: preencher `deletedAt`.
+- Leitura: o Prisma estendido filtra `deletedAt: null`.
+- Atualizacao/visualizacao de membro excluido deve retornar `404 Not Found`.
 
-### Entidade: User
-- **email**: Obrigatório, formato de e-mail válido, único por tenant.
-- **senhaHash**: A senha de entrada enviada pelo cliente deve possuir no mínimo 6 caracteres e é criptografada com `bcryptjs` no service antes de ser persistida.
-- **role**: Obrigatório, correspondendo aos valores válidos de `Role`.
+---
 
-### Entidade: Escala
-- **data**: Obrigatória, tipo DateTime válido, deve ser preferencialmente no futuro em relação à data de criação (ou no mesmo dia).
-- **ministerioId**: Deve apontar para um ministério ativo e existente do mesmo tenant.
+## 4. Validacao Estrutural e Sanitizacao
 
-### Entidade: EscalaItem
-- **funcao**: Obrigatória, string não nula (ex: "Bateria", "Recepção").
-- **membroId**: O membro designado deve estar ativo e pertencer ao mesmo tenant da escala.
-- **Unicidade**: A combinação de `[escalaId, membroId]` é única no banco de dados. Caso tente cadastrar o mesmo membro mais de uma vez em uma mesma escala, a aplicação retorna erro de conflito `409 Conflict` ou `400 Bad Request`.
+Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
+
+### Membro
+
+- `nome`: obrigatorio.
+- `email`: opcional, formato valido quando informado.
+- `whatsapp`: opcional, formato de telefone.
+- `status`: valor valido de `StatusMembro`.
+
+### User
+
+- `email`: obrigatorio e unico no escopo correto.
+- `senha`: minimo definido pelo DTO; persistida como `senhaHash`.
+- `role`: valor valido de `Role`.
+- `memberId`: opcional; quando usado por `BASIC`, viabiliza permissoes contextuais de ministerio.
+
+### Ministerio
+
+- `nome`: obrigatorio.
+- `tenantId`: sempre derivado da sessao no backend.
+- `ativo`: usado para arquivamento logico.
+
+### MinisterioMembro
+
+- `ministerioId`: ministerio do mesmo tenant.
+- `membroId`: membro do mesmo tenant.
+- `role`: `LEADER`, `ASSISTANT_LEADER` ou `MEMBER`.
+- Alteracoes de papel devem obedecer a matriz RBAC.
+
+### Escala
+
+- `ministerioId`: ministerio ativo e do mesmo tenant.
+- `data`: data valida.
+- Mutacoes devem validar permissao sobre o ministerio da escala.
+
+### EscalaItem
+
+- `membroId`: membro ativo do mesmo tenant.
+- `funcao`: obrigatoria quando a escala usa funcao textual.
+- Confirmacao/recusa deve ser limitada ao proprio membro escalado, exceto quando a regra do modulo permitir administracao por gestor.
+
+---
+
+## 5. Navegacao por Perfil
+
+- `BASIC` comum entra por padrao em `/minhas-escalas`.
+- `BASIC` comum nao deve acessar dashboard administrativo, membros, financeiro, grupos, integracoes ou configuracoes.
+- `BASIC` lider/co-lider ve `Ministerios` e `Escalas`, com escopo limitado aos seus ministerios.
+- A sidebar deve iniciar com secoes internas recolhidas por padrao.
+
+Detalhes: `ai-context/frontend/navigation-rules.md`.

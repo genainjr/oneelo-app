@@ -1,135 +1,189 @@
-# Modelagem do Banco de Dados — Dicionário de Entidades
+# Modelagem do Banco de Dados - Dicionario de Entidades
 
-O banco de dados PostgreSQL utiliza o Prisma ORM para mapeamento das tabelas. Todas as entidades operacionais estão vinculadas a um `Tenant` para isolamento lógico dos dados.
+O banco de dados PostgreSQL usa Prisma ORM. As entidades operacionais do tenant usam `tenantId` para isolamento logico. A entidade `SUPER_ADMIN` e tratada como acesso de plataforma e pode existir sem `tenantId`, conforme o modulo de administracao global.
 
 ---
 
 ## Enums Globais
 
-| Enum | Valores Possíveis | Descrição |
-|:---|:---|:---|
-| **Plano** | `GRATUITO`, `BASICO`, `PROFISSIONAL` | Nível do plano de contratação do Tenant. |
-| **StatusAssinatura** | `ATIVA`, `TRIAL`, `SUSPENSA`, `CANCELADA` | Estado financeiro/operacional do plano da igreja. |
-| **Role** | `ADMIN_GERAL`, `PASTOR`, `LIDER_MINISTERIO`, `SECRETARIO`, `MEMBRO` | Perfil de permissão do usuário (RBAC). |
-| **StatusMembro** | `ATIVO`, `INATIVO`, `VISITANTE`, `TRANSFERIDO` | Estado cadastral do membro da igreja. |
-| **StatusEscala** | `RASCUNHO`, `PUBLICADA`, `ENCERRADA` | Estado do ciclo de vida de uma escala de serviço. |
-| **StatusConfirmacao** | `PENDENTE`, `CONFIRMADO`, `RECUSADO` | Resposta do membro escalado sobre sua participação. |
-| **StatusEvento** | `AGENDADO`, `REALIZADO`, `CANCELADO` | Estado operacional de um evento de calendário. |
-| **AcaoAuditoria** | `CRIAR`, `ATUALIZAR`, `DELETAR`, `LOGIN`, `LOGOUT` | Ação registrada no histórico de auditoria. |
+| Enum | Valores | Descricao |
+|---|---|---|
+| `Plano` | `GRATUITO`, `BASICO`, `PROFISSIONAL` | Nivel do plano de contratacao do tenant. |
+| `StatusAssinatura` | `ATIVA`, `TRIAL`, `SUSPENSA`, `CANCELADA` | Estado financeiro/operacional do tenant. |
+| `Role` | `ADMIN`, `STAFF`, `BASIC`, `SUPER_ADMIN` | Perfil global de acesso do usuario. |
+| `MinistryRole` | `LEADER`, `ASSISTANT_LEADER`, `MEMBER` | Papel contextual de um membro dentro de um ministerio. |
+| `StatusMembro` | `ATIVO`, `INATIVO`, `VISITANTE`, `TRANSFERIDO` | Estado cadastral do membro. |
+| `StatusEscala` | `RASCUNHO`, `PUBLICADA`, `ENCERRADA` | Estado do ciclo de vida de uma escala. |
+| `StatusConfirmacao` | `PENDENTE`, `CONFIRMADO`, `RECUSADO` | Resposta do membro escalado. |
+| `StatusEvento` | `AGENDADO`, `REALIZADO`, `CANCELADO` | Estado operacional de evento de agenda. |
+| `AcaoAuditoria` | `CRIAR`, `ATUALIZAR`, `DELETAR`, `LOGIN`, `LOGOUT` | Acao registrada em auditoria. |
+
+Decisao: os enums de `Role` nao devem ser renomeados. Labels amigaveis pertencem a UI/i18n.
 
 ---
 
-## Tabela de Entidades
+## Entidades
 
 ### 1. Tenant
-Representa uma igreja cadastrada no sistema. Funciona como raiz do isolamento multi-tenant.
-- `id` (String/UUID, PK): Identificador único.
-- `nome` (String): Nome da igreja.
-- `slug` (String, Unique): Identificador URL amigável da igreja (ex: `igreja-central`).
-- `plano` (Plano, Default: `GRATUITO`): Nível do plano.
-- `statusAssinatura` (StatusAssinatura, Default: `TRIAL`): Situação da assinatura.
-- `limiteMembros` (Int, Default: `50`): Quantidade máxima de membros ativos permitidos.
-- `ativo` (Boolean, Default: `true`): Status da conta.
-- `createdAt` / `updatedAt` (DateTime): Timestamps padrões.
+
+Representa uma igreja cadastrada no sistema.
+
+- `id`: identificador unico.
+- `nome`: nome da igreja.
+- `slug`: identificador URL amigavel, unico.
+- `plano`: plano contratado.
+- `statusAssinatura`: situacao da assinatura.
+- `limiteMembros`: quantidade maxima de membros ativos.
+- `ativo`: status da conta.
+- `createdAt` / `updatedAt`: timestamps padrao.
 
 ### 2. User
-Usuários com credenciais de login e perfil de acesso.
-- `id` (String/UUID, PK): Identificador único.
-- `tenantId` (String/UUID, FK -> Tenant): Vínculo com a igreja.
-- `nome` (String): Nome completo.
-- `email` (String): Endereço de email.
-- `senhaHash` (String): Hash bcrypt da senha.
-- `role` (Role, Default: `MEMBRO`): Nível de privilégio.
-- `ativo` (Boolean, Default: `true`): Status de ativação do login.
-- *Unique*: `[tenantId, email]` (o email deve ser único apenas dentro de cada igreja).
+
+Representa credencial de login e permissao global de acesso. Nao substitui `Membro`.
+
+- `id`: identificador unico.
+- `tenantId`: vinculo com tenant. Pode ser nulo para `SUPER_ADMIN`.
+- `memberId`: vinculo opcional com `Membro`.
+- `nome`: nome exibido no sistema.
+- `email`: email de login.
+- `senhaHash`: hash bcrypt da senha.
+- `role`: `ADMIN`, `STAFF`, `BASIC` ou `SUPER_ADMIN`.
+- `ativo`: status do login.
+- Unicidade operacional: email unico dentro do tenant.
 
 ### 3. Membro
-Lista de membros cadastrados da igreja. Utilizada para compor escalas e grupos.
-- `id` (String/UUID, PK): Identificador único.
-- `tenantId` (String/UUID, FK -> Tenant): Vínculo com a igreja.
-- `nome` (String): Nome do membro.
-- `whatsapp` (String, Opcional): Telefone de contato.
-- `email` (String, Opcional): Email do membro.
-- `dataNascimento` (DateTime, Opcional): Data de aniversário.
-- `status` (StatusMembro, Default: `ATIVO`): Estado cadastral do membro.
-- `observacoes` (String, Opcional): Anotações internas do secretário/pastor.
-- `deletedAt` (DateTime, Opcional): Timestamp de exclusão lógica (Soft Delete).
+
+Representa uma pessoa da igreja. Pode existir sem login.
+
+- `id`: identificador unico.
+- `tenantId`: vinculo com a igreja.
+- `nome`: nome do membro.
+- `whatsapp`: telefone opcional.
+- `email`: email opcional.
+- `dataNascimento`: data de nascimento opcional.
+- `status`: estado cadastral.
+- `observacoes`: anotacoes internas.
+- `deletedAt`: exclusao logica.
 
 ### 4. Tag
-Etiquetas customizadas criadas pela igreja para segmentação de membros.
-- `id` (String/UUID, PK): Identificador único.
-- `tenantId` (String/UUID, FK -> Tenant): Vínculo com a igreja.
-- `nome` (String): Nome da etiqueta (ex: "Jovens", "Músicos").
-- `corHex` (String, Default: `#6366f1`): Cor em formato hexadecimal para representação visual na UI.
-- *Unique*: `[tenantId, nome]` (uma etiqueta com o mesmo nome não pode ser duplicada no mesmo tenant).
+
+Etiqueta customizada para segmentacao de membros.
+
+- `id`
+- `tenantId`
+- `nome`
+- `corHex`
+- Unico por tenant: `[tenantId, nome]`.
 
 ### 5. MembroTag
-Tabela associativa que mapeia a relação N:N entre Membros e Tags.
-- `membroId` (String/UUID, FK -> Membro)
-- `tagId` (String/UUID, FK -> Tag)
-- *Composite PK*: `[membroId, tagId]`
+
+Relacao N:N entre membros e tags.
+
+- `membroId`
+- `tagId`
+- Chave composta: `[membroId, tagId]`.
 
 ### 6. Ministerio
-Grupos ou áreas de atuação na igreja (ex: Louvor, Mídia, Infantil).
-- `id` (String/UUID, PK): Identificador único.
-- `tenantId` (String/UUID, FK -> Tenant): Vínculo com a igreja.
-- `nome` (String): Nome do ministério.
-- `descricao` (String, Opcional): Detalhes sobre o grupo.
-- `ativo` (Boolean, Default: `true`): Situação do grupo.
 
-### 7. MinisterioLider
-Tabela associativa que mapeia a liderança (Users) de cada Ministério (N:N).
-- `ministerioId` (String/UUID, FK -> Ministerio)
-- `userId` (String/UUID, FK -> User)
-- *Composite PK*: `[ministerioId, userId]`
+Representa uma area de atuacao da igreja.
 
-### 8. MinisterioMembro
-Tabela associativa que lista os integrantes (Membros) de cada Ministério (N:N).
-- `ministerioId` (String/UUID, FK -> Ministerio)
-- `membroId` (String/UUID, FK -> Membro)
-- *Composite PK*: `[ministerioId, membroId]`
+- `id`
+- `tenantId`
+- `nome`
+- `descricao`
+- `ativo`
 
-### 9. Escala
-Escalas de serviço geradas por ministério.
-- `id` (String/UUID, PK): Identificador único.
-- `tenantId` (String/UUID, FK -> Tenant): Vínculo com a igreja.
-- `ministerioId` (String/UUID, FK -> Ministerio): Ministério responsável pela escala.
-- `titulo` (String): Título identificador (ex: "Culto de Celebração - Domingo Manhã").
-- `data` (DateTime): Data e hora em que a escala ocorre.
-- `status` (StatusEscala, Default: `RASCUNHO`): Estado atual.
-- `observacoes` (String, Opcional): Instruções para a equipe escalada.
+### 7. MinisterioMembro
 
-### 10. EscalaItem
-Linhas individuais de designação de uma escala. Associa um membro a uma função específica.
-- `id` (String/UUID, PK): Identificador único.
-- `escalaId` (String/UUID, FK -> Escala): Escala à qual pertence.
-- `membroId` (String/UUID, FK -> Membro): Membro escalado.
-- `userId` (String/UUID, FK -> User, Opcional): Usuário responsável pela escalação deste item.
-- `funcao` (String): Papel desempenhado (ex: "Guitarra", "Câmera 1", "Professor").
-- `statusConfirmacao` (StatusConfirmacao, Default: `PENDENTE`): Confirmação do membro.
-- `observacoes` (String, Opcional): Detalhes específicos da função para este membro.
-- *Unique*: `[escalaId, membroId]` (o mesmo membro não pode ser escalado em duas funções diferentes na mesma escala).
+Relacao entre membros e ministerios. Tambem resolve lideranca ministerial.
 
-### 11. Evento
-Eventos do calendário litúrgico e de agenda da igreja.
-- `id` (String/UUID, PK): Identificador único.
-- `tenantId` (String/UUID, FK -> Tenant): Vínculo com a igreja.
-- `titulo` (String): Nome do evento (ex: "Conferência de Mulheres").
-- `descricao` (String, Opcional): Descrição e detalhes.
-- `dataInicio` (DateTime): Início do evento.
-- `dataFim` (DateTime, Opcional): Fim do evento.
-- `local` (String, Opcional): Local físico ou link do evento.
-- `status` (StatusEvento, Default: `AGENDADO`): Estado atual.
+- `ministerioId`
+- `membroId`
+- `role`: `LEADER`, `ASSISTANT_LEADER` ou `MEMBER`.
+- Chave composta: `[ministerioId, membroId]`.
 
-### 12. AuditLog
-Registros históricos de mutações no sistema para auditoria e segurança.
-- `id` (String/UUID, PK): Identificador único.
-- `tenantId` (String/UUID, FK -> Tenant): Vínculo com a igreja onde ocorreu o evento.
-- `userId` (String/UUID, FK -> User, Opcional): Autor da alteração.
-- `entidade` (String): Nome da entidade modificada (ex: `membros`, `escalas`).
-- `entidadeId` (String): Identificador único do registro modificado.
-- `acao` (AcaoAuditoria): Tipo de alteração (CRIAR, ATUALIZAR, etc).
-- `payloadBefore` (Json, Opcional): Estado do registro antes da modificação (nulo em criações).
-- `payloadAfter` (Json, Opcional): Estado final do registro modificado (nulo em exclusões físicas).
-- `ipAddress` (String, Opcional): Endereço IP do cliente.
-- `createdAt` (DateTime): Data e hora da auditoria.
+Regras:
+
+- Nao existe mais entidade separada `MinisterioLider` como fonte de verdade.
+- Lideranca e resolvida por `MinisterioMembro.role`.
+- Um `User` com `role = BASIC` ganha poderes contextuais se seu `memberId` tiver `LEADER` ou `ASSISTANT_LEADER` no ministerio.
+
+### 8. MinisterioFuncao
+
+Lista de funcoes disponiveis em um ministerio.
+
+- `id`
+- `ministerioId`
+- `nome`
+- `ordem`
+- Unico por ministerio: `[ministerioId, nome]`.
+
+### 9. MinisterioMembroFuncao
+
+Define quais funcoes um membro pode exercer dentro de um ministerio.
+
+- `ministerioId`
+- `membroId`
+- `funcaoId`
+
+### 10. Escala
+
+Escala de servico vinculada a um ministerio.
+
+- `id`
+- `tenantId`
+- `ministerioId`
+- `titulo`
+- `descricao`
+- `data`
+- `status`
+- `observacoes`
+
+### 11. EscalaItem
+
+Linha individual de uma escala.
+
+- `id`
+- `escalaId`
+- `membroId`
+- `funcao`
+- `statusConfirmacao`
+- `observacoes`
+
+### 12. Evento
+
+Evento da agenda.
+
+- `id`
+- `tenantId`
+- `titulo`
+- `descricao`
+- `dataInicio`
+- `dataFim`
+- `local`
+- `status`
+
+Decisao pendente: definir se `Evento` tera `ministerioId` opcional para agenda ministerial.
+
+### 13. AuditLog
+
+Registro historico de mutacoes e eventos sensiveis.
+
+- `id`
+- `tenantId`
+- `userId`
+- `entidade`
+- `entidadeId`
+- `acao`
+- `payloadBefore`
+- `payloadAfter`
+- `ipAddress`
+- `createdAt`
+
+---
+
+## Referencias
+
+- `ai-context/backlog/permissions-matrix.md`
+- `ai-context/business-rules/validation-rules.md`
+- `ai-context/plans/rbac-navigation-experience-plan.md`
