@@ -89,7 +89,7 @@ Regras:
 
 - Secoes com filhos devem iniciar fechadas.
 - Usuario pode expandir/recolher manualmente.
-- Quando a sidebar inteira estiver colapsada, itens com filhos podem apontar para a primeira rota filha.
+- Quando a sidebar inteira estiver colapsada, itens com filhos devem abrir um submenu lateral flutuante, sem expandir a sidebar e sem navegar direto para a primeira rota filha.
 - Labels de roles devem vir de i18n, nao do enum bruto quando exibidas ao usuario final.
 
 Menu BASIC comum:
