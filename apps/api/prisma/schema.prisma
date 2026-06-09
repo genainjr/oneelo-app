@@ -285,6 +285,7 @@ model EscalaItem {
   user   User?   @relation(fields: [userId], references: [id])
   funcao MinisterioFuncao @relation(fields: [ministerioFuncaoId], references: [id])
 
+  @@unique([escalaDiaId, membroId])
   @@unique([escalaDiaId, membroId, ministerioFuncaoId])
 }
 

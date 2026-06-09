@@ -24,6 +24,7 @@ Pode acessar a experiencia administrativa do tenant:
 - `/ministerios`
 - `/escalas`
 - `/agenda`
+- `/meu-perfil`
 - `/configuracoes`
 - demais modulos administrativos liberados.
 
@@ -36,6 +37,7 @@ Pode acessar a operacao global do tenant:
 - `/ministerios`
 - `/escalas`
 - `/agenda`
+- `/meu-perfil`
 
 Nao deve acessar areas exclusivas de `ADMIN`, como configuracoes sensiveis quando assim definido.
 
@@ -46,7 +48,8 @@ Fluxo principal:
 - login deve cair em `/minhas-escalas`;
 - pode acessar `/minhas-escalas`;
 - pode acessar `/agenda`;
-- pode acessar `/meu-perfil`.
+- pode acessar `/meu-perfil`;
+- pode alterar a propria senha em `/meu-perfil`.
 
 Nao deve acessar:
 
@@ -105,6 +108,21 @@ Ministerios
 Escalas
 Agenda
 Meu Perfil
+```
+
+Menu ADMIN/STAFF:
+
+```txt
+Dashboard
+Membros
+Ministerios
+Escalas
+Agenda
+Grupos
+Financeiro
+Integracoes
+Meu Perfil
+Configuracoes (ADMIN)
 ```
 
 ---

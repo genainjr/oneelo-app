@@ -221,6 +221,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true },
     { href: '/financeiro', label: t('finance'), icon: ICONS.finance, comingSoon: true },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
+    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 

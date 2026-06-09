@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, buildQuery, HttpError } from '@/lib/api';
-import { Escala } from '@/types';
+import { Escala, EscalaItem } from '@/types';
 
 export interface FilterEscalas {
   ministerioId?: string;
@@ -69,13 +69,11 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
   }
 
   async function addMembroItem(diaId: string, membroId: string, ministerioFuncaoId: string, observacoes?: string) {
-    await api.post(`/api/escalas/dias/${diaId}/itens`, { escalaDiaId: diaId, membroId, ministerioFuncaoId, observacoes });
-    await fetchEscalas(filter);
+    return api.post<EscalaItem>(`/api/escalas/dias/${diaId}/itens`, { escalaDiaId: diaId, membroId, ministerioFuncaoId, observacoes });
   }
 
   async function removeMembroItem(itemId: string) {
     await api.delete(`/api/escalas/itens/${itemId}`);
-    await fetchEscalas(filter);
   }
 
   async function confirmarPresenca(itemId: string, statusConfirmacao: 'CONFIRMADO' | 'RECUSADO', observacoes?: string) {

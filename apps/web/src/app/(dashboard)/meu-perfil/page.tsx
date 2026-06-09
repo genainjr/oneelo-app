@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { api } from '@/lib/api';
@@ -11,6 +12,12 @@ export default function MeuPerfilPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [senhaAtual, setSenhaAtual] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
@@ -18,6 +25,40 @@ export default function MeuPerfilPage() {
       .catch(() => setError('Nao foi possivel carregar seu perfil.'))
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleChangePassword(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!senhaAtual.trim() || !novaSenha.trim() || !confirmarSenha.trim()) {
+      setPasswordError('Preencha todos os campos de senha.');
+      return;
+    }
+
+    if (novaSenha.length < 6) {
+      setPasswordError('A nova senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    if (novaSenha !== confirmarSenha) {
+      setPasswordError('A confirmacao nao confere com a nova senha.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      await api.patch('/api/auth/me/password', { senhaAtual, novaSenha });
+      setSenhaAtual('');
+      setNovaSenha('');
+      setConfirmarSenha('');
+      setPasswordSuccess('Senha alterada com sucesso.');
+    } catch (err: any) {
+      setPasswordError(err?.message || 'Nao foi possivel alterar a senha.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -52,6 +93,60 @@ export default function MeuPerfilPage() {
               <Info label="Plano" value={user.tenant?.plano || '-'} />
               <Info label="Criado em" value={formatDate(user.createdAt, 'dd/MM/yyyy')} />
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Seguranca</h2>
+              <p className="text-sm text-gray-500">Altere sua senha de acesso informando a senha atual.</p>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <PasswordField
+                  id="senha-atual"
+                  label="Senha atual"
+                  value={senhaAtual}
+                  autoComplete="current-password"
+                  onChange={setSenhaAtual}
+                />
+                <PasswordField
+                  id="nova-senha"
+                  label="Nova senha"
+                  value={novaSenha}
+                  autoComplete="new-password"
+                  onChange={setNovaSenha}
+                />
+                <PasswordField
+                  id="confirmar-senha"
+                  label="Confirmar nova senha"
+                  value={confirmarSenha}
+                  autoComplete="new-password"
+                  onChange={setConfirmarSenha}
+                />
+              </div>
+
+              {passwordError && (
+                <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                  {passwordError}
+                </p>
+              )}
+              {passwordSuccess && (
+                <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                  {passwordSuccess}
+                </p>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {passwordLoading ? 'Salvando...' : 'Alterar senha'}
+                </button>
+              </div>
+            </form>
           </section>
 
           {user.membro ? (
@@ -102,6 +197,36 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className="mt-1 text-sm font-semibold text-gray-800">{value}</p>
+    </div>
+  );
+}
+
+function PasswordField({
+  id,
+  label,
+  value,
+  autoComplete,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  autoComplete: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="password"
+        value={value}
+        autoComplete={autoComplete}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+      />
     </div>
   );
 }

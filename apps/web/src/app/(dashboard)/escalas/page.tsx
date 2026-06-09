@@ -162,6 +162,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
                   </td>
                   {funcoes.map((funcao) => {
                     const cellItems = getMembrosForCell(dia, funcao.id);
+                    const dayAssignedMemberIds = (dia.itens || []).map((item) => item.membroId);
                     const isOculta = dia.funcoesOcultas?.some((o) => o.funcaoId === funcao.id) ?? false;
                     return (
                       <td key={funcao.id} className="px-3 py-2 align-top">
@@ -218,7 +219,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
                                 diaId={dia.id}
                                 funcaoId={funcao.id}
                                 membros={ministryMembers}
-                                alreadyAssigned={cellItems.map(i => i.membroId)}
+                                alreadyAssigned={dayAssignedMemberIds}
                                 onAdd={onAddMembro}
                                 addMemberLabel={tGrid('addMember')}
                               />
@@ -295,11 +296,13 @@ function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd, ad
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const options = membros.filter((mm) => {
-    if (alreadyAssigned.includes(mm.membroId)) return false;
-    if (!mm.funcoesDisponiveis?.length) return true;
-    return mm.funcoesDisponiveis.some((fd) => fd.funcaoId === funcaoId);
-  });
+  const options = membros
+    .filter((mm) => {
+      if (alreadyAssigned.includes(mm.membroId)) return false;
+      if (!mm.funcoesDisponiveis?.length) return true;
+      return mm.funcoesDisponiveis.some((fd) => fd.funcaoId === funcaoId);
+    })
+    .sort((a, b) => (a.membro?.nome ?? '').localeCompare(b.membro?.nome ?? '', 'pt-BR'));
 
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const membroId = e.target.value;
@@ -493,6 +496,40 @@ export default function EscalasPage() {
       showToast('Erro ao atualizar célula.', 'error');
       await refreshDetail();
     }
+  }
+
+  function appendEscalaItem(diaId: string, item: EscalaItem) {
+    setDetailedEscala((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        dias: prev.dias?.map((dia) => {
+          if (dia.id !== diaId) return dia;
+
+          const itens = dia.itens ?? [];
+          const nextItens = itens.some((current) => current.id === item.id)
+            ? itens.map((current) => (current.id === item.id ? item : current))
+            : [...itens, item];
+
+          return { ...dia, itens: nextItens };
+        }),
+      };
+    });
+  }
+
+  function removeEscalaItem(itemId: string) {
+    setDetailedEscala((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        dias: prev.dias?.map((dia) => ({
+          ...dia,
+          itens: dia.itens?.filter((item) => item.id !== itemId) ?? [],
+        })),
+      };
+    });
   }
 
   const canManageTenant = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
@@ -776,12 +813,22 @@ export default function EscalasPage() {
                 tGrid={tGrid}
                 onToggleCelula={handleToggleCelula}
                 onAddMembro={async (diaId, membroId, funcaoId) => {
-                  await addMembroItem(diaId, membroId, funcaoId);
-                  await refreshDetail();
+                  try {
+                    const item = await addMembroItem(diaId, membroId, funcaoId);
+                    appendEscalaItem(diaId, item);
+                  } catch (err: any) {
+                    showToast(err.message || 'Erro ao adicionar membro na escala.', 'error');
+                    throw err;
+                  }
                 }}
                 onRemoveMembro={async (itemId) => {
-                  await removeMembroItem(itemId);
-                  await refreshDetail();
+                  try {
+                    await removeMembroItem(itemId);
+                    removeEscalaItem(itemId);
+                  } catch (err: any) {
+                    showToast(err.message || 'Erro ao remover membro da escala.', 'error');
+                    throw err;
+                  }
                 }}
                 onAddDia={async (data, titulo) => {
                   await addDia(detailedEscala.id, data, titulo);

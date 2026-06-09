@@ -390,6 +390,10 @@ export class EscalasService {
       update: {
         observacoes: dto.observacoes,
       },
+      include: {
+        membro: { select: { id: true, nome: true, email: true, whatsapp: true } },
+        funcao: true,
+      },
     });
   }
 

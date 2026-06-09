@@ -18,12 +18,14 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import type { Response, Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { getClientIp } from '../../common/utils/request-ip';
 import { Role } from '@prisma/client';
 
 @ApiTags('Autenticação')
@@ -44,14 +46,14 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
   ) {
-    const ip = req.ip;
+    const ip = getClientIp(req);
     const { accessToken, user } = await this.authService.login(dto, ip);
 
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      sameSite: 'lax',
       maxAge: 8 * 60 * 60 * 1000,
     });
 
@@ -66,7 +68,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
   ) {
-    await this.authService.logout(user.sub, user.tenantId!, req.ip);
+    await this.authService.logout(user.sub, user.tenantId!, getClientIp(req));
 
     // Remove o cookie de sessão
     res.clearCookie('access_token');
@@ -78,6 +80,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() user: JwtPayload) {
     return this.authService.me(user.sub, user.tenantId!);
+  }
+
+  @Patch('me/password')
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @ApiOperation({ summary: 'Altera a senha do usuario autenticado' })
+  async changeMyPassword(
+    @Body() dto: ChangePasswordDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.authService.changePassword(user.sub, user.tenantId!, dto, getClientIp(req));
   }
 
   @Get('users')
@@ -112,7 +126,7 @@ export class AuthController {
     @CurrentUser() actor: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.authService.createUser(dto, actor.tenantId!, actor.sub, (req as any).ip);
+    return this.authService.createUser(dto, actor.tenantId!, actor.sub, getClientIp(req));
   }
 
   @Patch('users/:id')
@@ -125,7 +139,7 @@ export class AuthController {
     @CurrentUser() actor: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.authService.updateUser(id, dto, actor.tenantId!, actor.sub, (req as any).ip);
+    return this.authService.updateUser(id, dto, actor.tenantId!, actor.sub, getClientIp(req));
   }
 
   @Delete('users/:id')
@@ -137,6 +151,6 @@ export class AuthController {
     @CurrentUser() actor: JwtPayload,
     @Req() req: Request,
   ) {
-    return this.authService.deleteUser(id, actor.tenantId!, actor.sub, (req as any).ip);
+    return this.authService.deleteUser(id, actor.tenantId!, actor.sub, getClientIp(req));
   }
 }

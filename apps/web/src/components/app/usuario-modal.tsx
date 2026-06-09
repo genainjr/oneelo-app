@@ -1,14 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Role } from '@/types';
 import { api } from '@/lib/api';
-
-interface MembroOption {
-  id: string;
-  nome: string;
-  email?: string | null;
-}
+import { MembroSearchCombobox, MembroOption } from '@/components/app/membro-search-combobox';
 
 interface UsuarioModalProps {
   isOpen: boolean;
@@ -43,24 +38,11 @@ export function UsuarioModal({
   const [membrosLoading, setMembrosLoading] = useState(false);
   const [selectedMembro, setSelectedMembro] = useState<MembroOption | null>(null);
   const [membroSearch, setMembroSearch] = useState('');
-  const [membroDropdown, setMembroDropdown] = useState(false);
-  const membroRef = useRef<HTMLDivElement>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = !!usuario;
-
-  // Fechar dropdown ao clicar fora
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (membroRef.current && !membroRef.current.contains(e.target as Node)) {
-        setMembroDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Carregar membros disponíveis quando o modal abre
   useEffect(() => {
@@ -104,7 +86,7 @@ export function UsuarioModal({
   if (!isOpen) return null;
 
   // Filtrar membros pelo texto digitado (inclui o atual se estiver editando)
-  const membrosFiltrados = (() => {
+  const membrosDisponiveis = (() => {
     const disponíveis = [...membros];
     // ao editar, adicionar o membro já vinculado se não estiver na lista (pois não é "available")
     if (usuario?.membro && !disponíveis.find((m) => m.id === usuario.membro!.id)) {
@@ -119,7 +101,6 @@ export function UsuarioModal({
   function selectMembro(m: MembroOption) {
     setSelectedMembro(m);
     setMembroSearch(m.nome);
-    setMembroDropdown(false);
     // Se o nome do usuário estiver vazio, preencher automaticamente
     if (!nome.trim()) setNome(m.nome);
     if (!email.trim() && m.email) setEmail(m.email);
@@ -128,6 +109,11 @@ export function UsuarioModal({
   function clearMembro() {
     setSelectedMembro(null);
     setMembroSearch('');
+  }
+
+  function handleMembroSearchChange(value: string) {
+    setMembroSearch(value);
+    setSelectedMembro(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -201,76 +187,20 @@ export function UsuarioModal({
               </div>
             )}
 
-            {/* Vínculo com Membro — campo mais destacado no topo */}
-            <div className="space-y-1.5" ref={membroRef}>
-              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-                Vincular a um membro
-                <span className="text-gray-400 font-normal normal-case tracking-normal">(opcional)</span>
-              </label>
-              <div className="relative">
-                <div className="relative">
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    type="text"
-                    placeholder={membrosLoading ? 'Carregando membros...' : 'Buscar membro pelo nome...'}
-                    value={membroSearch}
-                    disabled={membrosLoading}
-                    onChange={(e) => {
-                      setMembroSearch(e.target.value);
-                      setSelectedMembro(null);
-                      setMembroDropdown(true);
-                    }}
-                    onFocus={() => setMembroDropdown(true)}
-                    className="w-full pl-9 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                  />
-                  {selectedMembro && (
-                    <button
-                      type="button"
-                      onClick={clearMembro}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-
-                {/* Dropdown */}
-                {membroDropdown && membrosFiltrados.length > 0 && (
-                  <div className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
-                    {membrosFiltrados.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => selectMembro(m)}
-                        className="w-full text-left px-4 py-2.5 hover:bg-indigo-50 transition-colors flex flex-col"
-                      >
-                        <span className="text-sm font-semibold text-gray-800">{m.nome}</span>
-                        {m.email && <span className="text-xs text-gray-400">{m.email}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {membroDropdown && membroSearch.trim() && membrosFiltrados.length === 0 && (
-                  <div className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-400">
-                    Nenhum membro disponível encontrado.
-                  </div>
-                )}
-              </div>
-
-              {selectedMembro && (
-                <p className="text-xs text-emerald-600 flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Vinculado a <strong>{selectedMembro.nome}</strong>
-                </p>
-              )}
-            </div>
+            <MembroSearchCombobox
+              label="Vincular a um membro"
+              optionalLabel="(opcional)"
+              placeholder="Buscar membro pelo nome..."
+              loading={membrosLoading}
+              options={membrosDisponiveis}
+              selected={selectedMembro}
+              search={membroSearch}
+              emptyMessage="Nenhum membro disponivel encontrado."
+              selectedPrefix="Vinculado a"
+              onSearchChange={handleMembroSearchChange}
+              onSelect={selectMembro}
+              onClear={clearMembro}
+            />
 
             <div className="border-t border-gray-100 pt-4 space-y-4">
               {/* Nome */}
@@ -409,3 +339,4 @@ export function UsuarioModal({
     </div>
   );
 }
+

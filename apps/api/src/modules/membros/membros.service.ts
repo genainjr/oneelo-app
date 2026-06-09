@@ -139,11 +139,20 @@ export class MembrosService {
   async remove(tenantId: string, id: string) {
     await this.findOne(tenantId, id);
 
-    // Soft delete
-    await this.prisma.client.membro.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
+    const deletedAt = new Date();
+
+    await this.prisma.$transaction([
+      this.prisma.ministerioMembroFuncao.deleteMany({
+        where: { membroId: id },
+      }),
+      this.prisma.ministerioMembro.deleteMany({
+        where: { membroId: id },
+      }),
+      this.prisma.membro.update({
+        where: { id },
+        data: { deletedAt },
+      }),
+    ]);
 
     return { message: 'Membro removido com sucesso (soft delete).' };
   }
