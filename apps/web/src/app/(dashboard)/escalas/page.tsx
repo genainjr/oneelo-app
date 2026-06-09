@@ -495,7 +495,16 @@ export default function EscalasPage() {
     }
   }
 
-  const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF' || currentUser?.role === 'BASIC';
+  const canManageTenant = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
+  const ledMinisterioIds = new Set(ministerios.map((m) => m.id));
+  const canCreateEscala =
+    canManageTenant ||
+    (currentUser?.role === 'BASIC' && ledMinisterioIds.size > 0);
+  const canManageSelectedEscala =
+    canManageTenant ||
+    (currentUser?.role === 'BASIC' &&
+      !!detailedEscala?.ministerioId &&
+      ledMinisterioIds.has(detailedEscala.ministerioId));
   const funcoes = detailedEscala?.ministerio?.funcoes || [];
   const anos = Array.from({ length: 4 }, (_, i) => hoje.getFullYear() - 1 + i);
 
@@ -577,7 +586,7 @@ export default function EscalasPage() {
         title={t('title')}
         description={t('description')}
         action={
-          canManage ? (
+          canCreateEscala ? (
             <div className="flex items-center gap-2">
               <button
                 title={t('aiComingSoon')}
@@ -666,7 +675,7 @@ export default function EscalasPage() {
           ) : escalas.length === 0 ? (
             <div className="text-center py-10 text-sm text-gray-400 bg-gray-50 rounded-2xl border border-gray-100">
               <p className="font-medium">{t('noSchedules')}</p>
-              {canManage && <p className="text-xs mt-1">{t('noSchedulesDesc')}</p>}
+              {canCreateEscala && <p className="text-xs mt-1">{t('noSchedulesDesc')}</p>}
             </div>
           ) : (
             escalas.map((e) => (
@@ -729,7 +738,7 @@ export default function EscalasPage() {
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_COLORS[detailedEscala.status]}`}>
                     {STATUS_LABELS[detailedEscala.status]}
                   </span>
-                  {canManage && (
+                  {canManageSelectedEscala && (
                     <>
                       {detailedEscala.status === 'RASCUNHO' && (
                         <button
@@ -763,7 +772,7 @@ export default function EscalasPage() {
                 escala={detailedEscala}
                 funcoes={funcoes}
                 ministryMembers={ministryMembers}
-                canManage={canManage}
+                canManage={canManageSelectedEscala}
                 tGrid={tGrid}
                 onToggleCelula={handleToggleCelula}
                 onAddMembro={async (diaId, membroId, funcaoId) => {

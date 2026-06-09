@@ -27,7 +27,7 @@ export class EscalasController {
   constructor(private readonly escalasService: EscalasService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   create(@Body() createEscalaDto: CreateEscalaDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -51,7 +51,7 @@ export class EscalasController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   update(
     @Param('id') id: string,
     @Body() updateEscalaDto: UpdateEscalaDto,
@@ -63,7 +63,7 @@ export class EscalasController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   remove(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
@@ -73,7 +73,7 @@ export class EscalasController {
   // ─── Gestão de Dias ─────────────────────────────
 
   @Patch(':id/dias/order')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   reorderDias(
     @Param('id') id: string,
     @Body() dto: ReorderDiasDto,
@@ -85,7 +85,7 @@ export class EscalasController {
   }
 
   @Post(':id/dias')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   addDia(
     @Param('id') id: string,
     @Body() body: { data: string; titulo?: string },
@@ -97,7 +97,7 @@ export class EscalasController {
   }
 
   @Delete('dias/:diaId')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   removeDia(
     @Param('diaId') diaId: string,
     @Req() req: Request,
@@ -110,7 +110,7 @@ export class EscalasController {
   // ─── Gestão de Itens da Escala ─────────────────────────────
 
   @Post('dias/:diaId/itens')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   addMembro(
     @Param('diaId') diaId: string,
     @Body() manageEscalaItemDto: ManageEscalaItemDto,
@@ -123,7 +123,7 @@ export class EscalasController {
   }
 
   @Delete('itens/:itemId')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   removeMembro(
     @Param('itemId') itemId: string,
     @Req() req: Request,
@@ -136,7 +136,7 @@ export class EscalasController {
   // ─── Visibilidade de Célula (Dia × Função) ──────────────────
 
   @Patch('dias/:diaId/funcoes-ocultas')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   toggleDiaFuncaoOculta(
     @Param('diaId') diaId: string,
     @Body() dto: ToggleDiaFuncaoOcultaDto,
@@ -164,7 +164,7 @@ export class EscalasController {
   // ─── Alteração Direta do Status pelo Administrador/Líder ───
 
   @Patch('itens/:itemId/status')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   updateItemStatus(
     @Param('itemId') itemId: string,
     @Body() confirmarEscalaItemDto: ConfirmarEscalaItemDto,

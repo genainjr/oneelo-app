@@ -6,12 +6,16 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateMinisterioDto } from './dto/create-ministerio.dto';
 import { UpdateMinisterioDto } from './dto/update-ministerio.dto';
-import { Role, MinistryRole } from '@prisma/client';
+import { Role, MinistryRole, StatusMembro } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
+import { AuthorizationService } from '../../common/authorization/authorization.service';
 
 @Injectable()
 export class MinisteriosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authorization: AuthorizationService,
+  ) {}
 
   async create(tenantId: string, dto: CreateMinisterioDto) {
     const { funcoes, ...ministerioData } = dto;
@@ -116,6 +120,38 @@ export class MinisteriosService {
     return ministerio;
   }
 
+  async findMembrosDisponiveis(tenantId: string, ministerioId: string, user: JwtPayload) {
+    const ministerio = await this.prisma.ministerio.findFirst({
+      where: { id: ministerioId, tenantId },
+    });
+    if (!ministerio) {
+      throw new NotFoundException('Ministério não encontrado.');
+    }
+
+    await this.authorization.assertCanManageMinistry(user, ministerioId);
+
+    return this.prisma.client.membro.findMany({
+      where: {
+        tenantId,
+        status: StatusMembro.ATIVO,
+        ministerios: {
+          none: { ministerioId },
+        },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        nome: true,
+        email: true,
+        whatsapp: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { nome: 'asc' },
+    });
+  }
+
   async update(tenantId: string, id: string, dto: UpdateMinisterioDto, user: JwtPayload) {
     await this.findOne(tenantId, id, user);
 
@@ -160,11 +196,24 @@ export class MinisteriosService {
     });
   }
 
-  async addMembro(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole = MinistryRole.MEMBER, funcaoIds?: string[]) {
+  async addMembro(
+    tenantId: string,
+    ministerioId: string,
+    membroId: string,
+    role: MinistryRole = MinistryRole.MEMBER,
+    funcaoIds: string[] | undefined,
+    user: JwtPayload,
+  ) {
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id: ministerioId, tenantId },
     });
     if (!ministerio) throw new NotFoundException('Ministério não encontrado.');
+
+    await this.authorization.assertCanManageMinistry(user, ministerioId);
+
+    if (role === MinistryRole.LEADER && !this.authorization.canManageTenant(user)) {
+      throw new ForbiddenException('Apenas administradores podem definir líderes.');
+    }
 
     const membro = await this.prisma.client.membro.findFirst({
       where: { id: membroId, tenantId },
@@ -205,7 +254,9 @@ export class MinisteriosService {
     if (!ministerio) throw new NotFoundException('Ministério não encontrado.');
 
     // LEADER não pode remover outro LEADER
-    if (user.role === Role.BASIC) {
+    await this.authorization.assertCanManageMinistry(user, ministerioId);
+
+    if (!this.authorization.canManageTenant(user)) {
       const targetMember = await this.prisma.ministerioMembro.findUnique({
         where: { ministerioId_membroId: { ministerioId, membroId } },
       });
@@ -227,12 +278,22 @@ export class MinisteriosService {
     });
     if (!ministerio) throw new NotFoundException('Ministério não encontrado.');
 
+    await this.authorization.assertCanManageMinistry(user, ministerioId);
+
     const membership = await this.prisma.ministerioMembro.findUnique({
       where: { ministerioId_membroId: { ministerioId, membroId } },
     });
     if (!membership) throw new NotFoundException('Membro não participa deste ministério.');
 
     if (role !== undefined) {
+      if (
+        !this.authorization.canManageTenant(user) &&
+        (role === MinistryRole.LEADER ||
+          membership.role === MinistryRole.LEADER ||
+          user.memberId === membroId)
+      ) {
+        throw new ForbiddenException('Apenas administradores podem alterar papéis no ministério.');
+      }
       // Apenas ADMIN/STAFF podem promover a LEADER
       if (role === MinistryRole.LEADER && user.role === Role.BASIC) {
         throw new ForbiddenException('Apenas administradores podem definir líderes.');

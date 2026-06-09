@@ -31,9 +31,29 @@ export type StatusConfirmacao = 'PENDENTE' | 'CONFIRMADO' | 'RECUSADO';
 export interface AuthUser {
   id: string;
   tenantId: string;
+  memberId?: string | null;
   nome: string;
   email: string;
   role: Role;
+  createdAt?: string;
+  tenant?: {
+    nome: string;
+    slug: string;
+    plano: Plano;
+    limiteMembros: number;
+  };
+  membro?: {
+    id: string;
+    nome: string;
+    email?: string | null;
+    whatsapp?: string | null;
+    dataNascimento?: string | null;
+    status: StatusMembro;
+    ministerios?: {
+      role: MinistryRole;
+      ministerio: { id: string; nome: string };
+    }[];
+  } | null;
 }
 
 export interface LoginDto {

@@ -109,7 +109,29 @@ export class AuthService {
         email: true,
         role: true,
         tenantId: true,
+        memberId: true,
         createdAt: true,
+        membro: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            whatsapp: true,
+            dataNascimento: true,
+            status: true,
+            ministerios: {
+              select: {
+                role: true,
+                ministerio: {
+                  select: {
+                    id: true,
+                    nome: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         tenant: {
           select: { nome: true, slug: true, plano: true, limiteMembros: true },
         },

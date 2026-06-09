@@ -58,6 +58,7 @@ export function middleware(request: NextRequest) {
 
   const role = decodeJwtRole(token);
   const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isBasic = role === 'BASIC';
 
   // SUPER_ADMIN fora de /admin → redireciona para o painel admin
   if (isSuperAdmin && !pathname.startsWith('/admin')) {
@@ -67,6 +68,24 @@ export function middleware(request: NextRequest) {
   // Usuário comum tentando acessar /admin → redireciona para dashboard
   if (!isSuperAdmin && pathname.startsWith('/admin')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  if (isBasic) {
+    const blockedBasicPaths = [
+      '/dashboard',
+      '/membros',
+      '/configuracoes',
+      '/financeiro',
+      '/grupos',
+      '/integracoes',
+    ];
+    const isBlocked = blockedBasicPaths.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`),
+    );
+
+    if (isBlocked) {
+      return NextResponse.redirect(new URL('/minhas-escalas', request.url));
+    }
   }
 
   const response = NextResponse.next();
