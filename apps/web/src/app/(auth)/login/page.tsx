@@ -14,7 +14,7 @@ function LoginForm() {
   const t = useTranslations('auth.login');
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') ?? '/dashboard';
+  const redirect = searchParams.get('redirect');
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -27,8 +27,12 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      await api.post<LoginResponse>('/api/auth/login', { email, senha });
-      window.location.href = redirect;
+      const response = await api.post<LoginResponse>('/api/auth/login', { email, senha });
+      const fallback = response.user.role === 'BASIC' ? '/minhas-escalas' : '/dashboard';
+      const target = redirect && !(response.user.role === 'BASIC' && redirect === '/dashboard')
+        ? redirect
+        : fallback;
+      window.location.href = target;
     } catch (err) {
       if (err instanceof HttpError) {
         if (err.status === 401) {

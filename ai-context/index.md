@@ -1,21 +1,50 @@
 # Repository AI Context Manifest
 
-Este repositório contém a documentação de contexto da Inteligência Artificial para o projeto **SaaS de Gestão para Igrejas**.
+Este repositorio contem a documentacao de contexto da IA para o projeto Oneelo, um SaaS de gestao para igrejas.
 
-## Domínios Principais
-- **Multi-tenancy & Limitações**: Isolamento de dados baseado em coluna (`tenantId`) e limite de membros por plano.
-- **Gestão de Membros & Tags**: Cadastro de membros, exclusão lógica (Soft Delete) e filtros avançados/compostos por etiquetas (Tags).
-- **Ministérios & Escalas**: Organização de equipes/ministérios, delegação de líderes e criação/publicação de escalas com confirmação autenticada.
-- **Eventos & Agenda**: Gerenciamento de eventos de calendário e controle de datas.
-- **Auditoria de Operações**: Rastreamento automático de mutações através de logs integrados.
+---
 
-## Arquitetura Primária
-- **Monorepo**: Estrutura com `npm workspaces` segregando frontend e backend.
-- **NestJS (Backend)**: Arquitetura em camadas (Controller, Service, Prisma).
-- **Next.js (Frontend)**: Utilização de App Router e proteção por middleware de rotas autenticadas.
-- **Prisma & PostgreSQL**: Camada de banco de dados estendida com injeção automática de filtros.
+## Dominios Principais
+
+- Multi-tenancy e limites de plano.
+- Gestao de membros, tags e soft delete.
+- Ministerios, lideranca contextual e funcoes por membro.
+- Escalas, confirmacao de presenca e experiencia do membro.
+- Eventos e agenda.
+- Auditoria e seguranca.
+- Super Admin da plataforma Lookup Labs.
+
+---
+
+## Arquitetura Primaria
+
+- Backend: NestJS, Prisma e PostgreSQL.
+- Frontend: Next.js App Router.
+- Autenticacao: JWT em cookie HTTP-only.
+- RBAC: `User.role` para permissao global e `MinisterioMembro.role` para permissao ministerial.
+
+---
 
 ## Contextos Importantes
-- **[Visão Geral da Arquitetura](architecture/overview.md)**: Detalhes de guards, decorators, interceptors, soft delete e infraestrutura.
-- **[Plano de Desenvolvimento Original](../plano_desenvolvimento_ideal_markdown.md)**: O documento com especificações completas de regras de negócio, limites e roadmap de desenvolvimento do MVP.
-- **[Backlog Técnico](backlog/README.md)**: Correções de segurança, melhorias e débitos técnicos pendentes.
+
+- [Visao Geral da Arquitetura](architecture/overview.md)
+- [Decisoes de RBAC](architecture/rbac-decisions.md)
+- [Dicionario de Modelos](database/models.md)
+- [Matriz de Permissoes](backlog/permissions-matrix.md)
+- [Regras de Negocio e Validacoes](business-rules/validation-rules.md)
+- [Regras de Navegacao e Sidebar](frontend/navigation-rules.md)
+- [Workflow de Desenvolvimento](workflows/feature-development.md)
+- [Plano RBAC, Navegacao e Experiencia](plans/rbac-navigation-experience-plan.md)
+- [Backlog Tecnico](backlog/README.md)
+- [Plano de Desenvolvimento Original](../plano_desenvolvimento_ideal_markdown.md)
+
+---
+
+## Decisoes Consolidadas
+
+- Os enums de `Role` permanecem `ADMIN`, `STAFF`, `BASIC` e `SUPER_ADMIN`.
+- Labels amigaveis devem ser resolvidas na UI/i18n.
+- `BASIC` comum nao acessa areas administrativas.
+- `BASIC` lider/co-lider ganha poderes apenas nos ministerios onde possui `LEADER` ou `ASSISTANT_LEADER`.
+- Backend e a fonte de verdade de autorizacao.
+- Sidebar inicia com secoes internas recolhidas por padrao.

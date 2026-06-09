@@ -36,6 +36,14 @@ export class MinisteriosController {
     return this.ministeriosService.findAll(tenantId, user);
   }
 
+  @Get(':id/membros-disponiveis')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  findMembrosDisponiveis(@Param('id') id: string, @Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.ministeriosService.findMembrosDisponiveis(tenantId, id, user);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   findOne(@Param('id') id: string, @Req() req: Request) {
@@ -73,11 +81,19 @@ export class MinisteriosController {
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
-    return this.ministeriosService.addMembro(tenantId, ministerioId, dto.membroId, dto.role, dto.funcaoIds);
+    const user = req['user'] as JwtPayload;
+    return this.ministeriosService.addMembro(
+      tenantId,
+      ministerioId,
+      dto.membroId,
+      dto.role,
+      dto.funcaoIds,
+      user,
+    );
   }
 
   @Patch(':id/membros/:membroId')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   updateMembroRole(
     @Param('id') ministerioId: string,
     @Param('membroId') membroId: string,

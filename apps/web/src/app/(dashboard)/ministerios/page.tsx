@@ -35,6 +35,8 @@ export default function MinisteriosPage() {
   }, []);
 
   const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
+  const canManageSelectedMinisterio =
+    canManage || (currentUser?.role === 'BASIC' && !!selectedMinisterio);
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -67,9 +69,17 @@ export default function MinisteriosPage() {
     }
   }
 
-  async function loadOptions() {
+  async function loadOptions(ministerioId?: string) {
+    if (!canManage && !ministerioId) {
+      setAllMembros([]);
+      return;
+    }
+
     try {
-      const membrosData = await api.get<Membro[]>('/api/membros?status=ATIVO');
+      const url = canManage
+        ? '/api/membros?status=ATIVO'
+        : `/api/ministerios/${ministerioId}/membros-disponiveis`;
+      const membrosData = await api.get<Membro[]>(url);
       setAllMembros(Array.isArray(membrosData) ? membrosData : []);
     } catch (e) {
       console.error('Erro ao carregar opções para ministérios:', e);
@@ -78,7 +88,11 @@ export default function MinisteriosPage() {
 
   useEffect(() => {
     if (isModalOpen) {
-      loadOptions();
+      if (canManage || (currentUser?.role === 'BASIC' && selectedMinisterio)) {
+        loadOptions(selectedMinisterio?.id);
+      } else {
+        setAllMembros([]);
+      }
       if (selectedMinisterio) {
         setNome(selectedMinisterio.nome);
         setDescricao(selectedMinisterio.descricao || '');
@@ -161,10 +175,19 @@ export default function MinisteriosPage() {
   async function handleAddMembro() {
     if (!selectedMembroToAdd || !selectedMinisterio) return;
     try {
-      await addMembro(selectedMinisterio.id, selectedMembroToAdd, selectedRoleToAdd);
+      const roleToAdd = canManage || selectedRoleToAdd !== 'LEADER'
+        ? selectedRoleToAdd
+        : 'MEMBER';
+
+      await addMembro(
+        selectedMinisterio.id,
+        selectedMembroToAdd,
+        roleToAdd,
+      );
       setSelectedMembroToAdd('');
       setSelectedRoleToAdd('MEMBER');
-      fetchDetails(selectedMinisterio.id);
+      await fetchDetails(selectedMinisterio.id);
+      await loadOptions(selectedMinisterio.id);
     } catch (err: any) {
       alert(err.message || 'Erro ao adicionar membro.');
     }
@@ -396,7 +419,7 @@ export default function MinisteriosPage() {
               {/* Tab: Membros */}
               {modalTab === 'membros' && selectedMinisterio && (
                 <div className="space-y-5">
-                  {canManage && (
+                  {canManageSelectedMinisterio && (
                     <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
                       <div className="flex-1 space-y-1">
                         <label htmlFor="add-membro" className="text-xs font-bold text-gray-500 uppercase">{t('members.add')}</label>
@@ -412,19 +435,23 @@ export default function MinisteriosPage() {
                           ))}
                         </select>
                       </div>
-                      <div className="space-y-1">
-                        <label htmlFor="add-role" className="text-xs font-bold text-gray-500 uppercase">{t('members.role')}</label>
-                        <select
-                          id="add-role"
-                          value={selectedRoleToAdd}
-                          onChange={(e) => setSelectedRoleToAdd(e.target.value as MinistryRole)}
-                          className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="MEMBER">{t('members.roles.MEMBER')}</option>
-                          <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
-                          <option value="LEADER">{t('members.roles.LEADER')}</option>
-                        </select>
-                      </div>
+                      {canManageSelectedMinisterio && (
+                        <div className="space-y-1">
+                          <label htmlFor="add-role" className="text-xs font-bold text-gray-500 uppercase">{t('members.role')}</label>
+                          <select
+                            id="add-role"
+                            value={selectedRoleToAdd}
+                            onChange={(e) => setSelectedRoleToAdd(e.target.value as MinistryRole)}
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                          >
+                            <option value="MEMBER">{t('members.roles.MEMBER')}</option>
+                            <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
+                            {canManage && (
+                              <option value="LEADER">{t('members.roles.LEADER')}</option>
+                            )}
+                          </select>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={handleAddMembro}
@@ -445,6 +472,13 @@ export default function MinisteriosPage() {
                         const isExpanded = expandedMembro === item.membroId;
                         const ministerioFuncoes: any[] = detailedInfo.funcoes ?? [];
                         const selectedFuncoes = funcoesPorMembro[item.membroId] ?? [];
+                        const canChangeMemberRole =
+                          canManage ||
+                          (
+                            canManageSelectedMinisterio &&
+                            item.role !== 'LEADER' &&
+                            item.membroId !== currentUser?.memberId
+                          );
                         return (
                           <div key={item.membroId} className="divide-y divide-gray-50">
                             <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
@@ -458,7 +492,7 @@ export default function MinisteriosPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                {canManage && (
+                                {canChangeMemberRole && (
                                   <select
                                     value={item.role}
                                     onChange={(e) => handleChangeRole(item.membroId, e.target.value as MinistryRole)}
@@ -466,7 +500,9 @@ export default function MinisteriosPage() {
                                   >
                                     <option value="MEMBER">{t('members.roles.MEMBER')}</option>
                                     <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
-                                    <option value="LEADER">{t('members.roles.LEADER')}</option>
+                                    {canManage && (
+                                      <option value="LEADER">{t('members.roles.LEADER')}</option>
+                                    )}
                                   </select>
                                 )}
                                 {ministerioFuncoes.length > 0 && (
@@ -505,7 +541,7 @@ export default function MinisteriosPage() {
                                           className="sr-only"
                                           checked={checked}
                                           onChange={() => toggleFuncaoMembro(item.membroId, f.id)}
-                                          disabled={!canManage}
+                                          disabled={!canManageSelectedMinisterio}
                                         />
                                         {checked && (
                                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -517,7 +553,7 @@ export default function MinisteriosPage() {
                                     );
                                   })}
                                 </div>
-                                {canManage && (
+                                {canManageSelectedMinisterio && (
                                   <div className="flex justify-end">
                                     <button
                                       onClick={() => handleSaveFuncoesMembro(item.membroId)}
