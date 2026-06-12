@@ -26,11 +26,14 @@ Papeis ministeriais:
 | Acao | ADMIN | STAFF | BASIC lider/co-lider | BASIC comum |
 |---|---:|---:|---:|---:|
 | Gerir membros globais | sim | sim | nao | nao |
+| Visualizar membros globais | sim | sim | nao | nao |
+| Visualizar membros do proprio ministerio | sim | sim | sim | nao |
 | Gerir ministerios | sim | sim | nao | nao |
 | Gerir membros do proprio ministerio | sim | sim | sim | nao |
 | Promover alguem a `LEADER` | sim | sim | nao | nao |
 | Promover alguem a `ASSISTANT_LEADER` | sim | sim | sim, com restricoes | nao |
 | Gerir escalas do proprio ministerio | sim | sim | sim | nao |
+| Visualizar escalas do proprio ministerio | sim | sim | sim | nao |
 | Confirmar/recusar propria escala | sim | sim | sim | sim |
 | Ver perfil proprio | sim | sim | sim | sim |
 | Alterar propria senha | sim | sim | sim | sim |
@@ -125,6 +128,10 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 - `ministerioId`: ministerio ativo e do mesmo tenant.
 - `data`: data valida.
 - Mutacoes devem validar permissao sobre o ministerio da escala.
+- Visualizacoes administrativas de escala devem respeitar o mesmo escopo de
+  ministerio usado para gestao.
+- A visualizacao individual de escalas deve retornar somente itens vinculados ao
+  `memberId` do usuario autenticado.
 
 ### EscalaItem
 

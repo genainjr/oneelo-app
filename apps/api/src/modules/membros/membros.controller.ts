@@ -13,10 +13,12 @@ import { MembrosService } from './membros.service';
 import { CreateMembroDto } from './dto/create-membro.dto';
 import { UpdateMembroDto } from './dto/update-membro.dto';
 import { FilterMembrosDto } from './dto/filter-membros.dto';
+import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.dto';
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
+import { JwtPayload } from '../../common/types/jwt-payload.interface';
 
 @Controller('membros')
 @Roles(Role.ADMIN, Role.STAFF)
@@ -33,6 +35,22 @@ export class MembrosController {
   findAll(@Query() query: FilterMembrosDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.findAll(tenantId, query);
+  }
+
+  @Get('visualizacao')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  findVisualizacao(@Query() query: FilterMembrosVisualizacaoDto, @Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.findVisualizacao(tenantId, query, user);
+  }
+
+  @Get('aniversariantes')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  findAniversariantes(@Query() query: FilterMembrosVisualizacaoDto, @Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.findAniversariantes(tenantId, query, user);
   }
 
   @Post('bulk-tag')

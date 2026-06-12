@@ -21,8 +21,10 @@ Pode acessar a experiencia administrativa do tenant:
 
 - `/dashboard`
 - `/membros`
+- `/membros/visualizacao`
 - `/ministerios`
 - `/escalas`
+- `/escalas/visualizacao`
 - `/agenda`
 - `/meu-perfil`
 - `/configuracoes`
@@ -34,8 +36,10 @@ Pode acessar a operacao global do tenant:
 
 - `/dashboard`
 - `/membros`
+- `/membros/visualizacao`
 - `/ministerios`
 - `/escalas`
+- `/escalas/visualizacao`
 - `/agenda`
 - `/meu-perfil`
 
@@ -67,7 +71,8 @@ Nao deve acessar:
 Tem o mesmo menu do BASIC comum, com acesso adicional a:
 
 - `/ministerios`, escopado aos ministerios onde e `LEADER` ou `ASSISTANT_LEADER`;
-- `/escalas`, escopado aos ministerios onde e `LEADER` ou `ASSISTANT_LEADER`.
+- `/escalas`, escopado aos ministerios onde e `LEADER` ou `ASSISTANT_LEADER`;
+- `/escalas/visualizacao`, escopado aos ministerios onde e `LEADER` ou `ASSISTANT_LEADER`.
 
 Ele nao deve ver dados de ministerios que nao lidera/co-lidera.
 
@@ -106,6 +111,8 @@ Menu BASIC lider/co-lider:
 Minhas Escalas
 Ministerios
 Escalas
+  Gerenciar
+  Visualizacao
 Agenda
 Meu Perfil
 ```
@@ -115,8 +122,14 @@ Menu ADMIN/STAFF:
 ```txt
 Dashboard
 Membros
+  Gerenciar
+  Visualizacao
+  Exportacao
 Ministerios
 Escalas
+  Gerenciar
+  Visualizacao
+  Exportacao
 Agenda
 Grupos
 Financeiro

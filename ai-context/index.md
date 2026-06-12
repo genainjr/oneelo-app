@@ -35,6 +35,7 @@ Este repositorio contem a documentacao de contexto da IA para o projeto Oneelo, 
 - [Regras de Navegacao e Sidebar](frontend/navigation-rules.md)
 - [Workflow de Desenvolvimento](workflows/feature-development.md)
 - [Plano RBAC, Navegacao e Experiencia](plans/rbac-navigation-experience-plan.md)
+- [Plano de Visualizacoes de Membros e Escalas](plans/portal-member-scale-visualizations-plan.md)
 - [Backlog Tecnico](backlog/README.md)
 - [Plano de Desenvolvimento Original](../plano_desenvolvimento_ideal_markdown.md)
 
