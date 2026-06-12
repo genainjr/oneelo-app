@@ -3,146 +3,106 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
+import { StatCard } from '@/components/app/stat-card';
+import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
-import { formatDate, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL } from '@/lib/utils';
-import { AuthUser, Escala, EscalaItem } from '@/types';
-
-type MinhaEscalaDia = {
-  escala: Escala;
-  diaId: string;
-  data: string;
-  titulo?: string;
-  itens: EscalaItem[];
-};
+import { Calendar, AlertTriangle, List } from 'lucide-react';
+import { formatDate, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
+import { AuthUser, MinhaEscalaItem } from '@/types';
 
 export default function MinhasEscalasPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [items, setItems] = useState<MinhaEscalaDia[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
-  const [error, setError] = useState('');
-
-  async function load() {
-    setLoading(true);
-    setError('');
-    try {
-      const me = await api.get<AuthUser>('/api/auth/me');
-      setUser(me);
-
-      if (!me.memberId) {
-        setItems([]);
-        return;
-      }
-
-      const escalas = await api.get<Escala[]>('/api/escalas');
-      const detailed = await Promise.all(
-        escalas.map((escala) => api.get<Escala>(`/api/escalas/${escala.id}`).catch(() => null)),
-      );
-
-      const ownItems = detailed.flatMap((escala) => {
-        if (!escala?.dias) return [];
-        return escala.dias.flatMap((dia) => {
-          const itens = (dia.itens || []).filter((item) => item.membroId === me.memberId);
-          if (itens.length === 0) return [];
-          return [{
-            escala,
-            diaId: dia.id,
-            data: dia.data,
-            titulo: dia.titulo,
-            itens,
-          }];
-        });
-      });
-
-      ownItems.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
-      setItems(ownItems);
-    } catch {
-      setError('Nao foi possivel carregar suas escalas.');
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [actionError, setActionError] = useState('');
+  const { items, loading, error, refetch } = useMinhasEscalas();
 
   useEffect(() => {
-    load();
+    api.get<AuthUser>('/api/auth/me')
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setLoadingUser(false));
   }, []);
 
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
+  const pendentes = useMemo(
+    () => items.filter((item) => item.statusConfirmacao === 'PENDENTE' && new Date(item.data) >= hoje),
+    [items],
+  );
   const futuras = useMemo(
     () => items.filter((item) => new Date(item.data) >= hoje),
     [items],
   );
   const passadas = useMemo(
-    () => items.filter((item) => new Date(item.data) < hoje).reverse(),
+    () => items.filter((item) => new Date(item.data) < hoje).slice().reverse(),
     [items],
   );
 
   async function updateConfirmacao(itemId: string, statusConfirmacao: 'CONFIRMADO' | 'RECUSADO') {
     setUpdatingItemId(itemId);
+    setActionError('');
     try {
       await api.patch(`/api/escalas/itens/${itemId}/confirmar`, { statusConfirmacao });
-      await load();
+      await refetch();
     } catch {
-      setError('Nao foi possivel atualizar sua confirmacao.');
+      setActionError('Nao foi possivel atualizar sua confirmacao.');
     } finally {
       setUpdatingItemId(null);
     }
   }
 
-  function renderItem(item: MinhaEscalaDia) {
+  function renderItem(item: MinhaEscalaItem) {
     const canConfirm = item.escala.status === 'PUBLICADA';
 
     return (
-      <div key={`${item.escala.id}-${item.diaId}`} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
-        <div className="flex items-start justify-between gap-4">
+      <div key={item.id} className="rounded-lg border border-gray-100 bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold text-indigo-600 uppercase">{item.escala.ministerio?.nome || 'Ministerio'}</p>
-            <h3 className="text-base font-bold text-gray-900 mt-1">{formatDate(item.data, 'dd/MM/yyyy')}</h3>
-            {item.titulo && <p className="text-sm text-gray-500 mt-0.5">{item.titulo}</p>}
+            <p className="text-xs font-bold uppercase text-indigo-600">{item.escala.ministerio?.nome || 'Ministerio'}</p>
+            <h3 className="mt-1 text-base font-bold text-gray-900">{formatDate(item.data, 'dd/MM/yyyy')}</h3>
+            {item.titulo && <p className="mt-0.5 text-sm text-gray-500">{item.titulo}</p>}
           </div>
-          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full border border-gray-200 text-gray-600">
-            {item.escala.status}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_ESCALA_COLOR[item.escala.status]}`}>
+              {STATUS_ESCALA_LABEL[item.escala.status]}
+            </span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_CONFIRMACAO_COLOR[item.statusConfirmacao]}`}>
+              {STATUS_CONFIRMACAO_LABEL[item.statusConfirmacao]}
+            </span>
+          </div>
         </div>
 
-        <div className="mt-4 space-y-2">
-          {item.itens.map((escalaItem) => (
-            <div key={escalaItem.id} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2">
-              <div>
-                <p className="text-sm font-semibold text-gray-800">{escalaItem.funcao?.nome || 'Funcao'}</p>
-                {escalaItem.observacoes && <p className="text-xs text-gray-500">{escalaItem.observacoes}</p>}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-bold px-2 py-1 rounded-lg ${STATUS_CONFIRMACAO_COLOR[escalaItem.statusConfirmacao]}`}>
-                  {STATUS_CONFIRMACAO_LABEL[escalaItem.statusConfirmacao]}
-                </span>
-                {canConfirm && (
-                  <>
-                    <button
-                      onClick={() => updateConfirmacao(escalaItem.id, 'CONFIRMADO')}
-                      disabled={updatingItemId === escalaItem.id}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold disabled:opacity-50"
-                    >
-                      Confirmar
-                    </button>
-                    <button
-                      onClick={() => updateConfirmacao(escalaItem.id, 'RECUSADO')}
-                      disabled={updatingItemId === escalaItem.id}
-                      className="px-3 py-1.5 rounded-lg border border-red-100 text-red-600 text-xs font-semibold hover:bg-red-50 disabled:opacity-50"
-                    >
-                      Recusar
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
+          <p className="text-xs font-bold uppercase text-gray-400">Funcao</p>
+          <p className="mt-1 text-sm font-bold text-gray-800">{item.funcao?.nome || 'Funcao'}</p>
+          {item.observacoes && <p className="mt-1 text-xs text-gray-500">{item.observacoes}</p>}
         </div>
+
+        {canConfirm && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={() => updateConfirmacao(item.id, 'CONFIRMADO')}
+              disabled={updatingItemId === item.id}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              Confirmar
+            </button>
+            <button
+              onClick={() => updateConfirmacao(item.id, 'RECUSADO')}
+              disabled={updatingItemId === item.id}
+              className="rounded-lg border border-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              Recusar
+            </button>
+          </div>
+        )}
       </div>
     );
   }
+
+  const isLoading = loading || loadingUser;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -151,15 +111,21 @@ export default function MinhasEscalasPage() {
         description="Acompanhe suas proximas participacoes e confirme sua presenca."
       />
 
-      {error && (
-        <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
-          {error}
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <StatCard title="Proximas" value={futuras.length} icon={<Calendar className="w-5 h-5" />} color="indigo" />
+        <StatCard title="Pendentes" value={pendentes.length} icon={<AlertTriangle className="w-5 h-5" />} color="amber" />
+        <StatCard title="Historico" value={passadas.length} icon={<List className="w-5 h-5" />} color="gray" />
+      </div>
+
+      {(error || actionError) && (
+        <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+          {error || actionError}
         </div>
       )}
 
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-3 animate-pulse">
-          {[1, 2, 3].map((item) => <div key={item} className="h-32 rounded-2xl bg-gray-100" />)}
+          {[1, 2, 3].map((item) => <div key={item} className="h-32 rounded-lg bg-gray-100" />)}
         </div>
       ) : !user?.memberId ? (
         <EmptyState title="Perfil sem membro vinculado" description="Seu usuario ainda nao esta vinculado a um cadastro de membro." />
@@ -168,10 +134,21 @@ export default function MinhasEscalasPage() {
       ) : (
         <div className="space-y-8">
           <section>
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Pendentes</h2>
+            <div className="space-y-3">
+              {pendentes.length > 0 ? pendentes.map(renderItem) : (
+                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                  Nenhuma confirmacao pendente.
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section>
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Proximas</h2>
             <div className="space-y-3">
               {futuras.length > 0 ? futuras.map(renderItem) : (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
                   Nenhuma escala futura.
                 </div>
               )}
@@ -182,7 +159,7 @@ export default function MinhasEscalasPage() {
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Historico</h2>
             <div className="space-y-3">
               {passadas.length > 0 ? passadas.map(renderItem) : (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
                   Nenhuma escala passada.
                 </div>
               )}

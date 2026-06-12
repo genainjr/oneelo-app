@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useAdmin, CreateTenantPayload, UpdateTenantPayload, CreateTenantUserPayload } from '@/hooks/use-admin';
 import { Tenant, Plano } from '@/types';
 import { HttpError } from '@/lib/api';
+import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
+import { InputField, SelectField, PasswordField } from '@/components/app/form-field';
 
 const PLANO_LABELS: Record<Plano, string> = {
   GRATUITO: 'Gratuito',
@@ -20,36 +22,6 @@ const PLANO_COLORS: Record<Plano, string> = {
 function Badge({ label, color }: { label: string; color: string }) {
   return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}>{label}</span>;
 }
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="px-6 py-5">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition';
-const selectCls = 'w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition';
 
 // ─── Modal Criar Tenant ────────────────────────────────────────────────────────
 
@@ -94,70 +66,54 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
   }
 
   return (
-    <Modal title="Novo Tenant" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <FieldGroup label="Nome da Igreja">
-            <input className={inputCls} required value={form.nome} onChange={(e) => handleNomeChange(e.target.value)} placeholder="Igreja Exemplo" />
-          </FieldGroup>
-          <FieldGroup label="Slug (URL)">
-            <input className={inputCls} required value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder="igreja-exemplo" pattern="[a-z0-9-]+" />
-          </FieldGroup>
-        </div>
+    <ModalShell isOpen title="Novo Tenant" onClose={onClose} size="lg">
+      <form id="create-tenant-form" onSubmit={handleSubmit}>
+        <div className="space-y-4 p-6">
+          <ModalError message={error} />
 
-        <div className="grid grid-cols-2 gap-3">
-          <FieldGroup label="Plano">
-            <select className={selectCls} value={form.plano} onChange={(e) => set('plano', e.target.value as Plano)}>
+          <div className="grid grid-cols-2 gap-3">
+            <InputField label="Nome da Igreja" required value={form.nome} onChange={(e) => handleNomeChange(e.target.value)} placeholder="Igreja Exemplo" />
+            <InputField label="Slug (URL)" required value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder="igreja-exemplo" pattern="[a-z0-9-]+" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField label="Plano" value={form.plano} onChange={(e) => set('plano', e.target.value as Plano)}>
               <option value="GRATUITO">Gratuito</option>
               <option value="BASICO">Básico</option>
               <option value="PROFISSIONAL">Profissional</option>
-            </select>
-          </FieldGroup>
-          <FieldGroup label="Idioma padrão">
-            <select className={selectCls} value={form.idioma} onChange={(e) => set('idioma', e.target.value)}>
+            </SelectField>
+            <SelectField label="Idioma padrão" value={form.idioma} onChange={(e) => set('idioma', e.target.value)}>
               <option value="pt-BR">Português (Brasil)</option>
               <option value="pt-PT">Português (Portugal)</option>
               <option value="en-US">English (US)</option>
-            </select>
-          </FieldGroup>
-        </div>
+            </SelectField>
+          </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <FieldGroup label="E-mail de contato">
-            <input className={inputCls} type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="pastor@igreja.com" />
-          </FieldGroup>
-          <FieldGroup label="Telefone">
-            <input className={inputCls} value={form.telefone} onChange={(e) => set('telefone', e.target.value)} placeholder="(11) 99999-9999" />
-          </FieldGroup>
-        </div>
+          <div className="grid grid-cols-2 gap-3">
+            <InputField label="E-mail de contato" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="pastor@igreja.com" />
+            <InputField label="Telefone" value={form.telefone} onChange={(e) => set('telefone', e.target.value)} placeholder="(11) 99999-9999" />
+          </div>
 
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Usuário Administrador</p>
-          <div className="space-y-3">
-            <FieldGroup label="Nome">
-              <input className={inputCls} required value={form.adminNome} onChange={(e) => set('adminNome', e.target.value)} placeholder="Pastor João" />
-            </FieldGroup>
-            <div className="grid grid-cols-2 gap-3">
-              <FieldGroup label="E-mail">
-                <input className={inputCls} type="email" required value={form.adminEmail} onChange={(e) => set('adminEmail', e.target.value)} placeholder="admin@igreja.com" />
-              </FieldGroup>
-              <FieldGroup label="Senha">
-                <input className={inputCls} type="password" required minLength={6} value={form.adminSenha} onChange={(e) => set('adminSenha', e.target.value)} placeholder="••••••••" />
-              </FieldGroup>
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Usuário Administrador</p>
+            <div className="space-y-3">
+              <InputField label="Nome" required value={form.adminNome} onChange={(e) => set('adminNome', e.target.value)} placeholder="Pastor João" />
+              <div className="grid grid-cols-2 gap-3">
+                <InputField label="E-mail" type="email" required value={form.adminEmail} onChange={(e) => set('adminEmail', e.target.value)} placeholder="admin@igreja.com" />
+                <PasswordField label="Senha" required minLength={6} value={form.adminSenha} onChange={(e) => set('adminSenha', e.target.value)} placeholder="••••••••" />
+              </div>
             </div>
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition">Cancelar</button>
-          <button type="submit" disabled={loading} className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition disabled:opacity-60">
-            {loading ? 'Criando...' : 'Criar Tenant'}
-          </button>
-        </div>
+        <ModalFooter
+          form="create-tenant-form"
+          primaryLabel={loading ? 'Criando...' : 'Criar Tenant'}
+          onCancel={onClose}
+          loading={loading}
+        />
       </form>
-    </Modal>
+    </ModalShell>
   );
 }
 
@@ -196,59 +152,51 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
   }
 
   return (
-    <Modal title={`Editar — ${tenant.nome}`} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <FieldGroup label="Nome da Igreja">
-          <input className={inputCls} required value={form.nome} onChange={(e) => set('nome', e.target.value)} />
-        </FieldGroup>
+    <ModalShell isOpen title={`Editar — ${tenant.nome}`} onClose={onClose} size="md">
+      <form id="edit-tenant-form" onSubmit={handleSubmit}>
+        <div className="space-y-4 p-6">
+          <ModalError message={error} />
 
-        <div className="grid grid-cols-2 gap-3">
-          <FieldGroup label="Plano">
-            <select className={selectCls} value={form.plano} onChange={(e) => set('plano', e.target.value as Plano)}>
+          <InputField label="Nome da Igreja" required value={form.nome} onChange={(e) => set('nome', e.target.value)} />
+
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField label="Plano" value={form.plano} onChange={(e) => set('plano', e.target.value as Plano)}>
               <option value="GRATUITO">Gratuito</option>
               <option value="BASICO">Básico</option>
               <option value="PROFISSIONAL">Profissional</option>
-            </select>
-          </FieldGroup>
-          <FieldGroup label="Idioma padrão">
-            <select className={selectCls} value={form.idioma} onChange={(e) => set('idioma', e.target.value)}>
+            </SelectField>
+            <SelectField label="Idioma padrão" value={form.idioma} onChange={(e) => set('idioma', e.target.value)}>
               <option value="pt-BR">Português (Brasil)</option>
               <option value="pt-PT">Português (Portugal)</option>
               <option value="en-US">English (US)</option>
-            </select>
-          </FieldGroup>
+            </SelectField>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <InputField label="E-mail de contato" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
+            <InputField label="Telefone" value={form.telefone} onChange={(e) => set('telefone', e.target.value)} />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => set('ativo', !form.ativo)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${form.ativo ? 'bg-indigo-600' : 'bg-gray-200'}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition ${form.ativo ? 'translate-x-4' : 'translate-x-1'}`} />
+            </button>
+            <span className="text-sm text-gray-700">{form.ativo ? 'Ativo' : 'Inativo'}</span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <FieldGroup label="E-mail de contato">
-            <input className={inputCls} type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
-          </FieldGroup>
-          <FieldGroup label="Telefone">
-            <input className={inputCls} value={form.telefone} onChange={(e) => set('telefone', e.target.value)} />
-          </FieldGroup>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => set('ativo', !form.ativo)}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${form.ativo ? 'bg-indigo-600' : 'bg-gray-200'}`}
-          >
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition ${form.ativo ? 'translate-x-4' : 'translate-x-1'}`} />
-          </button>
-          <span className="text-sm text-gray-700">{form.ativo ? 'Ativo' : 'Inativo'}</span>
-        </div>
-
-        {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition">Cancelar</button>
-          <button type="submit" disabled={loading} className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition disabled:opacity-60">
-            {loading ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
+        <ModalFooter
+          form="edit-tenant-form"
+          primaryLabel={loading ? 'Salvando...' : 'Salvar'}
+          onCancel={onClose}
+          loading={loading}
+        />
       </form>
-    </Modal>
+    </ModalShell>
   );
 }
 
@@ -280,37 +228,31 @@ function CreateUserModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
   }
 
   return (
-    <Modal title={`Novo Usuário — ${tenant.nome}`} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <FieldGroup label="Nome">
-          <input className={inputCls} required value={form.nome} onChange={(e) => set('nome', e.target.value)} placeholder="João da Silva" />
-        </FieldGroup>
-        <div className="grid grid-cols-2 gap-3">
-          <FieldGroup label="E-mail">
-            <input className={inputCls} type="email" required value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="joao@igreja.com" />
-          </FieldGroup>
-          <FieldGroup label="Senha">
-            <input className={inputCls} type="password" required minLength={6} value={form.senha} onChange={(e) => set('senha', e.target.value)} placeholder="••••••••" />
-          </FieldGroup>
-        </div>
-        <FieldGroup label="Perfil">
-          <select className={selectCls} value={form.role} onChange={(e) => set('role', e.target.value)}>
+    <ModalShell isOpen title={`Novo Usuário — ${tenant.nome}`} onClose={onClose} size="md">
+      <form id="create-user-form" onSubmit={handleSubmit}>
+        <div className="space-y-4 p-6">
+          <ModalError message={error} />
+
+          <InputField label="Nome" required value={form.nome} onChange={(e) => set('nome', e.target.value)} placeholder="João da Silva" />
+          <div className="grid grid-cols-2 gap-3">
+            <InputField label="E-mail" type="email" required value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="joao@igreja.com" />
+            <PasswordField label="Senha" required minLength={6} value={form.senha} onChange={(e) => set('senha', e.target.value)} placeholder="••••••••" />
+          </div>
+          <SelectField label="Perfil" value={form.role} onChange={(e) => set('role', e.target.value)}>
             <option value="ADMIN">Administrador</option>
             <option value="STAFF">Colaborador</option>
             <option value="BASIC">Membro</option>
-          </select>
-        </FieldGroup>
-
-        {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition">Cancelar</button>
-          <button type="submit" disabled={loading} className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition disabled:opacity-60">
-            {loading ? 'Criando...' : 'Criar Usuário'}
-          </button>
+          </SelectField>
         </div>
+
+        <ModalFooter
+          form="create-user-form"
+          primaryLabel={loading ? 'Criando...' : 'Criar Usuário'}
+          onCancel={onClose}
+          loading={loading}
+        />
       </form>
-    </Modal>
+    </ModalShell>
   );
 }
 

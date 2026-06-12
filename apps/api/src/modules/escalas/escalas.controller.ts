@@ -13,6 +13,7 @@ import { EscalasService } from './escalas.service';
 import { CreateEscalaDto } from './dto/create-escala.dto';
 import { UpdateEscalaDto } from './dto/update-escala.dto';
 import { FilterEscalaDto } from './dto/filter-escala.dto';
+import { FilterEscalaVisualizacaoDto } from './dto/filter-escala-visualizacao.dto';
 import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
 import { ReorderDiasDto } from './dto/reorder-dias.dto';
@@ -40,6 +41,22 @@ export class EscalasController {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
     return this.escalasService.findAll(tenantId, query, user);
+  }
+
+  @Get('visualizacao')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  findVisualizacao(@Query() query: FilterEscalaVisualizacaoDto, @Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.escalasService.findVisualizacao(tenantId, query, user);
+  }
+
+  @Get('minhas')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  findMinhas(@Query() query: FilterEscalaVisualizacaoDto, @Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.escalasService.findMinhas(tenantId, query, user);
   }
 
   @Get(':id')

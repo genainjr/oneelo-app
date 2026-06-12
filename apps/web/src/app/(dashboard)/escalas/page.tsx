@@ -4,8 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useEscalas } from '@/hooks/use-escalas';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
+import { ConfirmDialog } from '@/components/app/confirm-dialog';
+import { FilterShell } from '@/components/app/filter-shell';
+import { useFilterState } from '@/hooks/use-filter-state';
+import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
+import { SelectField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
 import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, MinisterioMembro, AuthUser } from '@/types';
+import { getItens, isFuncaoOculta } from '@/components/app/escala-shared';
 
 const STATUS_COLORS: Record<string, string> = {
   RASCUNHO: 'bg-gray-100 text-gray-600 border-gray-200',
@@ -76,9 +82,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
     }
   }
 
-  function getMembrosForCell(dia: EscalaDia, funcaoId: string): EscalaItem[] {
-    return (dia.itens || []).filter(item => item.ministerioFuncaoId === funcaoId);
-  }
+
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
@@ -161,9 +165,9 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
                     </div>
                   </td>
                   {funcoes.map((funcao) => {
-                    const cellItems = getMembrosForCell(dia, funcao.id);
+                    const cellItems = getItens(dia, funcao.id);
                     const dayAssignedMemberIds = (dia.itens || []).map((item) => item.membroId);
-                    const isOculta = dia.funcoesOcultas?.some((o) => o.funcaoId === funcao.id) ?? false;
+                    const isOculta = isFuncaoOculta(dia, funcao.id);
                     return (
                       <td key={funcao.id} className="px-3 py-2 align-top">
                         {isOculta ? (
@@ -364,9 +368,23 @@ export default function EscalasPage() {
   const [ministryMembers, setMinistryMembers] = useState<MinisterioMembro[]>([]);
 
   const hoje = new Date();
-  const [filterMes, setFilterMes] = useState(String(hoje.getMonth() + 1));
-  const [filterAno, setFilterAno] = useState(String(hoje.getFullYear()));
-  const [filterMinId, setFilterMinId] = useState('');
+  const {
+    formState: filterState,
+    setField: setFilterField,
+  } = useFilterState({
+    initialState: {
+      mes: String(hoje.getMonth() + 1),
+      ano: String(hoje.getFullYear()),
+      ministerioId: '',
+    },
+    onApply: (filters) => {
+      applyFilter({
+        mes: filters.mes,
+        ano: filters.ano,
+        ministerioId: filters.ministerioId || undefined,
+      });
+    },
+  });
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newMes, setNewMes] = useState(hoje.getMonth() + 1);
@@ -378,6 +396,12 @@ export default function EscalasPage() {
 
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [aiToastOpen, setAiToastOpen] = useState(false);
+  const [pendingConfirmAction, setPendingConfirmAction] = useState<{
+    type: 'deleteEscala' | 'removeDia';
+    label: string;
+    diaId?: string;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type });
@@ -390,8 +414,12 @@ export default function EscalasPage() {
   }, []);
 
   useEffect(() => {
-    applyFilter({ mes: filterMes, ano: filterAno, ministerioId: filterMinId || undefined });
-  }, [filterMes, filterAno, filterMinId]);
+    applyFilter({
+      mes: filterState.mes,
+      ano: filterState.ano,
+      ministerioId: filterState.ministerioId || undefined,
+    });
+  }, [filterState.mes, filterState.ano, filterState.ministerioId]);
 
   async function fetchDetail(escala: Escala) {
     setLoadingDetail(true);
@@ -462,14 +490,30 @@ export default function EscalasPage() {
   async function handleDelete() {
     if (!selectedEscala) return;
     const mesNome = t(`months.${selectedEscala.mes}` as any);
-    if (!confirm(t('deleteConfirm', { month: mesNome, year: selectedEscala.ano }))) return;
+    setPendingConfirmAction({
+      type: 'deleteEscala',
+      label: t('deleteConfirm', { month: mesNome, year: selectedEscala.ano }),
+    });
+  }
+
+  async function executePendingAction() {
+    if (!pendingConfirmAction) return;
+    setConfirmLoading(true);
     try {
-      await deleteEscala(selectedEscala.id);
-      setSelectedEscala(null);
-      setDetailedEscala(null);
-      showToast('Escala removida.');
+      if (pendingConfirmAction.type === 'deleteEscala' && selectedEscala) {
+        await deleteEscala(selectedEscala.id);
+        setSelectedEscala(null);
+        setDetailedEscala(null);
+        showToast('Escala removida.');
+      } else if (pendingConfirmAction.type === 'removeDia' && pendingConfirmAction.diaId) {
+        await removeDia(pendingConfirmAction.diaId);
+        await refreshDetail();
+      }
+      setPendingConfirmAction(null);
     } catch (err: any) {
-      showToast(err.message || 'Erro ao remover escala.', 'error');
+      showToast(err.message || 'Erro ao executar ação.', 'error');
+    } finally {
+      setConfirmLoading(false);
     }
   }
 
@@ -579,45 +623,39 @@ export default function EscalasPage() {
       )}
 
       {/* Dialog: Escala com IA — Em breve */}
-      {aiToastOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white flex-shrink-0">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      <ModalShell
+        isOpen={aiToastOpen}
+        title={t('ai.title')}
+        description={t('ai.badge')}
+        icon={
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        }
+        onClose={() => setAiToastOpen(false)}
+        size="sm"
+      >
+        <div className="px-6 py-5 space-y-3">
+          <p className="text-sm text-gray-500 leading-relaxed">{t('ai.description')}</p>
+          <div className="space-y-2">
+            {[t('ai.feature1'), t('ai.feature2'), t('ai.feature3')].map((item) => (
+              <div key={item} className="flex items-center gap-2 text-xs text-gray-600">
+                <svg className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
+                {item}
               </div>
-              <div>
-                <h3 className="font-bold text-gray-800">{t('ai.title')}</h3>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                  {t('ai.badge')}
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 leading-relaxed">{t('ai.description')}</p>
-            <div className="space-y-2">
-              {[t('ai.feature1'), t('ai.feature2'), t('ai.feature3')].map((item) => (
-                <div key={item} className="flex items-center gap-2 text-xs text-gray-600">
-                  <svg className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  {item}
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setAiToastOpen(false)}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-all"
-              >
-                {t('ai.understood')}
-              </button>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+        <ModalFooter
+          primaryLabel={t('ai.understood')}
+          cancelLabel={t('ai.understood')}
+          onCancel={() => setAiToastOpen(false)}
+          type="button"
+          onClick={() => setAiToastOpen(false)}
+        />
+      </ModalShell>
 
       <PageHeader
         title={t('title')}
@@ -654,42 +692,42 @@ export default function EscalasPage() {
       />
 
       {/* ─── Filters ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3 items-center bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-xs">
+      <FilterShell className="flex flex-wrap gap-4 items-center px-5 py-4 shadow-xs mb-6">
         <div className="flex items-center gap-2">
           <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.month')}</label>
           <select
             id="filter-mes"
-            value={filterMes}
-            onChange={(e) => setFilterMes(e.target.value)}
+            value={filterState.mes}
+            onChange={(e) => setFilterField('mes', e.target.value)}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
           >
-            {MESES_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
+            {MESES_KEYS.map((m) => <option key={m} value={String(m)}>{t(`months.${m}`)}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.year')}</label>
           <select
             id="filter-ano"
-            value={filterAno}
-            onChange={(e) => setFilterAno(e.target.value)}
+            value={filterState.ano}
+            onChange={(e) => setFilterField('ano', e.target.value)}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
           >
-            {anos.map(a => <option key={a} value={a}>{a}</option>)}
+            {anos.map(a => <option key={a} value={String(a)}>{a}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.ministry')}</label>
           <select
             id="filter-ministerio"
-            value={filterMinId}
-            onChange={(e) => setFilterMinId(e.target.value)}
+            value={filterState.ministerioId}
+            onChange={(e) => setFilterField('ministerioId', e.target.value)}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
           >
             <option value="">{t('filter.all')}</option>
             {ministerios.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </select>
         </div>
-      </div>
+      </FilterShell>
 
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex justify-between items-center">
@@ -702,7 +740,7 @@ export default function EscalasPage() {
         {/* ─── Lista de Escalas ─────────────────────────────────────────────── */}
         <div className="space-y-3">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-1">
-            {t(`months.${parseInt(filterMes)}` as any)} / {filterAno}
+            {t(`months.${parseInt(filterState.mes)}` as any)} / {filterState.ano}
           </h2>
 
           {loading ? (
@@ -835,9 +873,11 @@ export default function EscalasPage() {
                   await refreshDetail();
                 }}
                 onRemoveDia={async (diaId) => {
-                  if (!confirm(tGrid('removeDayConfirm'))) return;
-                  await removeDia(diaId);
-                  await refreshDetail();
+                  setPendingConfirmAction({
+                    type: 'removeDia',
+                    label: tGrid('removeDayConfirm'),
+                    diaId,
+                  });
                 }}
                 onReorderDias={async (diaIds) => {
                   await reorderDias(detailedEscala.id, diaIds);
@@ -849,126 +889,111 @@ export default function EscalasPage() {
       </div>
 
       {/* ─── Modal Criar Escala ───────────────────────────────────────────────── */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-bold text-gray-800">{t('modal.title')}</h2>
-              <button
-                onClick={() => setIsCreateOpen(false)}
-                className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+      <ModalShell
+        isOpen={isCreateOpen}
+        title={t('modal.title')}
+        onClose={() => setIsCreateOpen(false)}
+        size="md"
+      >
+        <form id="escala-form" onSubmit={handleCreate}>
+          <div className="space-y-4 p-6">
+            <div className="grid grid-cols-2 gap-4">
+              <SelectField
+                id="create-mes"
+                label={`${t('modal.month')} *`}
+                value={newMes}
+                onChange={(e) => setNewMes(parseInt(e.target.value))}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+                {MESES_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
+              </SelectField>
+              <SelectField
+                id="create-ano"
+                label={`${t('modal.year')} *`}
+                value={newAno}
+                onChange={(e) => setNewAno(parseInt(e.target.value))}
+              >
+                {anos.map(a => <option key={a} value={a}>{a}</option>)}
+              </SelectField>
             </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.month')} *</label>
-                  <select
-                    id="create-mes"
-                    value={newMes}
-                    onChange={(e) => setNewMes(parseInt(e.target.value))}
-                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
-                  >
-                    {MESES_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.year')} *</label>
-                  <select
-                    id="create-ano"
-                    value={newAno}
-                    onChange={(e) => setNewAno(parseInt(e.target.value))}
-                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
-                  >
-                    {anos.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.ministry')} *</label>
-                <select
-                  id="create-ministerio"
-                  value={newMinId}
-                  required
-                  onChange={(e) => setNewMinId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
-                >
-                  <option value="">{t('modal.ministryPlaceholder')}</option>
-                  {ministerios.filter(m => m.ativo).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.weekdays')}</label>
-                <p className="text-xs text-gray-400">{t('modal.weekdaysDesc')}</p>
-                <div className="flex gap-1.5 flex-wrap">
-                  {DIAS_SEMANA.map(({ key, value }) => {
-                    const selected = newDiasSemana.includes(value);
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setNewDiasSemana(prev =>
-                          selected ? prev.filter(d => d !== value) : [...prev, value]
-                        )}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all select-none ${
-                          selected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                            : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
-                        }`}
-                      >
-                        {t(`modal.days.${key}` as any)}
-                      </button>
-                    );
-                  })}
-                </div>
-                {newDiasSemana.length > 0 && (() => {
-                  const totalDias = new Date(newAno, newMes, 0).getDate();
-                  let count = 0;
-                  for (let d = 1; d <= totalDias; d++) {
-                    if (newDiasSemana.includes(new Date(newAno, newMes - 1, d).getDay())) count++;
-                  }
+
+            <SelectField
+              id="create-ministerio"
+              label={`${t('modal.ministry')} *`}
+              value={newMinId}
+              required
+              onChange={(e) => setNewMinId(e.target.value)}
+            >
+              <option value="">{t('modal.ministryPlaceholder')}</option>
+              {ministerios.filter(m => m.ativo).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+            </SelectField>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.weekdays')}</label>
+              <p className="text-xs text-gray-400">{t('modal.weekdaysDesc')}</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {DIAS_SEMANA.map(({ key, value }) => {
+                  const selected = newDiasSemana.includes(value);
                   return (
-                    <p className="text-xs text-indigo-600 font-semibold">
-                      {count === 1 ? t('modal.dayGenerated', { count }) : t('modal.daysGenerated', { count })}
-                    </p>
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setNewDiasSemana(prev =>
+                        selected ? prev.filter(d => d !== value) : [...prev, value]
+                      )}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all select-none ${
+                        selected
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                      }`}
+                    >
+                      {t(`modal.days.${key}` as any)}
+                    </button>
                   );
-                })()}
+                })}
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.notes')}</label>
-                <textarea
-                  value={newObs}
-                  onChange={(e) => setNewObs(e.target.value)}
-                  rows={2}
-                  placeholder={t('modal.notesPlaceholder')}
-                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400 resize-none"
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateOpen(false)}
-                  className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  id="btn-criar-escala-submit"
-                  disabled={creating || !newMinId}
-                  className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all disabled:opacity-50"
-                >
-                  {creating ? t('modal.creating') : t('modal.create')}
-                </button>
-              </div>
-            </form>
+              {newDiasSemana.length > 0 && (() => {
+                const totalDias = new Date(newAno, newMes, 0).getDate();
+                let count = 0;
+                for (let d = 1; d <= totalDias; d++) {
+                  if (newDiasSemana.includes(new Date(newAno, newMes - 1, d).getDay())) count++;
+                }
+                return (
+                  <p className="text-xs text-indigo-600 font-semibold">
+                    {count === 1 ? t('modal.dayGenerated', { count }) : t('modal.daysGenerated', { count })}
+                  </p>
+                );
+              })()}
+            </div>
+
+            <TextareaField
+              label={t('modal.notes')}
+              value={newObs}
+              onChange={(e) => setNewObs(e.target.value)}
+              rows={2}
+              placeholder={t('modal.notesPlaceholder')}
+            />
           </div>
-        </div>
-      )}
+
+          <ModalFooter
+            form="escala-form"
+            primaryLabel={creating ? t('modal.creating') : t('modal.create')}
+            onCancel={() => setIsCreateOpen(false)}
+            loading={creating}
+            disabled={!newMinId}
+          />
+        </form>
+      </ModalShell>
+
+      <ConfirmDialog
+        isOpen={!!pendingConfirmAction}
+        title={pendingConfirmAction?.type === 'deleteEscala' ? t('deleteTitle') : tGrid('removeDay')}
+        description={pendingConfirmAction?.label || ''}
+        confirmLabel={pendingConfirmAction?.type === 'deleteEscala' ? 'Excluir' : 'Remover'}
+        variant={pendingConfirmAction?.type === 'deleteEscala' ? 'danger' : 'warning'}
+        loading={confirmLoading}
+        onConfirm={executePendingAction}
+        onCancel={() => setPendingConfirmAction(null)}
+      />
     </div>
   );
 }

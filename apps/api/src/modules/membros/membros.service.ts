@@ -3,11 +3,95 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateMembroDto } from './dto/create-membro.dto';
 import { UpdateMembroDto } from './dto/update-membro.dto';
 import { FilterMembrosDto } from './dto/filter-membros.dto';
+import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.dto';
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
+import { JwtPayload } from '../../common/types/jwt-payload.interface';
+import { MinistryRole, Role } from '@prisma/client';
 
 @Injectable()
 export class MembrosService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private applyTagFilter(where: any, tags?: string, operacao?: 'AND' | 'OR') {
+    if (!tags) return;
+
+    const tagList = tags
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    if (tagList.length === 0) return;
+
+    if (operacao === 'AND') {
+      where.AND = [
+        ...(where.AND ?? []),
+        ...tagList.map((tagNome) => ({
+          tags: {
+            some: {
+              tag: {
+                nome: { equals: tagNome, mode: 'insensitive' },
+              },
+            },
+          },
+        })),
+      ];
+      return;
+    }
+
+    where.tags = {
+      some: {
+        tag: {
+          nome: { in: tagList, mode: 'insensitive' },
+        },
+      },
+    };
+  }
+
+  private async applyVisualizacaoScope(
+    where: any,
+    user: JwtPayload,
+    query: FilterMembrosVisualizacaoDto,
+  ): Promise<boolean> {
+    const ministryFilter: any = {};
+
+    if (query.ministerioId) {
+      ministryFilter.ministerioId = query.ministerioId;
+    }
+
+    if (query.ministerioRole) {
+      ministryFilter.role = query.ministerioRole;
+    }
+
+    if (user.role === Role.BASIC) {
+      if (!user.memberId) return false;
+
+      const liderancas = await this.prisma.ministerioMembro.findMany({
+        where: {
+          membroId: user.memberId,
+          role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+          ministerio: { ativo: true },
+        },
+        select: { ministerioId: true },
+      });
+
+      const ministerioIds = liderancas.map((lideranca) => lideranca.ministerioId);
+      if (ministerioIds.length === 0) return false;
+
+      if (query.ministerioId && !ministerioIds.includes(query.ministerioId)) {
+        return false;
+      }
+
+      ministryFilter.ministerioId = query.ministerioId
+        ? query.ministerioId
+        : { in: ministerioIds };
+    }
+
+    if (Object.keys(ministryFilter).length > 0) {
+      where.ministerios = { some: ministryFilter };
+    }
+
+    return true;
+  }
 
   async create(tenantId: string, dto: CreateMembroDto) {
     // 1. Buscar o tenant para validar o limite de membros
@@ -117,6 +201,111 @@ export class MembrosService {
     }
 
     return membro;
+  }
+
+  async findVisualizacao(
+    tenantId: string,
+    query: FilterMembrosVisualizacaoDto,
+    user: JwtPayload,
+  ) {
+    const {
+      nome,
+      status,
+      whatsapp,
+      tags,
+      operacao,
+      aniversarioMes,
+      semTelefone,
+    } = query;
+    const where: any = { tenantId };
+
+    if (nome) {
+      where.nome = { contains: nome, mode: 'insensitive' };
+    }
+    if (status) {
+      where.status = status;
+    }
+    if (whatsapp) {
+      where.whatsapp = { contains: whatsapp };
+    }
+    if (semTelefone === 'true') {
+      where.AND = [
+        ...(where.AND ?? []),
+        {
+          OR: [
+            { whatsapp: null },
+            { whatsapp: '' },
+          ],
+        },
+      ];
+    }
+
+    this.applyTagFilter(where, tags, operacao);
+
+    const hasAccess = await this.applyVisualizacaoScope(where, user, query);
+    if (!hasAccess) return [];
+
+    const membros = await this.prisma.client.membro.findMany({
+      where,
+      include: {
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+        ministerios: {
+          where: {
+            ministerio: { ativo: true },
+          },
+          include: {
+            ministerio: { select: { id: true, nome: true } },
+            funcoesDisponiveis: {
+              include: { funcao: { select: { id: true, nome: true } } },
+            },
+          },
+          orderBy: {
+            ministerio: { nome: 'asc' },
+          },
+        },
+        _count: {
+          select: { escalas: true },
+        },
+      },
+      orderBy: { nome: 'asc' },
+    });
+
+    const mes = Number.parseInt(aniversarioMes ?? '', 10);
+    if (!Number.isInteger(mes) || mes < 1 || mes > 12) {
+      return membros;
+    }
+
+    return membros.filter((membro) => {
+      if (!membro.dataNascimento) return false;
+      return membro.dataNascimento.getUTCMonth() + 1 === mes;
+    });
+  }
+
+  async findAniversariantes(
+    tenantId: string,
+    query: FilterMembrosVisualizacaoDto,
+    user: JwtPayload,
+  ) {
+    const mesAtual = new Date().getMonth() + 1;
+    const aniversarioMes = query.aniversarioMes ?? String(mesAtual);
+    const membros = await this.findVisualizacao(
+      tenantId,
+      { ...query, aniversarioMes },
+      user,
+    );
+
+    return membros
+      .filter((membro) => membro.dataNascimento)
+      .sort((a, b) => {
+        const dataA = a.dataNascimento ? a.dataNascimento.getUTCDate() : 0;
+        const dataB = b.dataNascimento ? b.dataNascimento.getUTCDate() : 0;
+        if (dataA !== dataB) return dataA - dataB;
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+      });
   }
 
   async update(tenantId: string, id: string, dto: UpdateMembroDto) {

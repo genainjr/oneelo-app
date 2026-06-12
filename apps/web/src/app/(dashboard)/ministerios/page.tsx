@@ -7,8 +7,17 @@ import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { MembroSearchCombobox, MembroOption } from '@/components/app/membro-search-combobox';
+import { ConfirmDialog } from '@/components/app/confirm-dialog';
+import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
+import { TabsShell, TabPanel } from '@/components/app/tabs-shell';
+import { InputField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
 import { Ministerio, Membro, AuthUser, MinistryRole } from '@/types';
+
+type FeedbackMessage = {
+  type: 'success' | 'error';
+  message: string;
+} | null;
 
 export default function MinisteriosPage() {
   const t = useTranslations('ministries');
@@ -28,6 +37,9 @@ export default function MinisteriosPage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedMinisterio, setSelectedMinisterio] = useState<Ministerio | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackMessage>(null);
+  const [pendingArchiveMinisterio, setPendingArchiveMinisterio] = useState<Ministerio | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
@@ -126,6 +138,7 @@ export default function MinisteriosPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim()) return;
+    setFeedback(null);
     try {
       if (selectedMinisterio) {
         await updateMinisterio(selectedMinisterio.id, { nome, descricao });
@@ -135,19 +148,20 @@ export default function MinisteriosPage() {
       setIsModalOpen(false);
       setSelectedMinisterio(null);
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar ministério.');
+      setFeedback({ type: 'error', message: err.message || t('errorSave') });
     }
   }
 
   async function handleSaveFuncoes() {
     if (!selectedMinisterio) return;
     setSavingFuncoes(true);
+    setFeedback(null);
     try {
       await updateMinisterio(selectedMinisterio.id, { funcoes: funcoes.filter(Boolean) });
       await fetchDetails(selectedMinisterio.id);
-      alert('Funções salvas com sucesso!');
+      setFeedback({ type: 'success', message: t('functions.saved') });
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar funções.');
+      setFeedback({ type: 'error', message: err.message || t('functions.errorSave') });
     } finally {
       setSavingFuncoes(false);
     }
@@ -164,18 +178,27 @@ export default function MinisteriosPage() {
     setFuncoes(funcoes.filter((f) => f !== nome));
   }
 
-  async function handleDelete(m: Ministerio) {
-    if (confirm(t('modal.archiveConfirm', { name: m.nome }))) {
-      try {
-        await deleteMinisterio(m.id);
-      } catch (err: any) {
-        alert(err.message || 'Erro ao arquivar ministério.');
-      }
+  function handleDelete(m: Ministerio) {
+    setPendingArchiveMinisterio(m);
+  }
+
+  async function confirmArchiveMinisterio() {
+    if (!pendingArchiveMinisterio) return;
+    setConfirmLoading(true);
+    setFeedback(null);
+    try {
+      await deleteMinisterio(pendingArchiveMinisterio.id);
+      setPendingArchiveMinisterio(null);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || t('errorArchive') });
+    } finally {
+      setConfirmLoading(false);
     }
   }
 
   async function handleAddMembro() {
     if (!selectedMembroToAdd || !selectedMinisterio) return;
+    setFeedback(null);
     try {
       const roleToAdd = canManage || selectedRoleToAdd !== 'LEADER'
         ? selectedRoleToAdd
@@ -192,39 +215,42 @@ export default function MinisteriosPage() {
       await fetchDetails(selectedMinisterio.id);
       await loadOptions(selectedMinisterio.id);
     } catch (err: any) {
-      alert(err.message || 'Erro ao adicionar membro.');
+      setFeedback({ type: 'error', message: err.message || t('members.errorAdd') });
     }
   }
 
   async function handleRemoveMembro(membroId: string) {
     if (!selectedMinisterio) return;
+    setFeedback(null);
     try {
       await removeMembro(selectedMinisterio.id, membroId);
       fetchDetails(selectedMinisterio.id);
     } catch (err: any) {
-      alert(err.message || 'Erro ao remover membro.');
+      setFeedback({ type: 'error', message: err.message || t('members.errorRemove') });
     }
   }
 
   async function handleChangeRole(membroId: string, role: MinistryRole) {
     if (!selectedMinisterio) return;
+    setFeedback(null);
     try {
       await updateMembroRole(selectedMinisterio.id, membroId, role, undefined);
       fetchDetails(selectedMinisterio.id);
     } catch (err: any) {
-      alert(err.message || 'Erro ao alterar função.');
+      setFeedback({ type: 'error', message: err.message || t('members.errorChangeRole') });
     }
   }
 
   async function handleSaveFuncoesMembro(membroId: string) {
     if (!selectedMinisterio) return;
     setSavingFuncoesMembro(membroId);
+    setFeedback(null);
     try {
       await updateMembroRole(selectedMinisterio.id, membroId, undefined, funcoesPorMembro[membroId] ?? []);
       await fetchDetails(selectedMinisterio.id);
       setExpandedMembro(null);
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar funções.');
+      setFeedback({ type: 'error', message: err.message || t('members.errorSaveFunctions') });
     } finally {
       setSavingFuncoesMembro(null);
     }
@@ -268,6 +294,23 @@ export default function MinisteriosPage() {
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
           <span>{t('errorLoading')}</span>
           <button onClick={() => refetch()} className="underline font-semibold hover:text-red-800">Recarregar</button>
+        </div>
+      )}
+
+      {feedback && (
+        <div className={`p-4 text-sm border rounded-2xl flex items-center justify-between ${
+          feedback.type === 'success'
+            ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+            : 'text-red-700 bg-red-50 border-red-100'
+        }`}>
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="font-semibold opacity-70 hover:opacity-100"
+          >
+            Fechar
+          </button>
         </div>
       )}
 
@@ -357,361 +400,331 @@ export default function MinisteriosPage() {
       )}
 
       {/* Modal Criação / Edição de Ministério */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <ModalShell
+        isOpen={isModalOpen}
+        title={selectedMinisterio ? selectedMinisterio.nome : t('modal.titleNew')}
+        description={selectedMinisterio ? t('modal.subtitleEdit') : t('modal.subtitleNew')}
+        onClose={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
+        size="lg"
+        bodyClassName="p-0"
+      >
+        {/* Feedback de erro global */}
+        <ModalError message={feedback?.type === 'error' ? feedback.message : null} />
 
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <div>
-                <h2 className="text-base font-bold text-gray-800">
-                  {selectedMinisterio ? selectedMinisterio.nome : t('modal.titleNew')}
-                </h2>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {selectedMinisterio ? t('modal.subtitleEdit') : t('modal.subtitleNew')}
-                </p>
-              </div>
-              <button
-                onClick={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
-                className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+        {/* Abas — apenas quando editando */}
+        {selectedMinisterio ? (
+          <TabsShell
+            tabs={[
+              { id: 'info', label: t('modal.tabs.info') },
+              { id: 'membros', label: t('modal.tabs.members') },
+              { id: 'funcoes', label: t('modal.tabs.functions') },
+            ]}
+            activeTab={modalTab}
+            onTabChange={(id) => setModalTab(id as 'info' | 'membros' | 'funcoes')}
+          >
+            {/* ─── Tab Info ─── */}
+            <TabPanel id="info" activeId={modalTab}>
+              <form id="ministerio-form" onSubmit={handleSave} className="space-y-4">
+                <InputField
+                  id="min-nome"
+                  label={`${t('modal.fields.name')} *`}
+                  type="text"
+                  required
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder={t('modal.fields.namePlaceholder')}
+                />
+                <TextareaField
+                  id="min-descricao"
+                  label={t('modal.fields.description')}
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  placeholder={t('modal.fields.descriptionPlaceholder')}
+                  rows={3}
+                />
+              </form>
+            </TabPanel>
 
-            {selectedMinisterio && (
-              <div className="flex border-b border-gray-100 px-6">
-                {(['info', 'membros', 'funcoes'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setModalTab(tab)}
-                    className={`px-4 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors ${
-                      modalTab === tab
-                        ? 'border-indigo-600 text-indigo-600'
-                        : 'border-transparent text-gray-400 hover:text-gray-600'
-                    }`}
-                  >
-                    {tab === 'info' ? t('modal.tabs.info') : tab === 'membros' ? t('modal.tabs.members') : t('modal.tabs.functions')}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="overflow-y-auto flex-1 px-6 py-5">
-
-              {/* Tab: Info */}
-              {modalTab === 'info' && (
-                <form id="ministerio-form" onSubmit={handleSave} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="min-nome" className="text-xs font-bold text-gray-500 uppercase">{t('modal.fields.name')} *</label>
-                    <input
-                      id="min-nome"
-                      type="text"
-                      required
-                      value={nome}
-                      onChange={(e) => setNome(e.target.value)}
-                      placeholder={t('modal.fields.namePlaceholder')}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="min-descricao" className="text-xs font-bold text-gray-500 uppercase">{t('modal.fields.description')}</label>
-                    <textarea
-                      id="min-descricao"
-                      value={descricao}
-                      onChange={(e) => setDescricao(e.target.value)}
-                      placeholder={t('modal.fields.descriptionPlaceholder')}
-                      rows={3}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 resize-none"
-                    />
-                  </div>
-                  {!selectedMinisterio && (
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-gray-500 uppercase">{t('functions.newFunction')}</label>
-                      <p className="text-xs text-gray-400">{t('functions.description')}</p>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={novaFuncao}
-                          onChange={(e) => setNovaFuncao(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
-                          placeholder={t('functions.functionPlaceholder')}
-                          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
-                        />
-                        <button type="button" onClick={handleAddFuncao} className="px-3 py-2 bg-gray-800 text-white text-sm font-semibold rounded-xl hover:bg-gray-900">{t('functions.add')}</button>
+            {/* ─── Tab Membros ─── */}
+            <TabPanel id="membros" activeId={modalTab}>
+              <div className="space-y-5">
+                {canManageSelectedMinisterio && (
+                  <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
+                    <div className="flex-1 space-y-1">
+                      <MembroSearchCombobox
+                        label={t('members.add')}
+                        placeholder="Buscar membro pelo nome..."
+                        loading={loadingDetails}
+                        options={membersOptions}
+                        selected={selectedMemberOptionToAdd}
+                        search={membroSearchToAdd}
+                        emptyMessage="Nenhum membro disponivel encontrado."
+                        selectedPrefix="Selecionado"
+                        onSearchChange={(value) => { setMembroSearchToAdd(value); setSelectedMembroToAdd(''); }}
+                        onSelect={(membro) => { setSelectedMembroToAdd(membro.id); setMembroSearchToAdd(membro.nome); }}
+                        onClear={() => { setSelectedMembroToAdd(''); setMembroSearchToAdd(''); }}
+                      />
+                    </div>
+                    {canManageSelectedMinisterio && (
+                      <div className="space-y-1">
+                        <label htmlFor="add-role" className="text-xs font-bold text-gray-500 uppercase">{t('members.role')}</label>
+                        <select
+                          id="add-role"
+                          value={selectedRoleToAdd}
+                          onChange={(e) => setSelectedRoleToAdd(e.target.value as MinistryRole)}
+                          className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="MEMBER">{t('members.roles.MEMBER')}</option>
+                          <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
+                          {canManage && <option value="LEADER">{t('members.roles.LEADER')}</option>}
+                        </select>
                       </div>
-                      {funcoes.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {funcoes.map((f) => (
-                            <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-100">
-                              {f}
-                              <button type="button" onClick={() => handleRemoveFuncao(f)} className="hover:text-red-500">×</button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </form>
-              )}
-
-              {/* Tab: Membros */}
-              {modalTab === 'membros' && selectedMinisterio && (
-                <div className="space-y-5">
-                  {canManageSelectedMinisterio && (
-                    <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
-                      <div className="flex-1 space-y-1">
-                        <MembroSearchCombobox
-                          label={t('members.add')}
-                          placeholder="Buscar membro pelo nome..."
-                          loading={loadingDetails}
-                          options={membersOptions}
-                          selected={selectedMemberOptionToAdd}
-                          search={membroSearchToAdd}
-                          emptyMessage="Nenhum membro disponivel encontrado."
-                          selectedPrefix="Selecionado"
-                          onSearchChange={(value) => {
-                            setMembroSearchToAdd(value);
-                            setSelectedMembroToAdd('');
-                          }}
-                          onSelect={(membro) => {
-                            setSelectedMembroToAdd(membro.id);
-                            setMembroSearchToAdd(membro.nome);
-                          }}
-                          onClear={() => {
-                            setSelectedMembroToAdd('');
-                            setMembroSearchToAdd('');
-                          }}
-                        />
-                      </div>
-                      {canManageSelectedMinisterio && (
-                        <div className="space-y-1">
-                          <label htmlFor="add-role" className="text-xs font-bold text-gray-500 uppercase">{t('members.role')}</label>
-                          <select
-                            id="add-role"
-                            value={selectedRoleToAdd}
-                            onChange={(e) => setSelectedRoleToAdd(e.target.value as MinistryRole)}
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
-                          >
-                            <option value="MEMBER">{t('members.roles.MEMBER')}</option>
-                            <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
-                            {canManage && (
-                              <option value="LEADER">{t('members.roles.LEADER')}</option>
-                            )}
-                          </select>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleAddMembro}
-                        disabled={!selectedMembroToAdd}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm"
-                      >
-                        {t('functions.add')}
-                      </button>
-                    </div>
-                  )}
-                  {loadingDetails ? (
-                    <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
-                  ) : !detailedInfo?.membros?.length ? (
-                    <p className="text-sm text-gray-400 text-center py-6">{t('members.noMembers')}</p>
-                  ) : (
-                    <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
-                      {detailedInfo.membros.map((item: any) => {
-                        const isExpanded = expandedMembro === item.membroId;
-                        const ministerioFuncoes: any[] = detailedInfo.funcoes ?? [];
-                        const selectedFuncoes = funcoesPorMembro[item.membroId] ?? [];
-                        const canChangeMemberRole =
-                          canManage ||
-                          (
-                            canManageSelectedMinisterio &&
-                            item.role !== 'LEADER' &&
-                            item.membroId !== currentUser?.memberId
-                          );
-                        return (
-                          <div key={item.membroId} className="divide-y divide-gray-50">
-                            <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
-                                  {item.membro?.nome?.substring(0, 2) ?? '??'}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-800">{item.membro?.nome}</p>
-                                  <p className="text-xs text-gray-400">{t(`members.roles.${item.role}` as any) ?? item.role}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {canChangeMemberRole && (
-                                  <select
-                                    value={item.role}
-                                    onChange={(e) => handleChangeRole(item.membroId, e.target.value as MinistryRole)}
-                                    className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
-                                  >
-                                    <option value="MEMBER">{t('members.roles.MEMBER')}</option>
-                                    <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
-                                    {canManage && (
-                                      <option value="LEADER">{t('members.roles.LEADER')}</option>
-                                    )}
-                                  </select>
-                                )}
-                                {ministerioFuncoes.length > 0 && (
-                                  <button
-                                    onClick={() => setExpandedMembro(isExpanded ? null : item.membroId)}
-                                    className={`p-1 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
-                                    title={t('members.availableFunctions')}
-                                  >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleRemoveMembro(item.membroId)}
-                                  className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                                  title="Remover"
-                                >
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                            {isExpanded && (
-                              <div className="px-4 py-3 bg-indigo-50/40">
-                                <p className="text-xs font-bold text-gray-500 uppercase mb-2">{t('members.availableFunctions')}</p>
-                                <div className="flex flex-wrap gap-2 mb-3">
-                                  {ministerioFuncoes.map((f: any) => {
-                                    const checked = selectedFuncoes.includes(f.id);
-                                    return (
-                                      <label key={f.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all select-none ${checked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
-                                        <input
-                                          type="checkbox"
-                                          className="sr-only"
-                                          checked={checked}
-                                          onChange={() => toggleFuncaoMembro(item.membroId, f.id)}
-                                          disabled={!canManageSelectedMinisterio}
-                                        />
-                                        {checked && (
-                                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                          </svg>
-                                        )}
-                                        {f.nome}
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                                {canManageSelectedMinisterio && (
-                                  <div className="flex justify-end">
-                                    <button
-                                      onClick={() => handleSaveFuncoesMembro(item.membroId)}
-                                      disabled={savingFuncoesMembro === item.membroId}
-                                      className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 transition-colors"
-                                    >
-                                      {savingFuncoesMembro === item.membroId ? t('members.saving') : t('members.saveFunctions')}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Tab: Funções */}
-              {modalTab === 'funcoes' && selectedMinisterio && (
-                <div className="space-y-5">
-                  <p className="text-xs text-gray-500">{t('functions.description')}</p>
-                  {canManage && (
-                    <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
-                      <div className="flex-1 space-y-1">
-                        <label htmlFor="nova-funcao" className="text-xs font-bold text-gray-500 uppercase">{t('functions.newFunction')}</label>
-                        <input
-                          id="nova-funcao"
-                          type="text"
-                          value={novaFuncao}
-                          onChange={(e) => setNovaFuncao(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
-                          placeholder={t('functions.functionPlaceholder')}
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="px-4 py-2 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-sm">{t('functions.add')}</button>
-                    </div>
-                  )}
-                  {funcoes.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center py-6">{t('functions.noFunctions')}</p>
-                  ) : (
-                    <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
-                      {funcoes.map((f, idx) => (
-                        <div key={f} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold text-gray-400 w-5 text-right">{idx + 1}</span>
-                            <span className="text-sm font-semibold text-gray-800">{f}</span>
-                          </div>
-                          {canManage && (
-                            <button onClick={() => handleRemoveFuncao(f)} className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {canManage && (
-                    <div className="flex justify-end pt-2 border-t border-gray-100">
-                      <button onClick={handleSaveFuncoes} disabled={savingFuncoes} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs disabled:opacity-50">
-                        {savingFuncoes ? t('functions.saving') : t('functions.save')}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            {modalTab === 'info' && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-                <div>
-                  {selectedMinisterio && canManage && (
+                    )}
                     <button
                       type="button"
-                      onClick={() => { handleDelete(selectedMinisterio); setIsModalOpen(false); setSelectedMinisterio(null); }}
-                      className="px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                      onClick={handleAddMembro}
+                      disabled={!selectedMembroToAdd}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm"
                     >
-                      Arquivar
+                      {t('functions.add')}
                     </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
-                    className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  {canManage && (
-                    <button
-                      type="submit"
-                      form="ministerio-form"
-                      className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all"
-                    >
-                      {selectedMinisterio ? t('modal.saveChanges') : t('modal.createMinistry')}
-                    </button>
-                  )}
-                </div>
+                  </div>
+                )}
+                {loadingDetails ? (
+                  <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+                ) : !detailedInfo?.membros?.length ? (
+                  <p className="text-sm text-gray-400 text-center py-6">{t('members.noMembers')}</p>
+                ) : (
+                  <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
+                    {detailedInfo.membros.map((item: any) => {
+                      const isExpanded = expandedMembro === item.membroId;
+                      const ministerioFuncoes: any[] = detailedInfo.funcoes ?? [];
+                      const selectedFuncoes = funcoesPorMembro[item.membroId] ?? [];
+                      const canChangeMemberRole =
+                        canManage ||
+                        (canManageSelectedMinisterio && item.role !== 'LEADER' && item.membroId !== currentUser?.memberId);
+                      return (
+                        <div key={item.membroId} className="divide-y divide-gray-50">
+                          <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
+                                {item.membro?.nome?.substring(0, 2) ?? '??'}
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-800">{item.membro?.nome}</p>
+                                <p className="text-xs text-gray-400">{t(`members.roles.${item.role}` as any) ?? item.role}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {canChangeMemberRole && (
+                                <select
+                                  value={item.role}
+                                  onChange={(e) => handleChangeRole(item.membroId, e.target.value as MinistryRole)}
+                                  className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
+                                >
+                                  <option value="MEMBER">{t('members.roles.MEMBER')}</option>
+                                  <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
+                                  {canManage && <option value="LEADER">{t('members.roles.LEADER')}</option>}
+                                </select>
+                              )}
+                              {ministerioFuncoes.length > 0 && (
+                                <button
+                                  onClick={() => setExpandedMembro(isExpanded ? null : item.membroId)}
+                                  className={`p-1 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                                  title={t('members.availableFunctions')}
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleRemoveMembro(item.membroId)}
+                                className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                title="Remover"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          {isExpanded && (
+                            <div className="px-4 py-3 bg-indigo-50/40">
+                              <p className="text-xs font-bold text-gray-500 uppercase mb-2">{t('members.availableFunctions')}</p>
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {ministerioFuncoes.map((f: any) => {
+                                  const checked = selectedFuncoes.includes(f.id);
+                                  return (
+                                    <label key={f.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all select-none ${checked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
+                                      <input type="checkbox" className="sr-only" checked={checked} onChange={() => toggleFuncaoMembro(item.membroId, f.id)} disabled={!canManageSelectedMinisterio} />
+                                      {checked && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                      {f.nome}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              {canManageSelectedMinisterio && (
+                                <div className="flex justify-end">
+                                  <button
+                                    onClick={() => handleSaveFuncoesMembro(item.membroId)}
+                                    disabled={savingFuncoesMembro === item.membroId}
+                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 transition-colors"
+                                  >
+                                    {savingFuncoesMembro === item.membroId ? t('members.saving') : t('members.saveFunctions')}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </TabPanel>
+
+            {/* ─── Tab Funções ─── */}
+            <TabPanel id="funcoes" activeId={modalTab}>
+              <div className="space-y-5">
+                <p className="text-xs text-gray-500">{t('functions.description')}</p>
+                {canManage && (
+                  <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
+                    <div className="flex-1 space-y-1">
+                      <label htmlFor="nova-funcao" className="text-xs font-bold text-gray-500 uppercase">{t('functions.newFunction')}</label>
+                      <input
+                        id="nova-funcao"
+                        type="text"
+                        value={novaFuncao}
+                        onChange={(e) => setNovaFuncao(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
+                        placeholder={t('functions.functionPlaceholder')}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                      />
+                    </div>
+                    <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="px-4 py-2.5 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-sm">{t('functions.add')}</button>
+                  </div>
+                )}
+                {funcoes.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-6">{t('functions.noFunctions')}</p>
+                ) : (
+                  <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
+                    {funcoes.map((f, idx) => (
+                      <div key={f} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-gray-400 w-5 text-right">{idx + 1}</span>
+                          <span className="text-sm font-semibold text-gray-800">{f}</span>
+                        </div>
+                        {canManage && (
+                          <button onClick={() => handleRemoveFuncao(f)} className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {canManage && (
+                  <div className="flex justify-end">
+                    <button onClick={handleSaveFuncoes} disabled={savingFuncoes} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs disabled:opacity-50">
+                      {savingFuncoes ? t('functions.saving') : t('functions.save')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </TabPanel>
+          </TabsShell>
+        ) : (
+          /* ─── Modo Criação (sem abas) ─── */
+          <form id="ministerio-form" onSubmit={handleSave}>
+            <div className="space-y-4 p-6">
+              <InputField
+                id="min-nome"
+                label={`${t('modal.fields.name')} *`}
+                type="text"
+                required
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder={t('modal.fields.namePlaceholder')}
+              />
+              <TextareaField
+                id="min-descricao"
+                label={t('modal.fields.description')}
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder={t('modal.fields.descriptionPlaceholder')}
+                rows={3}
+              />
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase">{t('functions.newFunction')}</label>
+                <p className="text-xs text-gray-400">{t('functions.description')}</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={novaFuncao}
+                    onChange={(e) => setNovaFuncao(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
+                    placeholder={t('functions.functionPlaceholder')}
+                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                  />
+                  <button type="button" onClick={handleAddFuncao} className="px-3 py-2 bg-gray-800 text-white text-sm font-semibold rounded-xl hover:bg-gray-900">{t('functions.add')}</button>
+                </div>
+                {funcoes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {funcoes.map((f) => (
+                      <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-100">
+                        {f}
+                        <button type="button" onClick={() => handleRemoveFuncao(f)} className="hover:text-red-500">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </form>
+        )}
+
+        {/* Footer — shown on info tab or creation mode */}
+        {(modalTab === 'info' || !selectedMinisterio) && canManage && (
+          <ModalFooter
+            form="ministerio-form"
+            primaryLabel={selectedMinisterio ? t('modal.saveChanges') : t('modal.createMinistry')}
+            onCancel={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
+            secondaryAction={
+              selectedMinisterio ? (
+                <button
+                  type="button"
+                  onClick={() => { handleDelete(selectedMinisterio); }}
+                  className="px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                >
+                  {t('modal.archiveAction')}
+                </button>
+              ) : undefined
+            }
+          />
+        )}
+        {/* Footer for non-admin on info tab while editing */}
+        {selectedMinisterio && modalTab === 'info' && !canManage && (
+          <ModalFooter
+            primaryLabel={t('modal.saveChanges')}
+            onCancel={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
+            form="ministerio-form"
+          />
+        )}
+      </ModalShell>
+
+      <ConfirmDialog
+        isOpen={!!pendingArchiveMinisterio}
+        title={t('modal.archiveTitle')}
+        description={pendingArchiveMinisterio ? t('modal.archiveConfirm', { name: pendingArchiveMinisterio.nome }) : ''}
+        confirmLabel={t('modal.archiveAction')}
+        variant="warning"
+        loading={confirmLoading}
+        onConfirm={confirmArchiveMinisterio}
+        onCancel={() => setPendingArchiveMinisterio(null)}
+      />
     </div>
   );
 }

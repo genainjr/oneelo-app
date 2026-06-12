@@ -79,6 +79,7 @@
     "expand": "Expandir menu",
     "collapseModules": "Recolher módulos",
     "expandModules": "Expandir módulos",
+    "view": "Visualização",
     "export": "Exportação",
     "groups": "Grupo de Crescimento",
     "finance": "Financeiro"
@@ -208,6 +209,8 @@
     "noMinistries": "Nenhum ministério cadastrado",
     "noMinistriesDesc": "Os ministérios organizam os membros e as escalas de serviço.",
     "errorLoading": "Erro ao carregar ministérios.",
+    "errorSave": "Erro ao salvar ministério.",
+    "errorArchive": "Erro ao arquivar ministério.",
     "status": {
       "active": "Ativo",
       "archived": "Arquivado"
@@ -226,6 +229,8 @@
       "saveChanges": "Salvar Alterações",
       "createMinistry": "Criar Ministério",
       "archiveConfirm": "Tem certeza que deseja arquivar/inativar o ministério {name}?",
+      "archiveTitle": "Arquivar Ministério",
+      "archiveAction": "Arquivar",
       "tabs": {
         "info": "Informações",
         "members": "Membros",
@@ -246,6 +251,10 @@
       "availableFunctions": "Funções disponíveis",
       "saveFunctions": "Salvar",
       "saving": "Salvando...",
+      "errorAdd": "Erro ao adicionar membro.",
+      "errorRemove": "Erro ao remover membro.",
+      "errorChangeRole": "Erro ao alterar papel.",
+      "errorSaveFunctions": "Erro ao salvar funções do membro.",
       "roles": {
         "LEADER": "Líder",
         "ASSISTANT_LEADER": "Assistente",
@@ -259,7 +268,9 @@
       "functionPlaceholder": "Ex: Ministro, Teclado...",
       "add": "Adicionar",
       "save": "Salvar Funções",
-      "saving": "Salvando..."
+      "saving": "Salvando...",
+      "saved": "Funções salvas com sucesso!",
+      "errorSave": "Erro ao salvar funções."
     }
   },
   "schedules": {
@@ -274,6 +285,7 @@
     "selectSchedule": "Selecione uma escala ao lado",
     "selectScheduleDesc": "para visualizar e editar a grade mensal",
     "deleteConfirm": "Deletar a escala de {month}/{year}?",
+    "deleteTitle": "Excluir Escala",
     "errorLoadDetail": "Erro ao carregar detalhes da escala.",
     "status": {
       "RASCUNHO": "Rascunho",

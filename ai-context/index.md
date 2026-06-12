@@ -35,11 +35,20 @@ Este repositorio contem a documentacao de contexto da IA para o projeto Oneelo, 
 - [Regras de Navegacao e Sidebar](frontend/navigation-rules.md)
 - [Workflow de Desenvolvimento](workflows/feature-development.md)
 - [Plano RBAC, Navegacao e Experiencia](plans/rbac-navigation-experience-plan.md)
+- [Plano de Visualizacoes de Membros e Escalas](plans/portal-member-scale-visualizations-plan.md)
 - [Backlog Tecnico](backlog/README.md)
 - [Plano de Desenvolvimento Original](../plano_desenvolvimento_ideal_markdown.md)
-
 ---
 
+## Product
+
+- [Visão Geral](product/oneelo-overview.md)
+- [Módulos](product/oneelo-modules.md)
+- [Papéis e Permissões](product/oneelo-roles-and-permissions.md)
+- [Multi-tenancy](product/oneelo-multitenancy.md)
+- [Status do ODS](product/ods-current-status.md)
+
+---
 ## Decisoes Consolidadas
 
 - Os enums de `Role` permanecem `ADMIN`, `STAFF`, `BASIC` e `SUPER_ADMIN`.

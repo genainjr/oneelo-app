@@ -53,6 +53,12 @@ const ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
+  view: (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12s-3.75 6.75-9.75 6.75S2.25 12 2.25 12z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
   export: (
     <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -202,6 +208,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       staffOnly: true,
       children: [
         { href: '/membros', label: t('manage'), icon: ICONS.manage },
+        { href: '/membros/visualizacao', label: t('view'), icon: ICONS.view },
         { href: '/membros/exportacao', label: t('export'), icon: ICONS.export },
       ],
     },
@@ -223,6 +230,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       icon: ICONS.schedules,
       children: [
         { href: '/escalas', label: t('manage'), icon: ICONS.manage },
+        { href: '/escalas/visualizacao', label: t('view'), icon: ICONS.view },
         { href: '/escalas/exportacao', label: t('export'), icon: ICONS.export },
       ],
     },
@@ -259,6 +267,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         icon: ICONS.schedules,
         children: [
           { href: '/escalas', label: t('manage'), icon: ICONS.manage },
+          { href: '/escalas/visualizacao', label: t('view'), icon: ICONS.view },
         ],
       },
     ] satisfies NavItem[] : []),

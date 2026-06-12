@@ -79,6 +79,7 @@
     "expand": "Expand menu",
     "collapseModules": "Collapse modules",
     "expandModules": "Expand modules",
+    "view": "View",
     "export": "Export",
     "groups": "Growth Groups",
     "finance": "Financial"
@@ -208,6 +209,8 @@
     "noMinistries": "No ministries registered",
     "noMinistriesDesc": "Ministries organize members and service schedules.",
     "errorLoading": "Error loading ministries.",
+    "errorSave": "Error saving ministry.",
+    "errorArchive": "Error archiving ministry.",
     "status": {
       "active": "Active",
       "archived": "Archived"
@@ -226,6 +229,8 @@
       "saveChanges": "Save Changes",
       "createMinistry": "Create Ministry",
       "archiveConfirm": "Are you sure you want to archive/deactivate the ministry {name}?",
+      "archiveTitle": "Archive Ministry",
+      "archiveAction": "Archive",
       "tabs": {
         "info": "Information",
         "members": "Members",
@@ -246,6 +251,10 @@
       "availableFunctions": "Available roles",
       "saveFunctions": "Save",
       "saving": "Saving...",
+      "errorAdd": "Error adding member.",
+      "errorRemove": "Error removing member.",
+      "errorChangeRole": "Error changing role.",
+      "errorSaveFunctions": "Error saving member roles.",
       "roles": {
         "LEADER": "Leader",
         "ASSISTANT_LEADER": "Assistant Leader",
@@ -259,7 +268,9 @@
       "functionPlaceholder": "e.g. Worship Leader, Keyboard...",
       "add": "Add",
       "save": "Save Roles",
-      "saving": "Saving..."
+      "saving": "Saving...",
+      "saved": "Roles saved successfully!",
+      "errorSave": "Error saving roles."
     }
   },
   "schedules": {
@@ -274,6 +285,7 @@
     "selectSchedule": "Select a schedule on the left",
     "selectScheduleDesc": "to view and edit the monthly grid",
     "deleteConfirm": "Delete the schedule for {month}/{year}?",
+    "deleteTitle": "Delete Schedule",
     "errorLoadDetail": "Error loading schedule details.",
     "status": {
       "RASCUNHO": "Draft",
