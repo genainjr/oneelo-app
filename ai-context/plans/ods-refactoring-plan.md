@@ -22,7 +22,7 @@ Objetivo: refatorar gradualmente o frontend para aderir ao OneElo Design System 
 | Fase 4 - Tabelas e Listagens | Nao iniciada | Aguardando fases anteriores |
 | Fase 5 - Modais CRUD | Concluida | `ai-context/plans/ods-phase-5-crud-modals-report.md` |
 | Fase 6 - Filtros | Concluida | `ai-context/plans/ods-phase-4-filters-report.md` |
-| Fase 7 - Visualizacoes e Metricas | Nao iniciada | Aguardando fases anteriores |
+| Fase 7 - Visualizacoes e Metricas | Concluida | `artifacts/walkthrough.md` |
 | Fase 8 - Permissoes e Navegacao | Nao iniciada | Aguardando fases anteriores |
 | Fase 9 - Validacao Final | Nao iniciada | Aguardando fases anteriores |
 

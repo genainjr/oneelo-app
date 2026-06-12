@@ -5,6 +5,7 @@ import type { FormEvent } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { PasswordField } from '@/components/app/form-field';
+import { InfoItem } from '@/components/app/info-item';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { AuthUser } from '@/types';
@@ -89,10 +90,10 @@ export default function MeuPerfilPage() {
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <Info label="Perfil de acesso" value={ROLE_LABEL[user.role]} />
-              <Info label="Igreja" value={user.tenant?.nome || '-'} />
-              <Info label="Plano" value={user.tenant?.plano || '-'} />
-              <Info label="Criado em" value={formatDate(user.createdAt, 'dd/MM/yyyy')} />
+              <InfoItem label="Perfil de acesso" value={ROLE_LABEL[user.role]} />
+              <InfoItem label="Igreja" value={user.tenant?.nome || '-'} />
+              <InfoItem label="Plano" value={user.tenant?.plano || '-'} />
+              <InfoItem label="Criado em" value={formatDate(user.createdAt, 'dd/MM/yyyy')} />
             </div>
           </section>
 
@@ -163,10 +164,10 @@ export default function MeuPerfilPage() {
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <Info label="Nome" value={user.membro.nome} />
-                <Info label="E-mail" value={user.membro.email || '-'} />
-                <Info label="WhatsApp" value={formatPhone(user.membro.whatsapp)} />
-                <Info label="Nascimento" value={formatDate(user.membro.dataNascimento, 'dd/MM/yyyy')} />
+                <InfoItem label="Nome" value={user.membro.nome} />
+                <InfoItem label="E-mail" value={user.membro.email || '-'} />
+                <InfoItem label="WhatsApp" value={formatPhone(user.membro.whatsapp)} />
+                <InfoItem label="Nascimento" value={formatDate(user.membro.dataNascimento, 'dd/MM/yyyy')} />
               </div>
 
               <div className="mt-5">
@@ -193,11 +194,3 @@ export default function MeuPerfilPage() {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-gray-800">{value}</p>
-    </div>
-  );
-}

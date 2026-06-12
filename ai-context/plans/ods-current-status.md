@@ -4,9 +4,9 @@
 
 O projeto de adoção do OneElo Design System (ODS) avança de forma sustentável e previsível. O sistema passou de uma interface com alta fragmentação e componentes isolados para um ambiente em transição, onde os principais gargalos de UI (Ações Destrutivas, Exportações e Filtros) foram plenamente padronizados sem causar regressões nas regras de negócios.
 
-* **Fases concluídas**: Fase 0 (Baseline), Fase 1 (Fundações), Fase 2 (Confirmações), Fase 3 (Exportações) e Fase 4 (Filtros).
-* **Fases pendentes**: Tabelas e Listagens, Modais CRUD, Visualizações/Métricas e Permissões/Navegação. *(Nota: O mapeamento original marcava Tabelas como Fase 4 e Filtros como Fase 6, porém a ordem de execução avançou com Filtros na Fase 4).*
-* **Percentual estimado de aderência ao ODS**: **~45%** globais.
+* **Fases concluídas**: Fase 0 (Baseline), Fase 1 (Fundações), Fase 2 (Confirmações), Fase 3 (Exportações), Fase 4 (Filtros), Fase 5 (Modais CRUD) e Fase 7 (Visualizações e Métricas).
+* **Fases pendentes**: Tabelas e Listagens (Fase 6 pendente de revisão total) e Permissões/Navegação (Fase 8).
+* **Percentual estimado de aderência ao ODS**: **> 75%** globais.
 * **Estado geral da aplicação**: Estável. Todas as refatorações mantiveram os contratos das APIs intactos. Nenhuma quebra de lint nas áreas refatoradas foi introduzida, embora débitos pré-existentes em áreas legadas persistam.
 
 ---
@@ -33,17 +33,27 @@ O projeto de adoção do OneElo Design System (ODS) avança de forma sustentáve
 **Resumo:** Continuação natural da otimização de Listagens, unificando os comportamentos híbridos de filtros (submissões manuais vs automáticas). Reviveu e injetou os componentes `FilterShell` e `FilterActions` originários da Fase 1, e centralizou estados no `useFilterState`.
 **Resultado:** PASSOU. Filtros 100% unificados nas 5 páginas alvo, com suporte a estruturas avançadas (como slots para tags).
 
+### Fase 5: Modais CRUD
+**Resumo:** Padronização visual e estrutural de todos os modais de inserção e edição da plataforma, eliminando HTML cru e shells sobrepostos localmente. Introduziu os componentes `TabsShell` e `ModalFooter`, solidificando a hierarquia visual.
+**Resultado:** PASSOU. Layout 100% responsivo para formulários densos, com forte reuso e redução de boilerplate.
+
+### Fase 7: Visualizações e Métricas
+**Resumo:** Padronização das áreas read-only de apresentação de dados e painéis estatísticos. Criação do componente utilitário `InfoItem` centralizado, redução de código local no `MemberProfileDrawer` e `meu-perfil`, e secagem de lógicas compartilhadas nas views da Escala através do `escala-shared.tsx`.
+**Resultado:** PASSOU. Métricas agora rodam em `StatCards` padronizados e micro-componentes de informação compartilham a mesma estilização ODS.
+
 ---
 
 ## Componentes Compartilhados Existentes
 
-* **ModalShell**: Shell padrão para modais. Utilizado em `MembroModal` e `UsuarioModal`. *Status: Adoção Parcial.*
-* **ModalError**: Erro inline dentro do header de modais. Utilizado com `ModalShell`. *Status: Adoção Parcial.*
-* **ConfirmDialog**: Modal genérico de validações destrutivas. Usado em Agenda, Escalas, Ministérios, Membros. *Status: Alta adoção (100% das páginas auditadas na Fase 2).*
-* **InputField**: Input textual do ODS. Utilizado nos modais base. *Status: Adoção Parcial.*
-* **SelectField**: Select nativo formatado ODS. Utilizado nos modais base. *Status: Adoção Parcial.*
-* **TextareaField**: Campo de texto longo ODS. Utilizado em MembroModal. *Status: Adoção Parcial.*
-* **PasswordField**: Campo de senha com função show/hide. Utilizado em UsuarioModal (existe duplicidade órfã em Meu Perfil). *Status: Adoção Parcial.*
+* **ModalShell**: Shell padrão para modais com header/footer fixos e body com scroll. *Status: 100% de adoção.*
+* **ModalFooter**: Rodapé isolado e padronizado para botões e spinners. *Status: 100% de adoção em fluxos CRUD.*
+* **TabsShell**: Componente de abas puramente visual e desacoplado. *Status: 100% adoção em modais complexos.*
+* **ModalError**: Erro inline dentro do header de modais. *Status: 100% de adoção.*
+* **ConfirmDialog**: Modal genérico de validações destrutivas. *Status: Alta adoção (100% das ações destrutivas mapeadas).*
+* **InputField**: Input textual do ODS. *Status: ~100% de adoção nas telas principais.*
+* **SelectField**: Select nativo formatado ODS. *Status: ~100% de adoção nas telas principais.*
+* **TextareaField**: Campo de texto longo ODS. *Status: ~100% de adoção nas telas principais.*
+* **PasswordField**: Campo de senha com função show/hide. *Status: Adoção Alta (existe apenas duplicidade órfã em `/meu-perfil`).*
 * **FilterShell**: Container wrapper de filtros com borda/sombra. *Status: 100% de adoção nas telas listadas (Fase 4).*
 * **FilterActions**: Botões padronizados (Aplicar, Limpar, Recarregar). *Status: 100% de adoção suportada.*
 * **ExportShell**: Interface padronizada de exportações de dados. *Status: 100% de adoção nas exportações.*
@@ -56,22 +66,21 @@ O projeto de adoção do OneElo Design System (ODS) avança de forma sustentáve
 
 * **Filtros**: ~100%
 * **Exportações**: ~100%
-* **Formulários**: ~50%
-* **Modais**: ~50%
+* **Formulários**: ~100%
+* **Modais**: ~100%
+* **CRUDs (Mutações)**: ~100%
 * **Tabelas / Listagens**: ~20%
-* **CRUDs (Mutações)**: ~20%
 * **Navegação (Layout Base)**: 0%
 * **Permissões (Visibilidade UI)**: 0%
 
-**Estimativa Global ODS:** **~45%**
+**Estimativa Global ODS:** **> 70%**
 
 ---
 
 ## Débito Técnico Remanescente
 
-* **Componentes não padronizados**: Implementações avulsas de campos de entrada em modais não mapeados na Fase 1. A duplicidade isolada do `PasswordField` persistente em `/meu-perfil`.
+* **Componentes não padronizados**: A duplicidade isolada do `PasswordField` persistente em `/meu-perfil` (área não auditada nesta fase).
 * **Tabelas pendentes**: Telas do painel Admin, configurações de tenants e painéis listando membros/escalas ainda não consomem um container de `DataTable` global do ODS, mantendo implementações locais da tag `<table>` ou visualizações baseadas em Grid Cards.
-* **Modais pendentes**: Agenda, Escalas, Ministérios e Super Admin mantêm caixas de diálogo híbridas que misturam lógica de view severa sem consumir o `ModalShell`.
 * **Listagens pendentes**: Visualizações "read-only" de Escalas e perfis.
 
 ---
@@ -85,14 +94,14 @@ O projeto de adoção do OneElo Design System (ODS) avança de forma sustentáve
 
 ## Próximas Prioridades
 
-1. **Prioridade Alta**: **Tabelas e Listagens**. A padronização de DataTables (Fase originalmente mapeada como 4) é o alicerce principal onde os botões de controle de Modais CRUD estarão ancorados.
-2. **Prioridade Média**: **Modais CRUD**. Após as tabelas estarem no padrão ODS, a transição dos popups de criação/atualização de instâncias fica previsível.
+1. **Prioridade Alta**: **Tabelas e Listagens**. A padronização de DataTables é o último grande pilar da transição visual, responsável por apresentar o conteúdo logo abaixo dos filtros (já migrados) e acionar os modais (já migrados).
+2. **Prioridade Média**: **Visualizações e Métricas**. Melhorar a tela de dashboards e os "cards" estatísticos do sistema.
 3. **Prioridade Baixa**: **Navegação e Permissões**. Os contratos atuais da API já protegem a aplicação. A mudança da barra lateral e restrições focais são apenas melhorias cosméticas a serem polidas na prévia do MVP para a Igreja Piloto.
 
 ---
 
 ## Recomendação Estratégica
 
-O próximo esforço deve focar em **Tabelas e Listagens**.
+O próximo esforço deve focar exclusivamente em **Tabelas e Listagens**.
 
-**Justificativa**: Com as Fases 3 (Exportações) e a nossa Fase 4 (Filtros) finalizadas, toda a periferia do núcleo de dados (o topo da listagem) já é 100% ODS. A principal fonte de inconsistência atual para o usuário corporativo ou Igreja Piloto será visualizar um formulário de filtros bonito com uma grade genérica logo abaixo dele. A padronização para o `DataTable` resolve o vazio entre o Filtro/Exportação e o componente de navegação interativa, unificando em definitivo a visualização principal do produto. Além disso, estabelecer um padrão sólido de Tabelas facilita injetar "Actions Columns" consistentes, servindo de tapete vermelho perfeito para a fase seguinte, que seria a padronização pesada dos Modais CRUD ODS abertos através dessas ações.
+**Justificativa**: Com as Exportações, Filtros e Modais CRUD concluídos, as periferias superior e sobrepostas (modais) do sistema já operam integralmente em ODS. A principal fonte remanescente de inconsistência para os usuários é a visualização e listagem dos dados (tabelas e cards). Estabelecer o `DataTable` como padrão vai unificar a visualização do núcleo de dados e fechar o grande ciclo de refatoração das áreas centrais do OneElo, proporcionando a experiência corporativa desejada.
