@@ -2,6 +2,7 @@
 
 import { MembroVisualizacao } from '@/types';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
+import { InfoItem } from './info-item';
 
 interface MemberProfileDrawerProps {
   membro: MembroVisualizacao | null;
@@ -37,26 +38,18 @@ export function MemberProfileDrawer({ membro, onClose }: MemberProfileDrawerProp
           <section>
             <h3 className="text-sm font-bold text-gray-900">Dados principais</h3>
             <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                <dt className="text-[11px] font-semibold uppercase text-gray-400">Status</dt>
-                <dd className="mt-1">
+              <InfoItem 
+                as="dl-item"
+                label="Status" 
+                value={
                   <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}>
                     {STATUS_MEMBRO_LABEL[membro.status]}
                   </span>
-                </dd>
-              </div>
-              <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                <dt className="text-[11px] font-semibold uppercase text-gray-400">Nascimento</dt>
-                <dd className="mt-1 text-sm font-semibold text-gray-800">{formatDate(membro.dataNascimento)}</dd>
-              </div>
-              <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                <dt className="text-[11px] font-semibold uppercase text-gray-400">WhatsApp</dt>
-                <dd className="mt-1 text-sm font-semibold text-gray-800">{formatPhone(membro.whatsapp)}</dd>
-              </div>
-              <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                <dt className="text-[11px] font-semibold uppercase text-gray-400">E-mail</dt>
-                <dd className="mt-1 break-words text-sm font-semibold text-gray-800">{membro.email || '-'}</dd>
-              </div>
+                }
+              />
+              <InfoItem as="dl-item" label="Nascimento" value={formatDate(membro.dataNascimento)} />
+              <InfoItem as="dl-item" label="WhatsApp" value={formatPhone(membro.whatsapp)} />
+              <InfoItem as="dl-item" label="E-mail" value={membro.email || '-'} />
             </dl>
           </section>
 

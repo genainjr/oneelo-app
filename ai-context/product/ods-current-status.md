@@ -9,6 +9,7 @@
 | **Fase 2 (Feedback)** | Remover calls nativos bloqueantes (`alert`, `confirm`) por UI ODS customizada. | 100% de alertas expurgados dos módulos alvos. Tradução aplicada. | **Concluída** |
 | **Fase 3 (Exportações)** | Unificar o layout e a engenharia dos relatórios CSV. | Container e hooks genéricos acoplados perfeitamente. Código reduzido em 60%. | **Concluída** |
 | **Fase 4 (Filtros)** | Padronizar containers de filtro e centralizar states fragmentados de inputs de busca. | Formulários limpos e consistentes nas 5 páginas alvo com submissões não-nativas. | **Concluída** |
+| **Fase 7 (Visualizações e Métricas)** | Consolidar views read-only, padronizar cards de métrica e extrair componentes comuns como `InfoItem`. | Padronização alcançada em `/minhas-escalas`, `/meu-perfil` e drawers. | **Concluída** |
 
 ---
 

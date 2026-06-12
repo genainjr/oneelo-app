@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
+import { StatCard } from '@/components/app/stat-card';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
+import { Calendar, AlertTriangle, List } from 'lucide-react';
 import { formatDate, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, MinhaEscalaItem } from '@/types';
 
@@ -110,18 +112,9 @@ export default function MinhasEscalasPage() {
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-          <p className="text-xs font-bold uppercase text-gray-400">Proximas</p>
-          <p className="mt-1 text-2xl font-black text-gray-900">{futuras.length}</p>
-        </div>
-        <div className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-          <p className="text-xs font-bold uppercase text-gray-400">Pendentes</p>
-          <p className="mt-1 text-2xl font-black text-gray-900">{pendentes.length}</p>
-        </div>
-        <div className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-          <p className="text-xs font-bold uppercase text-gray-400">Historico</p>
-          <p className="mt-1 text-2xl font-black text-gray-900">{passadas.length}</p>
-        </div>
+        <StatCard title="Proximas" value={futuras.length} icon={<Calendar className="w-5 h-5" />} color="indigo" />
+        <StatCard title="Pendentes" value={pendentes.length} icon={<AlertTriangle className="w-5 h-5" />} color="amber" />
+        <StatCard title="Historico" value={passadas.length} icon={<List className="w-5 h-5" />} color="gray" />
       </div>
 
       {(error || actionError) && (

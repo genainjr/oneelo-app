@@ -11,6 +11,7 @@ import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
 import { SelectField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
 import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, MinisterioMembro, AuthUser } from '@/types';
+import { getItens, isFuncaoOculta } from '@/components/app/escala-shared';
 
 const STATUS_COLORS: Record<string, string> = {
   RASCUNHO: 'bg-gray-100 text-gray-600 border-gray-200',
@@ -81,9 +82,7 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
     }
   }
 
-  function getMembrosForCell(dia: EscalaDia, funcaoId: string): EscalaItem[] {
-    return (dia.itens || []).filter(item => item.ministerioFuncaoId === funcaoId);
-  }
+
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
@@ -166,9 +165,9 @@ function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, 
                     </div>
                   </td>
                   {funcoes.map((funcao) => {
-                    const cellItems = getMembrosForCell(dia, funcao.id);
+                    const cellItems = getItens(dia, funcao.id);
                     const dayAssignedMemberIds = (dia.itens || []).map((item) => item.membroId);
-                    const isOculta = dia.funcoesOcultas?.some((o) => o.funcaoId === funcao.id) ?? false;
+                    const isOculta = isFuncaoOculta(dia, funcao.id);
                     return (
                       <td key={funcao.id} className="px-3 py-2 align-top">
                         {isOculta ? (
