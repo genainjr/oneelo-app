@@ -4,10 +4,14 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { MemberProfileDrawer } from '@/components/app/member-profile-drawer';
+import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { StatCard } from '@/components/app/stat-card';
+import { useFilterState } from '@/hooks/use-filter-state';
 import { useMembrosVisualizacao } from '@/hooks/use-membros-visualizacao';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { MembroVisualizacao, Ministerio } from '@/types';
+import { Briefcase, Calendar, PhoneOff, Users } from 'lucide-react';
 
 const MESES = [
   { value: '', label: 'Todos os meses' },
@@ -25,15 +29,6 @@ const MESES = [
   { value: '12', label: 'Dezembro' },
 ];
 
-function StatBox({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-      <p className="text-xs font-bold uppercase text-gray-400">{label}</p>
-      <p className="mt-1 text-2xl font-black text-gray-900">{value}</p>
-    </div>
-  );
-}
-
 export default function MembrosVisualizacaoPage() {
   const {
     membros,
@@ -44,11 +39,29 @@ export default function MembrosVisualizacaoPage() {
   } = useMembrosVisualizacao();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [selected, setSelected] = useState<MembroVisualizacao | null>(null);
-  const [nome, setNome] = useState('');
-  const [status, setStatus] = useState('');
-  const [ministerioId, setMinisterioId] = useState('');
-  const [aniversarioMes, setAniversarioMes] = useState('');
-  const [semTelefone, setSemTelefone] = useState(false);
+  const {
+    formState: filterState,
+    setField: setFilterField,
+    handleClear: handleClearFilters,
+    handleSubmit: handleFilterSubmit,
+  } = useFilterState({
+    initialState: {
+      nome: '',
+      status: '',
+      ministerioId: '',
+      aniversarioMes: '',
+      semTelefone: false,
+    },
+    onApply: (filters) => {
+      applyFilter({
+        nome: filters.nome || undefined,
+        status: filters.status || undefined,
+        ministerioId: filters.ministerioId || undefined,
+        aniversarioMes: filters.aniversarioMes || undefined,
+        semTelefone: filters.semTelefone ? 'true' : undefined,
+      });
+    },
+  });
 
   useEffect(() => {
     api.get<Ministerio[]>('/api/ministerios')
@@ -68,32 +81,6 @@ export default function MembrosVisualizacaoPage() {
     return { ativos, semContato, comMinisterio, aniversariantes };
   }, [membros]);
 
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    applyFilter({
-      nome: nome || undefined,
-      status: status || undefined,
-      ministerioId: ministerioId || undefined,
-      aniversarioMes: aniversarioMes || undefined,
-      semTelefone: semTelefone ? 'true' : undefined,
-    });
-  }
-
-  function clearFilters() {
-    setNome('');
-    setStatus('');
-    setMinisterioId('');
-    setAniversarioMes('');
-    setSemTelefone(false);
-    applyFilter({
-      nome: undefined,
-      status: undefined,
-      ministerioId: undefined,
-      aniversarioMes: undefined,
-      semTelefone: undefined,
-    });
-  }
-
   return (
     <div className="p-6">
       <PageHeader
@@ -102,24 +89,35 @@ export default function MembrosVisualizacaoPage() {
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatBox label="Ativos" value={stats.ativos} />
-        <StatBox label="Com ministerio" value={stats.comMinisterio} />
-        <StatBox label="Aniversariantes do mes" value={stats.aniversariantes} />
-        <StatBox label="Sem telefone" value={stats.semContato} />
+        <StatCard title="Ativos" value={stats.ativos} icon={<Users className="w-5 h-5" />} color="emerald" />
+        <StatCard title="Com ministerio" value={stats.comMinisterio} icon={<Briefcase className="w-5 h-5" />} color="indigo" />
+        <StatCard title="Aniversariantes do mes" value={stats.aniversariantes} icon={<Calendar className="w-5 h-5" />} color="amber" />
+        <StatCard title="Sem telefone" value={stats.semContato} icon={<PhoneOff className="w-5 h-5" />} color="rose" />
       </div>
 
-      <form onSubmit={handleSubmit} className="mb-5 rounded-lg border border-gray-100 bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-5">
+      <FilterShell
+        onSubmit={handleFilterSubmit}
+        actions={
+          <FilterActions
+            submitLabel="Filtrar"
+            clearLabel="Limpar"
+            reloadLabel="Recarregar"
+            onClear={() => handleClearFilters()}
+            onReload={refetch}
+          />
+        }
+      >
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-center">
           <input
-            value={nome}
-            onChange={(event) => setNome(event.target.value)}
+            value={filterState.nome}
+            onChange={(event) => setFilterField('nome', event.target.value)}
             placeholder="Buscar por nome"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           />
           <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            value={filterState.status}
+            onChange={(event) => setFilterField('status', event.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os status</option>
             <option value="ATIVO">Ativo</option>
@@ -128,9 +126,9 @@ export default function MembrosVisualizacaoPage() {
             <option value="TRANSFERIDO">Transferido</option>
           </select>
           <select
-            value={ministerioId}
-            onChange={(event) => setMinisterioId(event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            value={filterState.ministerioId}
+            onChange={(event) => setFilterField('ministerioId', event.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os ministerios</option>
             {ministerios.map((ministerio) => (
@@ -138,34 +136,23 @@ export default function MembrosVisualizacaoPage() {
             ))}
           </select>
           <select
-            value={aniversarioMes}
-            onChange={(event) => setAniversarioMes(event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            value={filterState.aniversarioMes}
+            onChange={(event) => setFilterField('aniversarioMes', event.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             {MESES.map((mes) => <option key={mes.value} value={mes.value}>{mes.label}</option>)}
           </select>
-          <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600">
+          <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors w-full cursor-pointer">
             <input
               type="checkbox"
-              checked={semTelefone}
-              onChange={(event) => setSemTelefone(event.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+              checked={filterState.semTelefone}
+              onChange={(event) => setFilterField('semTelefone', event.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 cursor-pointer"
             />
             Sem telefone
           </label>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700">
-            Filtrar
-          </button>
-          <button type="button" onClick={clearFilters} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50">
-            Limpar
-          </button>
-          <button type="button" onClick={refetch} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50">
-            Recarregar
-          </button>
-        </div>
-      </form>
+      </FilterShell>
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">

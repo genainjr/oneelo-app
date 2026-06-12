@@ -9,10 +9,18 @@ interface FilterShellProps {
 }
 
 export function FilterShell({ children, onSubmit, className, actions }: FilterShellProps) {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (onSubmit) {
+      onSubmit(e);
+    } else {
+      e.preventDefault();
+    }
+  };
+
   return (
     <form
-      onSubmit={onSubmit}
-      className={cn('mb-5 rounded-lg border border-gray-100 bg-white p-4', className)}
+      onSubmit={handleSubmit}
+      className={cn('mb-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm', className)}
     >
       {children}
       {actions && <div className="mt-4 flex flex-wrap gap-3">{actions}</div>}

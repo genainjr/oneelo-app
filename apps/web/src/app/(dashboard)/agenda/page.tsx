@@ -6,6 +6,8 @@ import { useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
+import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { useFilterState } from '@/hooks/use-filter-state';
 import { api } from '@/lib/api';
 import { Evento, AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
@@ -40,9 +42,26 @@ export default function AgendaPage() {
   const [local, setLocal] = useState('');
   const [status, setStatus] = useState<'AGENDADO' | 'REALIZADO' | 'CANCELADO'>('AGENDADO');
 
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterStart, setFilterStart] = useState('');
-  const [filterEnd, setFilterEnd] = useState('');
+  const {
+    formState: filterState,
+    setField: setFilterField,
+    handleClear: handleClearFilters,
+    handleSubmit: handleFilterSubmit,
+  } = useFilterState({
+    initialState: {
+      status: '',
+      dataInicio: '',
+      dataFim: '',
+    },
+    onApply: (filters) => {
+      applyFilter({
+        status: filters.status || undefined,
+        dataInicio: filters.dataInicio ? new Date(filters.dataInicio).toISOString() : undefined,
+        dataFim: filters.dataFim ? new Date(filters.dataFim).toISOString() : undefined,
+      });
+    },
+  });
+
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [pendingDeleteEvento, setPendingDeleteEvento] = useState<Evento | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -128,21 +147,6 @@ export default function AgendaPage() {
     setIsModalOpen(true);
   }
 
-  function handleFilterSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    applyFilter({
-      status: filterStatus || undefined,
-      dataInicio: filterStart ? new Date(filterStart).toISOString() : undefined,
-      dataFim: filterEnd ? new Date(filterEnd).toISOString() : undefined,
-    });
-  }
-
-  function handleClear() {
-    setFilterStatus('');
-    setFilterStart('');
-    setFilterEnd('');
-    applyFilter({});
-  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -191,17 +195,26 @@ export default function AgendaPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <FilterShell
+        onSubmit={handleFilterSubmit}
+        actions={
+          <FilterActions
+            submitLabel={t('filter.apply')}
+            clearLabel={t('filter.clear')}
+            onClear={() => handleClearFilters()}
+          />
+        }
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <label htmlFor="filter-status" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               {t('filter.statusLabel')}
             </label>
             <select
               id="filter-status"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-700"
+              value={filterState.status}
+              onChange={(e) => setFilterField('status', e.target.value)}
+              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-700 transition-all"
             >
               <option value="">{t('filter.allStatuses')}</option>
               <option value="AGENDADO">{t('status.AGENDADO')}</option>
@@ -217,9 +230,9 @@ export default function AgendaPage() {
             <input
               id="filter-start"
               type="date"
-              value={filterStart}
-              onChange={(e) => setFilterStart(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none"
+              value={filterState.dataInicio}
+              onChange={(e) => setFilterField('dataInicio', e.target.value)}
+              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
             />
           </div>
 
@@ -230,29 +243,13 @@ export default function AgendaPage() {
             <input
               id="filter-end"
               type="date"
-              value={filterEnd}
-              onChange={(e) => setFilterEnd(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none"
+              value={filterState.dataFim}
+              onChange={(e) => setFilterField('dataFim', e.target.value)}
+              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
             />
           </div>
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-semibold rounded-xl text-sm transition-all shadow-sm"
-            >
-              {t('filter.apply')}
-            </button>
-            <button
-              type="button"
-              onClick={handleClear}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold rounded-xl text-sm transition-all"
-            >
-              {t('filter.clear')}
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+      </FilterShell>
 
       {/* Events List */}
       {loading ? (
