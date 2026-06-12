@@ -114,7 +114,7 @@ export default function MinhasEscalasPage() {
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <StatCard title="Proximas" value={futuras.length} icon={<Calendar className="w-5 h-5" />} color="indigo" />
         <StatCard title="Pendentes" value={pendentes.length} icon={<AlertTriangle className="w-5 h-5" />} color="amber" />
-        <StatCard title="Historico" value={passadas.length} icon={<List className="w-5 h-5" />} color="gray" />
+        <StatCard title="Historico" value={passadas.length} icon={<List className="w-5 h-5" />} color="blue" />
       </div>
 
       {(error || actionError) && (
