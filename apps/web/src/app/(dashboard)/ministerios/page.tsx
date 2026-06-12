@@ -7,8 +7,14 @@ import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { MembroSearchCombobox, MembroOption } from '@/components/app/membro-search-combobox';
+import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { api } from '@/lib/api';
 import { Ministerio, Membro, AuthUser, MinistryRole } from '@/types';
+
+type FeedbackMessage = {
+  type: 'success' | 'error';
+  message: string;
+} | null;
 
 export default function MinisteriosPage() {
   const t = useTranslations('ministries');
@@ -28,6 +34,9 @@ export default function MinisteriosPage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedMinisterio, setSelectedMinisterio] = useState<Ministerio | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackMessage>(null);
+  const [pendingArchiveMinisterio, setPendingArchiveMinisterio] = useState<Ministerio | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
@@ -126,6 +135,7 @@ export default function MinisteriosPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim()) return;
+    setFeedback(null);
     try {
       if (selectedMinisterio) {
         await updateMinisterio(selectedMinisterio.id, { nome, descricao });
@@ -135,19 +145,20 @@ export default function MinisteriosPage() {
       setIsModalOpen(false);
       setSelectedMinisterio(null);
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar ministério.');
+      setFeedback({ type: 'error', message: err.message || t('errorSave') });
     }
   }
 
   async function handleSaveFuncoes() {
     if (!selectedMinisterio) return;
     setSavingFuncoes(true);
+    setFeedback(null);
     try {
       await updateMinisterio(selectedMinisterio.id, { funcoes: funcoes.filter(Boolean) });
       await fetchDetails(selectedMinisterio.id);
-      alert('Funções salvas com sucesso!');
+      setFeedback({ type: 'success', message: t('functions.saved') });
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar funções.');
+      setFeedback({ type: 'error', message: err.message || t('functions.errorSave') });
     } finally {
       setSavingFuncoes(false);
     }
@@ -164,18 +175,27 @@ export default function MinisteriosPage() {
     setFuncoes(funcoes.filter((f) => f !== nome));
   }
 
-  async function handleDelete(m: Ministerio) {
-    if (confirm(t('modal.archiveConfirm', { name: m.nome }))) {
-      try {
-        await deleteMinisterio(m.id);
-      } catch (err: any) {
-        alert(err.message || 'Erro ao arquivar ministério.');
-      }
+  function handleDelete(m: Ministerio) {
+    setPendingArchiveMinisterio(m);
+  }
+
+  async function confirmArchiveMinisterio() {
+    if (!pendingArchiveMinisterio) return;
+    setConfirmLoading(true);
+    setFeedback(null);
+    try {
+      await deleteMinisterio(pendingArchiveMinisterio.id);
+      setPendingArchiveMinisterio(null);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || t('errorArchive') });
+    } finally {
+      setConfirmLoading(false);
     }
   }
 
   async function handleAddMembro() {
     if (!selectedMembroToAdd || !selectedMinisterio) return;
+    setFeedback(null);
     try {
       const roleToAdd = canManage || selectedRoleToAdd !== 'LEADER'
         ? selectedRoleToAdd
@@ -192,39 +212,42 @@ export default function MinisteriosPage() {
       await fetchDetails(selectedMinisterio.id);
       await loadOptions(selectedMinisterio.id);
     } catch (err: any) {
-      alert(err.message || 'Erro ao adicionar membro.');
+      setFeedback({ type: 'error', message: err.message || t('members.errorAdd') });
     }
   }
 
   async function handleRemoveMembro(membroId: string) {
     if (!selectedMinisterio) return;
+    setFeedback(null);
     try {
       await removeMembro(selectedMinisterio.id, membroId);
       fetchDetails(selectedMinisterio.id);
     } catch (err: any) {
-      alert(err.message || 'Erro ao remover membro.');
+      setFeedback({ type: 'error', message: err.message || t('members.errorRemove') });
     }
   }
 
   async function handleChangeRole(membroId: string, role: MinistryRole) {
     if (!selectedMinisterio) return;
+    setFeedback(null);
     try {
       await updateMembroRole(selectedMinisterio.id, membroId, role, undefined);
       fetchDetails(selectedMinisterio.id);
     } catch (err: any) {
-      alert(err.message || 'Erro ao alterar função.');
+      setFeedback({ type: 'error', message: err.message || t('members.errorChangeRole') });
     }
   }
 
   async function handleSaveFuncoesMembro(membroId: string) {
     if (!selectedMinisterio) return;
     setSavingFuncoesMembro(membroId);
+    setFeedback(null);
     try {
       await updateMembroRole(selectedMinisterio.id, membroId, undefined, funcoesPorMembro[membroId] ?? []);
       await fetchDetails(selectedMinisterio.id);
       setExpandedMembro(null);
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar funções.');
+      setFeedback({ type: 'error', message: err.message || t('members.errorSaveFunctions') });
     } finally {
       setSavingFuncoesMembro(null);
     }
@@ -268,6 +291,23 @@ export default function MinisteriosPage() {
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
           <span>{t('errorLoading')}</span>
           <button onClick={() => refetch()} className="underline font-semibold hover:text-red-800">Recarregar</button>
+        </div>
+      )}
+
+      {feedback && (
+        <div className={`p-4 text-sm border rounded-2xl flex items-center justify-between ${
+          feedback.type === 'success'
+            ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+            : 'text-red-700 bg-red-50 border-red-100'
+        }`}>
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="font-semibold opacity-70 hover:opacity-100"
+          >
+            Fechar
+          </button>
         </div>
       )}
 
@@ -682,7 +722,7 @@ export default function MinisteriosPage() {
                   {selectedMinisterio && canManage && (
                     <button
                       type="button"
-                      onClick={() => { handleDelete(selectedMinisterio); setIsModalOpen(false); setSelectedMinisterio(null); }}
+                      onClick={() => { handleDelete(selectedMinisterio); }}
                       className="px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                     >
                       Arquivar
@@ -712,6 +752,17 @@ export default function MinisteriosPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingArchiveMinisterio}
+        title={t('modal.archiveTitle')}
+        description={pendingArchiveMinisterio ? t('modal.archiveConfirm', { name: pendingArchiveMinisterio.nome }) : ''}
+        confirmLabel={t('modal.archiveAction')}
+        variant="warning"
+        loading={confirmLoading}
+        onConfirm={confirmArchiveMinisterio}
+        onCancel={() => setPendingArchiveMinisterio(null)}
+      />
     </div>
   );
 }

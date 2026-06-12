@@ -11,6 +11,23 @@ Objetivo: refatorar gradualmente o frontend para aderir ao OneElo Design System 
 
 ---
 
+## Status Das Fases
+
+| Fase | Status | Evidencia |
+|---|---|---|
+| Fase 0 - Preparacao e Baseline | Concluida | `ai-context/plans/ods-phase-0-baseline.md` |
+| Fase 1 - Fundacoes Compartilhadas | Concluida | `ai-context/plans/ods-phase-1-foundations-report.md` |
+| Fase 2 - Confirmacoes e Feedback | Concluida | `ai-context/plans/ods-phase-2-feedback-report.md` |
+| Fase 3 - Exportacoes | Nao iniciada | Aguardando inicio |
+| Fase 4 - Tabelas e Listagens | Nao iniciada | Aguardando fases anteriores |
+| Fase 5 - Modais CRUD | Nao iniciada | Aguardando fases anteriores |
+| Fase 6 - Filtros | Nao iniciada | Aguardando fases anteriores |
+| Fase 7 - Visualizacoes e Metricas | Nao iniciada | Aguardando fases anteriores |
+| Fase 8 - Permissoes e Navegacao | Nao iniciada | Aguardando fases anteriores |
+| Fase 9 - Validacao Final | Nao iniciada | Aguardando fases anteriores |
+
+---
+
 ## Principios
 
 - Nao mudar comportamento de negocio durante refatoracao visual/estrutural.
@@ -386,4 +403,3 @@ Garantir que a refatoracao ODS nao alterou comportamento esperado.
 - Criar novo design visual sem base no inventario.
 - Trocar biblioteca de UI.
 - Alterar autorizacao backend.
-

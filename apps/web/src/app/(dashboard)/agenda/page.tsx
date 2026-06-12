@@ -5,9 +5,15 @@ import { useTranslations } from 'next-intl';
 import { useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
+import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { api } from '@/lib/api';
 import { Evento, AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
+
+type FeedbackMessage = {
+  type: 'success' | 'error';
+  message: string;
+} | null;
 
 export default function AgendaPage() {
   const t = useTranslations('agenda');
@@ -37,6 +43,9 @@ export default function AgendaPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterStart, setFilterStart] = useState('');
   const [filterEnd, setFilterEnd] = useState('');
+  const [feedback, setFeedback] = useState<FeedbackMessage>(null);
+  const [pendingDeleteEvento, setPendingDeleteEvento] = useState<Evento | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
@@ -68,17 +77,25 @@ export default function AgendaPage() {
       setIsModalOpen(false);
       setSelectedEvento(null);
     } catch (err: any) {
-      alert(err.message || t('errorSave'));
+      setFeedback({ type: 'error', message: err.message || t('errorSave') });
     }
   }
 
-  async function handleDelete(ev: Evento) {
-    if (confirm(t('deleteConfirm', { title: ev.titulo }))) {
-      try {
-        await deleteEvento(ev.id);
-      } catch (err: any) {
-        alert(err.message || t('errorDelete'));
-      }
+  function handleDelete(ev: Evento) {
+    setPendingDeleteEvento(ev);
+  }
+
+  async function confirmDeleteEvento() {
+    if (!pendingDeleteEvento) return;
+    setConfirmLoading(true);
+    setFeedback(null);
+    try {
+      await deleteEvento(pendingDeleteEvento.id);
+      setPendingDeleteEvento(null);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || t('errorDelete') });
+    } finally {
+      setConfirmLoading(false);
     }
   }
 
@@ -152,6 +169,23 @@ export default function AgendaPage() {
           <span>{error}</span>
           <button onClick={() => refetch()} className="underline font-semibold hover:text-red-800">
             {t('reload')}
+          </button>
+        </div>
+      )}
+
+      {feedback && (
+        <div className={`p-4 text-sm border rounded-2xl flex items-center justify-between ${
+          feedback.type === 'success'
+            ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+            : 'text-red-700 bg-red-50 border-red-100'
+        }`}>
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="font-semibold opacity-70 hover:opacity-100"
+          >
+            Fechar
           </button>
         </div>
       )}
@@ -449,6 +483,16 @@ export default function AgendaPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingDeleteEvento}
+        title={t('modal.deleteTooltip')}
+        description={pendingDeleteEvento ? t('deleteConfirm', { title: pendingDeleteEvento.titulo }) : ''}
+        confirmLabel={t('modal.deleteTooltip')}
+        loading={confirmLoading}
+        onConfirm={confirmDeleteEvento}
+        onCancel={() => setPendingDeleteEvento(null)}
+      />
     </div>
   );
 }

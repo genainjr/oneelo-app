@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
+import { PasswordField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { AuthUser } from '@/types';
@@ -108,21 +109,21 @@ export default function MeuPerfilPage() {
                   label="Senha atual"
                   value={senhaAtual}
                   autoComplete="current-password"
-                  onChange={setSenhaAtual}
+                  onChange={(e) => setSenhaAtual(e.target.value)}
                 />
                 <PasswordField
                   id="nova-senha"
                   label="Nova senha"
                   value={novaSenha}
                   autoComplete="new-password"
-                  onChange={setNovaSenha}
+                  onChange={(e) => setNovaSenha(e.target.value)}
                 />
                 <PasswordField
                   id="confirmar-senha"
                   label="Confirmar nova senha"
                   value={confirmarSenha}
                   autoComplete="new-password"
-                  onChange={setConfirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
                 />
               </div>
 
@@ -197,36 +198,6 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className="mt-1 text-sm font-semibold text-gray-800">{value}</p>
-    </div>
-  );
-}
-
-function PasswordField({
-  id,
-  label,
-  value,
-  autoComplete,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  autoComplete: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="password"
-        value={value}
-        autoComplete={autoComplete}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-      />
     </div>
   );
 }
