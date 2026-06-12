@@ -10,6 +10,8 @@ import { MembroModal } from '@/components/app/membro-modal';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { useFilterState } from '@/hooks/use-filter-state';
+import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
+import { InputField } from '@/components/app/form-field';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -476,58 +478,48 @@ export default function MembrosPage() {
       </FilterShell>
 
       {/* New Tag Modal */}
-      {showNewTagInput && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
-            <h3 className="font-bold text-gray-800 text-base mb-4">{t('tag.createTitle')}</h3>
-            <form onSubmit={handleCreateTag} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">{t('tag.nameLabel')}</label>
+      <ModalShell
+        isOpen={showNewTagInput}
+        title={t('tag.createTitle')}
+        onClose={() => setShowNewTagInput(false)}
+        size="sm"
+      >
+        <form id="new-tag-form" onSubmit={handleCreateTag}>
+          <div className="space-y-4 p-6">
+            <InputField
+              label={t('tag.nameLabel')}
+              type="text"
+              required
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder={t('tag.namePlaceholder')}
+            />
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">{t('tag.colorLabel')}</label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={newTagColor}
+                  onChange={(e) => setNewTagColor(e.target.value)}
+                  className="w-10 h-9 p-0 border border-gray-200 rounded-lg cursor-pointer"
+                />
                 <input
                   type="text"
-                  required
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  placeholder={t('tag.namePlaceholder')}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                  value={newTagColor}
+                  onChange={(e) => setNewTagColor(e.target.value)}
+                  className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-500 uppercase">{t('tag.colorLabel')}</label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={newTagColor}
-                    onChange={(e) => setNewTagColor(e.target.value)}
-                    className="w-10 h-9 p-0 border border-gray-200 rounded-lg cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={newTagColor}
-                    onChange={(e) => setNewTagColor(e.target.value)}
-                    className="flex-1 px-3 py-1.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewTagInput(false)}
-                  className="px-4 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl"
-                >
-                  {t('tag.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs"
-                >
-                  {t('tag.create')}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+          <ModalFooter
+            form="new-tag-form"
+            primaryLabel={t('tag.create')}
+            cancelLabel={t('tag.cancel')}
+            onCancel={() => setShowNewTagInput(false)}
+          />
+        </form>
+      </ModalShell>
 
       {/* Members Table */}
       <DataTable

@@ -8,6 +8,8 @@ import { EmptyState } from '@/components/app/empty-state';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { useFilterState } from '@/hooks/use-filter-state';
+import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
+import { InputField, SelectField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
 import { Evento, AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
@@ -344,142 +346,80 @@ export default function AgendaPage() {
         </div>
       )}
 
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/20">
-              <h2 className="text-lg font-bold text-gray-800">
-                {selectedEvento ? t('modal.editTitle') : t('modal.createTitle')}
-              </h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setSelectedEvento(null);
-                }}
-                className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+      <ModalShell
+        isOpen={isModalOpen}
+        title={selectedEvento ? t('modal.editTitle') : t('modal.createTitle')}
+        onClose={() => { setIsModalOpen(false); setSelectedEvento(null); }}
+        size="md"
+      >
+        <form id="agenda-form" onSubmit={handleSave}>
+          <div className="space-y-4 p-6">
+            <InputField
+              id="ev-titulo"
+              label={t('modal.titleLabel')}
+              type="text"
+              required
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder={t('modal.titlePlaceholder')}
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputField
+                id="ev-inicio"
+                label={t('modal.startTime')}
+                type="datetime-local"
+                required
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+              />
+              <InputField
+                id="ev-fim"
+                label={t('modal.endTime')}
+                type="datetime-local"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+              />
             </div>
 
-            <form onSubmit={handleSave}>
-              <div className="p-6 space-y-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="ev-titulo" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('modal.titleLabel')}
-                  </label>
-                  <input
-                    id="ev-titulo"
-                    type="text"
-                    required
-                    value={titulo}
-                    onChange={(e) => setTitulo(e.target.value)}
-                    placeholder={t('modal.titlePlaceholder')}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                  />
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputField
+                id="ev-local"
+                label={t('modal.locationLabel')}
+                type="text"
+                value={local}
+                onChange={(e) => setLocal(e.target.value)}
+                placeholder={t('modal.locationPlaceholder')}
+              />
+              <SelectField
+                id="ev-status"
+                label={t('modal.statusLabel')}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+              >
+                <option value="AGENDADO">{t('status.AGENDADO')}</option>
+                <option value="REALIZADO">{t('status.REALIZADO')}</option>
+                <option value="CANCELADO">{t('status.CANCELADO')}</option>
+              </SelectField>
+            </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="ev-inicio" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      {t('modal.startTime')}
-                    </label>
-                    <input
-                      id="ev-inicio"
-                      type="datetime-local"
-                      required
-                      value={dataInicio}
-                      onChange={(e) => setDataInicio(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label htmlFor="ev-fim" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      {t('modal.endTime')}
-                    </label>
-                    <input
-                      id="ev-fim"
-                      type="datetime-local"
-                      value={dataFim}
-                      onChange={(e) => setDataFim(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="ev-local" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      {t('modal.locationLabel')}
-                    </label>
-                    <input
-                      id="ev-local"
-                      type="text"
-                      value={local}
-                      onChange={(e) => setLocal(e.target.value)}
-                      placeholder={t('modal.locationPlaceholder')}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label htmlFor="ev-status" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      {t('modal.statusLabel')}
-                    </label>
-                    <select
-                      id="ev-status"
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value as any)}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-700"
-                    >
-                      <option value="AGENDADO">{t('status.AGENDADO')}</option>
-                      <option value="REALIZADO">{t('status.REALIZADO')}</option>
-                      <option value="CANCELADO">{t('status.CANCELADO')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label htmlFor="ev-desc" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('modal.descriptionLabel')}
-                  </label>
-                  <textarea
-                    id="ev-desc"
-                    rows={3}
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    placeholder={t('modal.descriptionPlaceholder')}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setSelectedEvento(null);
-                  }}
-                  className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-150 rounded-xl"
-                >
-                  {t('modal.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs"
-                >
-                  {t('modal.save')}
-                </button>
-              </div>
-            </form>
+            <TextareaField
+              id="ev-desc"
+              label={t('modal.descriptionLabel')}
+              rows={3}
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder={t('modal.descriptionPlaceholder')}
+            />
           </div>
-        </div>
-      )}
+
+          <ModalFooter
+            form="agenda-form"
+            primaryLabel={selectedEvento ? t('modal.save') : t('modal.save')}
+            onCancel={() => { setIsModalOpen(false); setSelectedEvento(null); }}
+          />
+        </form>
+      </ModalShell>
 
       <ConfirmDialog
         isOpen={!!pendingDeleteEvento}
