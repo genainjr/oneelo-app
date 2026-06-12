@@ -5,6 +5,8 @@ import { useEscalas } from '@/hooks/use-escalas';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
+import { FilterShell } from '@/components/app/filter-shell';
+import { useFilterState } from '@/hooks/use-filter-state';
 import { api } from '@/lib/api';
 import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, MinisterioMembro, AuthUser } from '@/types';
 
@@ -365,9 +367,23 @@ export default function EscalasPage() {
   const [ministryMembers, setMinistryMembers] = useState<MinisterioMembro[]>([]);
 
   const hoje = new Date();
-  const [filterMes, setFilterMes] = useState(String(hoje.getMonth() + 1));
-  const [filterAno, setFilterAno] = useState(String(hoje.getFullYear()));
-  const [filterMinId, setFilterMinId] = useState('');
+  const {
+    formState: filterState,
+    setField: setFilterField,
+  } = useFilterState({
+    initialState: {
+      mes: String(hoje.getMonth() + 1),
+      ano: String(hoje.getFullYear()),
+      ministerioId: '',
+    },
+    onApply: (filters) => {
+      applyFilter({
+        mes: filters.mes,
+        ano: filters.ano,
+        ministerioId: filters.ministerioId || undefined,
+      });
+    },
+  });
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newMes, setNewMes] = useState(hoje.getMonth() + 1);
@@ -397,8 +413,12 @@ export default function EscalasPage() {
   }, []);
 
   useEffect(() => {
-    applyFilter({ mes: filterMes, ano: filterAno, ministerioId: filterMinId || undefined });
-  }, [filterMes, filterAno, filterMinId]);
+    applyFilter({
+      mes: filterState.mes,
+      ano: filterState.ano,
+      ministerioId: filterState.ministerioId || undefined,
+    });
+  }, [filterState.mes, filterState.ano, filterState.ministerioId]);
 
   async function fetchDetail(escala: Escala) {
     setLoadingDetail(true);
@@ -677,42 +697,42 @@ export default function EscalasPage() {
       />
 
       {/* ─── Filters ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3 items-center bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-xs">
+      <FilterShell className="flex flex-wrap gap-4 items-center px-5 py-4 shadow-xs mb-6">
         <div className="flex items-center gap-2">
           <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.month')}</label>
           <select
             id="filter-mes"
-            value={filterMes}
-            onChange={(e) => setFilterMes(e.target.value)}
+            value={filterState.mes}
+            onChange={(e) => setFilterField('mes', e.target.value)}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
           >
-            {MESES_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
+            {MESES_KEYS.map((m) => <option key={m} value={String(m)}>{t(`months.${m}`)}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.year')}</label>
           <select
             id="filter-ano"
-            value={filterAno}
-            onChange={(e) => setFilterAno(e.target.value)}
+            value={filterState.ano}
+            onChange={(e) => setFilterField('ano', e.target.value)}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
           >
-            {anos.map(a => <option key={a} value={a}>{a}</option>)}
+            {anos.map(a => <option key={a} value={String(a)}>{a}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs font-bold text-gray-500 uppercase">{t('filter.ministry')}</label>
           <select
             id="filter-ministerio"
-            value={filterMinId}
-            onChange={(e) => setFilterMinId(e.target.value)}
+            value={filterState.ministerioId}
+            onChange={(e) => setFilterField('ministerioId', e.target.value)}
             className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
           >
             <option value="">{t('filter.all')}</option>
             {ministerios.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </select>
         </div>
-      </div>
+      </FilterShell>
 
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex justify-between items-center">
@@ -725,7 +745,7 @@ export default function EscalasPage() {
         {/* ─── Lista de Escalas ─────────────────────────────────────────────── */}
         <div className="space-y-3">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-1">
-            {t(`months.${parseInt(filterMes)}` as any)} / {filterAno}
+            {t(`months.${parseInt(filterState.mes)}` as any)} / {filterState.ano}
           </h2>
 
           {loading ? (

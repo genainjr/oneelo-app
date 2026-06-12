@@ -4,10 +4,14 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { EscalaReadonlyGrid } from '@/components/app/escala-readonly-grid';
+import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { StatCard } from '@/components/app/stat-card';
+import { useFilterState } from '@/hooks/use-filter-state';
 import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
 import { STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { Ministerio } from '@/types';
+import { Calendar, List, AlertTriangle } from 'lucide-react';
 
 const MESES = [
   { value: '1', label: 'Janeiro' },
@@ -27,14 +31,33 @@ const MESES = [
 export default function EscalasVisualizacaoPage() {
   const now = new Date();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
-  const [ministerioId, setMinisterioId] = useState('');
-  const [status, setStatus] = useState('');
-  const [mes, setMes] = useState(String(now.getMonth() + 1));
-  const [ano, setAno] = useState(String(now.getFullYear()));
-  const [pendentesApenas, setPendentesApenas] = useState(false);
   const { escalas, loading, error, applyFilter, refetch } = useEscalasVisualizacao({
     mes: String(now.getMonth() + 1),
     ano: String(now.getFullYear()),
+  });
+
+  const {
+    formState: filterState,
+    setField: setFilterField,
+    handleClear: handleClearFilters,
+    handleSubmit: handleFilterSubmit,
+  } = useFilterState({
+    initialState: {
+      ministerioId: '',
+      status: '',
+      mes: String(now.getMonth() + 1),
+      ano: String(now.getFullYear()),
+      pendentesApenas: false,
+    },
+    onApply: (filters) => {
+      applyFilter({
+        ministerioId: filters.ministerioId || undefined,
+        status: filters.status || undefined,
+        mes: filters.mes || undefined,
+        ano: filters.ano || undefined,
+        pendentesApenas: filters.pendentesApenas ? 'true' : undefined,
+      });
+    },
   });
 
   useEffect(() => {
@@ -56,28 +79,6 @@ export default function EscalasVisualizacaoPage() {
     return { dias, itens, pendentes };
   }, [escalas]);
 
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    applyFilter({
-      ministerioId: ministerioId || undefined,
-      status: status || undefined,
-      mes: mes || undefined,
-      ano: ano || undefined,
-      pendentesApenas: pendentesApenas ? 'true' : undefined,
-    });
-  }
-
-  function clearFilters() {
-    const defaultMes = String(now.getMonth() + 1);
-    const defaultAno = String(now.getFullYear());
-    setMinisterioId('');
-    setStatus('');
-    setMes(defaultMes);
-    setAno(defaultAno);
-    setPendentesApenas(false);
-    applyFilter({ mes: defaultMes, ano: defaultAno });
-  }
-
   return (
     <div className="p-6">
       <PageHeader
@@ -94,26 +95,28 @@ export default function EscalasVisualizacaoPage() {
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-          <p className="text-xs font-bold uppercase text-gray-400">Escalas</p>
-          <p className="mt-1 text-2xl font-black text-gray-900">{escalas.length}</p>
-        </div>
-        <div className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-          <p className="text-xs font-bold uppercase text-gray-400">Dias</p>
-          <p className="mt-1 text-2xl font-black text-gray-900">{totais.dias}</p>
-        </div>
-        <div className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-          <p className="text-xs font-bold uppercase text-gray-400">Pendencias</p>
-          <p className="mt-1 text-2xl font-black text-gray-900">{totais.pendentes}</p>
-        </div>
+        <StatCard title="Escalas" value={escalas.length} icon={<Calendar className="w-5 h-5" />} color="indigo" />
+        <StatCard title="Dias" value={totais.dias} icon={<List className="w-5 h-5" />} color="blue" />
+        <StatCard title="Pendencias" value={totais.pendentes} icon={<AlertTriangle className="w-5 h-5" />} color="amber" />
       </div>
 
-      <form onSubmit={handleSubmit} className="mb-5 rounded-lg border border-gray-100 bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-5">
+      <FilterShell
+        onSubmit={handleFilterSubmit}
+        actions={
+          <FilterActions
+            submitLabel="Filtrar"
+            clearLabel="Limpar"
+            reloadLabel="Recarregar"
+            onClear={() => handleClearFilters()}
+            onReload={refetch}
+          />
+        }
+      >
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-center">
           <select
-            value={ministerioId}
-            onChange={(event) => setMinisterioId(event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            value={filterState.ministerioId}
+            onChange={(event) => setFilterField('ministerioId', event.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os ministerios</option>
             {ministerios.map((ministerio) => (
@@ -121,9 +124,9 @@ export default function EscalasVisualizacaoPage() {
             ))}
           </select>
           <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            value={filterState.status}
+            onChange={(event) => setFilterField('status', event.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os status</option>
             <option value="RASCUNHO">Rascunho</option>
@@ -131,9 +134,9 @@ export default function EscalasVisualizacaoPage() {
             <option value="ENCERRADA">Encerrada</option>
           </select>
           <select
-            value={mes}
-            onChange={(event) => setMes(event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            value={filterState.mes}
+            onChange={(event) => setFilterField('mes', event.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             {MESES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
@@ -141,32 +144,21 @@ export default function EscalasVisualizacaoPage() {
             type="number"
             min="2020"
             max="2100"
-            value={ano}
-            onChange={(event) => setAno(event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            value={filterState.ano}
+            onChange={(event) => setFilterField('ano', event.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           />
-          <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600">
+          <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors w-full cursor-pointer">
             <input
               type="checkbox"
-              checked={pendentesApenas}
-              onChange={(event) => setPendentesApenas(event.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+              checked={filterState.pendentesApenas}
+              onChange={(event) => setFilterField('pendentesApenas', event.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 cursor-pointer"
             />
             Pendentes
           </label>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700">
-            Filtrar
-          </button>
-          <button type="button" onClick={clearFilters} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50">
-            Limpar
-          </button>
-          <button type="button" onClick={refetch} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50">
-            Recarregar
-          </button>
-        </div>
-      </form>
+      </FilterShell>
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">

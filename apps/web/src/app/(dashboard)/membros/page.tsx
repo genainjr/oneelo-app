@@ -8,6 +8,8 @@ import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
+import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { useFilterState } from '@/hooks/use-filter-state';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -68,47 +70,43 @@ export default function MembrosPage() {
     fetchTags();
   }, []);
 
-  const [searchName, setSearchName] = useState('');
-  const [searchPhone, setSearchPhone] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [tagOp, setTagOp] = useState<'AND' | 'OR'>('OR');
-
-  function handleFilterSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setCurrentPage(1);
-    applyFilter({
-      nome: searchName || undefined,
-      whatsapp: searchPhone || undefined,
-      status: selectedStatus || undefined,
-      tags: selectedTags.join(',') || undefined,
-      operacao: tagOp,
-    });
-  }
-
-  function handleClearFilters() {
-    setSearchName('');
-    setSearchPhone('');
-    setSelectedStatus('');
-    setSelectedTags([]);
-    setTagOp('OR');
-    setCurrentPage(1);
-    applyFilter({ nome: undefined, whatsapp: undefined, status: undefined, tags: undefined, operacao: 'OR' });
-  }
+  const {
+    formState: filterState,
+    setField: setFilterField,
+    handleClear: handleClearFilters,
+    handleSubmit: handleFilterSubmit,
+  } = useFilterState({
+    initialState: {
+      nome: '',
+      whatsapp: '',
+      status: '',
+      tags: [] as string[],
+      operacao: 'OR' as 'AND' | 'OR',
+    },
+    onApply: (filters) => {
+      setCurrentPage(1);
+      applyFilter({
+        nome: filters.nome || undefined,
+        whatsapp: filters.whatsapp || undefined,
+        status: filters.status || undefined,
+        tags: filters.tags.join(',') || undefined,
+        operacao: filters.operacao,
+      });
+    },
+  });
 
   function handleToggleTagFilter(tagNome: string) {
-    setSelectedTags(prev => {
-      const next = prev.includes(tagNome)
-        ? prev.filter(t => t !== tagNome)
-        : [...prev, tagNome];
-      applyFilter({
-        nome: searchName || undefined,
-        whatsapp: searchPhone || undefined,
-        status: selectedStatus || undefined,
-        tags: next.join(',') || undefined,
-        operacao: tagOp,
-      });
-      return next;
+    const nextTags = filterState.tags.includes(tagNome)
+      ? filterState.tags.filter(t => t !== tagNome)
+      : [...filterState.tags, tagNome];
+    
+    setFilterField('tags', nextTags);
+    applyFilter({
+      nome: filterState.nome || undefined,
+      whatsapp: filterState.whatsapp || undefined,
+      status: filterState.status || undefined,
+      tags: nextTags.join(',') || undefined,
+      operacao: filterState.operacao,
     });
   }
 
@@ -343,8 +341,17 @@ export default function MembrosPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-        <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <FilterShell
+        onSubmit={handleFilterSubmit}
+        actions={
+          <FilterActions
+            submitLabel={t('filter.apply')}
+            clearLabel={t('filter.clear')}
+            onClear={() => handleClearFilters()}
+          />
+        }
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <label htmlFor="search-nome" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               {t('filter.nameLabel')}
@@ -352,8 +359,8 @@ export default function MembrosPage() {
             <input
               id="search-nome"
               type="text"
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
+              value={filterState.nome}
+              onChange={(e) => setFilterField('nome', e.target.value)}
               placeholder={t('filter.namePlaceholder')}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
             />
@@ -366,8 +373,8 @@ export default function MembrosPage() {
             <input
               id="search-whatsapp"
               type="text"
-              value={searchPhone}
-              onChange={(e) => setSearchPhone(e.target.value)}
+              value={filterState.whatsapp}
+              onChange={(e) => setFilterField('whatsapp', e.target.value)}
               placeholder={t('filter.whatsappPlaceholder')}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
             />
@@ -379,8 +386,8 @@ export default function MembrosPage() {
             </label>
             <select
               id="search-status"
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              value={filterState.status}
+              onChange={(e) => setFilterField('status', e.target.value)}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all text-gray-700"
             >
               <option value="">{t('filter.allStatuses')}</option>
@@ -390,36 +397,21 @@ export default function MembrosPage() {
               <option value="TRANSFERIDO">{t('status.TRANSFERIDO')}</option>
             </select>
           </div>
-
-          <div className="flex items-end gap-3">
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-semibold rounded-xl text-sm transition-all shadow-sm"
-            >
-              {t('filter.apply')}
-            </button>
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold rounded-xl text-sm transition-all"
-            >
-              {t('filter.clear')}
-            </button>
-          </div>
-        </form>
+        </div>
 
         {/* Tags filter */}
-        <div className="pt-2 border-t border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="pt-3 border-t border-gray-100 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">
               {t('filter.tagsLabel')}
             </span>
             <div className="flex flex-wrap gap-2">
               {tagsList.map((tag) => {
-                const active = selectedTags.includes(tag.nome);
+                const active = filterState.tags.includes(tag.nome);
                 return (
                   <button
                     key={tag.id}
+                    type="button"
                     onClick={() => handleToggleTagFilter(tag.nome)}
                     style={{
                       backgroundColor: active ? tag.cor : 'transparent',
@@ -434,6 +426,7 @@ export default function MembrosPage() {
               })}
 
               <button
+                type="button"
                 onClick={() => setShowNewTagInput(true)}
                 className="px-2 py-1 text-xs font-medium border border-dashed border-gray-300 hover:border-indigo-500 rounded-lg text-gray-500 hover:text-indigo-600 transition-all flex items-center gap-1"
               >
@@ -442,43 +435,45 @@ export default function MembrosPage() {
             </div>
           </div>
 
-          {selectedTags.length > 1 && (
+          {filterState.tags.length > 1 && (
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 p-1.5 rounded-xl self-start md:self-auto">
               <span className="text-xs font-medium text-gray-500 px-1">{t('filter.compositeFilter')}</span>
               <button
+                type="button"
                 onClick={() => {
-                  setTagOp('AND');
+                  setFilterField('operacao', 'AND');
                   applyFilter({
-                    nome: searchName || undefined,
-                    whatsapp: searchPhone || undefined,
-                    status: selectedStatus || undefined,
-                    tags: selectedTags.join(',') || undefined,
+                    nome: filterState.nome || undefined,
+                    whatsapp: filterState.whatsapp || undefined,
+                    status: filterState.status || undefined,
+                    tags: filterState.tags.join(',') || undefined,
                     operacao: 'AND',
                   });
                 }}
-                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${tagOp === 'AND' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
+                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'AND' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
               >
                 AND (E)
               </button>
               <button
+                type="button"
                 onClick={() => {
-                  setTagOp('OR');
+                  setFilterField('operacao', 'OR');
                   applyFilter({
-                    nome: searchName || undefined,
-                    whatsapp: searchPhone || undefined,
-                    status: selectedStatus || undefined,
-                    tags: selectedTags.join(',') || undefined,
+                    nome: filterState.nome || undefined,
+                    whatsapp: filterState.whatsapp || undefined,
+                    status: filterState.status || undefined,
+                    tags: filterState.tags.join(',') || undefined,
                     operacao: 'OR',
                   });
                 }}
-                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${tagOp === 'OR' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
+                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'OR' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
               >
                 OR (OU)
               </button>
             </div>
           )}
         </div>
-      </div>
+      </FilterShell>
 
       {/* New Tag Modal */}
       {showNewTagInput && (
