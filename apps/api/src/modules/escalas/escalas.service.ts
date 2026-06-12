@@ -8,6 +8,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateEscalaDto } from './dto/create-escala.dto';
 import { UpdateEscalaDto } from './dto/update-escala.dto';
 import { FilterEscalaDto } from './dto/filter-escala.dto';
+import { FilterEscalaVisualizacaoDto } from './dto/filter-escala-visualizacao.dto';
 import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
 import { ReorderDiasDto } from './dto/reorder-dias.dto';
@@ -103,6 +104,59 @@ export class EscalasService {
     return dias;
   }
 
+  private async applyVisualizacaoScope(
+    where: any,
+    query: FilterEscalaVisualizacaoDto,
+    user: JwtPayload,
+  ): Promise<boolean> {
+    if (query.ministerioId) {
+      where.ministerioId = query.ministerioId;
+    }
+    if (query.status) {
+      where.status = query.status;
+    }
+    if (query.mes) {
+      where.mes = parseInt(query.mes, 10);
+    }
+    if (query.ano) {
+      where.ano = parseInt(query.ano, 10);
+    }
+    if (query.pendentesApenas === 'true') {
+      where.dias = {
+        some: {
+          itens: {
+            some: { statusConfirmacao: StatusConfirmacao.PENDENTE },
+          },
+        },
+      };
+    }
+
+    if (user.role !== Role.BASIC) return true;
+    if (!user.memberId) return false;
+
+    const liderados = await this.prisma.ministerioMembro.findMany({
+      where: {
+        membroId: user.memberId,
+        role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+        ministerio: { ativo: true },
+      },
+      select: { ministerioId: true },
+    });
+
+    const idsLiderados = liderados.map((liderado) => liderado.ministerioId);
+    if (idsLiderados.length === 0) return false;
+
+    if (query.ministerioId && !idsLiderados.includes(query.ministerioId)) {
+      return false;
+    }
+
+    where.ministerioId = query.ministerioId
+      ? query.ministerioId
+      : { in: idsLiderados };
+
+    return true;
+  }
+
   async findAll(tenantId: string, query: FilterEscalaDto, user: JwtPayload) {
     const where: any = { tenantId };
 
@@ -165,6 +219,124 @@ export class EscalasService {
         { mes: 'desc' },
       ],
     });
+  }
+
+  async findVisualizacao(
+    tenantId: string,
+    query: FilterEscalaVisualizacaoDto,
+    user: JwtPayload,
+  ) {
+    const where: any = { tenantId };
+    const hasAccess = await this.applyVisualizacaoScope(where, query, user);
+    if (!hasAccess) return [];
+
+    return this.prisma.escala.findMany({
+      where,
+      include: {
+        ministerio: {
+          include: {
+            funcoes: { orderBy: { ordem: 'asc' } },
+          },
+        },
+        dias: {
+          orderBy: [
+            { ordem: 'asc' },
+            { data: 'asc' },
+          ],
+          include: {
+            funcoesOcultas: { select: { funcaoId: true } },
+            itens: {
+              include: {
+                membro: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    email: true,
+                    whatsapp: true,
+                    status: true,
+                  },
+                },
+                funcao: true,
+              },
+              orderBy: {
+                membro: { nome: 'asc' },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { ano: 'desc' },
+        { mes: 'desc' },
+        { ministerio: { nome: 'asc' } },
+      ],
+    });
+  }
+
+  async findMinhas(
+    tenantId: string,
+    query: FilterEscalaVisualizacaoDto,
+    user: JwtPayload,
+  ) {
+    if (!user.memberId) return [];
+
+    const escalaWhere: any = { tenantId };
+    if (query.ministerioId) {
+      escalaWhere.ministerioId = query.ministerioId;
+    }
+    if (query.status) {
+      escalaWhere.status = query.status;
+    }
+    if (query.mes) {
+      escalaWhere.mes = parseInt(query.mes, 10);
+    }
+    if (query.ano) {
+      escalaWhere.ano = parseInt(query.ano, 10);
+    }
+
+    const where: any = {
+      membroId: user.memberId,
+      escalaDia: {
+        escala: escalaWhere,
+      },
+    };
+
+    if (query.pendentesApenas === 'true') {
+      where.statusConfirmacao = StatusConfirmacao.PENDENTE;
+    }
+
+    const itens = await this.prisma.escalaItem.findMany({
+      where,
+      include: {
+        membro: { select: { id: true, nome: true, email: true, whatsapp: true } },
+        funcao: true,
+        escalaDia: {
+          include: {
+            escala: {
+              include: {
+                ministerio: { select: { id: true, nome: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return itens
+      .sort((a, b) => a.escalaDia.data.getTime() - b.escalaDia.data.getTime())
+      .map((item) => ({
+        id: item.id,
+        escalaDiaId: item.escalaDiaId,
+        membroId: item.membroId,
+        ministerioFuncaoId: item.ministerioFuncaoId,
+        statusConfirmacao: item.statusConfirmacao,
+        observacoes: item.observacoes,
+        data: item.escalaDia.data,
+        titulo: item.escalaDia.titulo,
+        funcao: item.funcao,
+        membro: item.membro,
+        escala: item.escalaDia.escala,
+      }));
   }
 
   async findOne(tenantId: string, id: string, user: JwtPayload) {

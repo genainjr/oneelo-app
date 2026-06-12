@@ -87,6 +87,13 @@ export interface Membro {
   tags: { tag: Tag }[];
 }
 
+export interface MembroVisualizacao extends Membro {
+  ministerios?: (MinisterioMembro & {
+    ministerio?: Pick<Ministerio, 'id' | 'nome'>;
+  })[];
+  _count?: { escalas: number };
+}
+
 // ─── Ministério ───────────────────────────────────────────────────────────────
 
 export interface MinisterioFuncao {
@@ -161,6 +168,13 @@ export interface Escala {
   ministerio?: Pick<Ministerio, 'id' | 'nome'> & { funcoes?: MinisterioFuncao[] };
   dias?: EscalaDia[];
   _count?: { dias: number };
+}
+
+export interface MinhaEscalaItem extends EscalaItem {
+  data: string;
+  titulo?: string | null;
+  escala: Escala;
+  funcao?: MinisterioFuncao;
 }
 
 // ─── Evento ───────────────────────────────────────────────────────────────────
