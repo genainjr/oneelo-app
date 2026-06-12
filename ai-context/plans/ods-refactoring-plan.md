@@ -20,7 +20,7 @@ Objetivo: refatorar gradualmente o frontend para aderir ao OneElo Design System 
 | Fase 2 - Confirmacoes e Feedback | Concluida | `ai-context/plans/ods-phase-2-feedback-report.md` |
 | Fase 3 - Exportacoes | Concluida | `ai-context/plans/ods-phase-3-export-report.md` |
 | Fase 4 - Tabelas e Listagens | Nao iniciada | Aguardando fases anteriores |
-| Fase 5 - Modais CRUD | Nao iniciada | Aguardando fases anteriores |
+| Fase 5 - Modais CRUD | Concluida | `ai-context/plans/ods-phase-5-crud-modals-report.md` |
 | Fase 6 - Filtros | Concluida | `ai-context/plans/ods-phase-4-filters-report.md` |
 | Fase 7 - Visualizacoes e Metricas | Nao iniciada | Aguardando fases anteriores |
 | Fase 8 - Permissoes e Navegacao | Nao iniciada | Aguardando fases anteriores |
