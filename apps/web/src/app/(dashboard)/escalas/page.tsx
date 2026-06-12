@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useEscalas } from '@/hooks/use-escalas';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
+import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { api } from '@/lib/api';
 import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, MinisterioMembro, AuthUser } from '@/types';
 
@@ -378,6 +379,12 @@ export default function EscalasPage() {
 
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [aiToastOpen, setAiToastOpen] = useState(false);
+  const [pendingConfirmAction, setPendingConfirmAction] = useState<{
+    type: 'deleteEscala' | 'removeDia';
+    label: string;
+    diaId?: string;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type });
@@ -462,14 +469,30 @@ export default function EscalasPage() {
   async function handleDelete() {
     if (!selectedEscala) return;
     const mesNome = t(`months.${selectedEscala.mes}` as any);
-    if (!confirm(t('deleteConfirm', { month: mesNome, year: selectedEscala.ano }))) return;
+    setPendingConfirmAction({
+      type: 'deleteEscala',
+      label: t('deleteConfirm', { month: mesNome, year: selectedEscala.ano }),
+    });
+  }
+
+  async function executePendingAction() {
+    if (!pendingConfirmAction) return;
+    setConfirmLoading(true);
     try {
-      await deleteEscala(selectedEscala.id);
-      setSelectedEscala(null);
-      setDetailedEscala(null);
-      showToast('Escala removida.');
+      if (pendingConfirmAction.type === 'deleteEscala' && selectedEscala) {
+        await deleteEscala(selectedEscala.id);
+        setSelectedEscala(null);
+        setDetailedEscala(null);
+        showToast('Escala removida.');
+      } else if (pendingConfirmAction.type === 'removeDia' && pendingConfirmAction.diaId) {
+        await removeDia(pendingConfirmAction.diaId);
+        await refreshDetail();
+      }
+      setPendingConfirmAction(null);
     } catch (err: any) {
-      showToast(err.message || 'Erro ao remover escala.', 'error');
+      showToast(err.message || 'Erro ao executar ação.', 'error');
+    } finally {
+      setConfirmLoading(false);
     }
   }
 
@@ -835,9 +858,11 @@ export default function EscalasPage() {
                   await refreshDetail();
                 }}
                 onRemoveDia={async (diaId) => {
-                  if (!confirm(tGrid('removeDayConfirm'))) return;
-                  await removeDia(diaId);
-                  await refreshDetail();
+                  setPendingConfirmAction({
+                    type: 'removeDia',
+                    label: tGrid('removeDayConfirm'),
+                    diaId,
+                  });
                 }}
                 onReorderDias={async (diaIds) => {
                   await reorderDias(detailedEscala.id, diaIds);
@@ -969,6 +994,17 @@ export default function EscalasPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingConfirmAction}
+        title={pendingConfirmAction?.type === 'deleteEscala' ? t('deleteTitle') : tGrid('removeDay')}
+        description={pendingConfirmAction?.label || ''}
+        confirmLabel={pendingConfirmAction?.type === 'deleteEscala' ? 'Excluir' : 'Remover'}
+        variant={pendingConfirmAction?.type === 'deleteEscala' ? 'danger' : 'warning'}
+        loading={confirmLoading}
+        onConfirm={executePendingAction}
+        onCancel={() => setPendingConfirmAction(null)}
+      />
     </div>
   );
 }

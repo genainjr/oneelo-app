@@ -7,9 +7,15 @@ import { useMembros } from '@/hooks/use-membros';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
+import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+
+type FeedbackMessage = {
+  type: 'success' | 'error';
+  message: string;
+} | null;
 
 export default function MembrosPage() {
   const t = useTranslations('members');
@@ -43,6 +49,9 @@ export default function MembrosPage() {
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#4f46e5');
+  const [feedback, setFeedback] = useState<FeedbackMessage>(null);
+  const [pendingDeleteMembro, setPendingDeleteMembro] = useState<Membro | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -117,14 +126,22 @@ export default function MembrosPage() {
     fetchTags();
   }
 
-  async function handleDelete(membro: Membro) {
-    if (confirm(t('deleteConfirm', { name: membro.nome }))) {
-      try {
-        await deleteMembro(membro.id);
-        setSelectedIds(prev => prev.filter(id => id !== membro.id));
-      } catch (err: any) {
-        alert(err.message || t('deleteError'));
-      }
+  function handleDelete(membro: Membro) {
+    setPendingDeleteMembro(membro);
+  }
+
+  async function confirmDeleteMembro() {
+    if (!pendingDeleteMembro) return;
+    setConfirmLoading(true);
+    setFeedback(null);
+    try {
+      await deleteMembro(pendingDeleteMembro.id);
+      setSelectedIds(prev => prev.filter(id => id !== pendingDeleteMembro.id));
+      setPendingDeleteMembro(null);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || t('deleteError') });
+    } finally {
+      setConfirmLoading(false);
     }
   }
 
@@ -140,7 +157,7 @@ export default function MembrosPage() {
       setNewTagName('');
       setShowNewTagInput(false);
     } catch (err: any) {
-      alert(err.message || t('tag.error'));
+      setFeedback({ type: 'error', message: err.message || t('tag.error') });
     }
   }
 
@@ -150,9 +167,9 @@ export default function MembrosPage() {
       await bulkTag(selectedIds, [selectedBulkTag], bulkAction);
       setSelectedIds([]);
       setSelectedBulkTag('');
-      alert(t('bulk.success'));
+      setFeedback({ type: 'success', message: t('bulk.success') });
     } catch (err: any) {
-      alert(err.message || t('bulk.error'));
+      setFeedback({ type: 'error', message: err.message || t('bulk.error') });
     }
   }
 
@@ -304,6 +321,23 @@ export default function MembrosPage() {
           <span>{error}</span>
           <button onClick={() => window.location.reload()} className="underline font-semibold hover:text-red-800">
             {t('reload')}
+          </button>
+        </div>
+      )}
+
+      {feedback && (
+        <div className={`p-4 text-sm border rounded-2xl flex items-center justify-between ${
+          feedback.type === 'success'
+            ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+            : 'text-red-700 bg-red-50 border-red-100'
+        }`}>
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="font-semibold opacity-70 hover:opacity-100"
+          >
+            Fechar
           </button>
         </div>
       )}
@@ -579,6 +613,16 @@ export default function MembrosPage() {
         }}
         onSave={handleSaveMembro}
         membro={editingMembro}
+      />
+
+      <ConfirmDialog
+        isOpen={!!pendingDeleteMembro}
+        title={t('deleteTooltip')}
+        description={pendingDeleteMembro ? t('deleteConfirm', { name: pendingDeleteMembro.nome }) : ''}
+        confirmLabel={t('deleteTooltip')}
+        loading={confirmLoading}
+        onConfirm={confirmDeleteMembro}
+        onCancel={() => setPendingDeleteMembro(null)}
       />
     </div>
   );
