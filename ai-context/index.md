@@ -46,7 +46,7 @@ Este repositorio contem a documentacao de contexto da IA para o projeto Oneelo, 
 - [Módulos](product/oneelo-modules.md)
 - [Papéis e Permissões](product/oneelo-roles-and-permissions.md)
 - [Multi-tenancy](product/oneelo-multitenancy.md)
-- [Status do ODS](product/ods-current-status.md)
+- [Status do ODS](plans/ods-current-status.md)
 
 ---
 ## Decisoes Consolidadas

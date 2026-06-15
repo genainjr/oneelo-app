@@ -5,7 +5,7 @@
 2. `ai-context/product/oneelo-modules.md`
 3. `ai-context/product/oneelo-roles-and-permissions.md`
 4. `ai-context/product/oneelo-multitenancy.md`
-5. `ai-context/product/ods-current-status.md`
+5. `ai-context/plans/ods-current-status.md` (movido de `product/` para `plans/`; fonte única de status do ODS)
 
 ## Arquivos Atualizados
 1. `ai-context/index.md` (Adicionada nova seção `# Product` indexando a pasta `product`).

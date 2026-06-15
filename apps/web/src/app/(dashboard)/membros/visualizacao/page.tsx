@@ -2,7 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
-import { EmptyState } from '@/components/app/empty-state';
+import { DataTable, Column, SortState } from '@/components/app/data-table';
+import { StatusBadge } from '@/components/app/status-badge';
+import { EntityCard } from '@/components/app/entity-card';
 import { MemberProfileDrawer } from '@/components/app/member-profile-drawer';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { StatCard } from '@/components/app/stat-card';
@@ -39,6 +41,7 @@ export default function MembrosVisualizacaoPage() {
   } = useMembrosVisualizacao();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [selected, setSelected] = useState<MembroVisualizacao | null>(null);
+  const [sort, setSort] = useState<SortState>({ key: 'nome', direction: 'asc' });
   const {
     formState: filterState,
     setField: setFilterField,
@@ -80,6 +83,90 @@ export default function MembrosVisualizacaoPage() {
     }).length;
     return { ativos, semContato, comMinisterio, aniversariantes };
   }, [membros]);
+
+  const sortedMembros = useMemo(() => {
+    const arr = [...membros];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sort.key === 'dataNascimento') {
+        const av = a.dataNascimento ? new Date(a.dataNascimento).getTime() : 0;
+        const bv = b.dataNascimento ? new Date(b.dataNascimento).getTime() : 0;
+        cmp = av - bv;
+      } else {
+        cmp = a.nome.localeCompare(b.nome, 'pt-BR');
+      }
+      return sort.direction === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [membros, sort]);
+
+  const columns: Column<MembroVisualizacao>[] = [
+    {
+      key: 'nome',
+      header: 'Nome',
+      sortable: true,
+      render: (membro) => (
+        <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
+          {membro.nome}
+        </button>
+      ),
+    },
+    {
+      key: 'contato',
+      header: 'Contato',
+      render: (membro) => (
+        <div className="space-y-0.5">
+          <p>{formatPhone(membro.whatsapp)}</p>
+          {membro.email && <p className="text-xs text-gray-400">{membro.email}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (membro) => (
+        <StatusBadge label={STATUS_MEMBRO_LABEL[membro.status]} className={STATUS_MEMBRO_COLOR[membro.status]} />
+      ),
+    },
+    {
+      key: 'ministerios',
+      header: 'Ministerios',
+      render: (membro) => (
+        <div className="space-y-1">
+          {(membro.ministerios || []).slice(0, 3).map((ministerio) => (
+            <p key={`${ministerio.ministerioId}-${ministerio.membroId}`} className="text-xs font-semibold text-gray-600">
+              {ministerio.ministerio?.nome} <span className="text-gray-400">({MINISTRY_ROLE_LABEL[ministerio.role] || ministerio.role})</span>
+            </p>
+          ))}
+          {(membro.ministerios || []).length === 0 && <span className="text-xs text-gray-300">-</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'dataNascimento',
+      header: 'Nascimento',
+      sortable: true,
+      render: (membro) => <span className="text-gray-600">{formatDate(membro.dataNascimento)}</span>,
+    },
+  ];
+
+  const renderMobileCard = (membro: MembroVisualizacao) => (
+    <EntityCard
+      onClick={() => setSelected(membro)}
+      className="rounded-none border-0 border-b border-gray-100 shadow-none"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-bold text-gray-900">{membro.nome}</p>
+          <p className="mt-1 text-sm text-gray-500">{formatPhone(membro.whatsapp)}</p>
+        </div>
+        <StatusBadge label={STATUS_MEMBRO_LABEL[membro.status]} className={STATUS_MEMBRO_COLOR[membro.status]} />
+      </div>
+      <p className="mt-2 text-xs text-gray-400">
+        {(membro.ministerios || []).map((ministerio) => ministerio.ministerio?.nome).filter(Boolean).join(', ') || 'Sem ministerio'}
+      </p>
+    </EntityCard>
+  );
 
   return (
     <div className="p-6">
@@ -160,81 +247,16 @@ export default function MembrosVisualizacaoPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="space-y-2 animate-pulse">
-          {[1, 2, 3, 4].map((item) => <div key={item} className="h-16 rounded-lg bg-gray-100" />)}
-        </div>
-      ) : membros.length === 0 ? (
-        <EmptyState title="Nenhum membro encontrado" description="Ajuste os filtros para localizar outros membros." />
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <div className="hidden overflow-x-auto md:block">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Nome</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Contato</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Ministerios</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-500">Nascimento</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {membros.map((membro) => (
-                  <tr key={membro.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
-                        {membro.nome}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      <div className="space-y-0.5">
-                        <p>{formatPhone(membro.whatsapp)}</p>
-                        {membro.email && <p className="text-xs text-gray-400">{membro.email}</p>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}>
-                        {STATUS_MEMBRO_LABEL[membro.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="space-y-1">
-                        {(membro.ministerios || []).slice(0, 3).map((ministerio) => (
-                          <p key={`${ministerio.ministerioId}-${ministerio.membroId}`} className="text-xs font-semibold text-gray-600">
-                            {ministerio.ministerio?.nome} <span className="text-gray-400">({MINISTRY_ROLE_LABEL[ministerio.role] || ministerio.role})</span>
-                          </p>
-                        ))}
-                        {(membro.ministerios || []).length === 0 && <span className="text-xs text-gray-300">-</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{formatDate(membro.dataNascimento)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="divide-y divide-gray-100 md:hidden">
-            {membros.map((membro) => (
-              <button key={membro.id} onClick={() => setSelected(membro)} className="block w-full p-4 text-left">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-bold text-gray-900">{membro.nome}</p>
-                    <p className="mt-1 text-sm text-gray-500">{formatPhone(membro.whatsapp)}</p>
-                  </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}>
-                    {STATUS_MEMBRO_LABEL[membro.status]}
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-gray-400">
-                  {(membro.ministerios || []).map((ministerio) => ministerio.ministerio?.nome).filter(Boolean).join(', ') || 'Sem ministerio'}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={sortedMembros}
+        loading={loading}
+        sort={sort}
+        onSortChange={setSort}
+        renderMobileCard={renderMobileCard}
+        emptyTitle="Nenhum membro encontrado"
+        emptyDescription="Ajuste os filtros para localizar outros membros."
+      />
 
       <MemberProfileDrawer membro={selected} onClose={() => setSelected(null)} />
     </div>

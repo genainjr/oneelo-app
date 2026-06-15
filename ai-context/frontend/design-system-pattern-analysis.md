@@ -1,213 +1,264 @@
 # Analise de Padroes do Design System Atual do OneElo
 
-Fonte analisada: `ai-context/frontend/design-system-inventory.md`
+Fonte analisada: codigo de `apps/web/src` (auditoria direta) + `ai-context/frontend/design-system-inventory.md`.
 
-Objetivo: identificar quantos padroes de tabela, formulario, filtro, acao e visualizacao existem no frontend atual, agrupando componentes por similaridade.
+Data: 2026-06-15 · Branch: `refactor/ods-phase-7`.
 
-Observacao: este documento e apenas analitico. Nenhuma implementacao foi realizada.
+Objetivo: identificar quantos padroes de CRUD, tabela, formulario, filtro, acao, visualizacao, exportacao, navegacao e permissao existem no frontend atual; marcar o que ja foi padronizado pelo ODS e recomendar um padrao unico por area.
+
+Observacao: documento analitico, somente-leitura. Nenhuma implementacao foi realizada.
+
+---
+
+## Estado do ODS (Fases concluidas)
+
+As Fases 0-7 ja implantaram nucleos reutilizaveis. Cada secao abaixo marca o que e PADRAO ODS (implantado) vs FRAGMENTADO (legado).
+
+| Fase | Entrega | Reflexo no codigo atual |
+|---|---|---|
+| 1 (Fundacoes) | `ModalShell`/`ModalError`/`ModalFooter`, `InputField`/`SelectField`/`TextareaField`/`PasswordField` | Modais e inputs base disponiveis. |
+| 2 (Feedback) | `ConfirmDialog`; expurgo de `alert()`/`confirm()` | Membros, ministerios, agenda e escalas usam `ConfirmDialog`. |
+| 3 (Exportacoes) | `ExportShell` + `useExport` + `lib/csv` | 4 paginas `*/exportacao` identicas. |
+| 4 (Filtros) | `FilterShell` + `FilterActions` + `useFilterState` | 5 paginas com filtros padronizados. |
+| 7 (Visualizacoes/Metricas) | `StatCard` padronizado, `InfoItem` extraido | Metricas unificadas; drawers e perfil consolidados. |
+
+> Correcao de docs anteriores: versoes passadas citavam `confirm()`/`alert()` nos CRUDs e um `StatBox` local nas visualizacoes. Isso esta desatualizado. A auditoria do codigo atual confirma `ConfirmDialog` (Fase 2) e `StatCard` (Fase 7) em uso. Este documento reflete o codigo atual.
+
+### Aderencia ODS por area
+
+| Area | Aderencia | Padrao unico existe? |
+|---|---:|---|
+| Exportacoes | ~100% | Sim (`ExportShell`/`useExport`) |
+| Filtros (container) | ~100% | Sim (`FilterShell`/`useFilterState`) |
+| Feedback / Confirmacao | ~85% | Sim (`ConfirmDialog`; 1 excecao inline) |
+| Formularios | ~50% | Parcial (`form-field`; filtros/login ignoram) |
+| Modais | ~50% | Parcial (`ModalShell`; footer inconsistente) |
+| Tabelas / Listagens | ~20% | Nao (`DataTable` subutilizado) |
+| CRUDs | ~20% | Nao (5 padroes distintos) |
+| Navegacao | 0% | Nao (sem breadcrumb, icones inline) |
+| Permissoes | 0% (sem abstracao) | Nao (regras espalhadas, refetch `/me`) |
 
 ---
 
 ## Resumo Quantitativo
 
-| Categoria | Quantidade de padroes identificados |
-|---|---:|
-| Padroes de tabela | 4 |
-| Padroes de formulario | 8 |
-| Padroes de filtro | 4 |
-| Padroes de acao | 9 |
-| Padroes de visualizacao | 8 |
+| Categoria | Padroes identificados | Padrao ODS unico? |
+|---|---:|---|
+| Padroes de CRUD | 5 | Nao |
+| Padroes de tabela | 5 impl. (1 generica) | Parcial |
+| Padroes de formulario | 8 | Parcial |
+| Padroes de filtro | 4 | Sim (container) |
+| Padroes de acao | 9 | Parcial |
+| Padroes de visualizacao | 6 | Parcial |
+| Padroes de exportacao | 1 | Sim |
+| Padroes de confirmacao | 2 | Sim (1 excecao) |
 
 ---
 
-## 1. Padroes de Tabela
+## 1. Padroes de CRUD
 
-### Total: 4 padroes
+### Total: 5 padroes
 
-| Padrao | Componentes / Arquivos | Caracteristica |
-|---|---|---|
-| Tabela compartilhada generica | `DataTable<T>`, usada em `membros/page.tsx`, `configuracoes/page.tsx` | Tabela reutilizavel com loading, empty state, selecao e paginacao. |
-| Tabela HTML administrativa simples | `admin/page.tsx` | Tabela manual para tenants, sem `DataTable`. |
-| Tabela read-only responsiva | `membros/visualizacao/page.tsx` | Tabela desktop + cards mobile para consulta. |
-| Grade/matriz operacional | `escalas/page.tsx`, `escala-readonly-grid.tsx` | Matriz dias x funcoes, com variacao interativa e read-only. |
+| # | Padrao | Onde | Listagem | Adicao | Edicao | Exclusao |
+|---|---|---|---|---|---|---|
+| 1 | Tabela + modal dedicado | `membros/page.tsx` (`MembroModal`) | `DataTable` | `MembroModal` | mesmo modal (`editingMembro`) | `ConfirmDialog` |
+| 2 | Cards + modal com tabs | `ministerios/page.tsx` | grid de cards | `ModalShell` | `ModalShell` + `TabsShell` | `ConfirmDialog` (warning=arquivar) |
+| 3 | Lista de cards + modal | `agenda/page.tsx` | lista de cards | `ModalShell` inline | mesmo modal (`selectedEvento`) | `ConfirmDialog` |
+| 4 | Mestre-detalhe + grade editavel | `escalas/page.tsx` | lista lateral + `EscalaGrid` | `ModalShell` | edicao in-place (status/dias/membros/drag&drop) | `ConfirmDialog` |
+| 5 | Tabela + modais inline | `admin/page.tsx` | `<table>` manual | 3 modais inline | modais inline | sem exclusao |
+| (config) | Tabela + modal compartilhado | `configuracoes/page.tsx` (`UsuarioModal`) | `DataTable` | `UsuarioModal` | `UsuarioModal` | modal inline proprio (nao `ConfirmDialog`) |
 
-### Observacao
-
-O frontend possui um componente de tabela compartilhado, mas ainda mantem tabelas manuais para casos administrativos, read-only e matrizes operacionais.
+Por operacao:
+- Listagem: 4 estilos (tabela generica, tabela artesanal, cards/grid, mestre-detalhe matricial).
+- Adicao: 2 estilos (modal dedicado em `components/app` vs modal inline na pagina). Footer ora usa `ModalFooter`, ora botoes manuais (`MembroModal`/`UsuarioModal`).
+- Edicao: 3 estilos (mesmo modal com `editing*`; in-place na grade de escalas; sub-recursos inline em ministerios).
+- Exclusao: `ConfirmDialog` (padrao) em 4 modulos; modal inline em configuracoes; sem exclusao em admin.
 
 ---
 
-## 2. Padroes de Formulario
+## 2. Padroes de Tabela
+
+### Total: 5 implementacoes (1 generica + 4 artesanais)
+
+| Tabela | Arquivo | Tipo | Filtros | Paginacao | Ordenacao |
+|---|---|---|---|---|---|
+| `DataTable<T>` | `components/app/data-table.tsx` | generica | externos | client-side | nenhuma |
+| Membros | `membros/page.tsx` | usa `DataTable` | `FilterShell` | client (`itemsPerPage=10`) | nenhuma |
+| Usuarios/Auditoria | `configuracoes/page.tsx` | usa `DataTable` | sem filtro | `itemsPerPage=15` sem `onPageChange` (sem efeito) | nenhuma |
+| Tenants | `admin/page.tsx` | `<table>` manual | sem filtro | nenhuma | nenhuma |
+| Visualizacao membros | `membros/visualizacao/page.tsx` | `<table>` + lista mobile | `FilterShell` (5 campos) | nenhuma | nenhuma |
+| Grade escala editavel | `escalas/page.tsx` (`EscalaGrid`) | matriz dias x funcoes | toolbar (mes/ano/ministerio) | nenhuma | dias por `ordem`/data |
+| Grade escala read-only | `escala-readonly-grid.tsx` | matriz dias x funcoes | — | nenhuma | dias e membros por nome |
+
+Variacoes: tabular generica (2), tabular artesanal (2), matricial (2, compartilham helpers via `escala-shared` mas duplicam render).
+
+Filtros: padrao ODS `FilterShell`+`FilterActions`+`useFilterState` (membros, agenda, membros/visualizacao, escalas/visualizacao). Os campos internos ainda sao `<input>`/`<select>` manuais (nao `form-field`); mesma classe repetida ~15x. Variantes: card com submit, toolbar compacta, chips/tags AND-OR, filtro + metricas.
+
+Paginacao: so o `DataTable` pagina (client-side, slice), efetiva apenas em membros. Configuracoes nao conecta `onPageChange`. Cards/visualizacoes/grades nao paginam. Sem paginacao server-side.
+
+Ordenacao: nenhuma tabela tem ordenacao por coluna. Ha ordenacoes fixas implicitas (dias por ordem/data; membros por nome).
+
+---
+
+## 3. Padroes de Formulario
 
 ### Total: 8 padroes
 
-| Padrao | Componentes / Arquivos | Caracteristica |
+| Padrao | Onde | Usa `form-field`? |
 |---|---|---|
-| Formulario de autenticacao | `/login`, `/admin/login` | E-mail + senha em card centralizado. |
-| Formulario publico/comercial | `app/page.tsx` | Lead/demo com nome, e-mail, telefone e mensagem. |
-| Formulario CRUD modal simples | `MembroModal`, `UsuarioModal`, `agenda/page.tsx`, `escalas/page.tsx` | Criacao/edicao de entidade em modal. |
-| Formulario CRUD modal composto | `ministerios/page.tsx`, `admin/page.tsx` | Formularios com secoes, tabs ou multiplos blocos de dados. |
-| Formulario de sub-recurso inline | `ministerios/page.tsx`, `escalas/page.tsx` | Adicionar membro, funcao ou dia dentro de uma entidade pai. |
-| Formulario de seguranca/perfil | `meu-perfil/page.tsx` | Troca de senha e dados de perfil. |
-| Formulario de exportacao | `*/exportacao/page.tsx` | Selecao de formato e campos para CSV. |
-| Formulario de tag/cor | `membros/page.tsx` | Criacao de tag com nome e seletor de cor. |
+| Auth (e-mail/senha, card) | `/login`, `/admin/login` | Nao |
+| Publico/comercial (lead) | `app/page.tsx` | Nao |
+| CRUD modal simples | `MembroModal`, `UsuarioModal`, agenda, escala (criar) | Sim |
+| CRUD modal composto (tabs/secoes) | ministerios, admin | Sim |
+| Sub-recurso inline | ministerios (funcoes/membros), escalas (dia) | Parcial |
+| Seguranca/perfil | `meu-perfil` | Sim (`PasswordField`) |
+| Exportacao | `*/exportacao` | via `ExportShell` |
+| Tag/cor | `membros` | Parcial |
+| (filtros) | todas as listagens | Nao (manuais) |
 
-### Observacao
+Layouts: card centralizado (auth/lead); modal `ModalShell` com corpo `space-y-4 p-6` + `ModalFooter`; modal com `TabsShell` (ministerio); secoes com `<section>`/`InfoItem` (perfil); grid `sm:grid-cols-2` para pares de campos.
 
-Os formularios CRUD usam shells de modal muito parecidos, mas implementados em locais diferentes.
+Validacoes: client-side manual em cada `handleSubmit` (`trim`, `length<6`, confirmacao de senha, `required`). Sem biblioteca (zod/react-hook-form). Erros de API via `HttpError` exibidos em `ModalError`/banner. O `form-field` tem prop `error` por-campo, mas quase nenhum form a usa (erros agregados no topo).
+
+Organizacao dos campos: label uppercase pequena (`FieldWrapper`), input `bg-gray-50` -> `bg-white` no focus, borda `rounded-xl`, obrigatoriedade com `*`. Campos relacionados em grid de 2 colunas; formularios longos usam separadores `border-t`. Sem steps/wizard.
 
 ---
 
-## 3. Padroes de Filtro
+## 4. Padroes de Filtro
 
 ### Total: 4 padroes
 
-| Padrao | Componentes / Arquivos | Caracteristica |
+| Padrao | Onde | Caracteristica |
 |---|---|---|
-| Filtro em card com submit | `membros/page.tsx`, `agenda/page.tsx` | Bloco branco com campos e botoes Aplicar/Limpar. |
-| Filtro compacto em toolbar | `escalas/page.tsx` | Filtros horizontais por mes, ano e ministerio. |
-| Filtro de visualizacao read-only | `membros/visualizacao/page.tsx`, `escalas/visualizacao/page.tsx` | Filtros combinados com metricas/resumo da visualizacao. |
-| Filtro por chips/tags | `membros/page.tsx` | Selecao por tags com operadores AND/OR. |
+| Filtro em card com submit | `membros`, `agenda` | bloco branco + Aplicar/Limpar (`FilterShell`/`FilterActions`) |
+| Filtro compacto em toolbar | `escalas` | filtros horizontais mes/ano/ministerio dentro de `FilterShell` |
+| Filtro de visualizacao + metricas | `membros/visualizacao`, `escalas/visualizacao` | filtros combinados com `StatCard`/resumo |
+| Filtro por chips/tags | `membros` | selecao por tags com operador AND/OR |
 
-### Observacao
-
-Os filtros tem comportamento semelhante, mas visual e estrutura variam bastante entre modulos.
+Padrao ODS: container e estado padronizados (`FilterShell` + `useFilterState`). Pendente: campos internos ainda manuais (sem `FilterInput`/`FilterSelect`).
 
 ---
 
-## 4. Padroes de Acao
+## 5. Padroes de Acao
 
 ### Total: 9 padroes
 
-| Padrao | Componentes / Arquivos | Caracteristica |
+| Padrao | Onde | Caracteristica |
 |---|---|---|
-| Acao primaria no `PageHeader` | Membros, Ministerios, Agenda, Escalas | Botao principal de criacao ou comando de pagina. |
-| Acao de linha/tabela | Membros, Configuracoes, Admin | Editar, excluir, desativar ou criar usuario por registro. |
-| Acao de card/lista | Ministerios, Agenda, Escalas | Botoes dentro de cards ou listas de entidades. |
-| Acao modal footer | Modais de membro, usuario, evento, tenant, escala | Cancelar/salvar/criar no rodape do modal. |
-| Acao destrutiva via `confirm()` | Membros, Ministerios, Agenda, Escalas | Confirmacao nativa do browser. |
-| Acao destrutiva custom modal | `configuracoes/page.tsx` | Modal proprio para desativar usuario. |
-| Acao em massa | `membros/page.tsx` | Banner fixo inferior para aplicar/remover tags em membros selecionados. |
-| Acao contextual em grade | `escalas/page.tsx` | Adicionar/remover membro, ocultar celula, remover dia, reordenar dias. |
-| Acao de exportacao/download | Paginas `*/exportacao` | Exportar CSV apos selecao de campos. |
+| Acao primaria no `PageHeader` | membros, ministerios, agenda, escalas | botao de criacao/comando |
+| Acao de linha/tabela | membros, configuracoes, admin | editar/excluir/desativar por registro |
+| Acao de card/lista | ministerios, agenda, escalas | botoes em cards/listas |
+| Acao modal footer | modais de membro, usuario, evento, tenant, escala | `ModalFooter` (parcial) ou botoes manuais |
+| Acao destrutiva via `ConfirmDialog` | membros, ministerios, agenda, escalas | confirmacao ODS (Fase 2) |
+| Acao destrutiva custom modal | `configuracoes` | modal proprio (reimplementa `ConfirmDialog`) |
+| Acao em massa | `membros` | banner fixo inferior para tags em selecionados |
+| Acao contextual em grade | `escalas` | add/remover membro, ocultar celula, remover/reordenar dia |
+| Acao de exportacao/download | `*/exportacao` | exportar CSV apos selecao de campos |
 
-### Observacao
-
-Ha inconsistencia entre confirmacao nativa, confirmacao custom e acoes inline. Esse e um dos pontos mais fragmentados do Design System atual.
+Observacao: confirmacao ja unificada em `ConfirmDialog`, exceto o modal inline de configuracoes. O footer de modal ainda diverge (`ModalFooter` vs botoes manuais em `MembroModal`/`UsuarioModal`).
 
 ---
 
-## 5. Padroes de Visualizacao
+## 6. Padroes de Visualizacao
 
-### Total: 8 padroes
+### Total: 6 padroes
 
-| Padrao | Componentes / Arquivos | Caracteristica |
-|---|---|---|
-| Dashboard KPI | `dashboard/page.tsx`, `StatCard` | Cards de metricas operacionais. |
-| Listagem tabular CRUD | `membros/page.tsx`, `configuracoes/page.tsx` | Tabela com acoes e edicao. |
-| Listagem em cards | `ministerios/page.tsx`, `agenda/page.tsx`, `minhas-escalas/page.tsx` | Cards por entidade ou participacao. |
-| Visualizacao read-only com detalhes laterais | `membros/visualizacao/page.tsx`, `MemberProfileDrawer` | Consulta + drawer de perfil. |
-| Visualizacao read-only imprimivel | `escalas/visualizacao/page.tsx`, `EscalaReadonlyGrid` | Grade de escala para leitura/impressao. |
-| Mestre-detalhe operacional | `escalas/page.tsx` | Lista lateral + detalhe com grade interativa. |
-| Pagina de exportacao | `*/exportacao/page.tsx` | Selecao de campos, resumo e download. |
-| Pagina "em breve" | `ComingSoon`, modulos futuros | Layout padrao para funcionalidades futuras. |
+| Padrao | Onde | Cards | Tabs | Secoes |
+|---|---|---|---|---|
+| Dashboard KPI | `dashboard` | `StatCard` x5 + atalhos | nao | grid + bloco de atalhos |
+| Listagem tabular | membros, configuracoes | nao | config (tabs a mao) | tabela |
+| Listagem em cards | ministerios, agenda, minhas-escalas | sim | nao | grupos por periodo |
+| Read-only + drawer | `membros/visualizacao` | `StatCard` x4 | nao | tabela + `MemberProfileDrawer` |
+| Read-only imprimivel | `escalas/visualizacao` | `StatCard` x3 | nao | secoes + `EscalaReadonlyGrid` |
+| Perfil/detalhe | `meu-perfil` | `InfoItem` | nao | `<section>` (dados/seguranca/membro) |
 
-### Observacao
+Cards: metricas padronizadas em `StatCard` (Fase 7, sem mais `StatBox` local); cards de entidade ainda artesanais por modulo; `InfoItem` para pares rotulo/valor.
+Tabs: `TabsShell`/`TabPanel` so no modal de ministerio; configuracoes faz tabs a mao.
+Secoes: padrao `<section className="rounded-2xl border ...">` com `<h2>/<h3>` em perfil, drawer e escalas/visualizacao.
 
-O sistema alterna entre tabela, card, drawer, grade e mestre-detalhe sem uma taxonomia formal aparente.
+---
+
+## 7. Padroes de Exportacao
+
+### Total: 1 padrao (padrao ODS, Fase 3)
+
+4 paginas identicas: `membros/exportacao`, `ministerios/exportacao`, `escalas/exportacao`, `agenda/exportacao`.
+
+Fluxo: hook de listagem -> `useExport(ALL_FIELDS, data, prefix, rowMapper)` -> `ExportShell` (formato, selecao de campos, resumo, botao) -> `downloadCsv` (`lib/csv.ts`, BOM UTF-8, escape de aspas, CRLF).
+
+Formatos: CSV (unico funcional); XLSX presente na UI como "em breve" (desabilitado); sem PDF/JSON. Residuo: `ALL_FIELDS`/`STATUS_LABEL`/`rowMapper` locais por pagina (labels duplicam `lib/utils`).
+
+---
+
+## 8. Padroes de Navegacao
+
+Menus: `Sidebar` (colapsavel, secoes expansiveis com filhos, badges "em breve", troca de idioma, perfil+logout) montada por role (`navItems` ADMIN/STAFF vs `basicNavItems`); icones de nav SVG inline. `Header` com titulo por rota (`PAGE_TITLES` hardcoded, sem i18n) + hamburguer. Admin tem header proprio.
+
+Breadcrumbs: nao existem. Hierarquia so aparece como secoes na sidebar.
+
+Fluxos: login redireciona por role (BASIC->`/minhas-escalas`, ADMIN/STAFF->`/dashboard`, SUPER_ADMIN->`/admin`). `middleware.ts` decodifica JWT e guarda rotas (nao autenticado->`/login?redirect=`; SUPER_ADMIN preso em `/admin`; BASIC bloqueado de rotas administrativas). `StatCard` com `href` e atalhos do dashboard. Redundancia: landing `/` vs `redirect('/dashboard')`.
+
+---
+
+## 9. Padroes de Permissao
+
+Roles: `SUPER_ADMIN`, `ADMIN`, `STAFF` (Colaborador), `BASIC` (Membro). JWT decodificado em dois lugares: `lib/auth.ts` (client) e `middleware.ts` (`decodeJwtRole`).
+
+- Admin (ADMIN): shell completo; `canManage = ADMIN || STAFF` em membros/ministerios/agenda/escalas; exclusivo de `/configuracoes` (usuarios + auditoria); ve item `adminOnly` na sidebar.
+- Colaborador (STAFF): mesmo `canManage` operacional; sem `/configuracoes`; sidebar igual exceto itens `adminOnly`.
+- Membro (BASIC): middleware bloqueia `/dashboard`, `/membros`, `/configuracoes`, `/financeiro`, `/grupos`, `/integracoes` -> `/minhas-escalas`; sidebar reduzida (Minhas Escalas, Agenda, Meu Perfil); liderança condicional (`basicHasLeadership`) libera Ministerios/Escalas apenas do que lidera; nao atribui role `LEADER`; confirma/recusa presenca.
+- Super Admin: forcado para `/admin`; gerencia tenants e usuarios de tenant.
+
+Gaps: sem `UserContext`/`usePermissions` (`/api/auth/me` refeito em ~9 paginas); cada pagina reimplementa `canManage`; rotas bloqueadas para BASIC hardcoded no middleware e duplicadas na sidebar.
 
 ---
 
 ## Agrupamento por Similaridade
 
-### Grupo A: Estrutura de Pagina
+| Grupo | Componentes / Paginas | Similaridade |
+|---|---|---|
+| A. Estrutura de pagina | `PageHeader`, CRUDs, views, exports; `ComingSoon`; shell (`DashboardLayout`/`Sidebar`/`Header`/`ChatbotButton`); `AuthLayout` | cabecalho/placeholder/shell/auth |
+| B. Dados tabulares | `DataTable` (membros, usuarios, auditoria); tenants (manual); visualizacao membros (manual); escala matricial | tabela de entidade / matriz |
+| C. CRUD modal | `MembroModal`, `UsuarioModal` (simples); evento, escala, admin (inline); ministerio (tabs) | shell de modal repetido |
+| D. Busca/filtro/selecao | filtros (`FilterShell`); toolbar escalas; tags membros; `MembroSearchCombobox` | aplicar/limpar/recarregar |
+| E. Feedback e estados | `EmptyState`; skeletons inline; banners inline; `ConfirmDialog`; modal inline de config | estados e confirmacao |
+| F. Metricas e resumos | `StatCard` (dashboard e todas as visualizacoes) | metrica unificada (Fase 7) |
+| G. Exportacao | `*/exportacao` + `useExport` + `downloadCsv` | selecao de campos + CSV |
 
-| Componentes / Paginas | Similaridade |
-|---|---|
-| `PageHeader`, paginas CRUD, visualizacoes, exportacoes | Cabecalho com titulo, descricao e acao. |
-| `ComingSoon`, paginas futuras | Layout padronizado de placeholder de modulo. |
-| `DashboardLayout`, `Sidebar`, `Header`, `ChatbotButton` | Shell autenticado da aplicacao. |
-| `AuthLayout`, login tenant, login admin | Experiencia centralizada de autenticacao. |
+---
 
-### Grupo B: Dados Tabulares
+## Recomendacoes — Padrao Unico por Area (classificado por impacto)
 
-| Componentes / Paginas | Similaridade |
-|---|---|
-| `DataTable`, membros, usuarios, auditoria | Tabela de entidade com colunas configuraveis. |
-| Tenants admin | Tabela de entidade, mas manual. |
-| Visualizacao de membros | Tabela read-only com responsividade propria. |
-| Escala interativa/read-only | Tabela matricial orientada por calendario/funcao. |
+### ALTO IMPACTO
 
-### Grupo C: CRUD Modal
+1. CRUD unico — `ResourcePage`: `PageHeader` (acao primaria) + `FilterShell`/`useFilterState` + `DataTable<T>` (acoes de linha + variante mobile) + modal unico `ModalShell`/`ModalFooter` + `ConfirmDialog` + hook generico `useResource<T>(endpoint)`. Migrar admin, agenda, ministerios, configuracoes e membros. Resolve a maior fragmentacao (CRUD/Tabelas ~20%) e os 5 hooks de listagem repetidos.
+2. Tabela unica — adocao total do `DataTable`: migrar tabelas artesanais (admin, membros/visualizacao) com slot mobile e ordenacao por coluna (inexistente hoje); corrigir paginacao de configuracoes; avaliar server-side. Desbloqueia o CRUD unico.
+3. Permissoes — `UserContext` + `usePermissions`: provider no `(dashboard)/layout` carrega `/me` uma vez; expoe `canManage`, `isAdmin`, `leads(ministerioId)`; centraliza a lista de rotas BASIC. Remove ~9 refetches e regras espalhadas.
 
-| Componentes / Paginas | Similaridade |
-|---|---|
-| `MembroModal` | CRUD modal simples. |
-| `UsuarioModal` | CRUD modal simples com busca de membro. |
-| Evento modal | CRUD modal simples inline. |
-| Criar escala modal | CRUD modal simples inline. |
-| Admin tenant/user modais | CRUD modal com wrapper local. |
-| Ministerio modal | CRUD modal complexo com tabs. |
+### MEDIO IMPACTO
 
-### Grupo D: Busca, Filtro e Selecao
+4. View unica — `ViewPage`: `PageHeader` + linha de `StatCard` + `FilterShell` + corpo (`DataTable` read-only ou grade) + `Drawer`. Criar `DrawerShell` generico. Metricas ja padronizadas (Fase 7).
+5. Configuracao unica: migrar `configuracoes` para `TabsShell` e trocar o modal de desativacao inline por `ConfirmDialog`; encaixar no CRUD unico. Remove a ultima reimplementacao de `ConfirmDialog` e de tabs.
+6. Dashboard unico: formalizar `StatCard` (grid) + atalhos como `DashboardSection`; substituir SVGs inline por `lucide`/`IconRegistry`.
 
-| Componentes / Paginas | Similaridade |
-|---|---|
-| Filtros de membros, agenda, visualizacoes | Campos com aplicar/limpar/recarregar. |
-| Filtro de escalas | Toolbar compacta. |
-| Tags de membros | Filtro por chips e operador logico. |
-| `MembroSearchCombobox` | Busca/selecao contextual de membro. |
+### BAIXO IMPACTO
 
-### Grupo E: Feedback e Estados
+7. Export unico — concluir o existente: implementar XLSX (UI ja preve) e mover labels de status para `lib/utils`. Padrao ja consolidado (~100%).
+8. Navegacao — cosmeticos: breadcrumbs onde houver hierarquia; `PAGE_TITLES` -> i18n; icones inline da sidebar -> `lucide`.
 
-| Componentes / Paginas | Similaridade |
-|---|---|
-| `EmptyState` | Estado vazio reutilizavel. |
-| Skeletons inline | Loading em tabelas/cards/listas. |
-| Alertas inline | Erro/sucesso em forms e paginas. |
-| `alert()`/`confirm()` | Feedback nativo disperso. |
-| Modal de desativacao usuario | Feedback/confirm custom. |
+### Transversais
 
-### Grupo F: Metricas e Resumos
-
-| Componentes / Paginas | Similaridade |
-|---|---|
-| `StatCard` | Metrica compartilhada no dashboard. |
-| `StatBox` local | Metrica simples em visualizacao de membros. |
-| Metricas de escalas | Cards locais em `/escalas/visualizacao`. |
-| Metricas de minhas escalas | Cards locais em `/minhas-escalas`. |
-
-### Grupo G: Exportacao
-
-| Componentes / Paginas | Similaridade |
-|---|---|
-| `membros/exportacao` | Selecao de campos + CSV. |
-| `ministerios/exportacao` | Selecao de campos + CSV. |
-| `escalas/exportacao` | Selecao de campos + CSV. |
-| `agenda/exportacao` | Selecao de campos + CSV. |
-| `downloadCsv` | Utilitario compartilhado de download. |
+| Item | Impacto | Observacao |
+|---|---|---|
+| `IconRegistry`/wrapper `lucide` | MEDIO | remove centenas de SVGs inline |
+| `StatusBadge` consumindo `lib/utils` | MEDIO | elimina mapas de cor inline (membros/agenda/escalas/exports) |
+| `FeedbackBanner` + `useToast` | MEDIO | unifica banner inline vs toast (escalas) |
+| `FilterInput`/`FilterSelect` | BAIXO | faz filtros usarem `form-field` |
+| Decode JWT unico | BAIXO | unifica `lib/auth.ts` e `middleware.ts` |
+| Validacao por-campo (`error` do `form-field`) | BAIXO | padronizar prop ja existente |
 
 ---
 
 ## Conclusao
 
-O Design System atual ja tem alguns nucleos reutilizaveis claros:
-
-- `PageHeader`
-- `DataTable`
-- `EmptyState`
-- `StatCard`
-- `ComingSoon`
-- `MembroModal`
-- `UsuarioModal`
-- `MembroSearchCombobox`
-- `EscalaReadonlyGrid`
-
-A maior fragmentacao esta em cinco areas:
-
-1. Shell de modal.
-2. Filtros.
-3. Exportacoes.
-4. Confirmacoes/acoes destrutivas.
-5. Visualizacoes de metricas e tabelas read-only.
-
+O ODS ja consolidou tres areas: Exportacao, Filtros (container) e Feedback/Confirmacao. As frentes abertas de maior impacto sao CRUD, Tabelas e Permissoes, que se reforcam mutuamente: um `ResourcePage` apoiado em `DataTable` completo e `usePermissions` resolveria as tres simultaneamente. A fragmentacao restante esta concentrada em: shell/footer de modal, campos de filtro, tabelas artesanais, navegacao (icones inline, sem breadcrumb) e ausencia de abstracao de permissoes.

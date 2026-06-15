@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAdmin, CreateTenantPayload, UpdateTenantPayload, CreateTenantUserPayload } from '@/hooks/use-admin';
 import { Tenant, Plano } from '@/types';
 import { HttpError } from '@/lib/api';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { InputField, SelectField, PasswordField } from '@/components/app/form-field';
+import { DataTable, Column, SortState } from '@/components/app/data-table';
+import { StatusBadge } from '@/components/app/status-badge';
 
 const PLANO_LABELS: Record<Plano, string> = {
   GRATUITO: 'Gratuito',
@@ -20,7 +22,7 @@ const PLANO_COLORS: Record<Plano, string> = {
 };
 
 function Badge({ label, color }: { label: string; color: string }) {
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}>{label}</span>;
+  return <StatusBadge label={label} className={color} />;
 }
 
 // ─── Modal Criar Tenant ────────────────────────────────────────────────────────
@@ -267,6 +269,7 @@ export default function AdminTenantsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<Tenant | null>(null);
   const [userTarget, setUserTarget] = useState<Tenant | null>(null);
+  const [sort, setSort] = useState<SortState>({ key: 'nome', direction: 'asc' });
 
   async function fetchTenants() {
     setLoading(true);
@@ -282,6 +285,85 @@ export default function AdminTenantsPage() {
   }
 
   useEffect(() => { fetchTenants(); }, []);
+
+  const sortedTenants = useMemo(() => {
+    const arr = [...tenants];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sort.key === 'createdAt') {
+        cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      } else {
+        cmp = a.nome.localeCompare(b.nome, 'pt-BR');
+      }
+      return sort.direction === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [tenants, sort]);
+
+  const columns: Column<Tenant>[] = [
+    {
+      key: 'nome',
+      header: 'Igreja',
+      sortable: true,
+      render: (t) => (
+        <div>
+          <p className="font-medium text-gray-900">{t.nome}</p>
+          <p className="text-xs text-gray-400 font-mono mt-0.5">{t.slug}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'plano',
+      header: 'Plano',
+      render: (t) => <Badge label={PLANO_LABELS[t.plano]} color={PLANO_COLORS[t.plano]} />,
+    },
+    {
+      key: 'ativo',
+      header: 'Status',
+      render: (t) => (
+        <Badge
+          label={t.ativo ? 'Ativo' : 'Inativo'}
+          color={t.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}
+        />
+      ),
+    },
+    {
+      key: 'usuarios',
+      header: 'Usuários',
+      hideOnMobile: true,
+      render: (t) => <span className="text-gray-600">{t._count?.users ?? 0}</span>,
+    },
+    {
+      key: 'createdAt',
+      header: 'Criado em',
+      hideOnMobile: true,
+      sortable: true,
+      render: (t) => (
+        <span className="text-gray-500 text-xs">{new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (t) => (
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => setUserTarget(t)}
+            className="px-2.5 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg transition font-medium"
+          >
+            + Usuário
+          </button>
+          <button
+            onClick={() => setEditTarget(t)}
+            className="px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition font-medium"
+          >
+            Editar
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -305,74 +387,15 @@ export default function AdminTenantsPage() {
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm mb-4">{error}</div>
       )}
 
-      {loading ? (
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left">
-                <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Igreja</th>
-                <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Plano</th>
-                <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuários</th>
-                <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Criado em</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {tenants.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-gray-400 text-sm">
-                    Nenhum tenant cadastrado
-                  </td>
-                </tr>
-              )}
-              {tenants.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50/50 transition">
-                  <td className="px-5 py-3.5">
-                    <p className="font-medium text-gray-900">{t.nome}</p>
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">{t.slug}</p>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <Badge label={PLANO_LABELS[t.plano]} color={PLANO_COLORS[t.plano]} />
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <Badge
-                      label={t.ativo ? 'Ativo' : 'Inativo'}
-                      color={t.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}
-                    />
-                  </td>
-                  <td className="px-5 py-3.5 text-gray-600">{t._count?.users ?? 0}</td>
-                  <td className="px-5 py-3.5 text-gray-500 text-xs">
-                    {new Date(t.createdAt).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setUserTarget(t)}
-                        className="px-2.5 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg transition font-medium"
-                      >
-                        + Usuário
-                      </button>
-                      <button
-                        onClick={() => setEditTarget(t)}
-                        className="px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition font-medium"
-                      >
-                        Editar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={sortedTenants}
+        loading={loading}
+        sort={sort}
+        onSortChange={setSort}
+        emptyTitle="Nenhum tenant cadastrado"
+        emptyDescription="Crie o primeiro tenant para começar."
+      />
 
       {showCreate && (
         <CreateTenantModal onClose={() => setShowCreate(false)} onSuccess={fetchTenants} />
