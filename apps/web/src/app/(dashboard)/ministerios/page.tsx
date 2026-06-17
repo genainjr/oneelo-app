@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
+import { EntityCard } from '@/components/app/entity-card';
 import { MembroSearchCombobox, MembroOption } from '@/components/app/membro-search-combobox';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
@@ -315,9 +316,9 @@ export default function MinisteriosPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-44 bg-gray-100 rounded-2xl border border-gray-200" />
+            <EntityCard key={i} loading />
           ))}
         </div>
       ) : ministerios.length === 0 ? (
@@ -344,7 +345,7 @@ export default function MinisteriosPage() {
               });
 
             return (
-              <div key={m.id} className={`bg-white rounded-2xl border border-gray-150 shadow-xs hover:shadow-md transition-all flex flex-col p-5 justify-between relative overflow-hidden ${!isAtivo && 'opacity-65'}`}>
+              <EntityCard key={m.id} className={`flex flex-col p-5 justify-between relative overflow-hidden ${!isAtivo && 'opacity-65'}`}>
                 <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
                   <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${isAtivo ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                     {isAtivo ? t('status.active') : t('status.archived')}
@@ -393,7 +394,7 @@ export default function MinisteriosPage() {
                     </button>
                   )}
                 </div>
-              </div>
+              </EntityCard>
             );
           })}
         </div>

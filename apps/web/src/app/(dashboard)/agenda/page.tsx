@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
+import { EntityCard } from '@/components/app/entity-card';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { useFilterState } from '@/hooks/use-filter-state';
@@ -255,9 +256,8 @@ export default function AgendaPage() {
 
       {/* Events List */}
       {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="h-28 bg-gray-100 border border-gray-200 rounded-2xl" />
-          <div className="h-28 bg-gray-100 border border-gray-200 rounded-2xl" />
+        <div className="space-y-4">
+          {Array.from({ length: 2 }).map((_, i) => <EntityCard key={i} loading />)}
         </div>
       ) : eventos.length === 0 ? (
         <EmptyState
@@ -275,9 +275,9 @@ export default function AgendaPage() {
             };
 
             return (
-              <div
+              <EntityCard
                 key={ev.id}
-                className="bg-white rounded-2xl border border-gray-150 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-3">
@@ -340,7 +340,7 @@ export default function AgendaPage() {
                     </button>
                   </div>
                 )}
-              </div>
+              </EntityCard>
             );
           })}
         </div>

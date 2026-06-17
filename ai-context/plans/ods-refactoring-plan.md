@@ -15,16 +15,16 @@ Objetivo: refatorar gradualmente o frontend para aderir ao OneElo Design System 
 
 | Fase | Status | Evidencia |
 |---|---|---|
-| Fase 0 - Preparacao e Baseline | Concluida | `ai-context/plans/ods-phase-0-baseline.md` |
-| Fase 1 - Fundacoes Compartilhadas | Concluida | `ai-context/plans/ods-phase-1-foundations-report.md` |
-| Fase 2 - Confirmacoes e Feedback | Concluida | `ai-context/plans/ods-phase-2-feedback-report.md` |
-| Fase 3 - Exportacoes | Concluida | `ai-context/plans/ods-phase-3-export-report.md` |
-| Fase 4 - Tabelas e Listagens | Nao iniciada | Aguardando fases anteriores |
-| Fase 5 - Modais CRUD | Concluida | `ai-context/plans/ods-phase-5-crud-modals-report.md` |
-| Fase 6 - Filtros | Concluida | `ai-context/plans/ods-phase-4-filters-report.md` |
-| Fase 7 - Visualizacoes e Metricas | Concluida | `artifacts/walkthrough.md` |
-| Fase 8 - Permissoes e Navegacao | Nao iniciada | Aguardando fases anteriores |
-| Fase 9 - Validacao Final | Nao iniciada | Aguardando fases anteriores |
+| Fase 0 - Preparacao e Baseline | ✅ Concluida | `ai-context/plans/ods-phase-0-baseline.md` |
+| Fase 1 - Fundacoes Compartilhadas | ✅ Concluida | `ai-context/plans/ods-phase-1-foundations-report.md` |
+| Fase 2 - Confirmacoes e Feedback | ✅ Concluida | `ai-context/plans/ods-phase-2-audit.md` |
+| Fase 3 - Exportacoes | ✅ Concluida | `ai-context/plans/ods-phase-3-export-report.md` |
+| Fase 4 - Filtros | ✅ Concluida | `ai-context/plans/ods-phase-4-filters-report.md` |
+| Fase 5 - Modais CRUD | ✅ Concluida | `ai-context/plans/ods-phase-5-crud-modals-report.md` |
+| Fase 6 - Tabelas e Listagens | ✅ Concluida | `ai-context/plans/ods-phase-6-tables-report.md` |
+| Fase 7 - Visualizacoes e Metricas | 🟠 Concluida sem auditoria dedicada | `ai-context/plans/ods-phase-7-visualizations-report.md` |
+| Fase 8 - Permissoes e Navegacao | ⏸ Nao iniciada | Aguardando fases anteriores |
+| Fase 9 - Validacao Final | ⏸ Nao iniciada | Aguardando fases anteriores |
 
 ---
 
@@ -186,32 +186,35 @@ Eliminar duplicidade entre as quatro paginas de exportacao.
 
 ---
 
-## Fase 4 - Refatorar Tabelas e Listagens
+## Fase 4 - Refatorar Filtros
 
 ### Objetivo
 
-Usar `DataTable` como padrao principal para entidades tabulares.
+Padronizar filtros sem alterar contratos de query.
 
 ### Modulos alvo
 
-- `/admin`
-- `/membros/visualizacao`
 - `/membros`
-- `/configuracoes`
+- `/membros/visualizacao`
+- `/agenda`
+- `/escalas`
+- `/escalas/visualizacao`
 
 ### Tarefas
 
-1. Avaliar adaptacao da tabela de tenants para `DataTable`.
-2. Avaliar adaptacao da visualizacao de membros para `DataTable` no desktop.
-3. Manter cards mobile quando necessarios.
-4. Centralizar badges de status/role usando utilitarios existentes.
-5. Garantir empty/loading consistentes.
+1. Consolidar layout de filtro em card para listas.
+2. Manter toolbar compacta apenas quando fizer sentido operacional, como `/escalas`.
+3. Padronizar botoes:
+   - Aplicar;
+   - Limpar;
+   - Recarregar quando aplicavel.
+4. Manter chips/tags como variacao permitida para membros.
 
 ### Criterios de aceite
 
-- Tabelas simples usam `DataTable`.
-- Tabelas read-only seguem ODS ou justificam excecao.
-- Nenhuma regressao de acoes por linha.
+- Filtros semelhantes parecem e se comportam de forma semelhante.
+- Filtros especializados continuam justificados.
+- Nenhuma query muda sem necessidade.
 
 ---
 
@@ -245,35 +248,43 @@ Eliminar shells de modal duplicados.
 
 ---
 
-## Fase 6 - Refatorar Filtros
+## Fase 6 - Refatorar Tabelas e Listagens
 
 ### Objetivo
 
-Padronizar filtros sem alterar contratos de query.
+Usar `DataTable` como padrao principal para entidades tabulares.
 
 ### Modulos alvo
 
-- `/membros`
+- `/admin`
 - `/membros/visualizacao`
-- `/agenda`
-- `/escalas`
-- `/escalas/visualizacao`
+- `/membros`
+- `/configuracoes`
 
 ### Tarefas
 
-1. Consolidar layout de filtro em card para listas.
-2. Manter toolbar compacta apenas quando fizer sentido operacional, como `/escalas`.
-3. Padronizar botoes:
-   - Aplicar;
-   - Limpar;
-   - Recarregar quando aplicavel.
-4. Manter chips/tags como variacao permitida para membros.
+1. Avaliar adaptacao da tabela de tenants para `DataTable`.
+2. Avaliar adaptacao da visualizacao de membros para `DataTable` no desktop.
+3. Manter cards mobile quando necessarios.
+4. Centralizar badges de status/role usando utilitarios existentes.
+5. Garantir empty/loading consistentes.
 
 ### Criterios de aceite
 
-- Filtros semelhantes parecem e se comportam de forma semelhante.
-- Filtros especializados continuam justificados.
-- Nenhuma query muda sem necessidade.
+- Tabelas simples usam `DataTable`.
+- Tabelas read-only seguem ODS ou justificam excecao.
+- Nenhuma regressao de acoes por linha.
+
+### Resultado (2026-06-16)
+
+✅ **Concluida e auditada** (15/15 criterios de saida). Executada em 5 sub-fases / 3 PRs:
+- 6.1 — `EntityCard` criado + `DataTable.renderMobileCard`/`mobileBreakpoint` (`ods-phase-6-1-infra-report.md`).
+- 6.2 — `/admin` migrado de `<table>` crua para `DataTable`.
+- 6.3 — `/membros/visualizacao` migrado para `DataTable` + `renderMobileCard` (elimina `hidden md:block`/`md:hidden`).
+- 6.4 — `/agenda` e `/ministerios` migrados de cards manuais para `EntityCard` (`ods-phase-6-4-cards-migration-report.md`).
+- 6.5 — Auditoria final e relatorio consolidado (`ods-phase-6-tables-report.md`).
+
+Nota: a matriz de escalas permanece com logica customizada e nao adota `DataTable` (excecao justificada).
 
 ---
 
@@ -376,9 +387,9 @@ Garantir que a refatoracao ODS nao alterou comportamento esperado.
 2. Fase 1 - Fundacoes Compartilhadas.
 3. Fase 2 - Confirmacoes e Feedback.
 4. Fase 3 - Exportacoes.
-5. Fase 4 - Tabelas e Listagens.
+5. Fase 4 - Filtros.
 6. Fase 5 - Modais CRUD.
-7. Fase 6 - Filtros.
+7. Fase 6 - Tabelas e Listagens.
 8. Fase 7 - Visualizacoes e Metricas.
 9. Fase 8 - Permissoes e Navegacao.
 10. Fase 9 - Validacao Final.
