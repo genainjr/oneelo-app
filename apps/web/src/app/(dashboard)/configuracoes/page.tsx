@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
-import { DataTable, Column } from '@/components/app/data-table';
+import { DataTable, Column, SortState } from '@/components/app/data-table';
+import { StatusBadge } from '@/components/app/status-badge';
 import { UsuarioModal } from '@/components/app/usuario-modal';
 import { api } from '@/lib/api';
 import { User, AuditLog, AuthUser } from '@/types';
@@ -27,6 +28,34 @@ export default function ConfiguracoesPage() {
 
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [userPage, setUserPage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
+  const [userSort, setUserSort] = useState<SortState>({ key: 'nome', direction: 'asc' });
+  const itemsPerPage = 15;
+
+  const sortedUsers = useMemo(() => {
+    const arr = [...users];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (userSort.key === 'createdAt') {
+        cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      } else {
+        cmp = (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+      }
+      return userSort.direction === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [users, userSort]);
+
+  const pagedUsers = useMemo(
+    () => sortedUsers.slice((userPage - 1) * itemsPerPage, userPage * itemsPerPage),
+    [sortedUsers, userPage],
+  );
+  const pagedAudit = useMemo(
+    () => auditLogs.slice((auditPage - 1) * itemsPerPage, auditPage * itemsPerPage),
+    [auditLogs, auditPage],
+  );
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
@@ -138,31 +167,35 @@ export default function ConfiguracoesPage() {
       key: 'nome',
       header: t('users.columns.name'),
       className: 'font-semibold text-gray-800',
+      sortable: true,
     },
     {
       key: 'email',
       header: t('users.columns.email'),
+      hideOnMobile: true,
       render: (u) => <span className="text-gray-500">{u.email}</span>,
     },
     {
       key: 'role',
       header: t('users.columns.role'),
       render: (u) => {
-        const badges: any = {
+        const badges: Record<string, string> = {
           ADMIN: 'bg-red-50 text-red-700 border-red-100',
           STAFF: 'bg-indigo-50 text-indigo-700 border-indigo-100',
           BASIC: 'bg-gray-50 text-gray-600 border-gray-200',
         };
         return (
-          <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-lg border ${badges[u.role] || 'bg-gray-50'}`}>
-            {tCommon(`roles.${u.role}` as any) || u.role}
-          </span>
+          <StatusBadge
+            label={tCommon(`roles.${u.role}` as any) || u.role}
+            className={`rounded-lg border ${badges[u.role] || 'bg-gray-50'}`}
+          />
         );
       },
     },
     {
-      key: 'membro' as any,
+      key: 'membro' as keyof User,
       header: t('users.columns.member'),
+      hideOnMobile: true,
       render: (u) =>
         u.membro ? (
           <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg font-medium">
@@ -179,14 +212,17 @@ export default function ConfiguracoesPage() {
       key: 'ativo',
       header: t('users.columns.status'),
       render: (u) => (
-        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${u.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-250'}`}>
-          {u.ativo ? t('users.status.active') : t('users.status.inactive')}
-        </span>
+        <StatusBadge
+          label={u.ativo ? t('users.status.active') : t('users.status.inactive')}
+          className={`border ${u.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-250'}`}
+        />
       ),
     },
     {
       key: 'createdAt',
       header: t('users.columns.registeredAt'),
+      hideOnMobile: true,
+      sortable: true,
       render: (u) => <span className="text-xs text-gray-400">{formatDateTime(u.createdAt)}</span>,
     },
     {
@@ -239,7 +275,7 @@ export default function ConfiguracoesPage() {
       key: 'acao',
       header: t('audit.columns.operation'),
       render: (log) => {
-        const badges: any = {
+        const badges: Record<string, string> = {
           CRIAR: 'bg-emerald-50 text-emerald-700 border-emerald-100',
           ATUALIZAR: 'bg-blue-50 text-blue-700 border-blue-100',
           DELETAR: 'bg-rose-50 text-rose-700 border-rose-100',
@@ -247,15 +283,17 @@ export default function ConfiguracoesPage() {
           LOGOUT: 'bg-gray-100 text-gray-600 border-gray-200',
         };
         return (
-          <span className={`inline-flex px-2 py-0.5 text-xs font-bold rounded-lg border ${badges[log.acao] || 'bg-gray-50'}`}>
-            {log.acao}
-          </span>
+          <StatusBadge
+            label={log.acao}
+            className={`rounded-lg border font-bold ${badges[log.acao] || 'bg-gray-50'}`}
+          />
         );
       },
     },
     {
       key: 'entidade',
       header: t('audit.columns.resource'),
+      hideOnMobile: true,
       render: (log) => (
         <div className="flex flex-col gap-0.5">
           <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">{log.entidade}</span>
@@ -266,6 +304,7 @@ export default function ConfiguracoesPage() {
     {
       key: 'ipAddress',
       header: t('audit.columns.ipAddress'),
+      hideOnMobile: true,
       render: (log) => <span className="text-[11px] text-gray-400 font-mono">{log.ipAddress || '—'}</span>,
     },
   ];
@@ -289,7 +328,7 @@ export default function ConfiguracoesPage() {
       {/* Tabs */}
       <div className="flex border-b border-gray-100 bg-white rounded-t-2xl px-5 border-t border-x shadow-2xs">
         <button
-          onClick={() => setActiveTab('usuarios')}
+          onClick={() => { setActiveTab('usuarios'); setUserPage(1); }}
           className={`py-4 text-sm font-semibold border-b-2 px-1 transition-all mr-8 flex items-center gap-2 ${activeTab === 'usuarios' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -298,7 +337,7 @@ export default function ConfiguracoesPage() {
           {t('tabs.users')} ({users.length})
         </button>
         <button
-          onClick={() => setActiveTab('audit')}
+          onClick={() => { setActiveTab('audit'); setAuditPage(1); }}
           className={`py-4 text-sm font-semibold border-b-2 px-1 transition-all flex items-center gap-2 ${activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -325,18 +364,26 @@ export default function ConfiguracoesPage() {
       {activeTab === 'usuarios' ? (
         <DataTable
           columns={userColumns}
-          data={users}
+          data={pagedUsers}
           loading={loading}
-          itemsPerPage={15}
+          sort={userSort}
+          onSortChange={(s) => { setUserSort(s); setUserPage(1); }}
+          currentPage={userPage}
+          totalItems={users.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setUserPage}
           emptyTitle={t('users.noUsers')}
           emptyDescription={t('users.noUsersDesc')}
         />
       ) : (
         <DataTable
           columns={auditColumns}
-          data={auditLogs}
+          data={pagedAudit}
           loading={loading}
-          itemsPerPage={15}
+          currentPage={auditPage}
+          totalItems={auditLogs.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setAuditPage}
           emptyTitle={t('audit.noLogs')}
           emptyDescription={t('audit.noLogsDesc')}
         />
