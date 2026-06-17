@@ -1,5 +1,4 @@
 import { EmptyState } from './empty-state';
-import { EntityCard } from './entity-card';
 import { cn } from '@/lib/utils';
 
 export interface Column<T> {
@@ -7,56 +6,102 @@ export interface Column<T> {
   header: React.ReactNode;
   render?: (item: T) => React.ReactNode;
   className?: string;
+  /** Habilita header clicavel para ordenacao controlada. */
+  sortable?: boolean;
+  /** Chave logica emitida em onSortChange (default: key). */
+  sortKey?: string;
+  /** Oculta a coluna abaixo do breakpoint md (estrategia A: tabela responsiva). */
+  hideOnMobile?: boolean;
 }
+
+export interface SortState {
+  key: string;
+  direction: 'asc' | 'desc';
+}
+
+type MobileBreakpoint = 'sm' | 'md' | 'lg';
 
 interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   loading?: boolean;
-  rowKey?: keyof T | ((item: T) => string); // defaults to 'id' field when omitted
+  rowKey?: keyof T | ((item: T) => string);
 
   // Selection
   selectedIds?: string[];
   onSelectChange?: (ids: string[]) => void;
 
-  // Pagination
+  // Pagination (controlada — o DataTable nao fatia os dados, apenas exibe o rodape)
   currentPage?: number;
   totalItems?: number;
   itemsPerPage?: number;
   onPageChange?: (page: number) => void;
 
+  // Ordenacao (controlada — o DataTable nao ordena os dados, apenas emite o evento)
+  sort?: SortState;
+  onSortChange?: (sort: SortState) => void;
+
+  // Responsividade (estrategia B — card no mobile)
+  renderMobileCard?: (item: T) => React.ReactNode;
+  mobileBreakpoint?: MobileBreakpoint;
+
   // Empty state
   emptyTitle?: string;
   emptyDescription?: string;
   emptyAction?: React.ReactNode;
+}
 
-  // Mobile fallback — when set, replaces the table below mobileBreakpoint
-  renderMobileCard?: (item: T) => React.ReactNode;
-  mobileBreakpoint?: 'sm' | 'md' | 'lg';
+const DESKTOP_SHOW: Record<MobileBreakpoint, string> = {
+  sm: 'hidden sm:block',
+  md: 'hidden md:block',
+  lg: 'hidden lg:block',
+};
+
+const MOBILE_HIDE: Record<MobileBreakpoint, string> = {
+  sm: 'sm:hidden',
+  md: 'md:hidden',
+  lg: 'lg:hidden',
+};
+
+function SortCaret({ active, direction }: { active: boolean; direction?: 'asc' | 'desc' }) {
+  return (
+    <svg
+      className={cn(
+        'h-3 w-3 shrink-0 transition-transform',
+        active ? 'text-indigo-600' : 'text-gray-300',
+        active && direction === 'asc' && 'rotate-180',
+      )}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2.5}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  );
 }
 
 export function DataTable<T>({
   columns,
   data,
   loading = false,
-  rowKey,
+  rowKey = 'id' as keyof T,
   selectedIds,
   onSelectChange,
   currentPage = 1,
   totalItems = 0,
   itemsPerPage = 10,
   onPageChange,
+  sort,
+  onSortChange,
+  renderMobileCard,
+  mobileBreakpoint = 'md',
   emptyTitle = 'Nenhum resultado encontrado',
   emptyDescription = 'Tente ajustar os seus filtros de busca.',
   emptyAction,
-  renderMobileCard,
-  mobileBreakpoint = 'md',
 }: DataTableProps<T>) {
 
   const getRowId = (item: T): string => {
-    if (!rowKey) {
-      return String((item as Record<string, unknown>)['id'] ?? '');
-    }
     if (typeof rowKey === 'function') {
       return rowKey(item);
     }
@@ -81,21 +126,22 @@ export function DataTable<T>({
     }
   };
 
+  const handleSort = (key: string) => {
+    if (!onSortChange) return;
+    const direction = sort?.key === key && sort.direction === 'asc' ? 'desc' : 'asc';
+    onSortChange({ key, direction });
+  };
+
   const allSelected = data.length > 0 && selectedIds?.length === data.length;
   const someSelected = selectedIds && selectedIds.length > 0 && selectedIds.length < data.length;
 
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  // Breakpoint-specific Tailwind classes (full strings required for Tailwind's scanner)
-  const mobileHideClass = mobileBreakpoint === 'sm' ? 'sm:hidden' : mobileBreakpoint === 'lg' ? 'lg:hidden' : 'md:hidden';
-  const tableShowClass = mobileBreakpoint === 'sm' ? 'hidden sm:flex' : mobileBreakpoint === 'lg' ? 'hidden lg:flex' : 'hidden md:flex';
+  const hasMobile = !!renderMobileCard;
 
-  const tableCard = (
-    <div className={cn(
-      'w-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col',
-      renderMobileCard && tableShowClass
-    )}>
-      <div className="overflow-x-auto">
+  return (
+    <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+      <div className={cn('overflow-x-auto', hasMobile && DESKTOP_SHOW[mobileBreakpoint])}>
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -112,21 +158,39 @@ export function DataTable<T>({
                   />
                 </th>
               )}
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  className={cn(
-                    'p-4 text-xs font-semibold text-gray-500 tracking-wider uppercase',
-                    col.className
-                  )}
-                >
-                  {col.header}
-                </th>
-              ))}
+              {columns.map((col) => {
+                const colSortKey = col.sortKey ?? col.key;
+                const isSorted = sort?.key === colSortKey;
+                const sortable = col.sortable && onSortChange;
+                return (
+                  <th
+                    key={col.key}
+                    className={cn(
+                      'p-4 text-xs font-semibold text-gray-500 tracking-wider uppercase',
+                      col.hideOnMobile && 'hidden md:table-cell',
+                      col.className,
+                    )}
+                  >
+                    {sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSort(colSortKey)}
+                        className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-gray-700 transition-colors"
+                      >
+                        {col.header}
+                        <SortCaret active={!!isSorted} direction={isSorted ? sort?.direction : undefined} />
+                      </button>
+                    ) : (
+                      col.header
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
+              // Loading skeletons
               Array.from({ length: itemsPerPage || 5 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   {onSelectChange && (
@@ -135,7 +199,7 @@ export function DataTable<T>({
                     </td>
                   )}
                   {columns.map((col) => (
-                    <td key={col.key} className="p-4">
+                    <td key={col.key} className={cn('p-4', col.hideOnMobile && 'hidden md:table-cell')}>
                       <div className="h-4 bg-gray-200 rounded w-2/3" />
                     </td>
                   ))}
@@ -176,9 +240,13 @@ export function DataTable<T>({
                     {columns.map((col) => (
                       <td
                         key={col.key}
-                        className={cn('p-4 text-sm text-gray-600', col.className)}
+                        className={cn(
+                          'p-4 text-sm text-gray-600',
+                          col.hideOnMobile && 'hidden md:table-cell',
+                          col.className,
+                        )}
                       >
-                        {col.render ? col.render(item) : (item[col.key as keyof T] as unknown as React.ReactNode)}
+                        {col.render ? col.render(item) : (item[col.key as keyof T] as React.ReactNode)}
                       </td>
                     ))}
                   </tr>
@@ -188,6 +256,25 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
+
+      {/* Mobile — cards (estrategia B); ativo apenas quando renderMobileCard e fornecido */}
+      {hasMobile && (
+        <div className={cn(MOBILE_HIDE[mobileBreakpoint], 'divide-y divide-gray-100')}>
+          {loading ? (
+            Array.from({ length: itemsPerPage || 3 }).map((_, i) => (
+              <div key={i} className="p-4">
+                <div className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+              </div>
+            ))
+          ) : data.length === 0 ? (
+            <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />
+          ) : (
+            data.map((item) => (
+              <div key={getRowId(item)}>{renderMobileCard!(item)}</div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Pagination */}
       {!loading && totalItems > 0 && onPageChange && totalPages > 1 && (
@@ -216,39 +303,5 @@ export function DataTable<T>({
         </div>
       )}
     </div>
-  );
-
-  // No mobile fallback: return table card directly (same structure as before)
-  if (!renderMobileCard) {
-    return tableCard;
-  }
-
-  // With mobile fallback: return Fragment with mobile section + table card
-  return (
-    <>
-      <div className={mobileHideClass}>
-        <div className="space-y-3">
-          {loading ? (
-            Array.from({ length: Math.min(3, itemsPerPage) }).map((_, i) => (
-              <EntityCard key={i} loading />
-            ))
-          ) : data.length === 0 ? (
-            <EmptyState
-              title={emptyTitle}
-              description={emptyDescription}
-              action={emptyAction}
-            />
-          ) : (
-            data.map((item) => (
-              <div key={getRowId(item)}>
-                {renderMobileCard(item)}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {tableCard}
-    </>
   );
 }
