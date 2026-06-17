@@ -1,5 +1,9 @@
 # OneElo Design System (ODS) - Status Atual
 
+> **DOCUMENTO DESATUALIZADO — NÃO USAR COMO REFERÊNCIA.**
+> Este arquivo reflete o estado anterior à conclusão das Fases 5 (Modais CRUD) e 7 (Visualizações e Métricas) e possui percentuais de compliance incorretos.
+> Fonte oficial: `ai-context/plans/ods-current-status.md`
+
 ## Consolidado de Fases Concluídas
 
 | Fase | Objetivo | Resultado | Status |

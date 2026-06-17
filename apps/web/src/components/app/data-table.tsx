@@ -1,4 +1,5 @@
 import { EmptyState } from './empty-state';
+import { EntityCard } from './entity-card';
 import { cn } from '@/lib/utils';
 
 export interface Column<T> {
@@ -12,8 +13,8 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   loading?: boolean;
-  rowKey?: keyof T | ((item: T) => string);
-  
+  rowKey?: keyof T | ((item: T) => string); // defaults to 'id' field when omitted
+
   // Selection
   selectedIds?: string[];
   onSelectChange?: (ids: string[]) => void;
@@ -28,13 +29,17 @@ interface DataTableProps<T> {
   emptyTitle?: string;
   emptyDescription?: string;
   emptyAction?: React.ReactNode;
+
+  // Mobile fallback — when set, replaces the table below mobileBreakpoint
+  renderMobileCard?: (item: T) => React.ReactNode;
+  mobileBreakpoint?: 'sm' | 'md' | 'lg';
 }
 
 export function DataTable<T>({
   columns,
   data,
   loading = false,
-  rowKey = 'id' as any,
+  rowKey,
   selectedIds,
   onSelectChange,
   currentPage = 1,
@@ -44,9 +49,14 @@ export function DataTable<T>({
   emptyTitle = 'Nenhum resultado encontrado',
   emptyDescription = 'Tente ajustar os seus filtros de busca.',
   emptyAction,
+  renderMobileCard,
+  mobileBreakpoint = 'md',
 }: DataTableProps<T>) {
-  
+
   const getRowId = (item: T): string => {
+    if (!rowKey) {
+      return String((item as Record<string, unknown>)['id'] ?? '');
+    }
     if (typeof rowKey === 'function') {
       return rowKey(item);
     }
@@ -76,8 +86,15 @@ export function DataTable<T>({
 
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  return (
-    <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+  // Breakpoint-specific Tailwind classes (full strings required for Tailwind's scanner)
+  const mobileHideClass = mobileBreakpoint === 'sm' ? 'sm:hidden' : mobileBreakpoint === 'lg' ? 'lg:hidden' : 'md:hidden';
+  const tableShowClass = mobileBreakpoint === 'sm' ? 'hidden sm:flex' : mobileBreakpoint === 'lg' ? 'hidden lg:flex' : 'hidden md:flex';
+
+  const tableCard = (
+    <div className={cn(
+      'w-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col',
+      renderMobileCard && tableShowClass
+    )}>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -110,7 +127,6 @@ export function DataTable<T>({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
-              // Loading skeletons
               Array.from({ length: itemsPerPage || 5 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   {onSelectChange && (
@@ -162,7 +178,7 @@ export function DataTable<T>({
                         key={col.key}
                         className={cn('p-4 text-sm text-gray-600', col.className)}
                       >
-                        {col.render ? col.render(item) : (item[col.key as keyof T] as any)}
+                        {col.render ? col.render(item) : (item[col.key as keyof T] as unknown as React.ReactNode)}
                       </td>
                     ))}
                   </tr>
@@ -200,5 +216,39 @@ export function DataTable<T>({
         </div>
       )}
     </div>
+  );
+
+  // No mobile fallback: return table card directly (same structure as before)
+  if (!renderMobileCard) {
+    return tableCard;
+  }
+
+  // With mobile fallback: return Fragment with mobile section + table card
+  return (
+    <>
+      <div className={mobileHideClass}>
+        <div className="space-y-3">
+          {loading ? (
+            Array.from({ length: Math.min(3, itemsPerPage) }).map((_, i) => (
+              <EntityCard key={i} loading />
+            ))
+          ) : data.length === 0 ? (
+            <EmptyState
+              title={emptyTitle}
+              description={emptyDescription}
+              action={emptyAction}
+            />
+          ) : (
+            data.map((item) => (
+              <div key={getRowId(item)}>
+                {renderMobileCard(item)}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {tableCard}
+    </>
   );
 }
