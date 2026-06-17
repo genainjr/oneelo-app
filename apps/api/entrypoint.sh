@@ -15,9 +15,9 @@ fi
 
 SERVER_PID=$!
 
-# Aguarda a porta 3000 abrir para garantir que a API está online
-echo "Aguardando a porta 3000 responder..."
-while ! nc -z localhost 3000; do
+# Aguarda a porta 4001 abrir para garantir que a API está online
+echo "Aguardando a porta 4001 responder..."
+while ! nc -z localhost 4001; do
   sleep 0.5
 done
 echo "API está online! Iniciando tarefas de banco..."
