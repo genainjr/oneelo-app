@@ -22,10 +22,10 @@ COPY package*.json ./
 COPY . .
 
 # Recebe NEXT_PUBLIC_API_URL no build time
-ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG NEXT_PUBLIC_API_URL=http://localhost:4001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-ARG INTERNAL_API_URL=http://api:3000
+ARG INTERNAL_API_URL=http://api:4001
 ENV INTERNAL_API_URL=$INTERNAL_API_URL
 
 # Executa build de produção
@@ -50,12 +50,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./next.config.ts
 
 # Define a variável no runner
-ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG NEXT_PUBLIC_API_URL=http://localhost:4001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-ARG INTERNAL_API_URL=http://api:3000
+ARG INTERNAL_API_URL=http://api:4001
 ENV INTERNAL_API_URL=$INTERNAL_API_URL
 
-EXPOSE 3000
+EXPOSE 3001
 
 CMD ["npm", "run", "start"]
