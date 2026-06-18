@@ -400,7 +400,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                       onClick={() => toggleSection(item.href)}
                       title={sectionOpen ? t('collapseModules') : t('expandModules')}
                       className={cn(
-                        'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                        'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                         sectionActive
                           ? 'text-white bg-indigo-900/60'
                           : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
@@ -438,7 +438,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                         }}
                         title={item.label}
                         className={cn(
-                          'flex items-center justify-center w-full px-0 py-2.5 rounded-xl text-sm font-medium transition-all',
+                          'flex items-center justify-center w-full px-0 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                           sectionActive || collapsedSectionOpen?.href === item.href
                             ? 'bg-indigo-500 text-white shadow-sm'
                             : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
@@ -472,7 +472,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                                     onClose();
                                   }}
                                   className={cn(
-                                    'flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors',
+                                    'flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                                     isActive(child.href)
                                       ? 'bg-indigo-800 text-white'
                                       : 'text-indigo-300 hover:bg-indigo-800 hover:text-white',
@@ -503,7 +503,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                             href={child.href}
                             onClick={onClose}
                             className={cn(
-                              'flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all',
+                              'flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                               isActive(child.href)
                                 ? 'bg-indigo-500 text-white shadow-sm'
                                 : 'text-indigo-500 hover:bg-indigo-900 hover:text-indigo-300',
@@ -535,7 +535,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 }}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl text-sm font-medium transition-all',
+                  'flex items-center gap-3 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                   collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5',
                   active
                     ? 'bg-indigo-500 text-white shadow-sm'
