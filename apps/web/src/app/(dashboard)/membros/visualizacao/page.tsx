@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/app/page-header';
 import { MemberProfileDrawer } from '@/components/app/member-profile-drawer';
 import { DataTable, Column } from '@/components/app/data-table';
 import { EntityCard } from '@/components/app/entity-card';
+import { ContactCell } from '@/components/app/contact-cell';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatCard } from '@/components/app/stat-card';
@@ -42,6 +43,8 @@ export default function MembrosVisualizacaoPage() {
   } = useMembrosVisualizacao();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [selected, setSelected] = useState<MembroVisualizacao | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const {
     formState: filterState,
     setField: setFilterField,
@@ -56,6 +59,7 @@ export default function MembrosVisualizacaoPage() {
       semTelefone: false,
     },
     onApply: (filters) => {
+      setCurrentPage(1);
       applyFilter({
         nome: filters.nome || undefined,
         status: filters.status || undefined,
@@ -84,6 +88,11 @@ export default function MembrosVisualizacaoPage() {
     return { ativos, semContato, comMinisterio, aniversariantes };
   }, [membros]);
 
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return membros.slice(start, start + itemsPerPage);
+  }, [membros, currentPage]);
+
   const memberColumns: Column<MembroVisualizacao>[] = [
     {
       key: 'nome',
@@ -97,12 +106,7 @@ export default function MembrosVisualizacaoPage() {
     {
       key: 'contato',
       header: 'Contato',
-      render: (membro) => (
-        <div className="space-y-0.5">
-          <p>{formatPhone(membro.whatsapp)}</p>
-          {membro.email && <p className="text-xs text-gray-400">{membro.email}</p>}
-        </div>
-      ),
+      render: (membro) => <ContactCell whatsapp={membro.whatsapp} email={membro.email} />,
     },
     {
       key: 'status',
@@ -213,8 +217,12 @@ export default function MembrosVisualizacaoPage() {
 
       <DataTable
         columns={memberColumns}
-        data={membros}
+        data={paginatedData}
         loading={loading}
+        currentPage={currentPage}
+        totalItems={membros.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
         emptyTitle="Nenhum membro encontrado"
         emptyDescription="Ajuste os filtros para localizar outros membros."
         renderMobileCard={(membro) => (
