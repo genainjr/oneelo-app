@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useEscalas } from '@/hooks/use-escalas';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
-import { Skeleton, SkeletonList } from '@/components/app/skeleton';
+import { Skeleton } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell } from '@/components/app/filter-shell';
@@ -733,27 +733,31 @@ export default function EscalasPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ─── Lista de Escalas ─────────────────────────────────────────────── */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-1">
-            {t(`months.${parseInt(filterState.mes)}` as any)} / {filterState.ano}
-          </h2>
+      {/* ─── Seletor de escalas (faixa horizontal) ─────────────────────────── */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-1">
+          {t(`months.${parseInt(filterState.mes)}` as any)} / {filterState.ano}
+        </h2>
 
-          {loading ? (
-            <SkeletonList count={3} className="h-20 rounded-2xl" />
-          ) : escalas.length === 0 ? (
-            <EmptyState
-              title={t('noSchedules')}
-              description={canCreateEscala ? t('noSchedulesDesc') : undefined}
-            />
-          ) : (
-            escalas.map((e) => (
+        {loading ? (
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[88px] w-56 shrink-0 rounded-2xl" />
+            ))}
+          </div>
+        ) : escalas.length === 0 ? (
+          <EmptyState
+            title={t('noSchedules')}
+            description={canCreateEscala ? t('noSchedulesDesc') : undefined}
+          />
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {escalas.map((e) => (
               <button
                 key={e.id}
                 id={`escala-card-${e.id}`}
                 onClick={() => fetchDetail(e)}
-                className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                className={`shrink-0 w-56 text-left p-4 rounded-2xl border transition-all ${
                   selectedEscala?.id === e.id
                     ? 'border-indigo-300 bg-indigo-50 shadow-sm'
                     : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'
@@ -773,12 +777,13 @@ export default function EscalasPage() {
                   {e._count?.dias ?? 0} {e._count?.dias === 1 ? 'dia' : 'dias'} cadastrado{e._count?.dias === 1 ? '' : 's'}
                 </div>
               </button>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* ─── Grade da Escala ──────────────────────────────────────────────── */}
-        <div className="lg:col-span-2">
+      {/* ─── Grade da Escala (largura total) ───────────────────────────────── */}
+      <div>
           {!selectedEscala ? (
             <div className="flex items-center justify-center h-full min-h-[300px] bg-gray-50 rounded-2xl border border-dashed border-gray-200">
               <div className="text-center text-sm text-gray-400 space-y-1">
@@ -882,7 +887,6 @@ export default function EscalasPage() {
               />
             </div>
           ) : null}
-        </div>
       </div>
 
       {/* ─── Modal Criar Escala ───────────────────────────────────────────────── */}
