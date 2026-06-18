@@ -267,13 +267,6 @@ export default function MembrosPage() {
       ),
     },
     {
-      key: 'createdAt',
-      header: t('columns.registeredAt'),
-      render: (m) => (
-        <span className="text-xs text-gray-500">{formatDate(m.createdAt)}</span>
-      ),
-    },
-    {
       key: 'actions',
       header: '',
       className: 'text-right',
