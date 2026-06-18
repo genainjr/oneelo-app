@@ -14,9 +14,11 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
 import { InputField } from '@/components/app/form-field';
 import { StatCard } from '@/components/app/stat-card';
+import { StatusBadge } from '@/components/app/status-badge';
+import { EntityCard } from '@/components/app/entity-card';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatPhone, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { Users, UserCheck, UserPlus, PhoneOff } from 'lucide-react';
 
 type FeedbackMessage = {
@@ -224,19 +226,12 @@ export default function MembrosPage() {
     {
       key: 'status',
       header: t('columns.status'),
-      render: (m) => {
-        const colors = {
-          ATIVO: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-          INATIVO: 'bg-gray-50 text-gray-600 border-gray-150',
-          VISITANTE: 'bg-blue-50 text-blue-700 border-blue-100',
-          TRANSFERIDO: 'bg-amber-50 text-amber-700 border-amber-100',
-        };
-        return (
-          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${colors[m.status] || 'bg-gray-50'}`}>
-            {t(`status.${m.status}` as any)}
-          </span>
-        );
-      },
+      render: (m) => (
+        <StatusBadge
+          label={STATUS_MEMBRO_LABEL[m.status]}
+          className={`font-bold ${STATUS_MEMBRO_COLOR[m.status]}`}
+        />
+      ),
     },
     {
       key: 'tags',
@@ -529,6 +524,23 @@ export default function MembrosPage() {
         onPageChange={setCurrentPage}
         emptyTitle={t('empty.noResults')}
         emptyDescription={t('empty.noResultsDesc')}
+        renderMobileCard={(m) => (
+          <EntityCard
+            title={m.nome}
+            subtitle={formatPhone(m.whatsapp)}
+            badge={
+              <StatusBadge
+                label={STATUS_MEMBRO_LABEL[m.status]}
+                className={`font-bold ${STATUS_MEMBRO_COLOR[m.status]}`}
+              />
+            }
+            meta={(m.tags || []).map((mt) => mt.tag.nome).join(', ') || t('noTags')}
+            onClick={() => {
+              setEditingMembro(m);
+              setIsModalOpen(true);
+            }}
+          />
+        )}
       />
 
       {/* Bulk Action Banner */}

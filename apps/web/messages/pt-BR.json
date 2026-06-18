@@ -209,7 +209,8 @@
       "active": "Ativos",
       "visitors": "Visitantes",
       "noPhone": "Sem telefone"
-    }
+    },
+    "noTags": "Sem tags"
   },
   "ministries": {
     "title": "Ministérios",
