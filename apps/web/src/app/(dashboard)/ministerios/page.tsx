@@ -5,6 +5,7 @@ import { useMinisterios } from '@/hooks/use-ministerios';
 import { useTranslations } from 'next-intl';
 
 import { PageHeader } from '@/components/app/page-header';
+import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { EntityCard } from '@/components/app/entity-card';
 import { MembroSearchCombobox, MembroOption } from '@/components/app/membro-search-combobox';
@@ -492,7 +493,7 @@ export default function MinisteriosPage() {
                   </div>
                 )}
                 {loadingDetails ? (
-                  <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+                  <SkeletonList count={3} className="h-12 rounded-xl" gap="space-y-2" />
                 ) : !detailedInfo?.membros?.length ? (
                   <p className="text-sm text-gray-400 text-center py-6">{t('members.noMembers')}</p>
                 ) : (

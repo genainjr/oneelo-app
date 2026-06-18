@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
+import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
@@ -127,9 +128,7 @@ export default function MinhasEscalasPage() {
       )}
 
       {isLoading ? (
-        <div className="space-y-3 animate-pulse">
-          {[1, 2, 3].map((item) => <div key={item} className="h-32 rounded-lg bg-gray-100" />)}
-        </div>
+        <SkeletonList count={3} className="h-32" />
       ) : !user?.memberId ? (
         <EmptyState title="Perfil sem membro vinculado" description="Seu usuario ainda nao esta vinculado a um cadastro de membro." />
       ) : items.length === 0 ? (
