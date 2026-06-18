@@ -3,9 +3,21 @@ interface EmptyStateProps {
   description?: string;
   action?: React.ReactNode;
   icon?: React.ReactNode;
+  /** Variante compacta para vazios de secao (placeholder inline, sem icone grande). */
+  compact?: boolean;
 }
 
-export function EmptyState({ title, description, action, icon }: EmptyStateProps) {
+export function EmptyState({ title, description, action, icon, compact }: EmptyStateProps) {
+  if (compact) {
+    return (
+      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center">
+        <p className="text-sm text-gray-500">{title}</p>
+        {description && <p className="mt-1 text-xs text-gray-400">{description}</p>}
+        {action && <div className="mt-3">{action}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4 text-gray-400">

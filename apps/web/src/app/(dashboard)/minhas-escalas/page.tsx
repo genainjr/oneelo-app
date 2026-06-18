@@ -139,9 +139,7 @@ export default function MinhasEscalasPage() {
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Pendentes</h2>
             <div className="space-y-3">
               {pendentes.length > 0 ? pendentes.map(renderItem) : (
-                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-                  Nenhuma confirmacao pendente.
-                </div>
+                <EmptyState compact title="Nenhuma confirmacao pendente." />
               )}
             </div>
           </section>
@@ -150,9 +148,7 @@ export default function MinhasEscalasPage() {
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Proximas</h2>
             <div className="space-y-3">
               {futuras.length > 0 ? futuras.map(renderItem) : (
-                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-                  Nenhuma escala futura.
-                </div>
+                <EmptyState compact title="Nenhuma escala futura." />
               )}
             </div>
           </section>
@@ -161,9 +157,7 @@ export default function MinhasEscalasPage() {
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Historico</h2>
             <div className="space-y-3">
               {passadas.length > 0 ? passadas.map(renderItem) : (
-                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
-                  Nenhuma escala passada.
-                </div>
+                <EmptyState compact title="Nenhuma escala passada." />
               )}
             </div>
           </section>
