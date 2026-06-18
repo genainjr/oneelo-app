@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { PageHeader } from '@/components/app/page-header';
+import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { PasswordField } from '@/components/app/form-field';
 import { InfoItem } from '@/components/app/info-item';
@@ -71,10 +72,7 @@ export default function MeuPerfilPage() {
       />
 
       {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="h-40 rounded-2xl bg-gray-100" />
-          <div className="h-40 rounded-2xl bg-gray-100" />
-        </div>
+        <SkeletonList count={2} className="h-40 rounded-2xl" gap="space-y-4" />
       ) : error ? (
         <EmptyState title="Erro ao carregar perfil" description={error} />
       ) : user ? (

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
+import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { EscalaReadonlyGrid } from '@/components/app/escala-readonly-grid';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
@@ -168,9 +169,7 @@ export default function EscalasVisualizacaoPage() {
       )}
 
       {loading ? (
-        <div className="space-y-3 animate-pulse">
-          {[1, 2].map((item) => <div key={item} className="h-64 rounded-lg bg-gray-100" />)}
-        </div>
+        <SkeletonList count={2} className="h-64" />
       ) : escalas.length === 0 ? (
         <EmptyState title="Nenhuma escala encontrada" description="Ajuste os filtros para localizar outras escalas." />
       ) : (

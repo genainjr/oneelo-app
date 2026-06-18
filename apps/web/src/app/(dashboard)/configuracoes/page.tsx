@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
+import { Skeleton } from '@/components/app/skeleton';
 import { DataTable, Column, SortState } from '@/components/app/data-table';
 import { StatusBadge } from '@/components/app/status-badge';
 import { UsuarioModal } from '@/components/app/usuario-modal';
@@ -127,12 +128,12 @@ export default function ConfiguracoesPage() {
   if (!currentUser) {
     return (
       <div className="p-6 max-w-7xl mx-auto flex items-center justify-center min-h-[50vh]">
-        <div className="animate-pulse flex space-x-4">
+        <div className="flex space-x-4">
           <div className="flex-1 space-y-4 py-1">
-            <div className="h-4 bg-gray-250 rounded w-3/4"></div>
+            <Skeleton className="h-4 w-3/4 bg-gray-250" />
             <div className="space-y-2">
-              <div className="h-4 bg-gray-250 rounded"></div>
-              <div className="h-4 bg-gray-250 rounded w-5/6"></div>
+              <Skeleton className="h-4 bg-gray-250" />
+              <Skeleton className="h-4 w-5/6 bg-gray-250" />
             </div>
           </div>
         </div>
