@@ -22,7 +22,7 @@ O projeto de adoção do ODS está **em andamento estável**. As principais cama
 | 4 | Filtros | ✅ Concluída |
 | 5 | Modais CRUD | ✅ Concluída |
 | 6 | Tabelas e Listagens | ✅ Concluída |
-| 7 | Visualizações e Métricas | 🟠 Concluída (sem auditoria dedicada) |
+| 7 | Visualizações e Métricas | ✅ Concluída |
 | 8 | Permissões e Navegação | ⏸ Não iniciada |
 | 9 | Validação Final | ⏸ Não iniciada |
 
@@ -39,7 +39,7 @@ O projeto de adoção do ODS está **em andamento estável**. As principais cama
 | Formulários (campos) | ~100% |
 | Modais | ~100% |
 | CRUDs (fluxos de mutação) | ~100% |
-| Visualizações / Métricas | ~80% |
+| Visualizações / Métricas | ~95% |
 | Tabelas / Listagens | ~95% |
 | Navegação (Sidebar / Layout) | 0% |
 | Permissões (visibilidade UI) | 0% |
@@ -107,6 +107,7 @@ Auditada (15/15 critérios) em 2026-06-16. Relatório: `ods-phase-6-tables-repor
 | `plans/ods-refactoring-plan.md` | Plano mestre com todas as fases |
 | `plans/ods-current-status.md` | Estado atual completo com compliance |
 | `plans/ods-phase-6-tables-report.md` | Relatório formal da Fase 6 (concluída) |
+| `plans/ods-phase-7-audit-report.md` | Relatório de auditoria da Fase 7 (15/15, concluída) |
 | `plans/ods-phase-6-1-infra-report.md` | Relatório da infraestrutura (6.1) |
 | `plans/ods-phase-6-4-cards-migration-report.md` | Relatório da migração de grids (6.4) |
 | `plans/ods-plan-consistency-audit.md` | Auditoria de consistência documental |
