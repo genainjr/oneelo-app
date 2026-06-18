@@ -196,14 +196,9 @@ export default function MembrosPage() {
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
             {m.nome.substring(0, 2)}
           </div>
-          <div>
-            <span className="font-bold text-gray-900 hover:text-indigo-600 cursor-pointer block" onClick={() => { setEditingMembro(m); setIsModalOpen(true); }}>
-              {m.nome}
-            </span>
-            {m.observacoes && (
-              <span className="text-xs text-gray-400 block max-w-xs truncate">{m.observacoes}</span>
-            )}
-          </div>
+          <span className="font-bold text-gray-900 hover:text-indigo-600 cursor-pointer" onClick={() => { setEditingMembro(m); setIsModalOpen(true); }}>
+            {m.nome}
+          </span>
         </div>
       ),
     },
@@ -243,7 +238,7 @@ export default function MembrosPage() {
       key: 'dataNascimento',
       header: t('columns.birthDate'),
       render: (m) => (
-        <span className="text-xs text-gray-500">{formatDate(m.dataNascimento)}</span>
+        <span className="text-gray-600">{formatDate(m.dataNascimento)}</span>
       ),
     },
     {
