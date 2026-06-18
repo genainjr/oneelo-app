@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useEscalas } from '@/hooks/use-escalas';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
+import { Skeleton, SkeletonList } from '@/components/app/skeleton';
+import { EmptyState } from '@/components/app/empty-state';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell } from '@/components/app/filter-shell';
 import { useFilterState } from '@/hooks/use-filter-state';
@@ -745,14 +747,12 @@ export default function EscalasPage() {
           </h2>
 
           {loading ? (
-            <div className="space-y-3 animate-pulse">
-              {[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-2xl" />)}
-            </div>
+            <SkeletonList count={3} className="h-20 rounded-2xl" />
           ) : escalas.length === 0 ? (
-            <div className="text-center py-10 text-sm text-gray-400 bg-gray-50 rounded-2xl border border-gray-100">
-              <p className="font-medium">{t('noSchedules')}</p>
-              {canCreateEscala && <p className="text-xs mt-1">{t('noSchedulesDesc')}</p>}
-            </div>
+            <EmptyState
+              title={t('noSchedules')}
+              description={canCreateEscala ? t('noSchedulesDesc') : undefined}
+            />
           ) : (
             escalas.map((e) => (
               <button
@@ -796,9 +796,9 @@ export default function EscalasPage() {
               </div>
             </div>
           ) : loadingDetail ? (
-            <div className="animate-pulse space-y-4">
-              <div className="h-12 bg-gray-100 rounded-2xl" />
-              <div className="h-64 bg-gray-50 rounded-2xl border border-gray-100" />
+            <div className="space-y-4">
+              <Skeleton className="h-12 rounded-2xl" />
+              <Skeleton className="h-64 rounded-2xl bg-gray-50 border border-gray-100" />
             </div>
           ) : detailedEscala ? (
             <div className="space-y-4">

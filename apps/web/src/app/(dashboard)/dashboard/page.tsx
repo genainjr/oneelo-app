@@ -2,6 +2,7 @@
 
 import { useDashboard } from '@/hooks/use-dashboard';
 import { StatCard } from '@/components/app/stat-card';
+import { PageHeader } from '@/components/app/page-header';
 import { api } from '@/lib/api';
 import { AuthUser } from '@/types';
 import { formatDate } from '@/lib/utils';
@@ -86,14 +87,10 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
-          {t('greeting', { name: user?.nome ? `, ${user.nome.split(' ')[0]}` : '' })} 👋
-        </h2>
-        <p className="text-gray-500 text-sm mt-0.5">
-          {t('subtitle', { date: today })}
-        </p>
-      </div>
+      <PageHeader
+        title={`${t('greeting', { name: user?.nome ? `, ${user.nome.split(' ')[0]}` : '' })} 👋`}
+        description={t('subtitle', { date: today })}
+      />
 
       {error && (
         <div className="mb-4 p-4 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm flex items-center gap-2">
