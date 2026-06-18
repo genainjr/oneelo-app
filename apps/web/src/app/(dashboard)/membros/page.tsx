@@ -13,9 +13,11 @@ import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
 import { InputField } from '@/components/app/form-field';
+import { StatCard } from '@/components/app/stat-card';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { Users, UserCheck, UserPlus, PhoneOff } from 'lucide-react';
 
 type FeedbackMessage = {
   type: 'success' | 'error';
@@ -117,6 +119,13 @@ export default function MembrosPage() {
     const start = (currentPage - 1) * itemsPerPage;
     return membros.slice(start, start + itemsPerPage);
   }, [membros, currentPage]);
+
+  const stats = useMemo(() => ({
+    total: membros.length,
+    ativos: membros.filter((m) => m.status === 'ATIVO').length,
+    visitantes: membros.filter((m) => m.status === 'VISITANTE').length,
+    semTelefone: membros.filter((m) => !m.whatsapp).length,
+  }), [membros]);
 
   async function handleSaveMembro(data: Partial<Membro>) {
     if (editingMembro) {
@@ -316,6 +325,13 @@ export default function MembrosPage() {
           </button>
         }
       />
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard title={t('stats.total')} value={stats.total} icon={<Users className="w-5 h-5" />} color="indigo" />
+        <StatCard title={t('stats.active')} value={stats.ativos} icon={<UserCheck className="w-5 h-5" />} color="emerald" />
+        <StatCard title={t('stats.visitors')} value={stats.visitantes} icon={<UserPlus className="w-5 h-5" />} color="amber" />
+        <StatCard title={t('stats.noPhone')} value={stats.semTelefone} icon={<PhoneOff className="w-5 h-5" />} color="rose" />
+      </div>
 
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg flex items-center justify-between">

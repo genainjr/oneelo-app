@@ -203,7 +203,13 @@
         "tags": "Etiquetas"
       }
     },
-    "birthday": "Aniversário"
+    "birthday": "Aniversário",
+    "stats": {
+      "total": "Total",
+      "active": "Ativos",
+      "visitors": "Visitantes",
+      "noPhone": "Sem telefone"
+    }
   },
   "ministries": {
     "title": "Ministérios",
