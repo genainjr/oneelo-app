@@ -203,7 +203,14 @@
         "tags": "Tags"
       }
     },
-    "birthday": "Birthday"
+    "birthday": "Birthday",
+    "stats": {
+      "total": "Total",
+      "active": "Active",
+      "visitors": "Visitors",
+      "noPhone": "No phone"
+    },
+    "noTags": "No tags"
   },
   "ministries": {
     "title": "Ministries",

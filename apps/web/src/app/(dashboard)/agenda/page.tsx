@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/app/empty-state';
 import { EntityCard } from '@/components/app/entity-card';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { InputField, SelectField, TextareaField } from '@/components/app/form-field';
@@ -209,48 +210,33 @@ export default function AgendaPage() {
         }
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <label htmlFor="filter-status" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.statusLabel')}
-            </label>
-            <select
-              id="filter-status"
-              value={filterState.status}
-              onChange={(e) => setFilterField('status', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white text-gray-700 transition-all"
-            >
-              <option value="">{t('filter.allStatuses')}</option>
-              <option value="AGENDADO">{t('status.AGENDADO')}</option>
-              <option value="REALIZADO">{t('status.REALIZADO')}</option>
-              <option value="CANCELADO">{t('status.CANCELADO')}</option>
-            </select>
-          </div>
+          <FilterSelect
+            id="filter-status"
+            label={t('filter.statusLabel')}
+            value={filterState.status}
+            onChange={(e) => setFilterField('status', e.target.value)}
+          >
+            <option value="">{t('filter.allStatuses')}</option>
+            <option value="AGENDADO">{t('status.AGENDADO')}</option>
+            <option value="REALIZADO">{t('status.REALIZADO')}</option>
+            <option value="CANCELADO">{t('status.CANCELADO')}</option>
+          </FilterSelect>
 
-          <div className="space-y-1.5">
-            <label htmlFor="filter-start" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.from')}
-            </label>
-            <input
-              id="filter-start"
-              type="date"
-              value={filterState.dataInicio}
-              onChange={(e) => setFilterField('dataInicio', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-            />
-          </div>
+          <FilterInput
+            id="filter-start"
+            label={t('filter.from')}
+            type="date"
+            value={filterState.dataInicio}
+            onChange={(e) => setFilterField('dataInicio', e.target.value)}
+          />
 
-          <div className="space-y-1.5">
-            <label htmlFor="filter-end" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.to')}
-            </label>
-            <input
-              id="filter-end"
-              type="date"
-              value={filterState.dataFim}
-              onChange={(e) => setFilterField('dataFim', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-            />
-          </div>
+          <FilterInput
+            id="filter-end"
+            label={t('filter.to')}
+            type="date"
+            value={filterState.dataFim}
+            onChange={(e) => setFilterField('dataFim', e.target.value)}
+          />
         </div>
       </FilterShell>
 

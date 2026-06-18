@@ -5,7 +5,10 @@ import { PageHeader } from '@/components/app/page-header';
 import { MemberProfileDrawer } from '@/components/app/member-profile-drawer';
 import { DataTable, Column } from '@/components/app/data-table';
 import { EntityCard } from '@/components/app/entity-card';
+import { ContactCell } from '@/components/app/contact-cell';
+import { InitialsAvatar } from '@/components/app/initials-avatar';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
 import { useFilterState } from '@/hooks/use-filter-state';
@@ -41,6 +44,8 @@ export default function MembrosVisualizacaoPage() {
   } = useMembrosVisualizacao();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [selected, setSelected] = useState<MembroVisualizacao | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const {
     formState: filterState,
     setField: setFilterField,
@@ -55,6 +60,7 @@ export default function MembrosVisualizacaoPage() {
       semTelefone: false,
     },
     onApply: (filters) => {
+      setCurrentPage(1);
       applyFilter({
         nome: filters.nome || undefined,
         status: filters.status || undefined,
@@ -83,25 +89,28 @@ export default function MembrosVisualizacaoPage() {
     return { ativos, semContato, comMinisterio, aniversariantes };
   }, [membros]);
 
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return membros.slice(start, start + itemsPerPage);
+  }, [membros, currentPage]);
+
   const memberColumns: Column<MembroVisualizacao>[] = [
     {
       key: 'nome',
       header: 'Nome',
       render: (membro) => (
-        <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
-          {membro.nome}
-        </button>
+        <div className="flex items-center gap-3">
+          <InitialsAvatar name={membro.nome} />
+          <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
+            {membro.nome}
+          </button>
+        </div>
       ),
     },
     {
       key: 'contato',
       header: 'Contato',
-      render: (membro) => (
-        <div className="space-y-0.5">
-          <p>{formatPhone(membro.whatsapp)}</p>
-          {membro.email && <p className="text-xs text-gray-400">{membro.email}</p>}
-        </div>
-      ),
+      render: (membro) => <ContactCell whatsapp={membro.whatsapp} email={membro.email} />,
     },
     {
       key: 'status',
@@ -112,6 +121,11 @@ export default function MembrosVisualizacaoPage() {
           className={`font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}
         />
       ),
+    },
+    {
+      key: 'nascimento',
+      header: 'Nascimento',
+      render: (membro) => <span className="text-gray-600">{formatDate(membro.dataNascimento)}</span>,
     },
     {
       key: 'ministerios',
@@ -127,11 +141,6 @@ export default function MembrosVisualizacaoPage() {
           {(membro.ministerios || []).length === 0 && <span className="text-xs text-gray-300">-</span>}
         </div>
       ),
-    },
-    {
-      key: 'nascimento',
-      header: 'Nascimento',
-      render: (membro) => <span className="text-gray-600">{formatDate(membro.dataNascimento)}</span>,
     },
   ];
 
@@ -161,41 +170,41 @@ export default function MembrosVisualizacaoPage() {
           />
         }
       >
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-center">
-          <input
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-end">
+          <FilterInput
+            label="Nome"
             value={filterState.nome}
             onChange={(event) => setFilterField('nome', event.target.value)}
             placeholder="Buscar por nome"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           />
-          <select
+          <FilterSelect
+            label="Status"
             value={filterState.status}
             onChange={(event) => setFilterField('status', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os status</option>
             <option value="ATIVO">Ativo</option>
             <option value="INATIVO">Inativo</option>
             <option value="VISITANTE">Visitante</option>
             <option value="TRANSFERIDO">Transferido</option>
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
+            label="Ministério"
             value={filterState.ministerioId}
             onChange={(event) => setFilterField('ministerioId', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os ministerios</option>
             {ministerios.map((ministerio) => (
               <option key={ministerio.id} value={ministerio.id}>{ministerio.nome}</option>
             ))}
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
+            label="Aniversário"
             value={filterState.aniversarioMes}
             onChange={(event) => setFilterField('aniversarioMes', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             {MESES.map((mes) => <option key={mes.value} value={mes.value}>{mes.label}</option>)}
-          </select>
+          </FilterSelect>
           <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors w-full cursor-pointer">
             <input
               type="checkbox"
@@ -216,8 +225,12 @@ export default function MembrosVisualizacaoPage() {
 
       <DataTable
         columns={memberColumns}
-        data={membros}
+        data={paginatedData}
         loading={loading}
+        currentPage={currentPage}
+        totalItems={membros.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
         emptyTitle="Nenhum membro encontrado"
         emptyDescription="Ajuste os filtros para localizar outros membros."
         renderMobileCard={(membro) => (

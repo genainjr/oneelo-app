@@ -6,6 +6,7 @@ import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { EscalaReadonlyGrid } from '@/components/app/escala-readonly-grid';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
 import { useFilterState } from '@/hooks/use-filter-state';
@@ -114,41 +115,41 @@ export default function EscalasVisualizacaoPage() {
           />
         }
       >
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-center">
-          <select
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-end">
+          <FilterSelect
+            label="Ministério"
             value={filterState.ministerioId}
             onChange={(event) => setFilterField('ministerioId', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os ministerios</option>
             {ministerios.map((ministerio) => (
               <option key={ministerio.id} value={ministerio.id}>{ministerio.nome}</option>
             ))}
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
+            label="Status"
             value={filterState.status}
             onChange={(event) => setFilterField('status', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os status</option>
             <option value="RASCUNHO">Rascunho</option>
             <option value="PUBLICADA">Publicada</option>
             <option value="ENCERRADA">Encerrada</option>
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
+            label="Mês"
             value={filterState.mes}
             onChange={(event) => setFilterField('mes', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             {MESES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
-          <input
+          </FilterSelect>
+          <FilterInput
+            label="Ano"
             type="number"
             min="2020"
             max="2100"
             value={filterState.ano}
             onChange={(event) => setFilterField('ano', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           />
           <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors w-full cursor-pointer">
             <input
