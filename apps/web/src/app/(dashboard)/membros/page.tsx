@@ -296,7 +296,7 @@ export default function MembrosPage() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <PageHeader
         title={t('pageTitle')}
         description={t('pageDescription')}
@@ -317,7 +317,7 @@ export default function MembrosPage() {
       />
 
       {error && (
-        <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
+        <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => window.location.reload()} className="underline font-semibold hover:text-red-800">
             {t('reload')}
@@ -326,7 +326,7 @@ export default function MembrosPage() {
       )}
 
       {feedback && (
-        <div className={`p-4 text-sm border rounded-2xl flex items-center justify-between ${
+        <div className={`p-4 text-sm border rounded-lg flex items-center justify-between ${
           feedback.type === 'success'
             ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
             : 'text-red-700 bg-red-50 border-red-100'
@@ -364,7 +364,7 @@ export default function MembrosPage() {
               value={filterState.nome}
               onChange={(e) => setFilterField('nome', e.target.value)}
               placeholder={t('filter.namePlaceholder')}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
             />
           </div>
 
@@ -378,7 +378,7 @@ export default function MembrosPage() {
               value={filterState.whatsapp}
               onChange={(e) => setFilterField('whatsapp', e.target.value)}
               placeholder={t('filter.whatsappPlaceholder')}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
             />
           </div>
 
@@ -390,7 +390,7 @@ export default function MembrosPage() {
               id="search-status"
               value={filterState.status}
               onChange={(e) => setFilterField('status', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all text-gray-700"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400 focus:bg-white transition-all text-gray-700"
             >
               <option value="">{t('filter.allStatuses')}</option>
               <option value="ATIVO">{t('status.ATIVO')}</option>
