@@ -120,6 +120,23 @@ como referência (é a mais recente / melhor):
 
 ---
 
+## 7. Ajustes finais de tabela e padronização global de filtros
+
+Commits: `85fe907`, `8cae6dd`, `db6d2ba`, `f4d4bab`
+
+- **Observações removidas** da coluna Nome do gerenciamento (igual à visualização).
+- **Fonte da coluna nascimento** alinhada à visualização (`text-sm text-gray-600`).
+- **Avatar de iniciais** extraído para `components/app/initials-avatar.tsx` (`InitialsAvatar`)
+  e adicionado também à visualização — as duas tabelas passam a exibir o avatar na coluna Nome.
+- **Reordenação de colunas:** `nascimento` passa a vir antes da coluna de relação;
+  `tags` (gerenciamento) e `ministérios` (visualização) ficam por último.
+- **Filtros padronizados (label no topo):** a pedido, adotou-se o modelo do gerenciamento
+  (cabeçalho uppercase + dica no campo) como padrão global. Migradas para `FilterInput`/`FilterSelect`:
+  `/membros/visualizacao`, `/escalas`, `/escalas/visualizacao`, `/agenda`. Todas as barras de filtro
+  com `FilterShell` agora consomem o mesmo primitivo (`filterFieldClass`, `rounded-lg`).
+
+---
+
 ## Validação
 
 | Validação | Resultado |
@@ -133,7 +150,7 @@ como referência (é a mais recente / melhor):
 
 ## Próximos passos sugeridos
 
-- Avaliar adotar `FilterInput`/`FilterSelect` nas demais barras de filtro do app
-  (ministérios, escalas, agenda) para consistência global.
+- **Escalas (próxima branch):** revisar a UX das telas de escalas (gerenciamento e visualização) —
+  o usuário não está satisfeito com a apresentação atual. Trabalho fora do escopo deste alinhamento.
 - Os filtros de tags e a barra de ação em massa do `/membros` permanecem específicos da tela
   (não há equivalente na visualização) — fora do escopo deste alinhamento.
