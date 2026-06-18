@@ -170,13 +170,15 @@ export default function MembrosVisualizacaoPage() {
           />
         }
       >
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-center">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-end">
           <FilterInput
+            label="Nome"
             value={filterState.nome}
             onChange={(event) => setFilterField('nome', event.target.value)}
             placeholder="Buscar por nome"
           />
           <FilterSelect
+            label="Status"
             value={filterState.status}
             onChange={(event) => setFilterField('status', event.target.value)}
           >
@@ -187,6 +189,7 @@ export default function MembrosVisualizacaoPage() {
             <option value="TRANSFERIDO">Transferido</option>
           </FilterSelect>
           <FilterSelect
+            label="Ministério"
             value={filterState.ministerioId}
             onChange={(event) => setFilterField('ministerioId', event.target.value)}
           >
@@ -196,6 +199,7 @@ export default function MembrosVisualizacaoPage() {
             ))}
           </FilterSelect>
           <FilterSelect
+            label="Aniversário"
             value={filterState.aniversarioMes}
             onChange={(event) => setFilterField('aniversarioMes', event.target.value)}
           >
