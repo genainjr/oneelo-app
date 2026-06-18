@@ -9,12 +9,19 @@ import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
 import { InputField } from '@/components/app/form-field';
+import { StatCard } from '@/components/app/stat-card';
+import { StatusBadge } from '@/components/app/status-badge';
+import { EntityCard } from '@/components/app/entity-card';
+import { ContactCell } from '@/components/app/contact-cell';
+import { InitialsAvatar } from '@/components/app/initials-avatar';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatPhone, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
+import { Users, UserCheck, UserPlus, PhoneOff } from 'lucide-react';
 
 type FeedbackMessage = {
   type: 'success' | 'error';
@@ -117,6 +124,13 @@ export default function MembrosPage() {
     return membros.slice(start, start + itemsPerPage);
   }, [membros, currentPage]);
 
+  const stats = useMemo(() => ({
+    total: membros.length,
+    ativos: membros.filter((m) => m.status === 'ATIVO').length,
+    visitantes: membros.filter((m) => m.status === 'VISITANTE').length,
+    semTelefone: membros.filter((m) => !m.whatsapp).length,
+  }), [membros]);
+
   async function handleSaveMembro(data: Partial<Membro>) {
     if (editingMembro) {
       await updateMembro(editingMembro.id, data);
@@ -180,87 +194,50 @@ export default function MembrosPage() {
       className: 'font-medium text-gray-900',
       render: (m) => (
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
-            {m.nome.substring(0, 2)}
-          </div>
-          <div>
-            <span className="font-semibold text-gray-800 hover:text-indigo-600 cursor-pointer block" onClick={() => { setEditingMembro(m); setIsModalOpen(true); }}>
-              {m.nome}
-            </span>
-            {m.observacoes && (
-              <span className="text-xs text-gray-400 block max-w-xs truncate">{m.observacoes}</span>
-            )}
-          </div>
+          <InitialsAvatar name={m.nome} />
+          <span className="font-bold text-gray-900 hover:text-indigo-600 cursor-pointer" onClick={() => { setEditingMembro(m); setIsModalOpen(true); }}>
+            {m.nome}
+          </span>
         </div>
       ),
     },
     {
       key: 'contato',
       header: t('columns.contact'),
-      render: (m) => (
-        <div className="flex flex-col gap-0.5">
-          {m.whatsapp && (
-            <span className="text-sm font-medium text-gray-700 flex items-center gap-1">
-              <svg className="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.73-1.45L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.115-2.908-6.993-1.879-1.878-4.36-2.908-6.999-2.91-5.45 0-9.88 4.421-9.884 9.867-.001 1.73.457 3.419 1.32 4.933l-.994 3.634 3.782-.992zm10.963-7.534c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.669.149-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.15-.174.2-.298.3-.496.1-.198.05-.371-.025-.521-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.568-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-              </svg>
-              {m.whatsapp}
-            </span>
-          )}
-          {m.email && <span className="text-xs text-gray-400">{m.email}</span>}
-        </div>
-      ),
+      render: (m) => <ContactCell whatsapp={m.whatsapp} email={m.email} />,
     },
     {
       key: 'status',
       header: t('columns.status'),
-      render: (m) => {
-        const colors = {
-          ATIVO: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-          INATIVO: 'bg-gray-50 text-gray-600 border-gray-150',
-          VISITANTE: 'bg-blue-50 text-blue-700 border-blue-100',
-          TRANSFERIDO: 'bg-amber-50 text-amber-700 border-amber-100',
-        };
-        return (
-          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${colors[m.status] || 'bg-gray-50'}`}>
-            {t(`status.${m.status}` as any)}
-          </span>
-        );
-      },
-    },
-    {
-      key: 'tags',
-      header: t('columns.tags'),
       render: (m) => (
-        <div className="flex flex-wrap gap-1">
-          {m.tags && m.tags.length > 0 ? (
-            m.tags.map((mt) => (
-              <span
-                key={mt.tag.id}
-                style={{ backgroundColor: `${mt.tag.cor}15`, color: mt.tag.cor, borderColor: `${mt.tag.cor}30` }}
-                className="inline-flex px-2 py-0.5 text-xs font-semibold border rounded-lg"
-              >
-                {mt.tag.nome}
-              </span>
-            ))
-          ) : (
-            <span className="text-xs text-gray-300">-</span>
-          )}
-        </div>
+        <StatusBadge
+          label={STATUS_MEMBRO_LABEL[m.status]}
+          className={`font-bold ${STATUS_MEMBRO_COLOR[m.status]}`}
+        />
       ),
     },
     {
       key: 'dataNascimento',
       header: t('columns.birthDate'),
       render: (m) => (
-        <span className="text-xs text-gray-500">{formatDate(m.dataNascimento)}</span>
+        <span className="text-gray-600">{formatDate(m.dataNascimento)}</span>
       ),
     },
     {
-      key: 'createdAt',
-      header: t('columns.registeredAt'),
+      key: 'tags',
+      header: t('columns.tags'),
       render: (m) => (
-        <span className="text-xs text-gray-500">{formatDate(m.createdAt)}</span>
+        <div className="space-y-1">
+          {m.tags && m.tags.length > 0 ? (
+            m.tags.slice(0, 3).map((mt) => (
+              <p key={mt.tag.id} className="text-xs font-semibold" style={{ color: mt.tag.cor }}>
+                {mt.tag.nome}
+              </p>
+            ))
+          ) : (
+            <span className="text-xs text-gray-300">-</span>
+          )}
+        </div>
       ),
     },
     {
@@ -296,7 +273,7 @@ export default function MembrosPage() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <PageHeader
         title={t('pageTitle')}
         description={t('pageDescription')}
@@ -316,8 +293,15 @@ export default function MembrosPage() {
         }
       />
 
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard title={t('stats.total')} value={stats.total} icon={<Users className="w-5 h-5" />} color="indigo" />
+        <StatCard title={t('stats.active')} value={stats.ativos} icon={<UserCheck className="w-5 h-5" />} color="emerald" />
+        <StatCard title={t('stats.visitors')} value={stats.visitantes} icon={<UserPlus className="w-5 h-5" />} color="amber" />
+        <StatCard title={t('stats.noPhone')} value={stats.semTelefone} icon={<PhoneOff className="w-5 h-5" />} color="rose" />
+      </div>
+
       {error && (
-        <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
+        <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg flex items-center justify-between">
           <span>{error}</span>
           <button onClick={() => window.location.reload()} className="underline font-semibold hover:text-red-800">
             {t('reload')}
@@ -326,7 +310,7 @@ export default function MembrosPage() {
       )}
 
       {feedback && (
-        <div className={`p-4 text-sm border rounded-2xl flex items-center justify-between ${
+        <div className={`p-4 text-sm border rounded-lg flex items-center justify-between ${
           feedback.type === 'success'
             ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
             : 'text-red-700 bg-red-50 border-red-100'
@@ -354,51 +338,36 @@ export default function MembrosPage() {
         }
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <label htmlFor="search-nome" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.nameLabel')}
-            </label>
-            <input
-              id="search-nome"
-              type="text"
-              value={filterState.nome}
-              onChange={(e) => setFilterField('nome', e.target.value)}
-              placeholder={t('filter.namePlaceholder')}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-            />
-          </div>
+          <FilterInput
+            id="search-nome"
+            type="text"
+            label={t('filter.nameLabel')}
+            value={filterState.nome}
+            onChange={(e) => setFilterField('nome', e.target.value)}
+            placeholder={t('filter.namePlaceholder')}
+          />
 
-          <div className="space-y-1.5">
-            <label htmlFor="search-whatsapp" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.whatsappLabel')}
-            </label>
-            <input
-              id="search-whatsapp"
-              type="text"
-              value={filterState.whatsapp}
-              onChange={(e) => setFilterField('whatsapp', e.target.value)}
-              placeholder={t('filter.whatsappPlaceholder')}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-            />
-          </div>
+          <FilterInput
+            id="search-whatsapp"
+            type="text"
+            label={t('filter.whatsappLabel')}
+            value={filterState.whatsapp}
+            onChange={(e) => setFilterField('whatsapp', e.target.value)}
+            placeholder={t('filter.whatsappPlaceholder')}
+          />
 
-          <div className="space-y-1.5">
-            <label htmlFor="search-status" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.statusLabel')}
-            </label>
-            <select
-              id="search-status"
-              value={filterState.status}
-              onChange={(e) => setFilterField('status', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all text-gray-700"
-            >
-              <option value="">{t('filter.allStatuses')}</option>
-              <option value="ATIVO">{t('status.ATIVO')}</option>
-              <option value="INATIVO">{t('status.INATIVO')}</option>
-              <option value="VISITANTE">{t('status.VISITANTE')}</option>
-              <option value="TRANSFERIDO">{t('status.TRANSFERIDO')}</option>
-            </select>
-          </div>
+          <FilterSelect
+            id="search-status"
+            label={t('filter.statusLabel')}
+            value={filterState.status}
+            onChange={(e) => setFilterField('status', e.target.value)}
+          >
+            <option value="">{t('filter.allStatuses')}</option>
+            <option value="ATIVO">{t('status.ATIVO')}</option>
+            <option value="INATIVO">{t('status.INATIVO')}</option>
+            <option value="VISITANTE">{t('status.VISITANTE')}</option>
+            <option value="TRANSFERIDO">{t('status.TRANSFERIDO')}</option>
+          </FilterSelect>
         </div>
 
         {/* Tags filter */}
@@ -534,6 +503,23 @@ export default function MembrosPage() {
         onPageChange={setCurrentPage}
         emptyTitle={t('empty.noResults')}
         emptyDescription={t('empty.noResultsDesc')}
+        renderMobileCard={(m) => (
+          <EntityCard
+            title={m.nome}
+            subtitle={formatPhone(m.whatsapp)}
+            badge={
+              <StatusBadge
+                label={STATUS_MEMBRO_LABEL[m.status]}
+                className={`font-bold ${STATUS_MEMBRO_COLOR[m.status]}`}
+              />
+            }
+            meta={(m.tags || []).map((mt) => mt.tag.nome).join(', ') || t('noTags')}
+            onClick={() => {
+              setEditingMembro(m);
+              setIsModalOpen(true);
+            }}
+          />
+        )}
       />
 
       {/* Bulk Action Banner */}
