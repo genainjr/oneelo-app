@@ -68,6 +68,35 @@ Chaves `members.stats.{total,active,visitors,noPhone}` adicionadas aos 3 locales
 
 ---
 
+## 4. Coluna "Data de registro" removida
+
+Commit: `69e26b1`
+
+Removida a coluna `createdAt` da tabela de gerenciamento, aproximando o conjunto de colunas
+do da visualização. A chave i18n `columns.registeredAt` permanece definida para uso futuro.
+
+---
+
+## 5. Consistência da tabela (status + mobile)
+
+Commit: `98683fd`
+
+Diagnóstico das diferenças que ainda restavam entre as duas tabelas:
+
+- **Status (desktop):** a coluna de status do gerenciamento ainda usava um `<span>` cru com um
+  mapa de cores **local** (com `border`, tokens `*-50/*-700`) — ficou pra trás na adoção do
+  `StatusBadge`. Migrada para `StatusBadge` + `STATUS_MEMBRO_COLOR/LABEL` (mesmo padrão da
+  visualização). Remove o mapa duplicado.
+- **Mobile:** o `DataTable` do gerenciamento **não passava `renderMobileCard`**, então no celular
+  caía na tabela crua com scroll horizontal (estratégia A). Adicionado `renderMobileCard`
+  (`EntityCard` com título, telefone, badge de status e tags) — estratégia B, igual à visualização.
+- Chave `members.noTags` adicionada aos 3 locales (meta do card).
+
+**Diferenças intencionais mantidas** (features do gerenciamento, sem equivalente na visualização):
+coluna de seleção (checkbox para marcação em massa) e rodapé de paginação.
+
+---
+
 ## Validação
 
 | Validação | Resultado |
