@@ -3,7 +3,7 @@
 Data: 2026-06-18
 Branch: `refactor/ods-membros-alignment` (a partir de `development`)
 Status: ✅ **CONCLUÍDA** — `tsc --noEmit` exit 0, `next build` exit 0 (28 rotas)
-Workflow: `feature-development.md` — 3 commits separados por concern (faseado).
+Workflow: `feature-development.md` — commits separados por concern (faseado).
 
 ---
 
@@ -93,7 +93,30 @@ Diagnóstico das diferenças que ainda restavam entre as duas tabelas:
 - Chave `members.noTags` adicionada aos 3 locales (meta do card).
 
 **Diferenças intencionais mantidas** (features do gerenciamento, sem equivalente na visualização):
-coluna de seleção (checkbox para marcação em massa) e rodapé de paginação.
+coluna de seleção (checkbox para marcação em massa) e barra de ação em massa. _(A paginação,
+antes exclusiva do gerenciamento, foi alinhada — ver seção 6.)_
+
+---
+
+## 6. Alinhamento célula a célula (contato, tags, nome, paginação)
+
+Commit: `7120dc4`
+
+Diferenças residuais entre as duas tabelas, resolvidas adotando a tela de **visualização**
+como referência (é a mais recente / melhor):
+
+- **Contato:** extraído `components/app/contact-cell.tsx` (`ContactCell`) — ícone do WhatsApp +
+  `formatPhone()` + email. As duas telas passam a renderizar a célula de contato de forma idêntica
+  (o gerenciamento usava `m.whatsapp` cru; a visualização não tinha o ícone). Elimina a divergência
+  por código duplicado.
+- **Relação (tags × ministérios):** mantidas as colunas específicas de cada tela (tags no
+  gerenciamento, ministérios na visualização), mas o estilo foi harmonizado para a **lista de texto**
+  da visualização (`space-y-1`, `text-xs font-semibold`, `slice(0,3)`, vazio `-`). As tags preservam
+  a cor própria aplicada ao texto.
+- **Nome:** tipografia do gerenciamento alinhada à da visualização (`font-bold text-gray-900`).
+  Avatar e observações permanecem (extras funcionais do gerenciamento, não diferença de estilo).
+- **Paginação:** adicionada à visualização (client-side, 10/página) — igual ao gerenciamento.
+  Antes a visualização listava todos os membros sem rodapé de paginação.
 
 ---
 
