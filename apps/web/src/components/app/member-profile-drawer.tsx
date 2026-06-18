@@ -3,6 +3,7 @@
 import { MembroVisualizacao } from '@/types';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { InfoItem } from './info-item';
+import { StatusBadge } from './status-badge';
 
 interface MemberProfileDrawerProps {
   membro: MembroVisualizacao | null;
@@ -42,9 +43,10 @@ export function MemberProfileDrawer({ membro, onClose }: MemberProfileDrawerProp
                 as="dl-item"
                 label="Status" 
                 value={
-                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}>
-                    {STATUS_MEMBRO_LABEL[membro.status]}
-                  </span>
+                  <StatusBadge
+                    label={STATUS_MEMBRO_LABEL[membro.status]}
+                    className={`font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}
+                  />
                 }
               />
               <InfoItem as="dl-item" label="Nascimento" value={formatDate(membro.dataNascimento)} />
