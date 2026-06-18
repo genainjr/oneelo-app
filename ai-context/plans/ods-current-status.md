@@ -4,8 +4,7 @@
 
 O projeto de adoção do OneElo Design System (ODS) avança de forma sustentável e previsível. O sistema passou de uma interface com alta fragmentação e componentes isolados para um ambiente em transição, onde os principais gargalos de UI (Ações Destrutivas, Exportações e Filtros) foram plenamente padronizados sem causar regressões nas regras de negócios.
 
-* ✅ **Fases concluídas (com auditoria)**: Fase 0 (Baseline), Fase 1 (Fundações), Fase 2 (Confirmações), Fase 3 (Exportações), Fase 4 (Filtros), Fase 5 (Modais CRUD), **Fase 6 (Tabelas e Listagens)**.
-* 🟠 **Fases concluídas (sem auditoria dedicada)**: Fase 7 (Visualizações e Métricas).
+* ✅ **Fases concluídas (com auditoria)**: Fase 0 (Baseline), Fase 1 (Fundações), Fase 2 (Confirmações), Fase 3 (Exportações), Fase 4 (Filtros), Fase 5 (Modais CRUD), **Fase 6 (Tabelas e Listagens)**, **Fase 7 (Visualizações e Métricas)**.
 * ⏸ **Fases pendentes**: Fase 8 (Permissões e Navegação), Fase 9 (Validação Final).
 * **Percentual estimado de aderência ao ODS**: **> 85%** globais.
 * **Próxima fase**: Fase 8 — Permissões e Navegação.
@@ -45,7 +44,7 @@ O projeto de adoção do OneElo Design System (ODS) avança de forma sustentáve
 
 ### Fase 7: Visualizações e Métricas
 **Resumo:** Padronização das áreas read-only de apresentação de dados e painéis estatísticos. Criação do componente utilitário `InfoItem` centralizado, redução de código local no `MemberProfileDrawer` e `meu-perfil`, e secagem de lógicas compartilhadas nas views da Escala através do `escala-shared.tsx`.
-**Resultado:** PASSOU. Métricas agora rodam em `StatCards` padronizados e micro-componentes de informação compartilham a mesma estilização ODS.
+**Resultado:** PASSOU. Auditada com 15/15 critérios verificados em 2026-06-17 (`ods-phase-7-audit-report.md`). `StatCard`, `InfoItem` e `escala-shared` confirmados como padrões únicos, sem `StatBox`/`StatItem` locais remanescentes. Aderência de Visualizações/Métricas elevada de ~80% para ~95%. Matriz de escalas mantida com `<table>` custom (exceção justificada).
 
 ---
 
@@ -79,6 +78,7 @@ O projeto de adoção do OneElo Design System (ODS) avança de forma sustentáve
 * **Modais**: ~100%
 * **CRUDs (Mutações)**: ~100%
 * **Tabelas / Listagens**: ~95%
+* **Visualizações / Métricas**: ~95%
 * **Navegação (Layout Base)**: 0%
 * **Permissões (Visibilidade UI)**: 0%
 
@@ -88,7 +88,7 @@ O projeto de adoção do OneElo Design System (ODS) avança de forma sustentáve
 
 ## Débito Técnico Remanescente
 
-* **Componentes não padronizados**: A duplicidade isolada do `PasswordField` persistente em `/meu-perfil` (área não auditada nesta fase).
+* **Inputs de senha crus nos logins**: as telas de login (`/login`, `/admin/login`) ainda usam `<input type="password">` cru (não o `PasswordField` do ODS). A auditoria da Fase 7 (2026-06-17) confirmou que `/meu-perfil` **já** usa o `PasswordField` — a antiga pendência de duplicidade foi resolvida; resta apenas o contexto de autenticação.
 * **Skeleton interno de modal**: Resta um skeleton manual (`animate-pulse`) **dentro do modal** de `/ministerios` (aba de membros) — fora do escopo da Fase 6 (listagens); candidato a padronização futura de loading interno de modais.
 * **Lint pré-existente em páginas migradas**: `any` em handlers e `setState` síncrono em efeitos de `/agenda` e `/ministerios` — débito pré-existente, não introduzido pela Fase 6 (não tocado por respeitar o escopo).
 
