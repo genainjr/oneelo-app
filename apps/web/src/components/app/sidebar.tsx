@@ -9,6 +9,7 @@ import { AuthUser } from '@/types';
 import { getInitials, cn } from '@/lib/utils';
 import { locales, localeLabels, type Locale } from '@/i18n/config';
 import { FlagIcon } from '@/components/app/locale-flags';
+import { StatusBadge } from '@/components/app/status-badge';
 
 const ICONS = {
   dashboard: (
@@ -129,6 +130,9 @@ interface SidebarProps {
 
 // Roots where isActive must be an exact match (not startsWith)
 const EXACT_ROOTS = ['/dashboard', '/membros', '/ministerios', '/escalas', '/agenda', '/minhas-escalas', '/meu-perfil'];
+
+// Pill "Em breve" do menu — contraste legivel sobre o fundo indigo escuro
+const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-indigo-500/25 text-indigo-200';
 
 export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
@@ -466,9 +470,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                                   {child.icon}
                                   <span className="flex-1">{child.label}</span>
                                   {child.comingSoon && (
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-950 text-indigo-400 leading-none">
-                                      {t('comingSoon')}
-                                    </span>
+                                    <StatusBadge label={t('comingSoon')} className={SOON_BADGE_CLASS} />
                                   )}
                                 </Link>
                               </div>
@@ -499,9 +501,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                             {child.icon}
                             <span className="flex-1">{child.label}</span>
                             {child.comingSoon && (
-                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-900 text-indigo-400 leading-none">
-                                {t('comingSoon')}
-                              </span>
+                              <StatusBadge label={t('comingSoon')} className={SOON_BADGE_CLASS} />
                             )}
                           </Link>
                         </div>
@@ -536,9 +536,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   <>
                     <span className="flex-1 truncate">{item.label}</span>
                     {item.comingSoon && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-900 text-indigo-400 leading-none">
-                        {t('comingSoon')}
-                      </span>
+                      <StatusBadge label={t('comingSoon')} className={SOON_BADGE_CLASS} />
                     )}
                   </>
                 )}
