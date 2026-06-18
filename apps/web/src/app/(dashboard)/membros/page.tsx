@@ -9,6 +9,7 @@ import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
 import { InputField } from '@/components/app/form-field';
@@ -354,51 +355,36 @@ export default function MembrosPage() {
         }
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <label htmlFor="search-nome" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.nameLabel')}
-            </label>
-            <input
-              id="search-nome"
-              type="text"
-              value={filterState.nome}
-              onChange={(e) => setFilterField('nome', e.target.value)}
-              placeholder={t('filter.namePlaceholder')}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
-            />
-          </div>
+          <FilterInput
+            id="search-nome"
+            type="text"
+            label={t('filter.nameLabel')}
+            value={filterState.nome}
+            onChange={(e) => setFilterField('nome', e.target.value)}
+            placeholder={t('filter.namePlaceholder')}
+          />
 
-          <div className="space-y-1.5">
-            <label htmlFor="search-whatsapp" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.whatsappLabel')}
-            </label>
-            <input
-              id="search-whatsapp"
-              type="text"
-              value={filterState.whatsapp}
-              onChange={(e) => setFilterField('whatsapp', e.target.value)}
-              placeholder={t('filter.whatsappPlaceholder')}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
-            />
-          </div>
+          <FilterInput
+            id="search-whatsapp"
+            type="text"
+            label={t('filter.whatsappLabel')}
+            value={filterState.whatsapp}
+            onChange={(e) => setFilterField('whatsapp', e.target.value)}
+            placeholder={t('filter.whatsappPlaceholder')}
+          />
 
-          <div className="space-y-1.5">
-            <label htmlFor="search-status" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {t('filter.statusLabel')}
-            </label>
-            <select
-              id="search-status"
-              value={filterState.status}
-              onChange={(e) => setFilterField('status', e.target.value)}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400 focus:bg-white transition-all text-gray-700"
-            >
-              <option value="">{t('filter.allStatuses')}</option>
-              <option value="ATIVO">{t('status.ATIVO')}</option>
-              <option value="INATIVO">{t('status.INATIVO')}</option>
-              <option value="VISITANTE">{t('status.VISITANTE')}</option>
-              <option value="TRANSFERIDO">{t('status.TRANSFERIDO')}</option>
-            </select>
-          </div>
+          <FilterSelect
+            id="search-status"
+            label={t('filter.statusLabel')}
+            value={filterState.status}
+            onChange={(e) => setFilterField('status', e.target.value)}
+          >
+            <option value="">{t('filter.allStatuses')}</option>
+            <option value="ATIVO">{t('status.ATIVO')}</option>
+            <option value="INATIVO">{t('status.INATIVO')}</option>
+            <option value="VISITANTE">{t('status.VISITANTE')}</option>
+            <option value="TRANSFERIDO">{t('status.TRANSFERIDO')}</option>
+          </FilterSelect>
         </div>
 
         {/* Tags filter */}

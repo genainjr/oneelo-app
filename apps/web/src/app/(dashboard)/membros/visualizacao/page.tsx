@@ -6,6 +6,7 @@ import { MemberProfileDrawer } from '@/components/app/member-profile-drawer';
 import { DataTable, Column } from '@/components/app/data-table';
 import { EntityCard } from '@/components/app/entity-card';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
 import { useFilterState } from '@/hooks/use-filter-state';
@@ -162,40 +163,36 @@ export default function MembrosVisualizacaoPage() {
         }
       >
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-center">
-          <input
+          <FilterInput
             value={filterState.nome}
             onChange={(event) => setFilterField('nome', event.target.value)}
             placeholder="Buscar por nome"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           />
-          <select
+          <FilterSelect
             value={filterState.status}
             onChange={(event) => setFilterField('status', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os status</option>
             <option value="ATIVO">Ativo</option>
             <option value="INATIVO">Inativo</option>
             <option value="VISITANTE">Visitante</option>
             <option value="TRANSFERIDO">Transferido</option>
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
             value={filterState.ministerioId}
             onChange={(event) => setFilterField('ministerioId', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             <option value="">Todos os ministerios</option>
             {ministerios.map((ministerio) => (
               <option key={ministerio.id} value={ministerio.id}>{ministerio.nome}</option>
             ))}
-          </select>
-          <select
+          </FilterSelect>
+          <FilterSelect
             value={filterState.aniversarioMes}
             onChange={(event) => setFilterField('aniversarioMes', event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 bg-gray-50 focus:bg-white transition-all w-full"
           >
             {MESES.map((mes) => <option key={mes.value} value={mes.value}>{mes.label}</option>)}
-          </select>
+          </FilterSelect>
           <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors w-full cursor-pointer">
             <input
               type="checkbox"
