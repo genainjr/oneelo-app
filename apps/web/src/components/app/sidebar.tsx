@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
 import { api, HttpError } from '@/lib/api';
 import { AuthUser } from '@/types';
 import { getInitials, cn } from '@/lib/utils';
 import { locales, localeLabels, type Locale } from '@/i18n/config';
 import { FlagIcon } from '@/components/app/locale-flags';
+import { StatusBadge } from '@/components/app/status-badge';
 
 const ICONS = {
   dashboard: (
@@ -119,6 +120,8 @@ interface NavItem {
   adminOnly?: boolean;
   staffOnly?: boolean;
   children?: NavChild[];
+  /** Chave i18n (nav.*) do cabecalho de grupo exibido acima deste item. */
+  groupStart?: string;
 }
 
 interface SidebarProps {
@@ -129,6 +132,9 @@ interface SidebarProps {
 
 // Roots where isActive must be an exact match (not startsWith)
 const EXACT_ROOTS = ['/dashboard', '/membros', '/ministerios', '/escalas', '/agenda', '/minhas-escalas', '/meu-perfil'];
+
+// Pill "Em breve" do menu — contraste legivel sobre o fundo indigo escuro
+const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-indigo-500/25 text-indigo-200';
 
 export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
@@ -206,6 +212,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       label: t('members'),
       icon: ICONS.members,
       staffOnly: true,
+      groupStart: 'groupManagement',
       children: [
         { href: '/membros', label: t('manage'), icon: ICONS.manage },
         { href: '/membros/visualizacao', label: t('view'), icon: ICONS.view },
@@ -243,10 +250,10 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         { href: '/agenda/exportacao', label: t('export'), icon: ICONS.export },
       ],
     },
-    { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true },
+    { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupModules' },
     { href: '/financeiro', label: t('finance'), icon: ICONS.finance, comingSoon: true },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
-    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
+    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile, groupStart: 'groupAccount' },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 
@@ -377,15 +384,23 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             const sectionOpen = openSections[item.href] ?? true;
             const sectionActive = pathname.startsWith(item.href) && item.href !== '/dashboard';
 
+            const groupHeader = item.groupStart && !collapsed ? (
+              <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-500/80 select-none">
+                {t(item.groupStart as any)}
+              </p>
+            ) : null;
+
             if (hasChildren) {
               return (
-                <div key={item.href}>
+                <Fragment key={item.href}>
+                {groupHeader}
+                <div>
                   {!collapsed && (
                     <button
                       onClick={() => toggleSection(item.href)}
                       title={sectionOpen ? t('collapseModules') : t('expandModules')}
                       className={cn(
-                        'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                        'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                         sectionActive
                           ? 'text-white bg-indigo-900/60'
                           : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
@@ -423,7 +438,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                         }}
                         title={item.label}
                         className={cn(
-                          'flex items-center justify-center w-full px-0 py-2.5 rounded-xl text-sm font-medium transition-all',
+                          'flex items-center justify-center w-full px-0 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                           sectionActive || collapsedSectionOpen?.href === item.href
                             ? 'bg-indigo-500 text-white shadow-sm'
                             : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
@@ -457,7 +472,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                                     onClose();
                                   }}
                                   className={cn(
-                                    'flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors',
+                                    'flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                                     isActive(child.href)
                                       ? 'bg-indigo-800 text-white'
                                       : 'text-indigo-300 hover:bg-indigo-800 hover:text-white',
@@ -466,9 +481,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                                   {child.icon}
                                   <span className="flex-1">{child.label}</span>
                                   {child.comingSoon && (
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-950 text-indigo-400 leading-none">
-                                      {t('comingSoon')}
-                                    </span>
+                                    <StatusBadge label={t('comingSoon')} className={SOON_BADGE_CLASS} />
                                   )}
                                 </Link>
                               </div>
@@ -490,7 +503,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                             href={child.href}
                             onClick={onClose}
                             className={cn(
-                              'flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all',
+                              'flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                               isActive(child.href)
                                 ? 'bg-indigo-500 text-white shadow-sm'
                                 : 'text-indigo-500 hover:bg-indigo-900 hover:text-indigo-300',
@@ -499,9 +512,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                             {child.icon}
                             <span className="flex-1">{child.label}</span>
                             {child.comingSoon && (
-                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-900 text-indigo-400 leading-none">
-                                {t('comingSoon')}
-                              </span>
+                              <StatusBadge label={t('comingSoon')} className={SOON_BADGE_CLASS} />
                             )}
                           </Link>
                         </div>
@@ -509,12 +520,14 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                     </div>
                   )}
                 </div>
+                </Fragment>
               );
             }
 
             return (
+              <Fragment key={item.href}>
+              {groupHeader}
               <Link
-                key={item.href}
                 href={item.href}
                 onClick={() => {
                   setCollapsedSectionOpen(null);
@@ -522,7 +535,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 }}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl text-sm font-medium transition-all',
+                  'flex items-center gap-3 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
                   collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5',
                   active
                     ? 'bg-indigo-500 text-white shadow-sm'
@@ -536,13 +549,12 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   <>
                     <span className="flex-1 truncate">{item.label}</span>
                     {item.comingSoon && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-900 text-indigo-400 leading-none">
-                        {t('comingSoon')}
-                      </span>
+                      <StatusBadge label={t('comingSoon')} className={SOON_BADGE_CLASS} />
                     )}
                   </>
                 )}
               </Link>
+              </Fragment>
             );
           })}
         </nav>
