@@ -7,6 +7,7 @@ import { DataTable, Column } from '@/components/app/data-table';
 import { EntityCard } from '@/components/app/entity-card';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { StatCard } from '@/components/app/stat-card';
+import { StatusBadge } from '@/components/app/status-badge';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { useMembrosVisualizacao } from '@/hooks/use-membros-visualizacao';
 import { api } from '@/lib/api';
@@ -106,9 +107,10 @@ export default function MembrosVisualizacaoPage() {
       key: 'status',
       header: 'Status',
       render: (membro) => (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}>
-          {STATUS_MEMBRO_LABEL[membro.status]}
-        </span>
+        <StatusBadge
+          label={STATUS_MEMBRO_LABEL[membro.status]}
+          className={`font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}
+        />
       ),
     },
     {
@@ -223,9 +225,10 @@ export default function MembrosVisualizacaoPage() {
             title={membro.nome}
             subtitle={formatPhone(membro.whatsapp)}
             badge={
-              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}>
-                {STATUS_MEMBRO_LABEL[membro.status]}
-              </span>
+              <StatusBadge
+                label={STATUS_MEMBRO_LABEL[membro.status]}
+                className={`font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}
+              />
             }
             meta={
               (membro.ministerios || []).map((m) => m.ministerio?.nome).filter(Boolean).join(', ') || 'Sem ministério'

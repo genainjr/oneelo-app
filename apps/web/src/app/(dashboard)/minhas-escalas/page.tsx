@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { StatCard } from '@/components/app/stat-card';
+import { StatusBadge } from '@/components/app/status-badge';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
 import { Calendar, AlertTriangle, List } from 'lucide-react';
@@ -65,12 +66,14 @@ export default function MinhasEscalasPage() {
             {item.titulo && <p className="mt-0.5 text-sm text-gray-500">{item.titulo}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_ESCALA_COLOR[item.escala.status]}`}>
-              {STATUS_ESCALA_LABEL[item.escala.status]}
-            </span>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_CONFIRMACAO_COLOR[item.statusConfirmacao]}`}>
-              {STATUS_CONFIRMACAO_LABEL[item.statusConfirmacao]}
-            </span>
+            <StatusBadge
+              label={STATUS_ESCALA_LABEL[item.escala.status]}
+              className={`px-2.5 py-1 font-bold ${STATUS_ESCALA_COLOR[item.escala.status]}`}
+            />
+            <StatusBadge
+              label={STATUS_CONFIRMACAO_LABEL[item.statusConfirmacao]}
+              className={`px-2.5 py-1 font-bold ${STATUS_CONFIRMACAO_COLOR[item.statusConfirmacao]}`}
+            />
           </div>
         </div>
 

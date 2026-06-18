@@ -1,5 +1,6 @@
 import { Escala, EscalaDia, EscalaItem, MinisterioFuncao } from '@/types';
 import { STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL } from '@/lib/utils';
+import { StatusBadge } from './status-badge';
 
 export function getFuncoes(escala: Escala): MinisterioFuncao[] {
   return escala.ministerio?.funcoes || [];
@@ -27,9 +28,10 @@ export function MemberChip({ item }: { item: EscalaItem }) {
   return (
     <div className="rounded-lg border border-gray-100 bg-white px-2 py-1 shadow-xs">
       <p className="text-xs font-bold leading-tight text-gray-900">{item.membro?.nome || '-'}</p>
-      <span className={`mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-bold ${STATUS_CONFIRMACAO_COLOR[item.statusConfirmacao]}`}>
-        {STATUS_CONFIRMACAO_LABEL[item.statusConfirmacao]}
-      </span>
+      <StatusBadge
+        label={STATUS_CONFIRMACAO_LABEL[item.statusConfirmacao]}
+        className={`mt-1 px-1.5 py-0.5 text-[10px] font-bold ${STATUS_CONFIRMACAO_COLOR[item.statusConfirmacao]}`}
+      />
     </div>
   );
 }
