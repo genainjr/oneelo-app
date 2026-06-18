@@ -82,7 +82,10 @@
     "view": "View",
     "export": "Export",
     "groups": "Growth Groups",
-    "finance": "Financial"
+    "finance": "Financial",
+    "groupManagement": "Management",
+    "groupModules": "Modules",
+    "groupAccount": "Account"
   },
   "dashboard": {
     "greeting": "Hello{name}!",

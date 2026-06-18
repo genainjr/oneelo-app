@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
 import { api, HttpError } from '@/lib/api';
 import { AuthUser } from '@/types';
@@ -120,6 +120,8 @@ interface NavItem {
   adminOnly?: boolean;
   staffOnly?: boolean;
   children?: NavChild[];
+  /** Chave i18n (nav.*) do cabecalho de grupo exibido acima deste item. */
+  groupStart?: string;
 }
 
 interface SidebarProps {
@@ -210,6 +212,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       label: t('members'),
       icon: ICONS.members,
       staffOnly: true,
+      groupStart: 'groupManagement',
       children: [
         { href: '/membros', label: t('manage'), icon: ICONS.manage },
         { href: '/membros/visualizacao', label: t('view'), icon: ICONS.view },
@@ -247,10 +250,10 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         { href: '/agenda/exportacao', label: t('export'), icon: ICONS.export },
       ],
     },
-    { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true },
+    { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupModules' },
     { href: '/financeiro', label: t('finance'), icon: ICONS.finance, comingSoon: true },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
-    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
+    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile, groupStart: 'groupAccount' },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 
@@ -381,9 +384,17 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             const sectionOpen = openSections[item.href] ?? true;
             const sectionActive = pathname.startsWith(item.href) && item.href !== '/dashboard';
 
+            const groupHeader = item.groupStart && !collapsed ? (
+              <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-500/80 select-none">
+                {t(item.groupStart as any)}
+              </p>
+            ) : null;
+
             if (hasChildren) {
               return (
-                <div key={item.href}>
+                <Fragment key={item.href}>
+                {groupHeader}
+                <div>
                   {!collapsed && (
                     <button
                       onClick={() => toggleSection(item.href)}
@@ -509,12 +520,14 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                     </div>
                   )}
                 </div>
+                </Fragment>
               );
             }
 
             return (
+              <Fragment key={item.href}>
+              {groupHeader}
               <Link
-                key={item.href}
                 href={item.href}
                 onClick={() => {
                   setCollapsedSectionOpen(null);
@@ -541,6 +554,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   </>
                 )}
               </Link>
+              </Fragment>
             );
           })}
         </nav>
