@@ -6,6 +6,7 @@ import { MemberProfileDrawer } from '@/components/app/member-profile-drawer';
 import { DataTable, Column } from '@/components/app/data-table';
 import { EntityCard } from '@/components/app/entity-card';
 import { ContactCell } from '@/components/app/contact-cell';
+import { InitialsAvatar } from '@/components/app/initials-avatar';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatCard } from '@/components/app/stat-card';
@@ -98,9 +99,12 @@ export default function MembrosVisualizacaoPage() {
       key: 'nome',
       header: 'Nome',
       render: (membro) => (
-        <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
-          {membro.nome}
-        </button>
+        <div className="flex items-center gap-3">
+          <InitialsAvatar name={membro.nome} />
+          <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
+            {membro.nome}
+          </button>
+        </div>
       ),
     },
     {
@@ -119,6 +123,11 @@ export default function MembrosVisualizacaoPage() {
       ),
     },
     {
+      key: 'nascimento',
+      header: 'Nascimento',
+      render: (membro) => <span className="text-gray-600">{formatDate(membro.dataNascimento)}</span>,
+    },
+    {
       key: 'ministerios',
       header: 'Ministérios',
       render: (membro) => (
@@ -132,11 +141,6 @@ export default function MembrosVisualizacaoPage() {
           {(membro.ministerios || []).length === 0 && <span className="text-xs text-gray-300">-</span>}
         </div>
       ),
-    },
-    {
-      key: 'nascimento',
-      header: 'Nascimento',
-      render: (membro) => <span className="text-gray-600">{formatDate(membro.dataNascimento)}</span>,
     },
   ];
 

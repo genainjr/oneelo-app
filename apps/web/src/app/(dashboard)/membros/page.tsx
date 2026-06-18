@@ -17,6 +17,7 @@ import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
 import { EntityCard } from '@/components/app/entity-card';
 import { ContactCell } from '@/components/app/contact-cell';
+import { InitialsAvatar } from '@/components/app/initials-avatar';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
@@ -193,9 +194,7 @@ export default function MembrosPage() {
       className: 'font-medium text-gray-900',
       render: (m) => (
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
-            {m.nome.substring(0, 2)}
-          </div>
+          <InitialsAvatar name={m.nome} />
           <span className="font-bold text-gray-900 hover:text-indigo-600 cursor-pointer" onClick={() => { setEditingMembro(m); setIsModalOpen(true); }}>
             {m.nome}
           </span>
@@ -218,6 +217,13 @@ export default function MembrosPage() {
       ),
     },
     {
+      key: 'dataNascimento',
+      header: t('columns.birthDate'),
+      render: (m) => (
+        <span className="text-gray-600">{formatDate(m.dataNascimento)}</span>
+      ),
+    },
+    {
       key: 'tags',
       header: t('columns.tags'),
       render: (m) => (
@@ -232,13 +238,6 @@ export default function MembrosPage() {
             <span className="text-xs text-gray-300">-</span>
           )}
         </div>
-      ),
-    },
-    {
-      key: 'dataNascimento',
-      header: t('columns.birthDate'),
-      render: (m) => (
-        <span className="text-gray-600">{formatDate(m.dataNascimento)}</span>
       ),
     },
     {
