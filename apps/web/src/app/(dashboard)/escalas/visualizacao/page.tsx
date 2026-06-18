@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/app/empty-state';
 import { EscalaReadonlyGrid } from '@/components/app/escala-readonly-grid';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { StatCard } from '@/components/app/stat-card';
+import { StatusBadge } from '@/components/app/status-badge';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
@@ -187,9 +188,10 @@ export default function EscalasVisualizacaoPage() {
                     {escala.observacoes && <p className="mt-1 text-sm text-gray-500">{escala.observacoes}</p>}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_ESCALA_COLOR[escala.status]}`}>
-                      {STATUS_ESCALA_LABEL[escala.status]}
-                    </span>
+                    <StatusBadge
+                      label={STATUS_ESCALA_LABEL[escala.status]}
+                      className={`px-2.5 py-1 font-bold ${STATUS_ESCALA_COLOR[escala.status]}`}
+                    />
                     <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
                       {participacoes} participacoes
                     </span>

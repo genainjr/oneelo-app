@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { PasswordField } from '@/components/app/form-field';
 import { InfoItem } from '@/components/app/info-item';
+import { StatusBadge } from '@/components/app/status-badge';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { AuthUser } from '@/types';
@@ -158,9 +159,10 @@ export default function MeuPerfilPage() {
                   <h2 className="text-base font-bold text-gray-900">Cadastro de membro</h2>
                   <p className="text-sm text-gray-500">Dados vinculados ao seu usuario.</p>
                 </div>
-                <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${STATUS_MEMBRO_COLOR[user.membro.status]}`}>
-                  {STATUS_MEMBRO_LABEL[user.membro.status]}
-                </span>
+                <StatusBadge
+                  label={STATUS_MEMBRO_LABEL[user.membro.status]}
+                  className={`rounded-lg px-2.5 py-1 font-bold ${STATUS_MEMBRO_COLOR[user.membro.status]}`}
+                />
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">

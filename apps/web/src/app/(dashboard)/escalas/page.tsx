@@ -12,6 +12,7 @@ import { SelectField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
 import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, MinisterioMembro, AuthUser } from '@/types';
 import { getItens, isFuncaoOculta } from '@/components/app/escala-shared';
+import { StatusBadge } from '@/components/app/status-badge';
 
 const STATUS_COLORS: Record<string, string> = {
   RASCUNHO: 'bg-gray-100 text-gray-600 border-gray-200',
@@ -769,9 +770,10 @@ export default function EscalasPage() {
                     <p className="font-bold text-gray-800 text-sm">{e.ministerio?.nome || '—'}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{t(`months.${e.mes}` as any)} / {e.ano}</p>
                   </div>
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLORS[e.status]}`}>
-                    {STATUS_LABELS[e.status]}
-                  </span>
+                  <StatusBadge
+                    label={STATUS_LABELS[e.status]}
+                    className={`text-[11px] border ${STATUS_COLORS[e.status]}`}
+                  />
                 </div>
                 <div className="mt-2 text-xs text-gray-400">
                   {e._count?.dias ?? 0} {e._count?.dias === 1 ? 'dia' : 'dias'} cadastrado{e._count?.dias === 1 ? '' : 's'}
@@ -810,9 +812,10 @@ export default function EscalasPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_COLORS[detailedEscala.status]}`}>
-                    {STATUS_LABELS[detailedEscala.status]}
-                  </span>
+                  <StatusBadge
+                    label={STATUS_LABELS[detailedEscala.status]}
+                    className={`px-2.5 py-1 font-bold border ${STATUS_COLORS[detailedEscala.status]}`}
+                  />
                   {canManageSelectedEscala && (
                     <>
                       {detailedEscala.status === 'RASCUNHO' && (
