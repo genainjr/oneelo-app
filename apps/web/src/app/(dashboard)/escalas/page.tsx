@@ -296,7 +296,26 @@ export default function EscalasPage() {
         </div>
       )}
 
-      {/* Dialog: Escala com IA — Em breve */}
+      <PageHeader
+        title={t('title')}
+        description={t('description')}
+        stackActionsOnMobile
+        action={
+          canCreateEscala ? (
+            <button
+              id="btn-nova-escala"
+              onClick={() => setIsCreateOpen(true)}
+              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              {t('new')}
+            </button>
+          ) : undefined
+        }
+      />
+
       <ModalShell
         isOpen={aiToastOpen}
         title={t('ai.title')}
@@ -331,41 +350,23 @@ export default function EscalasPage() {
         />
       </ModalShell>
 
-      <PageHeader
-        title={t('title')}
-        description={t('description')}
-        action={
-          canCreateEscala ? (
-            <div className="flex items-center gap-2">
-              <button
-                title={t('aiComingSoon')}
-                onClick={() => setAiToastOpen(true)}
-                className="px-4 py-2 border border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-semibold rounded-xl text-sm flex items-center gap-2 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                {t('generateAI')}
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-500 leading-none">
-                  {t('aiComingSoon')}
-                </span>
-              </button>
-              <button
-                id="btn-nova-escala"
-                onClick={() => setIsCreateOpen(true)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm text-sm flex items-center gap-2 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                {t('new')}
-              </button>
-            </div>
-          ) : undefined
-        }
-      />
+      <div className="mb-6 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setAiToastOpen(true)}
+          title={t('ai.badge')}
+          className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          {t('generateAI')}
+          <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+            {t('aiComingSoon')}
+          </span>
+        </button>
+      </div>
 
-      {/* ─── Filters ─────────────────────────────────────────────────────── */}
       <FilterShell
         className="mb-6"
         onSubmit={handleFilterSubmit}
