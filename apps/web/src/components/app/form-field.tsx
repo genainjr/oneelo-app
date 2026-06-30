@@ -13,6 +13,7 @@ interface FieldWrapperProps {
   required?: boolean;
   optionalLabel?: string;
   error?: string | null;
+  hideLabel?: boolean;
   children: React.ReactNode;
 }
 
@@ -22,11 +23,18 @@ function FieldWrapper({
   required = false,
   optionalLabel,
   error,
+  hideLabel = false,
   children,
 }: FieldWrapperProps) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+      <label
+        htmlFor={id}
+        className={cn(
+          'text-xs font-semibold text-gray-700 uppercase tracking-wider',
+          hideLabel && 'sr-only',
+        )}
+      >
         {label}
         {required && ' *'}
         {optionalLabel && (
@@ -45,19 +53,21 @@ type InputFieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string | null;
   optionalLabel?: string;
+  hideLabel?: boolean;
 };
 
 export function InputField({
   label,
   error,
   optionalLabel,
+  hideLabel,
   className,
   required,
   id,
   ...props
 }: InputFieldProps) {
   return (
-    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error}>
+    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error} hideLabel={hideLabel}>
       <input
         id={id}
         required={required}
@@ -72,6 +82,7 @@ type SelectFieldProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
   error?: string | null;
   optionalLabel?: string;
+  hideLabel?: boolean;
   children: React.ReactNode;
 };
 
@@ -79,6 +90,7 @@ export function SelectField({
   label,
   error,
   optionalLabel,
+  hideLabel,
   className,
   required,
   id,
@@ -86,7 +98,7 @@ export function SelectField({
   ...props
 }: SelectFieldProps) {
   return (
-    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error}>
+    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error} hideLabel={hideLabel}>
       <select
         id={id}
         required={required}
@@ -103,19 +115,21 @@ type TextareaFieldProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
   error?: string | null;
   optionalLabel?: string;
+  hideLabel?: boolean;
 };
 
 export function TextareaField({
   label,
   error,
   optionalLabel,
+  hideLabel,
   className,
   required,
   id,
   ...props
 }: TextareaFieldProps) {
   return (
-    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error}>
+    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error} hideLabel={hideLabel}>
       <textarea
         id={id}
         required={required}
@@ -130,12 +144,14 @@ type PasswordFieldProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'typ
   label: string;
   error?: string | null;
   optionalLabel?: string;
+  hideLabel?: boolean;
 };
 
 export function PasswordField({
   label,
   error,
   optionalLabel,
+  hideLabel,
   className,
   required,
   id,
@@ -144,7 +160,7 @@ export function PasswordField({
   const [visible, setVisible] = useState(false);
 
   return (
-    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error}>
+    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error} hideLabel={hideLabel}>
       <div className="relative">
         <input
           id={id}

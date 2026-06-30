@@ -2,12 +2,26 @@ import { Escala, EscalaDia, EscalaItem, MinisterioFuncao } from '@/types';
 import { STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL } from '@/lib/utils';
 import { StatusBadge } from './status-badge';
 
+type OrderedEscalaDia = EscalaDia & { ordem?: number };
+
+export const MONTH_KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+export const WEEKDAY_KEYS = [
+  { key: '0', value: 0 },
+  { key: '1', value: 1 },
+  { key: '2', value: 2 },
+  { key: '3', value: 3 },
+  { key: '4', value: 4 },
+  { key: '5', value: 5 },
+  { key: '6', value: 6 },
+] as const;
+
 export function getFuncoes(escala: Escala): MinisterioFuncao[] {
   return escala.ministerio?.funcoes || [];
 }
 
 export function getDias(escala: Escala): EscalaDia[] {
-  return (escala.dias || []).slice().sort((a: any, b: any) => {
+  return (escala.dias || []).slice().sort((a: OrderedEscalaDia, b: OrderedEscalaDia) => {
     const ordemDiff = (a.ordem ?? 0) - (b.ordem ?? 0);
     if (ordemDiff !== 0) return ordemDiff;
     return new Date(a.data).getTime() - new Date(b.data).getTime();

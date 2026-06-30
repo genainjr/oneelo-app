@@ -4,348 +4,29 @@ import React, { useState, useEffect } from 'react';
 import { useEscalas } from '@/hooks/use-escalas';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
-import { Skeleton, SkeletonList } from '@/components/app/skeleton';
+import { Skeleton } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
-import { FilterShell } from '@/components/app/filter-shell';
+import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
-import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
+import { ModalShell, ModalFooter, ModalError } from '@/components/app/modal-shell';
 import { SelectField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
-import { Escala, EscalaDia, EscalaItem, Ministerio, MinisterioFuncao, MinisterioMembro, AuthUser } from '@/types';
-import { getItens, isFuncaoOculta } from '@/components/app/escala-shared';
+import { Escala, EscalaItem, Ministerio, MinisterioMembro, AuthUser, StatusEscala } from '@/types';
+import { MONTH_KEYS, WEEKDAY_KEYS } from '@/components/app/escala-shared';
 import { StatusBadge } from '@/components/app/status-badge';
+import { EscalaGrid } from '@/components/app/escala-grid';
+import { STATUS_ESCALA_COLOR } from '@/lib/utils';
 
-const STATUS_COLORS: Record<string, string> = {
-  RASCUNHO: 'bg-gray-100 text-gray-600 border-gray-200',
-  PUBLICADA: 'bg-green-50 text-green-700 border-green-200',
-  ENCERRADA: 'bg-red-50 text-red-700 border-red-200',
-};
-
-const CONFIRMACAO_COLORS: Record<string, string> = {
-  PENDENTE: 'text-amber-600',
-  CONFIRMADO: 'text-green-600',
-  RECUSADO: 'text-red-500',
-};
-
-function formatDayDate(dateStr: string) {
-  const d = new Date(dateStr);
-  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  return { dayName: days[d.getUTCDay()], day: d.getUTCDate() };
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
-
-// ─── Grade Mensal ─────────────────────────────────────────────────────────────
-
-interface EscalaGridProps {
-  escala: Escala;
-  funcoes: MinisterioFuncao[];
-  ministryMembers: MinisterioMembro[];
-  canManage: boolean;
-  onAddMembro: (diaId: string, membroId: string, funcaoId: string) => Promise<void>;
-  onRemoveMembro: (itemId: string) => Promise<void>;
-  onAddDia: (data: string, titulo?: string) => Promise<void>;
-  onRemoveDia: (diaId: string) => Promise<void>;
-  onReorderDias: (diaIds: string[]) => Promise<void>;
-  onToggleCelula: (diaId: string, funcaoId: string, ocultar: boolean) => void;
-  tGrid: ReturnType<typeof useTranslations>;
-}
-
-function EscalaGrid({ escala, funcoes, ministryMembers, canManage, onAddMembro, onRemoveMembro, onAddDia, onRemoveDia, onReorderDias, onToggleCelula, tGrid }: EscalaGridProps) {
-  const [addingDia, setAddingDia] = useState(false);
-  const [newDiaDate, setNewDiaDate] = useState('');
-  const [newDiaTitulo, setNewDiaTitulo] = useState('');
-  const [savingDia, setSavingDia] = useState(false);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const dragIdRef = React.useRef<string | null>(null);
-
-  const [dias, setDias] = useState<EscalaDia[]>([]);
-  React.useEffect(() => {
-    setDias((escala.dias || []).slice().sort((a: any, b: any) => (a.ordem ?? 0) - (b.ordem ?? 0)));
-  }, [escala.dias]);
-
-  if (funcoes.length === 0) {
-    return (
-      <div className="text-center py-12 text-sm text-gray-400">
-        <p className="font-medium">{tGrid('noFunctions')}</p>
-        <p className="text-xs mt-1">{tGrid('noFunctionsDesc')}</p>
-      </div>
-    );
-  }
-
-  async function handleSaveDia() {
-    if (!newDiaDate) return;
-    setSavingDia(true);
-    try {
-      await onAddDia(newDiaDate, newDiaTitulo || undefined);
-      setAddingDia(false);
-      setNewDiaDate('');
-      setNewDiaTitulo('');
-    } finally {
-      setSavingDia(false);
-    }
-  }
-
-
-
-  return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
-      <table className="min-w-full text-sm">
-        <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-28 border-r border-gray-200">
-              {tGrid('date')}
-            </th>
-            {funcoes.map((f) => (
-              <th key={f.id} className="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap min-w-[160px]">
-                {f.nome}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {dias.length === 0 ? (
-            <tr>
-              <td colSpan={funcoes.length + 1} className="text-center py-10 text-sm text-gray-400">
-                {tGrid('noDays')}
-              </td>
-            </tr>
-          ) : (
-            dias.map((dia) => {
-              const { dayName, day } = formatDayDate(dia.data);
-              const isDragOver = dragOverId === dia.id;
-              const canDrag = canManage && escala.status === 'RASCUNHO';
-              return (
-                <tr
-                  key={dia.id}
-                  draggable={canDrag}
-                  onDragStart={canDrag ? () => { dragIdRef.current = dia.id; } : undefined}
-                  onDragOver={canDrag ? (e) => { e.preventDefault(); setDragOverId(dia.id); } : undefined}
-                  onDragLeave={canDrag ? () => setDragOverId(null) : undefined}
-                  onDrop={canDrag ? async () => {
-                    setDragOverId(null);
-                    const fromId = dragIdRef.current;
-                    dragIdRef.current = null;
-                    if (!fromId || fromId === dia.id) return;
-                    const newOrder = dias.map(d => d.id);
-                    const fromIdx = newOrder.indexOf(fromId);
-                    const toIdx = newOrder.indexOf(dia.id);
-                    newOrder.splice(fromIdx, 1);
-                    newOrder.splice(toIdx, 0, fromId);
-                    setDias(dias.slice().sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id)));
-                    await onReorderDias(newOrder);
-                  } : undefined}
-                  className={`hover:bg-gray-50/60 transition-colors group ${isDragOver ? 'border-t-2 border-indigo-400' : ''}`}
-                >
-                  <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50/60 px-4 py-3 border-r border-gray-100">
-                    <div className="flex items-start justify-between gap-1">
-                      <div className="flex items-start gap-1.5">
-                        {canDrag && (
-                          <span className="mt-1 cursor-grab text-gray-300 hover:text-gray-400 shrink-0" title={tGrid('dragHandle')}>
-                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                              <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
-                              <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-                              <circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
-                            </svg>
-                          </span>
-                        )}
-                        <div>
-                          <div className="text-xs font-bold text-indigo-600">{dayName}</div>
-                          <div className="text-lg font-extrabold text-gray-800 leading-none">{day}</div>
-                          {dia.titulo && <div className="text-[11px] text-gray-400 mt-0.5 leading-tight">{dia.titulo}</div>}
-                        </div>
-                      </div>
-                      {canManage && (
-                        <button
-                          onClick={() => onRemoveDia(dia.id)}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-300 hover:text-red-400 transition-all"
-                          title={tGrid('removeDay')}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  {funcoes.map((funcao) => {
-                    const cellItems = getItens(dia, funcao.id);
-                    const dayAssignedMemberIds = (dia.itens || []).map((item) => item.membroId);
-                    const isOculta = isFuncaoOculta(dia, funcao.id);
-                    return (
-                      <td key={funcao.id} className="px-3 py-2 align-top">
-                        {isOculta ? (
-                          <div className="flex items-center gap-1.5 h-8">
-                            <span className="text-gray-300 font-bold">—</span>
-                            {canManage && (
-                              <button
-                                onClick={() => onToggleCelula(dia.id, funcao.id, false)}
-                                title={`Mostrar ${funcao.nome} neste dia`}
-                                className="text-gray-300 hover:text-indigo-500 transition-colors"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="space-y-1 min-h-[2rem] relative group/cell">
-                            {canManage && escala.status !== 'ENCERRADA' && (
-                              <button
-                                onClick={() => onToggleCelula(dia.id, funcao.id, true)}
-                                title={`Ocultar ${funcao.nome} neste dia`}
-                                className="absolute top-0 right-0 opacity-0 group-hover/cell:opacity-100 p-0.5 text-gray-300 hover:text-red-400 transition-all"
-                              >
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            )}
-                            {cellItems.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center justify-between gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 group/item"
-                              >
-                                <span className={`text-xs font-semibold truncate ${CONFIRMACAO_COLORS[item.statusConfirmacao]}`}>
-                                  {item.membro?.nome || '—'}
-                                </span>
-                                {canManage && (
-                                  <button
-                                    onClick={() => onRemoveMembro(item.id)}
-                                    className="opacity-0 group-hover/item:opacity-100 p-0.5 text-indigo-300 hover:text-red-400 transition-all shrink-0"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            {canManage && escala.status !== 'ENCERRADA' && (
-                              <CellMemberSelect
-                                diaId={dia.id}
-                                funcaoId={funcao.id}
-                                membros={ministryMembers}
-                                alreadyAssigned={dayAssignedMemberIds}
-                                onAdd={onAddMembro}
-                                addMemberLabel={tGrid('addMember')}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-
-      {canManage && escala.status !== 'ENCERRADA' && (
-        <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/40">
-          {addingDia ? (
-            <div className="flex items-center gap-3 flex-wrap">
-              <input
-                type="date"
-                value={newDiaDate}
-                onChange={(e) => setNewDiaDate(e.target.value)}
-                className="px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
-              />
-              <input
-                type="text"
-                value={newDiaTitulo}
-                onChange={(e) => setNewDiaTitulo(e.target.value)}
-                placeholder={tGrid('addDayTitlePlaceholder')}
-                className="flex-1 min-w-[180px] px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-400"
-              />
-              <button
-                onClick={handleSaveDia}
-                disabled={!newDiaDate || savingDia}
-                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all"
-              >
-                {tGrid('addDay')}
-              </button>
-              <button onClick={() => setAddingDia(false)} className="text-sm text-gray-400 hover:text-gray-600">
-                Cancelar
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingDia(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              {tGrid('addDay')}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Cell Select Inline ───────────────────────────────────────────────────────
-
-interface CellMemberSelectProps {
-  diaId: string;
-  funcaoId: string;
-  membros: MinisterioMembro[];
-  alreadyAssigned: string[];
-  onAdd: (diaId: string, membroId: string, funcaoId: string) => Promise<void>;
-  addMemberLabel: string;
-}
-
-function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd, addMemberLabel }: CellMemberSelectProps) {
-  const [value, setValue] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const options = membros
-    .filter((mm) => {
-      if (alreadyAssigned.includes(mm.membroId)) return false;
-      if (!mm.funcoesDisponiveis?.length) return true;
-      return mm.funcoesDisponiveis.some((fd) => fd.funcaoId === funcaoId);
-    })
-    .sort((a, b) => (a.membro?.nome ?? '').localeCompare(b.membro?.nome ?? '', 'pt-BR'));
-
-  async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const membroId = e.target.value;
-    if (!membroId) return;
-    setSaving(true);
-    try {
-      await onAdd(diaId, membroId, funcaoId);
-      setValue('');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (options.length === 0) return null;
-
-  return (
-    <select
-      value={value}
-      onChange={handleChange}
-      disabled={saving}
-      className="w-full text-xs border border-dashed border-gray-200 bg-transparent rounded-lg px-2 py-1 text-gray-400 hover:border-indigo-300 focus:outline-none focus:border-indigo-400 disabled:opacity-50 cursor-pointer transition-all"
-    >
-      <option value="">{addMemberLabel}</option>
-      {options.map((mm) => (
-        <option key={mm.membroId} value={mm.membroId}>{mm.membro?.nome}</option>
-      ))}
-    </select>
-  );
-}
-
-// ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function EscalasPage() {
   const t = useTranslations('schedules');
   const tGrid = useTranslations('schedules.grid');
+  const hoje = new Date();
 
   const {
     escalas,
@@ -362,7 +43,10 @@ export default function EscalasPage() {
     addMembroItem,
     removeMembroItem,
     toggleCelula,
-  } = useEscalas();
+  } = useEscalas({
+    mes: String(hoje.getMonth() + 1),
+    ano: String(hoje.getFullYear()),
+  });
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
@@ -371,10 +55,11 @@ export default function EscalasPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [ministryMembers, setMinistryMembers] = useState<MinisterioMembro[]>([]);
 
-  const hoje = new Date();
   const {
     formState: filterState,
     setField: setFilterField,
+    handleClear: handleClearFilters,
+    handleSubmit: handleFilterSubmit,
   } = useFilterState({
     initialState: {
       mes: String(hoje.getMonth() + 1),
@@ -397,6 +82,7 @@ export default function EscalasPage() {
   const [newObs, setNewObs] = useState('');
   const [newDiasSemana, setNewDiasSemana] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [aiToastOpen, setAiToastOpen] = useState(false);
@@ -417,14 +103,6 @@ export default function EscalasPage() {
     api.get<Ministerio[]>('/api/ministerios').then(d => setMinisterios(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    applyFilter({
-      mes: filterState.mes,
-      ano: filterState.ano,
-      ministerioId: filterState.ministerioId || undefined,
-    });
-  }, [filterState.mes, filterState.ano, filterState.ministerioId]);
-
   async function fetchDetail(escala: Escala) {
     setLoadingDetail(true);
     setDetailedEscala(null);
@@ -433,7 +111,7 @@ export default function EscalasPage() {
       const data = await api.get<Escala>(`/api/escalas/${escala.id}`);
       setDetailedEscala(data);
       if (data.ministerioId) {
-        const min = await api.get<any>(`/api/ministerios/${data.ministerioId}`);
+        const min = await api.get<Ministerio>(`/api/ministerios/${data.ministerioId}`);
         setMinistryMembers(min.membros || []);
       }
     } catch {
@@ -457,6 +135,7 @@ export default function EscalasPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!newMinId) return;
+    setCreateError('');
     setCreating(true);
     try {
       const created = await createEscala({
@@ -470,30 +149,33 @@ export default function EscalasPage() {
       setNewMinId('');
       setNewObs('');
       setNewDiasSemana([]);
+      setCreateError('');
       showToast('Escala mensal criada com sucesso!');
       fetchDetail(created);
-    } catch (err: any) {
-      showToast(err.message || 'Erro ao criar escala.', 'error');
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Erro ao criar escala.');
+      setCreateError(message);
+      showToast(message, 'error');
     } finally {
       setCreating(false);
     }
   }
 
-  async function handleUpdateStatus(status: string) {
+  async function handleUpdateStatus(status: StatusEscala) {
     if (!selectedEscala) return;
     try {
-      await updateEscala(selectedEscala.id, { status: status as any });
+      await updateEscala(selectedEscala.id, { status });
       await refreshDetail();
       refetch();
       showToast('Status atualizado!');
-    } catch (err: any) {
-      showToast(err.message || 'Erro ao atualizar status.', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err, 'Erro ao atualizar status.'), 'error');
     }
   }
 
   async function handleDelete() {
     if (!selectedEscala) return;
-    const mesNome = t(`months.${selectedEscala.mes}` as any);
+    const mesNome = t(`months.${selectedEscala.mes}` as never);
     setPendingConfirmAction({
       type: 'deleteEscala',
       label: t('deleteConfirm', { month: mesNome, year: selectedEscala.ano }),
@@ -514,8 +196,8 @@ export default function EscalasPage() {
         await refreshDetail();
       }
       setPendingConfirmAction(null);
-    } catch (err: any) {
-      showToast(err.message || 'Erro ao executar ação.', 'error');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err, 'Erro ao executar ação.'), 'error');
     } finally {
       setConfirmLoading(false);
     }
@@ -590,19 +272,7 @@ export default function EscalasPage() {
     (currentUser?.role === 'BASIC' &&
       !!detailedEscala?.ministerioId &&
       ledMinisterioIds.has(detailedEscala.ministerioId));
-  const funcoes = detailedEscala?.ministerio?.funcoes || [];
   const anos = Array.from({ length: 4 }, (_, i) => hoje.getFullYear() - 1 + i);
-
-  const MESES_KEYS = [1,2,3,4,5,6,7,8,9,10,11,12] as const;
-  const DIAS_SEMANA = [
-    { key: '0', value: 0 },
-    { key: '1', value: 1 },
-    { key: '2', value: 2 },
-    { key: '3', value: 3 },
-    { key: '4', value: 4 },
-    { key: '5', value: 5 },
-    { key: '6', value: 6 },
-  ];
 
   const STATUS_LABELS: Record<string, string> = {
     RASCUNHO: t('status.RASCUNHO'),
@@ -696,7 +366,19 @@ export default function EscalasPage() {
       />
 
       {/* ─── Filters ─────────────────────────────────────────────────────── */}
-      <FilterShell className="mb-6">
+      <FilterShell
+        className="mb-6"
+        onSubmit={handleFilterSubmit}
+        actions={
+          <FilterActions
+            submitLabel="Filtrar"
+            clearLabel="Limpar"
+            reloadLabel="Recarregar"
+            onClear={() => handleClearFilters()}
+            onReload={refetch}
+          />
+        }
+      >
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-end">
           <FilterSelect
             id="filter-mes"
@@ -704,7 +386,7 @@ export default function EscalasPage() {
             value={filterState.mes}
             onChange={(e) => setFilterField('mes', e.target.value)}
           >
-            {MESES_KEYS.map((m) => <option key={m} value={String(m)}>{t(`months.${m}`)}</option>)}
+            {MONTH_KEYS.map((m) => <option key={m} value={String(m)}>{t(`months.${m}`)}</option>)}
           </FilterSelect>
           <FilterSelect
             id="filter-ano"
@@ -733,27 +415,31 @@ export default function EscalasPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ─── Lista de Escalas ─────────────────────────────────────────────── */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-1">
-            {t(`months.${parseInt(filterState.mes)}` as any)} / {filterState.ano}
-          </h2>
+      {/* ─── Seletor de escalas (faixa horizontal) ─────────────────────────── */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-1">
+          {t(`months.${parseInt(filterState.mes)}` as never)} / {filterState.ano}
+        </h2>
 
-          {loading ? (
-            <SkeletonList count={3} className="h-20 rounded-2xl" />
-          ) : escalas.length === 0 ? (
-            <EmptyState
-              title={t('noSchedules')}
-              description={canCreateEscala ? t('noSchedulesDesc') : undefined}
-            />
-          ) : (
-            escalas.map((e) => (
+        {loading ? (
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[88px] w-56 shrink-0 rounded-2xl" />
+            ))}
+          </div>
+        ) : escalas.length === 0 ? (
+          <EmptyState
+            title={t('noSchedules')}
+            description={canCreateEscala ? t('noSchedulesDesc') : undefined}
+          />
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {escalas.map((e) => (
               <button
                 key={e.id}
                 id={`escala-card-${e.id}`}
                 onClick={() => fetchDetail(e)}
-                className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                className={`shrink-0 w-56 text-left p-4 rounded-2xl border transition-all ${
                   selectedEscala?.id === e.id
                     ? 'border-indigo-300 bg-indigo-50 shadow-sm'
                     : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'
@@ -762,23 +448,24 @@ export default function EscalasPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-bold text-gray-800 text-sm">{e.ministerio?.nome || '—'}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{t(`months.${e.mes}` as any)} / {e.ano}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t(`months.${e.mes}` as never)} / {e.ano}</p>
                   </div>
                   <StatusBadge
                     label={STATUS_LABELS[e.status]}
-                    className={`text-[11px] border ${STATUS_COLORS[e.status]}`}
+                    className={`text-[11px] border ${STATUS_ESCALA_COLOR[e.status]}`}
                   />
                 </div>
                 <div className="mt-2 text-xs text-gray-400">
                   {e._count?.dias ?? 0} {e._count?.dias === 1 ? 'dia' : 'dias'} cadastrado{e._count?.dias === 1 ? '' : 's'}
                 </div>
               </button>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* ─── Grade da Escala ──────────────────────────────────────────────── */}
-        <div className="lg:col-span-2">
+      {/* ─── Grade da Escala (largura total) ───────────────────────────────── */}
+      <div>
           {!selectedEscala ? (
             <div className="flex items-center justify-center h-full min-h-[300px] bg-gray-50 rounded-2xl border border-dashed border-gray-200">
               <div className="text-center text-sm text-gray-400 space-y-1">
@@ -799,7 +486,7 @@ export default function EscalasPage() {
               <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-xs flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <h2 className="text-base font-bold text-gray-800">
-                    {detailedEscala.ministerio?.nome} — {t(`months.${detailedEscala.mes}` as any)} {detailedEscala.ano}
+                    {detailedEscala.ministerio?.nome} — {t(`months.${detailedEscala.mes}` as never)} {detailedEscala.ano}
                   </h2>
                   {detailedEscala.observacoes && (
                     <p className="text-xs text-gray-500 mt-0.5">{detailedEscala.observacoes}</p>
@@ -808,7 +495,7 @@ export default function EscalasPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <StatusBadge
                     label={STATUS_LABELS[detailedEscala.status]}
-                    className={`px-2.5 py-1 font-bold border ${STATUS_COLORS[detailedEscala.status]}`}
+                    className={`px-2.5 py-1 font-bold border ${STATUS_ESCALA_COLOR[detailedEscala.status]}`}
                   />
                   {canManageSelectedEscala && (
                     <>
@@ -842,7 +529,6 @@ export default function EscalasPage() {
 
               <EscalaGrid
                 escala={detailedEscala}
-                funcoes={funcoes}
                 ministryMembers={ministryMembers}
                 canManage={canManageSelectedEscala}
                 tGrid={tGrid}
@@ -851,8 +537,8 @@ export default function EscalasPage() {
                   try {
                     const item = await addMembroItem(diaId, membroId, funcaoId);
                     appendEscalaItem(diaId, item);
-                  } catch (err: any) {
-                    showToast(err.message || 'Erro ao adicionar membro na escala.', 'error');
+                  } catch (err: unknown) {
+                    showToast(getErrorMessage(err, 'Erro ao adicionar membro na escala.'), 'error');
                     throw err;
                   }
                 }}
@@ -860,8 +546,8 @@ export default function EscalasPage() {
                   try {
                     await removeMembroItem(itemId);
                     removeEscalaItem(itemId);
-                  } catch (err: any) {
-                    showToast(err.message || 'Erro ao remover membro da escala.', 'error');
+                  } catch (err: unknown) {
+                    showToast(getErrorMessage(err, 'Erro ao remover membro da escala.'), 'error');
                     throw err;
                   }
                 }}
@@ -882,18 +568,22 @@ export default function EscalasPage() {
               />
             </div>
           ) : null}
-        </div>
       </div>
 
       {/* ─── Modal Criar Escala ───────────────────────────────────────────────── */}
       <ModalShell
         isOpen={isCreateOpen}
         title={t('modal.title')}
-        onClose={() => setIsCreateOpen(false)}
+        onClose={() => {
+          setIsCreateOpen(false);
+          setCreateError('');
+        }}
         size="md"
       >
         <form id="escala-form" onSubmit={handleCreate}>
           <div className="space-y-4 p-6">
+            {createError && <ModalError message={createError} />}
+
             <div className="grid grid-cols-2 gap-4">
               <SelectField
                 id="create-mes"
@@ -901,7 +591,7 @@ export default function EscalasPage() {
                 value={newMes}
                 onChange={(e) => setNewMes(parseInt(e.target.value))}
               >
-                {MESES_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
+                {MONTH_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
               </SelectField>
               <SelectField
                 id="create-ano"
@@ -928,7 +618,7 @@ export default function EscalasPage() {
               <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.weekdays')}</label>
               <p className="text-xs text-gray-400">{t('modal.weekdaysDesc')}</p>
               <div className="flex gap-1.5 flex-wrap">
-                {DIAS_SEMANA.map(({ key, value }) => {
+                {WEEKDAY_KEYS.map(({ key, value }) => {
                   const selected = newDiasSemana.includes(value);
                   return (
                     <button
@@ -943,7 +633,7 @@ export default function EscalasPage() {
                           : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
                       }`}
                     >
-                      {t(`modal.days.${key}` as any)}
+                      {t(`modal.days.${key}` as never)}
                     </button>
                   );
                 })}
@@ -974,7 +664,10 @@ export default function EscalasPage() {
           <ModalFooter
             form="escala-form"
             primaryLabel={creating ? t('modal.creating') : t('modal.create')}
-            onCancel={() => setIsCreateOpen(false)}
+            onCancel={() => {
+              setIsCreateOpen(false);
+              setCreateError('');
+            }}
             loading={creating}
             disabled={!newMinId}
           />
