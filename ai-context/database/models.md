@@ -1,189 +1,239 @@
-# Modelagem do Banco de Dados - Dicionario de Entidades
+# Database Modeling - Entity Dictionary
 
-O banco de dados PostgreSQL usa Prisma ORM. As entidades operacionais do tenant usam `tenantId` para isolamento logico. A entidade `SUPER_ADMIN` e tratada como acesso de plataforma e pode existir sem `tenantId`, conforme o modulo de administracao global.
+PostgreSQL is accessed through Prisma ORM. Tenant-scoped operational entities use `tenantId` in Prisma and `tenant_id` in the database for logical isolation. `SUPER_ADMIN` is a platform-level role and can exist without `tenantId`.
 
----
-
-## Enums Globais
-
-| Enum | Valores | Descricao |
-|---|---|---|
-| `Plano` | `GRATUITO`, `BASICO`, `PROFISSIONAL` | Nivel do plano de contratacao do tenant. |
-| `StatusAssinatura` | `ATIVA`, `TRIAL`, `SUSPENSA`, `CANCELADA` | Estado financeiro/operacional do tenant. |
-| `Role` | `ADMIN`, `STAFF`, `BASIC`, `SUPER_ADMIN` | Perfil global de acesso do usuario. |
-| `MinistryRole` | `LEADER`, `ASSISTANT_LEADER`, `MEMBER` | Papel contextual de um membro dentro de um ministerio. |
-| `StatusMembro` | `ATIVO`, `INATIVO`, `VISITANTE`, `TRANSFERIDO` | Estado cadastral do membro. |
-| `StatusEscala` | `RASCUNHO`, `PUBLICADA`, `ENCERRADA` | Estado do ciclo de vida de uma escala. |
-| `StatusConfirmacao` | `PENDENTE`, `CONFIRMADO`, `RECUSADO` | Resposta do membro escalado. |
-| `StatusEvento` | `AGENDADO`, `REALIZADO`, `CANCELADO` | Estado operacional de evento de agenda. |
-| `AcaoAuditoria` | `CRIAR`, `ATUALIZAR`, `DELETAR`, `LOGIN`, `LOGOUT` | Acao registrada em auditoria. |
-
-Decisao: os enums de `Role` nao devem ser renomeados. Labels amigaveis pertencem a UI/i18n.
+Physical database identifiers follow English `snake_case`, `tb_`-prefixed singular table names and explicit foreign keys. Prisma models follow PascalCase and fields follow camelCase, using `@map` / `@@map` to preserve SQL naming conventions.
 
 ---
 
-## Entidades
+## Global Enums
 
-### 1. Tenant
+| Prisma enum | Database enum | Values | Description |
+|---|---|---|---|
+| `Plan` | `plan` | `FREE`, `BASIC`, `PROFESSIONAL` | Tenant subscription plan level. |
+| `SubscriptionStatus` | `subscription_status` | `ACTIVE`, `TRIAL`, `SUSPENDED`, `CANCELLED` | Tenant billing/operational state. |
+| `Role` | `role` | `ADMIN`, `STAFF`, `BASIC`, `SUPER_ADMIN` | Global user access role. |
+| `MinistryRole` | `ministry_role` | `LEADER`, `ASSISTANT_LEADER`, `MEMBER` | Contextual role inside a ministry. |
+| `MemberStatus` | `member_status` | `ACTIVE`, `INACTIVE`, `VISITOR`, `TRANSFERRED` | Member lifecycle state. |
+| `ScheduleStatus` | `schedule_status` | `DRAFT`, `PUBLISHED`, `CLOSED` | Schedule lifecycle state. |
+| `ConfirmationStatus` | `confirmation_status` | `PENDING`, `CONFIRMED`, `DECLINED` | Assignment confirmation response. |
+| `EventStatus` | `event_status` | `SCHEDULED`, `COMPLETED`, `CANCELLED` | Calendar event state. |
+| `AuditAction` | `audit_action` | `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT` | Audited action type. |
 
-Representa uma igreja cadastrada no sistema.
-
-- `id`: identificador unico.
-- `nome`: nome da igreja.
-- `slug`: identificador URL amigavel, unico.
-- `plano`: plano contratado.
-- `statusAssinatura`: situacao da assinatura.
-- `limiteMembros`: quantidade maxima de membros ativos.
-- `ativo`: status da conta.
-- `createdAt` / `updatedAt`: timestamps padrao.
-
-### 2. User
-
-Representa credencial de login e permissao global de acesso. Nao substitui `Membro`.
-
-- `id`: identificador unico.
-- `tenantId`: vinculo com tenant. Pode ser nulo para `SUPER_ADMIN`.
-- `memberId`: vinculo opcional com `Membro`.
-- `nome`: nome exibido no sistema.
-- `email`: email de login.
-- `senhaHash`: hash bcrypt da senha.
-- `role`: `ADMIN`, `STAFF`, `BASIC` ou `SUPER_ADMIN`.
-- `ativo`: status do login.
-- Unicidade operacional: email unico dentro do tenant.
-
-### 3. Membro
-
-Representa uma pessoa da igreja. Pode existir sem login.
-
-- `id`: identificador unico.
-- `tenantId`: vinculo com a igreja.
-- `nome`: nome do membro.
-- `whatsapp`: telefone opcional.
-- `email`: email opcional.
-- `dataNascimento`: data de nascimento opcional.
-- `status`: estado cadastral.
-- `observacoes`: anotacoes internas.
-- `deletedAt`: exclusao logica.
-
-### 4. Tag
-
-Etiqueta customizada para segmentacao de membros.
-
-- `id`
-- `tenantId`
-- `nome`
-- `corHex`
-- Unico por tenant: `[tenantId, nome]`.
-
-### 5. MembroTag
-
-Relacao N:N entre membros e tags.
-
-- `membroId`
-- `tagId`
-- Chave composta: `[membroId, tagId]`.
-
-### 6. Ministerio
-
-Representa uma area de atuacao da igreja.
-
-- `id`
-- `tenantId`
-- `nome`
-- `descricao`
-- `ativo`
-
-### 7. MinisterioMembro
-
-Relacao entre membros e ministerios. Tambem resolve lideranca ministerial.
-
-- `ministerioId`
-- `membroId`
-- `role`: `LEADER`, `ASSISTANT_LEADER` ou `MEMBER`.
-- Chave composta: `[ministerioId, membroId]`.
-
-Regras:
-
-- Nao existe mais entidade separada `MinisterioLider` como fonte de verdade.
-- Lideranca e resolvida por `MinisterioMembro.role`.
-- Um `User` com `role = BASIC` ganha poderes contextuais se seu `memberId` tiver `LEADER` ou `ASSISTANT_LEADER` no ministerio.
-
-### 8. MinisterioFuncao
-
-Lista de funcoes disponiveis em um ministerio.
-
-- `id`
-- `ministerioId`
-- `nome`
-- `ordem`
-- Unico por ministerio: `[ministerioId, nome]`.
-
-### 9. MinisterioMembroFuncao
-
-Define quais funcoes um membro pode exercer dentro de um ministerio.
-
-- `ministerioId`
-- `membroId`
-- `funcaoId`
-
-### 10. Escala
-
-Escala de servico vinculada a um ministerio.
-
-- `id`
-- `tenantId`
-- `ministerioId`
-- `titulo`
-- `descricao`
-- `data`
-- `status`
-- `observacoes`
-
-### 11. EscalaItem
-
-Linha individual de uma escala.
-
-- `id`
-- `escalaId`
-- `membroId`
-- `funcao`
-- `statusConfirmacao`
-- `observacoes`
-
-### 12. Evento
-
-Evento da agenda.
-
-- `id`
-- `tenantId`
-- `titulo`
-- `descricao`
-- `dataInicio`
-- `dataFim`
-- `local`
-- `status`
-
-Decisao pendente: definir se `Evento` tera `ministerioId` opcional para agenda ministerial.
-
-### 13. AuditLog
-
-Registro historico de mutacoes e eventos sensiveis.
-
-- `id`
-- `tenantId`
-- `userId`
-- `entidade`
-- `entidadeId`
-- `acao`
-- `payloadBefore`
-- `payloadAfter`
-- `ipAddress`
-- `createdAt`
+UI-friendly labels belong to frontend/i18n, not database enum values.
 
 ---
 
-## Referencias
+## Entities
+
+### 1. Tenant (`tb_tenant`)
+
+Represents an organization using the platform.
+
+- `id`
+- `name`
+- `slug`
+- `plan`
+- `subscriptionStatus` / `subscription_status`
+- `memberLimit` / `member_limit`
+- `active` / `is_active`
+- `email`
+- `phone`
+- `language`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+
+### 2. User (`tb_user`)
+
+Represents login credentials and global access permissions. It does not replace `Member`.
+
+- `id`
+- `tenantId` / `tenant_id`, nullable for `SUPER_ADMIN`
+- `memberId` / `member_id`, optional link to `Member`
+- `name`
+- `email`
+- `passwordHash` / `password_hash`
+- `role`
+- `active` / `is_active`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+
+### 3. Member (`tb_member`)
+
+Represents a person in a tenant. A member may exist without login credentials.
+
+- `id`
+- `tenantId` / `tenant_id`
+- `name`
+- `mobilePhone` / `mobile_phone`
+- `email`
+- `birthDate` / `birth_date`
+- `status` / `member_status`
+- `notes`
+- `deletedAt` / `deleted_at`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+
+### 4. Label (`tb_label`)
+
+Custom segmentation label for members.
+
+- `id`
+- `tenantId` / `tenant_id`
+- `name`
+- `colorHex` / `color_hex`
+- Unique per tenant: `[tenantId, name]`.
+
+### 5. MemberLabel (`tb_member_label`)
+
+Many-to-many relation between members and labels.
+
+- `memberId` / `member_id`
+- `labelId` / `label_id`
+- Composite key: `[memberId, labelId]`.
+
+### 6. Ministry (`tb_ministry`)
+
+Represents an area of service in a tenant.
+
+- `id`
+- `tenantId` / `tenant_id`
+- `name`
+- `description`
+- `active` / `is_active`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+
+### 7. MinistryMember (`tb_ministry_member`)
+
+Connects members to ministries and stores contextual leadership.
+
+- `ministryId` / `ministry_id`
+- `memberId` / `member_id`
+- `role`: `LEADER`, `ASSISTANT_LEADER`, or `MEMBER`
+- Composite key: `[ministryId, memberId]`.
+
+Rules:
+
+- There is no separate `MinistryLeader` entity as source of truth.
+- Leadership is resolved through `MinistryMember.role`.
+- A `User` with `role = BASIC` gains contextual permissions when its linked `memberId` has `LEADER` or `ASSISTANT_LEADER` in the ministry.
+
+### 8. MinistryPosition (`tb_ministry_position`)
+
+Defines service positions available inside a ministry.
+
+- `id`
+- `ministryId` / `ministry_id`
+- `name`
+- `description`
+- `colorHex` / `color_hex`
+- `order` / `display_order`
+- Unique per ministry: `[ministryId, name]`.
+
+### 9. MinistryMemberPosition (`tb_ministry_member_position`)
+
+Defines which positions a member can serve in a ministry.
+
+- `ministryId` / `ministry_id`
+- `memberId` / `member_id`
+- `positionId` / `position_id`
+
+### 10. Schedule (`tb_schedule`)
+
+Monthly service schedule linked to a ministry.
+
+- `id`
+- `tenantId` / `tenant_id`
+- `ministryId` / `ministry_id`
+- `month`
+- `year`
+- `status` / `schedule_status`
+- `notes`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+- Unique per ministry/month/year: `[ministryId, month, year]`.
+
+### 11. ScheduleDay (`tb_schedule_day`)
+
+Individual day inside a schedule.
+
+- `id`
+- `scheduleId` / `schedule_id`
+- `scheduledDate` / `scheduled_date`
+- `title`
+- `eventId` / `event_id`
+- `notes`
+- `order` / `display_order`
+
+### 12. ScheduleDayPositionHidden (`tb_schedule_day_position_hidden`)
+
+Defines positions hidden for a specific schedule day.
+
+- `dayId` / `day_id`
+- `positionId` / `position_id`
+- Composite key: `[dayId, positionId]`.
+
+### 13. ScheduleAssignment (`tb_schedule_assignment`)
+
+Individual member assignment in a schedule day and ministry position.
+
+- `id`
+- `scheduleDayId` / `schedule_day_id`
+- `memberId` / `member_id`
+- `userId` / `user_id`
+- `ministryPositionId` / `ministry_position_id`
+- `confirmationStatus` / `confirmation_status`
+- `notes`
+
+### 14. Event (`tb_event`)
+
+Calendar event.
+
+- `id`
+- `tenantId` / `tenant_id`
+- `title`
+- `description`
+- `startAt` / `start_at`
+- `endAt` / `end_at`
+- `location`
+- `status` / `event_status`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+
+Pending decision: whether `Event` should receive an optional `ministryId` for ministry-specific calendars.
+
+### 15. AuditLog (`tb_audit_log`)
+
+Historical record of sensitive mutations and events.
+
+- `id`
+- `tenantId` / `tenant_id`
+- `userId` / `user_id`
+- `entity`
+- `entityId` / `entity_id`
+- `action`
+- `payloadBefore` / `payload_before`
+- `payloadAfter` / `payload_after`
+- `ipAddress` / `ip_address`
+- `createdAt` / `created_at`
+
+### 16. Lead (`tb_lead`)
+
+Public acquisition/contact lead.
+
+- `id`
+- `name`
+- `email`
+- `phone`
+- `message`
+- `createdAt` / `created_at`
+
+---
+
+## References
 
 - `ai-context/backlog/permissions-matrix.md`
 - `ai-context/business-rules/validation-rules.md`
-- `ai-context/plans/rbac-navigation-experience-plan.md`
+- `ai-context/plans/ods-domain-rename-phase-1-definition.md`
+- `ai-context/plans/ods-domain-rename-phase-2-migration-blueprint.md`
