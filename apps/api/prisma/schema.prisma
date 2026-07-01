@@ -9,19 +9,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Enums ────────────────────────────────────────────────
+// Prisma keeps the application contract in PT-BR while the physical database uses EN identifiers.
 
 enum Plano {
-  GRATUITO
-  BASICO
-  PROFISSIONAL
+  GRATUITO     @map("FREE")
+  BASICO       @map("BASIC")
+  PROFISSIONAL @map("PROFESSIONAL")
+
+  @@map("plan")
 }
 
 enum StatusAssinatura {
-  ATIVA
+  ATIVA     @map("ACTIVE")
   TRIAL
-  SUSPENSA
-  CANCELADA
+  SUSPENSA  @map("SUSPENDED")
+  CANCELADA @map("CANCELLED")
+
+  @@map("subscription_status")
 }
 
 enum Role {
@@ -29,170 +33,181 @@ enum Role {
   STAFF
   BASIC
   SUPER_ADMIN
+
+  @@map("role")
 }
 
 enum MinistryRole {
   LEADER
   ASSISTANT_LEADER
   MEMBER
+
+  @@map("ministry_role")
 }
 
 enum StatusMembro {
-  ATIVO
-  INATIVO
-  VISITANTE
-  TRANSFERIDO
+  ATIVO        @map("ACTIVE")
+  INATIVO      @map("INACTIVE")
+  VISITANTE    @map("VISITOR")
+  TRANSFERIDO  @map("TRANSFERRED")
+
+  @@map("member_status")
 }
 
 enum StatusEscala {
-  RASCUNHO
-  PUBLICADA
-  ENCERRADA
+  RASCUNHO  @map("DRAFT")
+  PUBLICADA @map("PUBLISHED")
+  ENCERRADA @map("CLOSED")
+
+  @@map("schedule_status")
 }
 
 enum StatusConfirmacao {
-  PENDENTE
-  CONFIRMADO
-  RECUSADO
+  PENDENTE   @map("PENDING")
+  CONFIRMADO @map("CONFIRMED")
+  RECUSADO   @map("DECLINED")
+
+  @@map("confirmation_status")
 }
 
 enum StatusEvento {
-  AGENDADO
-  REALIZADO
-  CANCELADO
+  AGENDADO  @map("SCHEDULED")
+  REALIZADO @map("COMPLETED")
+  CANCELADO @map("CANCELLED")
+
+  @@map("event_status")
 }
 
 enum AcaoAuditoria {
-  CRIAR
-  ATUALIZAR
-  DELETAR
+  CRIAR     @map("CREATE")
+  ATUALIZAR @map("UPDATE")
+  DELETAR   @map("DELETE")
   LOGIN
   LOGOUT
-}
 
-// ─── Tenant ───────────────────────────────────────────────
+  @@map("audit_action")
+}
 
 model Tenant {
   id               String           @id @default(uuid())
-  nome             String
+  nome             String           @map("name")
   slug             String           @unique
-  plano            Plano            @default(GRATUITO)
-  statusAssinatura StatusAssinatura @default(TRIAL)
-  limiteMembros    Int              @default(50)
-  ativo            Boolean          @default(true)
+  plano            Plano            @default(GRATUITO) @map("plan")
+  statusAssinatura StatusAssinatura @default(TRIAL) @map("subscription_status")
+  limiteMembros    Int              @default(50) @map("member_limit")
+  ativo            Boolean          @default(true) @map("is_active")
   email            String?
-  telefone         String?
-  idioma           String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  telefone         String?          @map("phone")
+  idioma           String?          @map("language")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
 
-  users        User[]
-  membros      Membro[]
-  tags         Tag[]
-  ministerios  Ministerio[]
-  escalas      Escala[]
-  eventos      Evento[]
-  auditLogs    AuditLog[]
+  users       User[]
+  membros     Membro[]
+  tags        Tag[]
+  ministerios Ministerio[]
+  escalas     Escala[]
+  eventos     Evento[]
+  auditLogs   AuditLog[]
+
+  @@map("tb_tenant")
 }
-
-// ─── User ─────────────────────────────────────────────────
 
 model User {
   id           String   @id @default(uuid())
-  tenantId     String?
-  memberId     String?  @unique
-  nome         String
+  tenantId     String?  @map("tenant_id")
+  memberId     String?  @unique @map("member_id")
+  nome         String   @map("name")
   email        String   @unique
-  senhaHash    String
+  senhaHash    String   @map("password_hash")
   role         Role     @default(BASIC)
-  ativo        Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  ativo        Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tenant              Tenant?              @relation(fields: [tenantId], references: [id])
-  membro              Membro?              @relation(fields: [memberId], references: [id])
-  escalasItens         EscalaItem[]
-  auditLogs            AuditLog[]
+  tenant       Tenant?      @relation(fields: [tenantId], references: [id])
+  membro       Membro?      @relation(fields: [memberId], references: [id])
+  escalasItens EscalaItem[]
+  auditLogs    AuditLog[]
 
   @@index([tenantId])
+  @@map("tb_user")
 }
 
-// ─── Membro ───────────────────────────────────────────────
-
 model Membro {
-  id              String       @id @default(uuid())
-  tenantId        String
-  nome            String
-  whatsapp        String?
-  email           String?
-  dataNascimento  DateTime?
-  status          StatusMembro @default(ATIVO)
-  observacoes     String?
-  deletedAt       DateTime?    // soft delete
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id             String       @id @default(uuid())
+  tenantId       String       @map("tenant_id")
+  nome           String       @map("name")
+  whatsapp       String?      @map("mobile_phone")
+  email          String?
+  dataNascimento DateTime?    @map("birth_date")
+  status         StatusMembro @default(ATIVO) @map("member_status")
+  observacoes    String?      @map("notes")
+  deletedAt      DateTime?    @map("deleted_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  tenant       Tenant         @relation(fields: [tenantId], references: [id])
-  tags         MembroTag[]
-  ministerios  MinisterioMembro[]
-  escalas      EscalaItem[]
-  user         User?
+  tenant      Tenant              @relation(fields: [tenantId], references: [id])
+  tags        MembroTag[]
+  ministerios MinisterioMembro[]
+  escalas     EscalaItem[]
+  user        User?
 
   @@index([tenantId])
   @@index([tenantId, deletedAt])
+  @@map("tb_member")
 }
-
-// ─── Tag ──────────────────────────────────────────────────
 
 model Tag {
   id       String @id @default(uuid())
-  tenantId String
-  nome     String
-  corHex   String @default("#6366f1")
+  tenantId String @map("tenant_id")
+  nome     String @map("name")
+  corHex   String @default("#6366f1") @map("color_hex")
 
   tenant  Tenant      @relation(fields: [tenantId], references: [id])
   membros MembroTag[]
 
   @@unique([tenantId, nome])
   @@index([tenantId])
+  @@map("tb_label")
 }
 
 model MembroTag {
-  membroId String
-  tagId    String
+  membroId String @map("member_id")
+  tagId    String @map("label_id")
 
   membro Membro @relation(fields: [membroId], references: [id])
   tag    Tag    @relation(fields: [tagId], references: [id])
 
   @@id([membroId, tagId])
+  @@map("tb_member_label")
 }
 
-// ─── Ministério ───────────────────────────────────────────
-
 model Ministerio {
-  id       String  @id @default(uuid())
-  tenantId String
-  nome     String
-  descricao String?
-  ativo    Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  nome      String   @map("name")
+  descricao String?  @map("description")
+  ativo     Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant  Tenant             @relation(fields: [tenantId], references: [id])
+  tenant  Tenant              @relation(fields: [tenantId], references: [id])
   membros MinisterioMembro[]
   escalas Escala[]
   funcoes MinisterioFuncao[]
 
   @@index([tenantId])
+  @@map("tb_ministry")
 }
 
 model MinisterioFuncao {
-  id           String @id @default(uuid())
-  ministerioId String
-  nome         String
-  descricao    String?
-  corHex       String?
-  ordem        Int    @default(0)
+  id           String  @id @default(uuid())
+  ministerioId String  @map("ministry_id")
+  nome         String  @map("name")
+  descricao    String? @map("description")
+  corHex       String? @map("color_hex")
+  ordem        Int     @default(0) @map("display_order")
 
   ministerio   Ministerio               @relation(fields: [ministerioId], references: [id])
   itens        EscalaItem[]
@@ -200,43 +215,44 @@ model MinisterioFuncao {
   diasOcultos  EscalaDiaFuncaoOculta[]
 
   @@unique([ministerioId, nome])
+  @@map("tb_ministry_position")
 }
 
 model MinisterioMembro {
-  ministerioId String
-  membroId     String
+  ministerioId String       @map("ministry_id")
+  membroId     String       @map("member_id")
   role         MinistryRole @default(MEMBER)
 
-  ministerio          Ministerio               @relation(fields: [ministerioId], references: [id])
-  membro              Membro                   @relation(fields: [membroId], references: [id])
-  funcoesDisponiveis  MinisterioMembroFuncao[]
+  ministerio         Ministerio                @relation(fields: [ministerioId], references: [id])
+  membro             Membro                    @relation(fields: [membroId], references: [id])
+  funcoesDisponiveis MinisterioMembroFuncao[]
 
   @@id([ministerioId, membroId])
+  @@map("tb_ministry_member")
 }
 
 model MinisterioMembroFuncao {
-  ministerioId String
-  membroId     String
-  funcaoId     String
+  ministerioId String @map("ministry_id")
+  membroId     String @map("member_id")
+  funcaoId     String @map("position_id")
 
   ministerioMembro MinisterioMembro @relation(fields: [ministerioId, membroId], references: [ministerioId, membroId], onDelete: Cascade)
   funcao           MinisterioFuncao @relation(fields: [funcaoId], references: [id], onDelete: Cascade)
 
   @@id([ministerioId, membroId, funcaoId])
+  @@map("tb_ministry_member_position")
 }
-
-// ─── Escala ───────────────────────────────────────────────
 
 model Escala {
   id           String       @id @default(uuid())
-  tenantId     String
-  ministerioId String
-  mes          Int
-  ano          Int
-  status       StatusEscala @default(RASCUNHO)
-  observacoes  String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  tenantId     String       @map("tenant_id")
+  ministerioId String       @map("ministry_id")
+  mes          Int          @map("month")
+  ano          Int          @map("year")
+  status       StatusEscala @default(RASCUNHO) @map("schedule_status")
+  observacoes  String?      @map("notes")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id])
   ministerio Ministerio @relation(fields: [ministerioId], references: [id])
@@ -244,102 +260,104 @@ model Escala {
 
   @@index([tenantId])
   @@unique([ministerioId, mes, ano])
+  @@map("tb_schedule")
 }
 
 model EscalaDia {
-  id           String       @id @default(uuid())
-  escalaId     String
-  data         DateTime
-  titulo       String?      // opcional (ex: Culto da Família)
-  eventoId     String?      // caso exista um evento de referência
-  observacoes  String?
-  ordem        Int          @default(0)
+  id          String   @id @default(uuid())
+  escalaId    String   @map("schedule_id")
+  data        DateTime @map("scheduled_date")
+  titulo      String?  @map("title")
+  eventoId    String?  @map("event_id")
+  observacoes String?  @map("notes")
+  ordem       Int      @default(0) @map("display_order")
 
-  escala         Escala                @relation(fields: [escalaId], references: [id], onDelete: Cascade)
-  evento         Evento?               @relation(fields: [eventoId], references: [id], onDelete: SetNull)
+  escala         Escala                 @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+  evento         Evento?                @relation(fields: [eventoId], references: [id], onDelete: SetNull)
   itens          EscalaItem[]
   funcoesOcultas EscalaDiaFuncaoOculta[]
+
+  @@map("tb_schedule_day")
 }
 
 model EscalaDiaFuncaoOculta {
-  diaId    String
-  funcaoId String
+  diaId    String @map("day_id")
+  funcaoId String @map("position_id")
 
   dia    EscalaDia        @relation(fields: [diaId], references: [id], onDelete: Cascade)
   funcao MinisterioFuncao @relation(fields: [funcaoId], references: [id], onDelete: Cascade)
 
   @@id([diaId, funcaoId])
+  @@map("tb_schedule_day_position_hidden")
 }
 
 model EscalaItem {
   id                 String            @id @default(uuid())
-  escalaDiaId        String
-  membroId           String
-  userId             String?           // user que adicionou o item
-  ministerioFuncaoId String
-  statusConfirmacao  StatusConfirmacao  @default(PENDENTE)
-  observacoes        String?
+  escalaDiaId        String            @map("schedule_day_id")
+  membroId           String            @map("member_id")
+  userId             String?           @map("user_id")
+  ministerioFuncaoId String            @map("ministry_position_id")
+  statusConfirmacao  StatusConfirmacao @default(PENDENTE) @map("confirmation_status")
+  observacoes        String?           @map("notes")
 
-  escalaDia EscalaDia @relation(fields: [escalaDiaId], references: [id], onDelete: Cascade)
-  membro Membro  @relation(fields: [membroId], references: [id])
-  user   User?   @relation(fields: [userId], references: [id])
-  funcao MinisterioFuncao @relation(fields: [ministerioFuncaoId], references: [id])
+  escalaDia EscalaDia         @relation(fields: [escalaDiaId], references: [id], onDelete: Cascade)
+  membro    Membro            @relation(fields: [membroId], references: [id])
+  user      User?             @relation(fields: [userId], references: [id])
+  funcao    MinisterioFuncao  @relation(fields: [ministerioFuncaoId], references: [id])
 
   @@unique([escalaDiaId, membroId])
   @@unique([escalaDiaId, membroId, ministerioFuncaoId])
+  @@map("tb_schedule_assignment")
 }
 
-// ─── Evento ───────────────────────────────────────────────
-
 model Evento {
-  id          String       @id @default(uuid())
-  tenantId    String
-  titulo      String
-  descricao   String?
-  dataInicio  DateTime
-  dataFim     DateTime?
-  local       String?
-  status      StatusEvento @default(AGENDADO)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id         String       @id @default(uuid())
+  tenantId   String       @map("tenant_id")
+  titulo     String       @map("title")
+  descricao  String?      @map("description")
+  dataInicio DateTime     @map("start_at")
+  dataFim    DateTime?    @map("end_at")
+  local      String?      @map("location")
+  status     StatusEvento @default(AGENDADO) @map("event_status")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
   escalasDias EscalaDia[]
 
   @@index([tenantId])
   @@index([tenantId, dataInicio])
+  @@map("tb_event")
 }
-
-// ─── AuditLog ─────────────────────────────────────────────
 
 model AuditLog {
   id            String        @id @default(uuid())
-  tenantId      String?
-  userId        String?
-  entidade      String
-  entidadeId    String
-  acao          AcaoAuditoria
-  payloadBefore Json?
-  payloadAfter  Json?
-  ipAddress     String?
-  createdAt     DateTime      @default(now())
+  tenantId      String?       @map("tenant_id")
+  userId        String?       @map("user_id")
+  entidade      String        @map("entity")
+  entidadeId    String        @map("entity_id")
+  acao          AcaoAuditoria @map("action")
+  payloadBefore Json?         @map("payload_before")
+  payloadAfter  Json?         @map("payload_after")
+  ipAddress     String?       @map("ip_address")
+  createdAt     DateTime      @default(now()) @map("created_at")
 
   tenant Tenant? @relation(fields: [tenantId], references: [id])
   user   User?   @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
   @@index([tenantId, entidade, entidadeId])
+  @@map("tb_audit_log")
 }
-
-// ─── Lead ─────────────────────────────────────────────────
 
 model Lead {
   id        String   @id @default(uuid())
-  nome      String
+  nome      String   @map("name")
   email     String
-  telefone  String?
-  mensagem  String?
-  createdAt DateTime @default(now())
+  telefone  String?  @map("phone")
+  mensagem  String?  @map("message")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([email])
+  @@map("tb_lead")
 }
