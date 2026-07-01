@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "EscalaDia" ADD COLUMN "ordem" INTEGER NOT NULL DEFAULT 0;
