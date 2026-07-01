@@ -277,11 +277,12 @@ export default function MinisteriosPage() {
       <PageHeader
         title={t('title')}
         description={t('description')}
+        stackActionsOnMobile
         action={
           canManage ? (
             <button
               onClick={() => { setSelectedMinisterio(null); setIsModalOpen(true); }}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm hover:shadow transition-all text-sm flex items-center gap-2"
+              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

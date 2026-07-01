@@ -13,20 +13,21 @@ import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
 import { InputField } from '@/components/app/form-field';
-import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
-import { EntityCard } from '@/components/app/entity-card';
 import { ContactCell } from '@/components/app/contact-cell';
 import { InitialsAvatar } from '@/components/app/initials-avatar';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
-import { formatDate, formatPhone, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
-import { Users, UserCheck, UserPlus, PhoneOff } from 'lucide-react';
+import { formatDate, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 
 type FeedbackMessage = {
   type: 'success' | 'error';
   message: string;
 } | null;
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function MembrosPage() {
   const t = useTranslations('members');
@@ -76,7 +77,19 @@ export default function MembrosPage() {
   }
 
   useEffect(() => {
-    fetchTags();
+    let mounted = true;
+
+    api.get<Tag[]>('/api/tags')
+      .then((data) => {
+        if (mounted) setTagsList(Array.isArray(data) ? data : []);
+      })
+      .catch((e) => {
+        console.error('Erro ao buscar tags:', e);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const {
@@ -124,13 +137,6 @@ export default function MembrosPage() {
     return membros.slice(start, start + itemsPerPage);
   }, [membros, currentPage]);
 
-  const stats = useMemo(() => ({
-    total: membros.length,
-    ativos: membros.filter((m) => m.status === 'ATIVO').length,
-    visitantes: membros.filter((m) => m.status === 'VISITANTE').length,
-    semTelefone: membros.filter((m) => !m.whatsapp).length,
-  }), [membros]);
-
   async function handleSaveMembro(data: Partial<Membro>) {
     if (editingMembro) {
       await updateMembro(editingMembro.id, data);
@@ -152,8 +158,8 @@ export default function MembrosPage() {
       await deleteMembro(pendingDeleteMembro.id);
       setSelectedIds(prev => prev.filter(id => id !== pendingDeleteMembro.id));
       setPendingDeleteMembro(null);
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || t('deleteError') });
+    } catch (err: unknown) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, t('deleteError')) });
     } finally {
       setConfirmLoading(false);
     }
@@ -170,8 +176,8 @@ export default function MembrosPage() {
       setTagsList(prev => [...prev, newTag]);
       setNewTagName('');
       setShowNewTagInput(false);
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || t('tag.error') });
+    } catch (err: unknown) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, t('tag.error')) });
     }
   }
 
@@ -182,8 +188,8 @@ export default function MembrosPage() {
       setSelectedIds([]);
       setSelectedBulkTag('');
       setFeedback({ type: 'success', message: t('bulk.success') });
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || t('bulk.error') });
+    } catch (err: unknown) {
+      setFeedback({ type: 'error', message: getErrorMessage(err, t('bulk.error')) });
     }
   }
 
@@ -277,13 +283,14 @@ export default function MembrosPage() {
       <PageHeader
         title={t('pageTitle')}
         description={t('pageDescription')}
+        stackActionsOnMobile
         action={
           <button
             onClick={() => {
               setEditingMembro(null);
               setIsModalOpen(true);
             }}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm hover:shadow transition-all text-sm flex items-center gap-2"
+            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -292,13 +299,6 @@ export default function MembrosPage() {
           </button>
         }
       />
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title={t('stats.total')} value={stats.total} icon={<Users className="w-5 h-5" />} color="indigo" />
-        <StatCard title={t('stats.active')} value={stats.ativos} icon={<UserCheck className="w-5 h-5" />} color="emerald" />
-        <StatCard title={t('stats.visitors')} value={stats.visitantes} icon={<UserPlus className="w-5 h-5" />} color="amber" />
-        <StatCard title={t('stats.noPhone')} value={stats.semTelefone} icon={<PhoneOff className="w-5 h-5" />} color="rose" />
-      </div>
 
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg flex items-center justify-between">
@@ -503,23 +503,6 @@ export default function MembrosPage() {
         onPageChange={setCurrentPage}
         emptyTitle={t('empty.noResults')}
         emptyDescription={t('empty.noResultsDesc')}
-        renderMobileCard={(m) => (
-          <EntityCard
-            title={m.nome}
-            subtitle={formatPhone(m.whatsapp)}
-            badge={
-              <StatusBadge
-                label={STATUS_MEMBRO_LABEL[m.status]}
-                className={`font-bold ${STATUS_MEMBRO_COLOR[m.status]}`}
-              />
-            }
-            meta={(m.tags || []).map((mt) => mt.tag.nome).join(', ') || t('noTags')}
-            onClick={() => {
-              setEditingMembro(m);
-              setIsModalOpen(true);
-            }}
-          />
-        )}
       />
 
       {/* Bulk Action Banner */}
