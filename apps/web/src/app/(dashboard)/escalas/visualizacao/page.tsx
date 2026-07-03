@@ -1,9 +1,10 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
+import { EscalaPrintGrid } from '@/components/app/escala-print-grid';
 import { EscalaReadonlyGrid } from '@/components/app/escala-readonly-grid';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
@@ -13,7 +14,7 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
 import { STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
-import { Ministerio } from '@/types';
+import { AuthUser, Escala, Ministerio } from '@/types';
 import { Calendar, List, AlertTriangle } from 'lucide-react';
 
 const MESES = [
@@ -34,6 +35,8 @@ const MESES = [
 export default function EscalasVisualizacaoPage() {
   const now = new Date();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
+  const [tenantName, setTenantName] = useState('OneElo');
+  const [printedAt, setPrintedAt] = useState(() => new Date());
   const { escalas, loading, error, applyFilter, refetch } = useEscalasVisualizacao({
     mes: String(now.getMonth() + 1),
     ano: String(now.getFullYear()),
@@ -67,6 +70,10 @@ export default function EscalasVisualizacaoPage() {
     api.get<Ministerio[]>('/api/ministerios')
       .then((data) => setMinisterios(Array.isArray(data) ? data : []))
       .catch(() => setMinisterios([]));
+
+    api.get<AuthUser>('/api/auth/me')
+      .then((user) => setTenantName(user.tenant?.nome || 'OneElo'))
+      .catch(() => setTenantName('OneElo'));
   }, []);
 
   const totais = useMemo(() => {
@@ -82,16 +89,22 @@ export default function EscalasVisualizacaoPage() {
     return { dias, itens, pendentes };
   }, [escalas]);
 
+  function handlePrint() {
+    setPrintedAt(new Date());
+    window.setTimeout(() => window.print(), 0);
+  }
+
   return (
     <div className="p-6">
+      <div className="no-print">
       <PageHeader
         title="Visualizacao de escalas"
         description="Acompanhe as escalas publicadas ou em rascunho em formato de leitura, sem controles de montagem."
-        action={(
-          <button
-            onClick={() => window.print()}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50"
-          >
+          action={(
+            <button
+              onClick={handlePrint}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50"
+            >
             Imprimir
           </button>
         )}
@@ -203,6 +216,43 @@ export default function EscalasVisualizacaoPage() {
           })}
         </div>
       )}
+      </div>
+
+      {!loading && escalas.length > 0 && (
+        <div className="print-area hidden" aria-hidden="true">
+          {escalas.map((escala) => (
+            <section key={escala.id} className="print-page">
+              <EscalaPrintHeader escala={escala} tenantName={tenantName} />
+              <EscalaPrintGrid escala={escala} />
+              <EscalaPrintFooter printedAt={printedAt} />
+            </section>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function EscalaPrintFooter({ printedAt }: { printedAt: Date }) {
+  const formatted = new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(printedAt);
+
+  return (
+    <footer className="print-schedule-footer">
+      Impresso em {formatted}
+    </footer>
+  );
+}
+
+function EscalaPrintHeader({ escala, tenantName }: { escala: Escala; tenantName: string }) {
+  const mesLabel = MESES.find((item) => item.value === String(escala.mes))?.label || String(escala.mes);
+
+  return (
+    <header className="print-schedule-header">
+      <h1>{tenantName}</h1>
+      <p>{escala.ministerio?.nome || 'Ministerio'} - {mesLabel} de {escala.ano}</p>
+    </header>
   );
 }

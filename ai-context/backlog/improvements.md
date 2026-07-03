@@ -67,3 +67,20 @@
 - **Arquivos afetados**:
   - `apps/api/src/modules/membros/membros.service.ts`
   - `apps/api/src/modules/ministerios/ministerios.service.ts`
+
+---
+
+### IMP-006 Nome de exibicao do membro para escalas e impressoes
+
+- **Status**: pendente
+- **Prioridade**: media
+- **Categoria**: UX / consistencia de dados
+- **Contexto**: Na impressao A4 de escalas, a primeira versao usa apenas o primeiro nome do membro para manter a tabela compacta. Isso melhora a densidade, mas falha para pessoas identificadas pelo segundo nome ou por nome usual, como membros cujo cadastro comeca com "Francisco", "Joao", "Maria" ou "Jose".
+- **Acao**: Adicionar um campo opcional no cadastro de membro, como `nomeExibicao` ou `nomeEscala`, para definir o nome usado em escalas, impressoes e possivelmente buscas operacionais. A regra recomendada para exibicao e `nomeExibicao || primeiroNome || nome`.
+- **Impacto**: Reduz ambiguidades em escalas, melhora legibilidade das impressoes e evita heuristicas frageis baseadas em nomes compostos.
+- **Arquivos afetados previstos**:
+  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/membros/`
+  - `apps/web/src/components/app/membro-modal.tsx`
+  - `apps/web/src/components/app/escala-print-grid.tsx`
+  - `apps/web/src/types/index.ts`
