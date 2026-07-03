@@ -103,6 +103,8 @@
       "activeMembersDesc": "Status ACTIVE in the system",
       "weeklySchedules": "Weekly Schedules",
       "weeklySchedulesDesc": "From today through Sunday",
+      "monthlySchedules": "Monthly Schedules",
+      "monthlySchedulesDesc": "In the current month",
       "birthdays": "Birthdays",
       "birthdaysDesc": "This month",
       "activeMinistries": "Active Ministries",
