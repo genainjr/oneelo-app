@@ -41,7 +41,7 @@ export default function DashboardPage() {
       title: t('stats.monthlySchedules'),
       description: t('stats.monthlySchedulesDesc'),
       color: 'blue' as const,
-      href: '/escalas',
+      href: '/escalas/visualizacao',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -77,7 +77,7 @@ export default function DashboardPage() {
       title: t('stats.pending'),
       description: t('stats.pendingDesc'),
       color: 'rose' as const,
-      href: '/escalas',
+      href: '/escalas/visualizacao',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
