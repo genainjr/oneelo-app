@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const { stats, loading, error } = useDashboard();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [today, setToday] = useState('');
+  const currentMonth = new Date().getMonth() + 1;
 
   useEffect(() => {
     setToday(formatDate(new Date()));
@@ -28,7 +29,7 @@ export default function DashboardPage() {
       title: t('stats.activeMembers'),
       description: t('stats.activeMembersDesc'),
       color: 'indigo' as const,
-      href: '/membros',
+      href: '/membros/visualizacao',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -37,10 +38,10 @@ export default function DashboardPage() {
     },
     {
       key: 'escalasNaSemana' as const,
-      title: t('stats.weeklySchedules'),
-      description: t('stats.weeklySchedulesDesc'),
+      title: t('stats.monthlySchedules'),
+      description: t('stats.monthlySchedulesDesc'),
       color: 'blue' as const,
-      href: '/escalas',
+      href: '/escalas/visualizacao',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -52,7 +53,7 @@ export default function DashboardPage() {
       title: t('stats.birthdays'),
       description: t('stats.birthdaysDesc'),
       color: 'amber' as const,
-      href: '/membros',
+      href: `/membros/visualizacao?aniversarioMes=${currentMonth}`,
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-1.5-.454M9 6l3-3 3 3M9 22V12h6v10" />
@@ -76,7 +77,7 @@ export default function DashboardPage() {
       title: t('stats.pending'),
       description: t('stats.pendingDesc'),
       color: 'rose' as const,
-      href: '/escalas',
+      href: '/escalas/visualizacao',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />

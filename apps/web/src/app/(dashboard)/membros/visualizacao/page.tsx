@@ -75,6 +75,14 @@ export default function MembrosVisualizacaoPage() {
     api.get<Ministerio[]>('/api/ministerios')
       .then((data) => setMinisterios(Array.isArray(data) ? data : []))
       .catch(() => setMinisterios([]));
+
+    const params = new URLSearchParams(window.location.search);
+    const aniversarioMes = params.get('aniversarioMes');
+    if (aniversarioMes) {
+      setFilterField('aniversarioMes', aniversarioMes);
+      setCurrentPage(1);
+      applyFilter({ aniversarioMes });
+    }
   }, []);
 
   const stats = useMemo(() => {
