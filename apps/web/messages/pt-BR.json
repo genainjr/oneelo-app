@@ -103,6 +103,8 @@
       "activeMembersDesc": "Status ATIVO no sistema",
       "weeklySchedules": "Escalas da Semana",
       "weeklySchedulesDesc": "De hoje até domingo",
+      "monthlySchedules": "Escalas do Mês",
+      "monthlySchedulesDesc": "No mês atual",
       "birthdays": "Aniversariantes",
       "birthdaysDesc": "Neste mês",
       "activeMinistries": "Ministérios Ativos",

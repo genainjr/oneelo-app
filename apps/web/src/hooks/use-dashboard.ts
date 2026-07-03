@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { DashboardStats, Membro, Escala, Ministerio } from '@/types';
-import { startOfWeek, endOfWeek, format, getMonth, getYear } from 'date-fns';
+import { getMonth, getYear } from 'date-fns';
 
 export function useDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -16,14 +16,12 @@ export function useDashboard() {
       setError(null);
       try {
         const now = new Date();
-        const weekStart = format(startOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd');
-        const weekEnd = format(endOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd');
         const currentMonth = getMonth(now) + 1;
         const currentYear = getYear(now);
 
         const [membros, escalasResp, ministeriosResp, pendencias] = await Promise.allSettled([
           api.get<Membro[]>('/api/membros?status=ATIVO'),
-          api.get<Escala[]>(`/api/escalas?periodoInicio=${weekStart}&periodoFim=${weekEnd}`),
+          api.get<Escala[]>(`/api/escalas?mes=${currentMonth}&ano=${currentYear}`),
           api.get<Ministerio[]>('/api/ministerios?ativo=true'),
           api.get<Escala[]>('/api/escalas?pendencias=true'),
         ]);
