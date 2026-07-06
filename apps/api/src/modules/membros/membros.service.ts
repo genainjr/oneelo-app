@@ -12,6 +12,34 @@ import { MinistryRole, Role } from '@prisma/client';
 export class MembrosService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private sortByVisualizacao(
+    membros: Array<{ nome: string; dataNascimento?: Date | null }>,
+    ordenacao?: 'nome' | 'dataNascimento',
+  ) {
+    const arr = [...membros];
+
+    if (ordenacao === 'dataNascimento') {
+      arr.sort((a, b) => {
+        const dateA = a.dataNascimento ? new Date(a.dataNascimento) : null;
+        const dateB = b.dataNascimento ? new Date(b.dataNascimento) : null;
+
+        if (!dateA && !dateB) return a.nome.localeCompare(b.nome, 'pt-BR');
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+
+        const monthDayA = (dateA.getUTCMonth() + 1) * 100 + dateA.getUTCDate();
+        const monthDayB = (dateB.getUTCMonth() + 1) * 100 + dateB.getUTCDate();
+
+        if (monthDayA !== monthDayB) return monthDayA - monthDayB;
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+      });
+      return arr;
+    }
+
+    arr.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    return arr;
+  }
+
   private applyTagFilter(where: any, tags?: string, operacao?: 'AND' | 'OR') {
     if (!tags) return;
 
@@ -218,6 +246,7 @@ export class MembrosService {
       semTelefone,
     } = query;
     const where: any = { tenantId };
+    const ordenacao = query.ordenacao ?? 'nome';
 
     if (nome) {
       where.nome = { contains: nome, mode: 'insensitive' };
@@ -276,13 +305,15 @@ export class MembrosService {
 
     const mes = Number.parseInt(aniversarioMes ?? '', 10);
     if (!Number.isInteger(mes) || mes < 1 || mes > 12) {
-      return membros;
+      return this.sortByVisualizacao(membros, ordenacao);
     }
 
-    return membros.filter((membro) => {
+    const filtrados = membros.filter((membro) => {
       if (!membro.dataNascimento) return false;
       return membro.dataNascimento.getUTCMonth() + 1 === mes;
     });
+
+    return this.sortByVisualizacao(filtrados, ordenacao);
   }
 
   async findAniversariantes(
@@ -298,14 +329,10 @@ export class MembrosService {
       user,
     );
 
-    return membros
-      .filter((membro) => membro.dataNascimento)
-      .sort((a, b) => {
-        const dataA = a.dataNascimento ? a.dataNascimento.getUTCDate() : 0;
-        const dataB = b.dataNascimento ? b.dataNascimento.getUTCDate() : 0;
-        if (dataA !== dataB) return dataA - dataB;
-        return a.nome.localeCompare(b.nome, 'pt-BR');
-      });
+    return this.sortByVisualizacao(
+      membros.filter((membro) => membro.dataNascimento),
+      'dataNascimento',
+    );
   }
 
   async update(tenantId: string, id: string, dto: UpdateMembroDto) {

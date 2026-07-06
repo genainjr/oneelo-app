@@ -14,6 +14,7 @@ export interface FilterMembrosVisualizacao {
   ministerioRole?: string;
   aniversarioMes?: string;
   semTelefone?: string;
+  ordenacao?: 'nome' | 'dataNascimento';
 }
 
 export function useMembrosVisualizacao(initialFilter: FilterMembrosVisualizacao = {}) {
