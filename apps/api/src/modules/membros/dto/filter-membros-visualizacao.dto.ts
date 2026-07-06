@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
 import { MinistryRole, StatusMembro } from '@prisma/client';
 
 export class FilterMembrosVisualizacaoDto {
@@ -37,4 +37,8 @@ export class FilterMembrosVisualizacaoDto {
   @IsString()
   @IsOptional()
   semTelefone?: string;
+
+  @IsIn(['nome', 'dataNascimento'])
+  @IsOptional()
+  ordenacao?: 'nome' | 'dataNascimento';
 }
