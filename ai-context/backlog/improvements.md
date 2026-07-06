@@ -81,6 +81,23 @@
 - **Arquivos afetados previstos**:
   - `apps/api/prisma/schema.prisma`
   - `apps/api/src/modules/membros/`
-  - `apps/web/src/components/app/membro-modal.tsx`
-  - `apps/web/src/components/app/escala-print-grid.tsx`
-  - `apps/web/src/types/index.ts`
+- `apps/web/src/components/app/membro-modal.tsx`
+- `apps/web/src/components/app/escala-print-grid.tsx`
+- `apps/web/src/types/index.ts`
+
+---
+
+### IMP-007 Autoaplicar filtros na visualizacao de membros
+
+- **Status**: pendente
+- **Prioridade**: media
+- **Categoria**: UX
+- **Contexto**: A tela `/membros/visualizacao` ainda depende do botao `FILTRAR`, o que gera friccao na busca e abre margem para a primeira carga do dashboard chegar sem `aniversarioMes` aplicado antes da resposta inicial da API.
+- **Acao**: Tornar os filtros de `nome`, `status`, `ministerio`, `aniversarioMes`, `ordenacao` e `semTelefone` reativos ao `onChange`, com debounce curto apenas para `nome`. Inicializar a tela a partir dos parametros da URL antes da primeira busca para evitar corrida entre carregamento inicial e aplicacao do filtro do dashboard. Remover o submit manual da tela ou mantê-lo apenas como fallback temporario.
+- **Impacto**: Resultados mais estaveis e imediatos, menos cliques para o usuario, e eliminacao do bug intermitente em que aniversariantes podiam abrir sem o mes corretamente aplicado.
+- **Arquivos afetados previstos**:
+  - `apps/web/src/app/(dashboard)/membros/visualizacao/page.tsx`
+  - `apps/web/src/hooks/use-membros-visualizacao.ts`
+  - `apps/web/src/components/app/filter-shell.tsx`
+  - `apps/web/src/hooks/use-filter-state.ts`
+  - `apps/web/src/app/(dashboard)/dashboard/page.tsx`

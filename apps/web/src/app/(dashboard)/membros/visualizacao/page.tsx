@@ -58,6 +58,7 @@ export default function MembrosVisualizacaoPage() {
       ministerioId: '',
       aniversarioMes: '',
       semTelefone: false,
+      ordenacao: 'nome' as 'nome' | 'dataNascimento',
     },
     onApply: (filters) => {
       setCurrentPage(1);
@@ -67,6 +68,7 @@ export default function MembrosVisualizacaoPage() {
         ministerioId: filters.ministerioId || undefined,
         aniversarioMes: filters.aniversarioMes || undefined,
         semTelefone: filters.semTelefone ? 'true' : undefined,
+        ordenacao: filters.ordenacao,
       });
     },
   });
@@ -80,10 +82,36 @@ export default function MembrosVisualizacaoPage() {
     const aniversarioMes = params.get('aniversarioMes');
     if (aniversarioMes) {
       setFilterField('aniversarioMes', aniversarioMes);
+      setFilterField('ordenacao', 'dataNascimento');
       setCurrentPage(1);
-      applyFilter({ aniversarioMes });
+      applyFilter({ aniversarioMes, ordenacao: 'dataNascimento' });
     }
   }, []);
+
+  const sortedMembros = useMemo(() => {
+    const arr = [...membros];
+
+    if (filterState.ordenacao === 'dataNascimento') {
+      arr.sort((a, b) => {
+        const dateA = a.dataNascimento ? new Date(a.dataNascimento) : null;
+        const dateB = b.dataNascimento ? new Date(b.dataNascimento) : null;
+
+        if (!dateA && !dateB) return a.nome.localeCompare(b.nome, 'pt-BR');
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+
+        const monthDayA = (dateA.getUTCMonth() + 1) * 100 + dateA.getUTCDate();
+        const monthDayB = (dateB.getUTCMonth() + 1) * 100 + dateB.getUTCDate();
+
+        if (monthDayA !== monthDayB) return monthDayA - monthDayB;
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+      });
+      return arr;
+    }
+
+    arr.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    return arr;
+  }, [membros, filterState.ordenacao]);
 
   const stats = useMemo(() => {
     const ativos = membros.filter((membro) => membro.status === 'ATIVO').length;
@@ -99,8 +127,8 @@ export default function MembrosVisualizacaoPage() {
 
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return membros.slice(start, start + itemsPerPage);
-  }, [membros, currentPage]);
+    return sortedMembros.slice(start, start + itemsPerPage);
+  }, [sortedMembros, currentPage]);
 
   const memberColumns: Column<MembroVisualizacao>[] = [
     {
@@ -178,7 +206,7 @@ export default function MembrosVisualizacaoPage() {
           />
         }
       >
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-5 items-end">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-6 items-end">
           <FilterInput
             label="Nome"
             value={filterState.nome}
@@ -213,6 +241,14 @@ export default function MembrosVisualizacaoPage() {
           >
             {MESES.map((mes) => <option key={mes.value} value={mes.value}>{mes.label}</option>)}
           </FilterSelect>
+          <FilterSelect
+            label="Ordenar por"
+            value={filterState.ordenacao}
+            onChange={(event) => setFilterField('ordenacao', event.target.value as 'nome' | 'dataNascimento')}
+          >
+            <option value="nome">Nome (A-Z)</option>
+            <option value="dataNascimento">Data de nascimento</option>
+          </FilterSelect>
           <label className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors w-full cursor-pointer">
             <input
               type="checkbox"
@@ -244,7 +280,7 @@ export default function MembrosVisualizacaoPage() {
         renderMobileCard={(membro) => (
           <EntityCard
             title={membro.nome}
-            subtitle={formatPhone(membro.whatsapp)}
+            subtitle={[formatPhone(membro.whatsapp), formatDate(membro.dataNascimento)].filter((value) => value !== '—').join(' • ')}
             badge={
               <StatusBadge
                 label={STATUS_MEMBRO_LABEL[membro.status]}
