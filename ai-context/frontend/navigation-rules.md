@@ -23,9 +23,11 @@ Pode acessar a experiencia administrativa do tenant:
 - `/membros`
 - `/membros/visualizacao`
 - `/ministerios`
+- `/ministerios/visualizacao`
 - `/escalas`
 - `/escalas/visualizacao`
 - `/agenda`
+- `/agenda/visualizacao`
 - `/meu-perfil`
 - `/configuracoes`
 - demais modulos administrativos liberados.
@@ -38,9 +40,11 @@ Pode acessar a operacao global do tenant:
 - `/membros`
 - `/membros/visualizacao`
 - `/ministerios`
+- `/ministerios/visualizacao`
 - `/escalas`
 - `/escalas/visualizacao`
 - `/agenda`
+- `/agenda/visualizacao`
 - `/meu-perfil`
 
 Nao deve acessar areas exclusivas de `ADMIN`, como configuracoes sensiveis quando assim definido.
@@ -51,7 +55,7 @@ Fluxo principal:
 
 - login deve cair em `/minhas-escalas`;
 - pode acessar `/minhas-escalas`;
-- pode acessar `/agenda`;
+- pode acessar `/agenda/visualizacao`;
 - pode acessar `/meu-perfil`;
 - pode alterar a propria senha em `/meu-perfil`.
 
@@ -71,6 +75,7 @@ Nao deve acessar:
 Tem o mesmo menu do BASIC comum, com acesso adicional a:
 
 - `/ministerios`, escopado aos ministerios onde e `LEADER` ou `ASSISTANT_LEADER`;
+- `/ministerios/visualizacao`, escopado aos ministerios onde e `LEADER` ou `ASSISTANT_LEADER`;
 - `/escalas`, escopado aos ministerios onde e `LEADER` ou `ASSISTANT_LEADER`;
 - `/escalas/visualizacao`, escopado aos ministerios onde e `LEADER` ou `ASSISTANT_LEADER`.
 
@@ -110,6 +115,8 @@ Menu BASIC lider/co-lider:
 ```txt
 Minhas Escalas
 Ministerios
+  Gerenciar
+  Visualizacao
 Escalas
   Gerenciar
   Visualizacao
@@ -126,11 +133,17 @@ Membros
   Visualizacao
   Exportacao
 Ministerios
+  Gerenciar
+  Visualizacao
+  Exportacao
 Escalas
   Gerenciar
   Visualizacao
   Exportacao
 Agenda
+  Gerenciar
+  Visualizacao
+  Exportacao
 Grupos
 Financeiro
 Integracoes

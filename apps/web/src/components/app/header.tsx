@@ -6,8 +6,10 @@ const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/membros': 'Membros',
   '/ministerios': 'Ministérios',
+  '/ministerios/visualizacao': 'Visualização de Ministérios',
   '/escalas': 'Escalas',
   '/agenda': 'Agenda',
+  '/agenda/visualizacao': 'Visualização de Agenda',
   '/configuracoes': 'Configurações',
 };
 

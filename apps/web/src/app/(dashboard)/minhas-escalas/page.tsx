@@ -84,7 +84,7 @@ export default function MinhasEscalasPage() {
           {item.observacoes && <p className="mt-1 text-xs text-gray-500">{item.observacoes}</p>}
         </div>
 
-        {showActions && canConfirm && (
+        {canConfirm && showActions && (
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               onClick={() => updateConfirmacao(item.id, 'CONFIRMADO')}
@@ -147,7 +147,7 @@ export default function MinhasEscalasPage() {
           <section>
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Proximas</h2>
             <div className="space-y-3">
-              {futuras.length > 0 ? futuras.map((item) => renderItem(item, false)) : (
+              {futuras.length > 0 ? futuras.map((item) => renderItem(item)) : (
                 <EmptyState compact title="Nenhuma escala futura." />
               )}
             </div>
@@ -156,7 +156,7 @@ export default function MinhasEscalasPage() {
           <section>
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Historico</h2>
             <div className="space-y-3">
-              {passadas.length > 0 ? passadas.map((item) => renderItem(item, false)) : (
+              {passadas.length > 0 ? passadas.map((item) => renderItem(item)) : (
                 <EmptyState compact title="Nenhuma escala passada." />
               )}
             </div>

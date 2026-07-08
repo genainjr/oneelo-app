@@ -99,5 +99,42 @@
   - `apps/web/src/app/(dashboard)/membros/visualizacao/page.tsx`
   - `apps/web/src/hooks/use-membros-visualizacao.ts`
   - `apps/web/src/components/app/filter-shell.tsx`
-  - `apps/web/src/hooks/use-filter-state.ts`
+- `apps/web/src/hooks/use-filter-state.ts`
   - `apps/web/src/app/(dashboard)/dashboard/page.tsx`
+
+---
+
+### IMP-008 Limite de membros deve respeitar o plano contratado do tenant
+
+- **Status**: pendente
+- **Prioridade**: alta
+- **Categoria**: billing / tenant management / consistencia de regras
+- **Contexto**: O bloqueio de criacao de membros hoje usa apenas `tenant.limiteMembros`. Isso faz com que tenants em `PROFISSIONAL` ainda possam ser bloqueados se o limite numerico nao for ajustado manualmente, mesmo quando o plano contratado deveria permitir membros ilimitados.
+- **Acao**: Definir uma regra oficial para derivar o limite a partir do plano do tenant. Recomendacao inicial: `GRATUITO = 50`, `BASICO = 200`, `PROFISSIONAL = ilimitado`. Ajustar o backend para validar a criacao de membros com base nessa regra, mantendo o campo `limiteMembros` apenas como override manual ou migração de transicao, se necessario.
+- **Impacto**: Evita bloqueios indevidos em tenants profissionais, reduz operacao manual no Super Admin e prepara o sistema para precificacao coerente com os planos exibidos.
+- **Arquivos afetados previstos**:
+  - `apps/api/prisma/schema.prisma`
+  - `apps/api/src/modules/membros/membros.service.ts`
+  - `apps/api/src/modules/super-admin/super-admin.service.ts`
+  - `apps/api/src/modules/super-admin/dto/create-tenant.dto.ts`
+  - `apps/api/src/modules/super-admin/dto/update-tenant.dto.ts`
+  - `apps/web/src/app/(dashboard)/admin/`
+
+---
+
+### IMP-009 Visualizacoes read-only para ministerios e agenda
+
+- **Status**: pendente
+- **Prioridade**: media
+- **Categoria**: UX / ODS / navegacao
+- **Contexto**: Hoje `ministerios` e `agenda` existem como telas de gestao, mas nao possuem uma rota de visualizacao dedicada no padrao de `membros/visualizacao` e `escalas/visualizacao`. Isso impede que o usuario tenha uma leitura clara e consistente, sem controles de edicao, separada do fluxo CRUD.
+- **Acao**: Criar visualizacoes read-only para `agenda` e `ministerios`, reaproveitando `PageHeader`, `FilterShell`, `EntityCard`, `EmptyState`, `StatusBadge` e os hooks existentes sempre que possivel. Evitar novos componentes genericos se a estrutura atual ja resolve o caso de uso.
+- **Impacto**: Melhora a leitura operacional, alinha a navegacao ao padrado ODS e separa consulta de edicao sem duplicar interface desnecessaria.
+- **Arquivos afetados previstos**:
+  - `apps/web/src/app/(dashboard)/agenda/`
+  - `apps/web/src/app/(dashboard)/ministerios/`
+  - `apps/web/src/components/app/page-header.tsx`
+  - `apps/web/src/components/app/filter-shell.tsx`
+  - `apps/web/src/components/app/entity-card.tsx`
+  - `apps/web/src/components/app/status-badge.tsx`
+  - `apps/web/src/components/app/empty-state.tsx`
