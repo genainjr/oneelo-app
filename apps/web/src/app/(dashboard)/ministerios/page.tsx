@@ -452,45 +452,45 @@ export default function MinisteriosPage() {
             <TabPanel id="membros" activeId={modalTab}>
               <div className="space-y-5">
                 {canManageSelectedMinisterio && (
-                  <div className="bg-gray-50 border border-gray-150 p-4 rounded-2xl flex gap-3 items-end">
-                    <div className="flex-1 space-y-1">
-                      <MembroSearchCombobox
-                        label={t('members.add')}
-                        placeholder="Buscar membro pelo nome..."
-                        loading={loadingDetails}
-                        options={membersOptions}
-                        selected={selectedMemberOptionToAdd}
-                        search={membroSearchToAdd}
-                        emptyMessage="Nenhum membro disponivel encontrado."
-                        selectedPrefix="Selecionado"
-                        onSearchChange={(value) => { setMembroSearchToAdd(value); setSelectedMembroToAdd(''); }}
-                        onSelect={(membro) => { setSelectedMembroToAdd(membro.id); setMembroSearchToAdd(membro.nome); }}
-                        onClear={() => { setSelectedMembroToAdd(''); setMembroSearchToAdd(''); }}
-                      />
-                    </div>
-                    {canManageSelectedMinisterio && (
-                      <div className="space-y-1">
+                  <div className="rounded-2xl border border-gray-150 bg-gray-50 p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <MembroSearchCombobox
+                          label={t('members.add')}
+                          placeholder="Buscar membro pelo nome..."
+                          loading={loadingDetails}
+                          options={membersOptions}
+                          selected={selectedMemberOptionToAdd}
+                          search={membroSearchToAdd}
+                          emptyMessage="Nenhum membro disponivel encontrado."
+                          selectedPrefix="Selecionado"
+                          onSearchChange={(value) => { setMembroSearchToAdd(value); setSelectedMembroToAdd(''); }}
+                          onSelect={(membro) => { setSelectedMembroToAdd(membro.id); setMembroSearchToAdd(membro.nome); }}
+                          onClear={() => { setSelectedMembroToAdd(''); setMembroSearchToAdd(''); }}
+                        />
+                      </div>
+                      <div className="w-full space-y-1 lg:w-44 lg:flex-none">
                         <label htmlFor="add-role" className="text-xs font-bold text-gray-500 uppercase">{t('members.role')}</label>
                         <select
                           id="add-role"
                           value={selectedRoleToAdd}
                           onChange={(e) => setSelectedRoleToAdd(e.target.value as MinistryRole)}
-                          className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
                         >
                           <option value="MEMBER">{t('members.roles.MEMBER')}</option>
                           <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
                           {canManage && <option value="LEADER">{t('members.roles.LEADER')}</option>}
                         </select>
                       </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleAddMembro}
-                      disabled={!selectedMembroToAdd}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm"
-                    >
-                      {t('functions.add')}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={handleAddMembro}
+                        disabled={!selectedMembroToAdd}
+                        className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm lg:w-auto lg:flex-none"
+                      >
+                        {t('functions.add')}
+                      </button>
+                    </div>
                   </div>
                 )}
                 {loadingDetails ? (

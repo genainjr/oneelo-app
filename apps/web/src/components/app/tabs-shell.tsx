@@ -55,7 +55,7 @@ export function TabsShell({
   return (
     <div className={cn('flex flex-col', className)}>
       {/* Tab bar — never scrolls */}
-      <div className="flex shrink-0 border-b border-gray-100 px-6">
+      <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-gray-100 px-4 sm:px-6">
         {tabs.map((tab) => {
           const isActive = tab.id === activeId;
           return (
@@ -65,7 +65,7 @@ export function TabsShell({
               disabled={tab.disabled}
               onClick={() => handleClick(tab.id)}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors',
+                'flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors',
                 isActive
                   ? 'border-indigo-600 text-indigo-600'
                   : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200',
