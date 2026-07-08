@@ -45,7 +45,7 @@ export function ModalShell({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
       <div
         className={cn(
-          'relative w-full bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]',
+          'relative w-full bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[92vh] sm:max-h-[90vh]',
           sizeClass[size],
           contentClassName,
         )}
@@ -53,7 +53,7 @@ export function ModalShell({
         aria-modal="true"
       >
         {/* Header — fixed, never scrolls */}
-        <div className="flex shrink-0 items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-6 border-b border-gray-100">
           <div className="flex min-w-0 items-center gap-3">
             {icon && (
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
@@ -61,7 +61,7 @@ export function ModalShell({
               </div>
             )}
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-gray-800">{title}</h2>
+              <h2 className="text-base sm:text-lg font-bold text-gray-800">{title}</h2>
               {description && (
                 <p className="mt-0.5 text-sm text-gray-500">{description}</p>
               )}
@@ -78,13 +78,13 @@ export function ModalShell({
         </div>
 
         {/* Body — scrollable */}
-        <div className={cn('flex-1 overflow-y-auto', bodyClassName)}>
+        <div className={cn('flex-1 overflow-y-auto overscroll-contain', bodyClassName)}>
           {children}
         </div>
 
         {/* Legacy footer slot */}
         {footer && (
-          <div className="flex shrink-0 items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+          <div className="flex shrink-0 items-center justify-end gap-3 px-4 py-4 sm:px-6 border-t border-gray-100 bg-gray-50/50">
             {footer}
           </div>
         )}

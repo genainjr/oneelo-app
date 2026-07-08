@@ -76,6 +76,7 @@ export interface Membro {
   id: string;
   tenantId: string;
   nome: string;
+  nomeExibicao?: string;
   email?: string;
   whatsapp?: string;
   dataNascimento?: string;
@@ -114,7 +115,7 @@ export interface MinisterioMembro {
   ministerioId: string;
   membroId: string;
   role: MinistryRole;
-  membro?: Pick<Membro, 'id' | 'nome' | 'email' | 'whatsapp' | 'status'>;
+  membro?: Pick<Membro, 'id' | 'nome' | 'nomeExibicao' | 'email' | 'whatsapp' | 'status'>;
   funcoesDisponiveis?: MinisterioMembroFuncao[];
 }
 
@@ -140,7 +141,7 @@ export interface EscalaItem {
   ministerioFuncaoId: string;
   observacoes?: string;
   statusConfirmacao: StatusConfirmacao;
-  membro?: Pick<Membro, 'id' | 'nome' | 'email' | 'whatsapp'>;
+  membro?: Pick<Membro, 'id' | 'nome' | 'nomeExibicao' | 'email' | 'whatsapp'>;
   funcao?: MinisterioFuncao;
 }
 

@@ -138,6 +138,7 @@ model Membro {
   id             String       @id @default(uuid())
   tenantId       String       @map("tenant_id")
   nome           String       @map("name")
+  nomeExibicao   String?      @map("display_name")
   whatsapp       String?      @map("mobile_phone")
   email          String?
   dataNascimento DateTime?    @map("birth_date")

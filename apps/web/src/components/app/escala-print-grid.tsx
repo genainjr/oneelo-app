@@ -16,11 +16,21 @@ function getWeekdayLabel(dia: EscalaDia) {
   return WEEKDAY_LABELS[date.getUTCDay()] ?? '-';
 }
 
+function getDisplayName(item: NonNullable<ReturnType<typeof getItens>[number]>) {
+  const nomeExibicao = item.membro?.nomeExibicao?.trim();
+  if (nomeExibicao) return nomeExibicao;
+
+  const nomeCompleto = item.membro?.nome?.trim();
+  if (!nomeCompleto) return '';
+
+  const primeiroNome = nomeCompleto.split(/\s+/)[0];
+  return primeiroNome || nomeCompleto;
+}
+
 function getMemberNames(dia: EscalaDia, funcaoId: string) {
   return getItens(dia, funcaoId)
-    .map((item) => item.membro?.nome)
+    .map((item) => getDisplayName(item))
     .filter((nome): nome is string => Boolean(nome))
-    .map((nome) => nome.trim().split(/\s+/)[0])
     .join(', ');
 }
 
