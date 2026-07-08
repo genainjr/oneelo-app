@@ -15,6 +15,7 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { useMembrosVisualizacao } from '@/hooks/use-membros-visualizacao';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
+import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { MembroVisualizacao, Ministerio } from '@/types';
 import { Briefcase, Calendar, PhoneOff, Users } from 'lucide-react';
 
@@ -138,7 +139,7 @@ export default function MembrosVisualizacaoPage() {
         <div className="flex items-center gap-3">
           <InitialsAvatar name={membro.nome} />
           <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
-            {membro.nome}
+            {getMemberDisplayName(membro)}
           </button>
         </div>
       ),
@@ -277,12 +278,12 @@ export default function MembrosVisualizacaoPage() {
         onPageChange={setCurrentPage}
         emptyTitle="Nenhum membro encontrado"
         emptyDescription="Ajuste os filtros para localizar outros membros."
-        renderMobileCard={(membro) => (
-          <EntityCard
-            title={membro.nome}
-            subtitle={[formatPhone(membro.whatsapp), formatDate(membro.dataNascimento)].filter((value) => value !== '—').join(' • ')}
-            badge={
-              <StatusBadge
+      renderMobileCard={(membro) => (
+        <EntityCard
+          title={getMemberDisplayName(membro)}
+          subtitle={[formatPhone(membro.whatsapp), formatDate(membro.dataNascimento)].filter((value) => value !== '—').join(' • ')}
+          badge={
+            <StatusBadge
                 label={STATUS_MEMBRO_LABEL[membro.status]}
                 className={`font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}
               />

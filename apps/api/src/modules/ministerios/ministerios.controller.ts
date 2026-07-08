@@ -36,6 +36,14 @@ export class MinisteriosController {
     return this.ministeriosService.findAll(tenantId, user);
   }
 
+  @Get('resumo')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  findResumo(@Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.ministeriosService.findResumo(tenantId, user);
+  }
+
   @Get(':id/membros-disponiveis')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   findMembrosDisponiveis(@Param('id') id: string, @Req() req: Request) {
