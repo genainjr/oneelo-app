@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Building2, Users, ListChecks, Sparkles } from 'lucide-react';
 import { useMinisterios } from '@/hooks/use-ministerios';
@@ -12,8 +12,14 @@ import { EntityCard } from '@/components/app/entity-card';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatusBadge } from '@/components/app/status-badge';
+import { getMemberDisplayName } from '@/components/app/escala-shared';
+import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import type { MinistryRole } from '@/types';
+
+type MinisterioResumo = {
+  membros: number;
+};
 
 export default function MinisteriosVisualizacaoPage() {
   const t = useTranslations('ministries');
@@ -22,6 +28,20 @@ export default function MinisteriosVisualizacaoPage() {
     nome: '',
     estrutura: '',
   });
+  const [resumo, setResumo] = useState<MinisterioResumo | null>(null);
+
+  const fetchResumo = useCallback(async () => {
+    try {
+      const data = await api.get<MinisterioResumo>('/api/ministerios/resumo');
+      setResumo(data ?? null);
+    } catch {
+      setResumo(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchResumo();
+  }, [fetchResumo]);
   const {
     formState: filterState,
     setField: setFilterField,
@@ -42,11 +62,16 @@ export default function MinisteriosVisualizacaoPage() {
 
   const stats = useMemo(() => {
     const total = ministerios.length;
-    const membros = ministerios.reduce((acc, ministerio) => acc + (ministerio._count?.membros ?? 0), 0);
+    const membrosBrutos = ministerios.reduce((acc, ministerio) => acc + (ministerio._count?.membros ?? 0), 0);
+    const membros = resumo?.membros ?? membrosBrutos;
     const funcoes = ministerios.reduce((acc, ministerio) => acc + (ministerio.funcoes?.length ?? 0), 0);
-    const lideres = ministerios.reduce((acc, ministerio) => (
-      acc + (ministerio.membros || []).filter((item) => item.role === 'LEADER' || item.role === 'ASSISTANT_LEADER').length
-    ), 0);
+    const lideres = new Set(
+      ministerios.flatMap((ministerio) =>
+        (ministerio.membros || [])
+          .filter((item) => item.role === 'LEADER' || item.role === 'ASSISTANT_LEADER')
+          .map((item) => item.membroId),
+      ),
+    ).size;
     return { total, membros, funcoes, lideres };
   }, [ministerios]);
 
@@ -73,6 +98,10 @@ export default function MinisteriosVisualizacaoPage() {
       return true;
     });
   }, [ministriesSorted, appliedFilter.nome, appliedFilter.estrutura]);
+
+  const handleReload = useCallback(async () => {
+    await Promise.all([refetch(), fetchResumo()]);
+  }, [fetchResumo, refetch]);
 
   return (
     <div className="p-6 space-y-6">
@@ -101,7 +130,7 @@ export default function MinisteriosVisualizacaoPage() {
                 estrutura: '',
               });
             }}
-            onReload={refetch}
+            onReload={handleReload}
           />
         }
       >
@@ -128,7 +157,7 @@ export default function MinisteriosVisualizacaoPage() {
       {error && (
         <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700 flex items-center justify-between gap-4">
           <span>{error}</span>
-          <button type="button" onClick={refetch} className="font-semibold underline underline-offset-2">
+          <button type="button" onClick={handleReload} className="font-semibold underline underline-offset-2">
             {t('reload')}
           </button>
         </div>
@@ -148,7 +177,7 @@ export default function MinisteriosVisualizacaoPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredMinistries.map((ministerio) => {
-            const leaders = (ministerio.membros || [])
+              const leaders = (ministerio.membros || [])
               .filter((item) => item.role === 'LEADER' || item.role === 'ASSISTANT_LEADER')
               .sort((a, b) => {
                 const roleOrder: Record<MinistryRole, number> = {
@@ -158,7 +187,7 @@ export default function MinisteriosVisualizacaoPage() {
                 };
                 const roleDiff = roleOrder[a.role] - roleOrder[b.role];
                 if (roleDiff !== 0) return roleDiff;
-                return (a.membro?.nome ?? '').localeCompare(b.membro?.nome ?? '', 'pt-BR');
+                return getMemberDisplayName(a.membro).localeCompare(getMemberDisplayName(b.membro), 'pt-BR');
               });
 
             return (
@@ -189,11 +218,11 @@ export default function MinisteriosVisualizacaoPage() {
                     <div className="mt-2 space-y-1">
                       {leaders.length > 0 ? (
                         leaders.map((item) => (
-                          <div key={`${ministerio.id}-${item.membroId}-${item.role}`} className="flex items-center justify-between gap-2">
-                            <span className="min-w-0 truncate text-sm font-semibold text-gray-800">
-                              {item.membro?.nome}
+                          <div key={`${ministerio.id}-${item.membroId}-${item.role}`} className="flex items-start justify-between gap-2">
+                            <span className="min-w-0 flex-1 whitespace-normal break-words text-sm font-semibold leading-snug text-gray-800">
+                              {getMemberDisplayName(item.membro)}
                             </span>
-                            <span className="shrink-0 text-[11px] font-semibold text-indigo-600">
+                            <span className="shrink-0 pt-0.5 text-[11px] font-semibold text-indigo-600">
                               {t(`members.roles.${item.role}` as any)}
                             </span>
                           </div>

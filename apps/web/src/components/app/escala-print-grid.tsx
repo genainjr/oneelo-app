@@ -2,7 +2,7 @@
 
 import { Escala, EscalaDia } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { getDias, getFuncoes, getItens, isFuncaoOculta } from './escala-shared';
+import { getDias, getFuncoes, getItens, getMemberDisplayName, isFuncaoOculta } from './escala-shared';
 
 interface EscalaPrintGridProps {
   escala: Escala;
@@ -17,14 +17,7 @@ function getWeekdayLabel(dia: EscalaDia) {
 }
 
 function getDisplayName(item: NonNullable<ReturnType<typeof getItens>[number]>) {
-  const nomeExibicao = item.membro?.nomeExibicao?.trim();
-  if (nomeExibicao) return nomeExibicao;
-
-  const nomeCompleto = item.membro?.nome?.trim();
-  if (!nomeCompleto) return '';
-
-  const primeiroNome = nomeCompleto.split(/\s+/)[0];
-  return primeiroNome || nomeCompleto;
+  return getMemberDisplayName(item.membro);
 }
 
 function getMemberNames(dia: EscalaDia, funcaoId: string) {

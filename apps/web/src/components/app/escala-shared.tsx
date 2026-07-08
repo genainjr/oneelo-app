@@ -31,17 +31,28 @@ export function getDias(escala: Escala): EscalaDia[] {
 export function getItens(dia: EscalaDia, funcaoId: string): EscalaItem[] {
   return (dia.itens || [])
     .filter((item) => item.ministerioFuncaoId === funcaoId)
-    .sort((a, b) => (a.membro?.nome || '').localeCompare(b.membro?.nome || '', 'pt-BR'));
+    .sort((a, b) => getMemberDisplayName(a.membro).localeCompare(getMemberDisplayName(b.membro), 'pt-BR'));
 }
 
 export function isFuncaoOculta(dia: EscalaDia, funcaoId: string) {
   return dia.funcoesOcultas?.some((oculta) => oculta.funcaoId === funcaoId) ?? false;
 }
 
+export function getMemberDisplayName(member?: { nome?: string | null; nomeExibicao?: string | null } | null) {
+  const nomeExibicao = member?.nomeExibicao?.trim();
+  if (nomeExibicao) return nomeExibicao;
+
+  const nomeCompleto = member?.nome?.trim();
+  if (!nomeCompleto) return '-';
+
+  const primeiroNome = nomeCompleto.split(/\s+/)[0]?.trim();
+  return primeiroNome || nomeCompleto;
+}
+
 export function MemberChip({ item }: { item: EscalaItem }) {
   return (
     <div className="rounded-lg border border-gray-100 bg-white px-2 py-1 shadow-xs">
-      <p className="text-xs font-bold leading-tight text-gray-900">{item.membro?.nome || '-'}</p>
+      <p className="text-xs font-bold leading-tight text-gray-900">{getMemberDisplayName(item.membro)}</p>
       <StatusBadge
         label={STATUS_CONFIRMACAO_LABEL[item.statusConfirmacao]}
         className={`mt-1 px-1.5 py-0.5 text-[10px] font-bold ${STATUS_CONFIRMACAO_COLOR[item.statusConfirmacao]}`}
