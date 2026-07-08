@@ -55,7 +55,7 @@ export default function MinhasEscalasPage() {
     }
   }
 
-  function renderItem(item: MinhaEscalaItem) {
+  function renderItem(item: MinhaEscalaItem, showActions = false) {
     const canConfirm = item.escala.status === 'PUBLICADA';
 
     return (
@@ -84,7 +84,7 @@ export default function MinhasEscalasPage() {
           {item.observacoes && <p className="mt-1 text-xs text-gray-500">{item.observacoes}</p>}
         </div>
 
-        {canConfirm && (
+        {showActions && canConfirm && (
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               onClick={() => updateConfirmacao(item.id, 'CONFIRMADO')}
@@ -138,7 +138,7 @@ export default function MinhasEscalasPage() {
           <section>
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Pendentes</h2>
             <div className="space-y-3">
-              {pendentes.length > 0 ? pendentes.map(renderItem) : (
+              {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true)) : (
                 <EmptyState compact title="Nenhuma confirmacao pendente." />
               )}
             </div>
@@ -147,7 +147,7 @@ export default function MinhasEscalasPage() {
           <section>
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Proximas</h2>
             <div className="space-y-3">
-              {futuras.length > 0 ? futuras.map(renderItem) : (
+              {futuras.length > 0 ? futuras.map((item) => renderItem(item, false)) : (
                 <EmptyState compact title="Nenhuma escala futura." />
               )}
             </div>
@@ -156,7 +156,7 @@ export default function MinhasEscalasPage() {
           <section>
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Historico</h2>
             <div className="space-y-3">
-              {passadas.length > 0 ? passadas.map(renderItem) : (
+              {passadas.length > 0 ? passadas.map((item) => renderItem(item, false)) : (
                 <EmptyState compact title="Nenhuma escala passada." />
               )}
             </div>
