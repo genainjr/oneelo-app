@@ -14,6 +14,10 @@ export class CreateMembroDto {
   @IsOptional()
   email?: string;
 
+  @IsString()
+  @IsOptional()
+  nomeExibicao?: string;
+
   @IsDateString()
   @IsOptional()
   dataNascimento?: string;

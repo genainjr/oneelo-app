@@ -251,10 +251,11 @@ export class EscalasService {
                   select: {
                     id: true,
                     nome: true,
+                    nomeExibicao: true,
                     email: true,
                     whatsapp: true,
                     status: true,
-                  },
+                  } as any,
                 },
                 funcao: true,
               },
@@ -308,7 +309,7 @@ export class EscalasService {
     const itens = await this.prisma.escalaItem.findMany({
       where,
       include: {
-        membro: { select: { id: true, nome: true, email: true, whatsapp: true } },
+        membro: { select: { id: true, nome: true, nomeExibicao: true, email: true, whatsapp: true } as any },
         funcao: true,
         escalaDia: {
           include: {
@@ -320,7 +321,7 @@ export class EscalasService {
           },
         },
       },
-    });
+    }) as any[];
 
     return itens
       .sort((a, b) => a.escalaDia.data.getTime() - b.escalaDia.data.getTime())
@@ -354,7 +355,7 @@ export class EscalasService {
             funcoesOcultas: { select: { funcaoId: true } },
             itens: {
               include: {
-                membro: { select: { id: true, nome: true, email: true, whatsapp: true } },
+                membro: { select: { id: true, nome: true, nomeExibicao: true, email: true, whatsapp: true } as any },
                 user: { select: { id: true, nome: true } },
                 funcao: true
               }
@@ -563,7 +564,7 @@ export class EscalasService {
         observacoes: dto.observacoes,
       },
       include: {
-        membro: { select: { id: true, nome: true, email: true, whatsapp: true } },
+        membro: { select: { id: true, nome: true, nomeExibicao: true, email: true, whatsapp: true } as any },
         funcao: true,
       },
     });
