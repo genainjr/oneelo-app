@@ -241,7 +241,14 @@ function EscalaPrintFooter({ printedAt }: { printedAt: Date }) {
 
   return (
     <footer className="print-schedule-footer">
-      Impresso em {formatted}
+      <div className="print-schedule-footer-brand">
+        <img src="/logo.jpg" alt="Lookup Labs" className="print-schedule-footer-logo" />
+        <div className="print-schedule-footer-text">
+          <span className="print-schedule-footer-company">Lookup Labs</span>
+          <span className="print-schedule-footer-product">One Elo</span>
+        </div>
+      </div>
+      <span>Impresso em {formatted}</span>
     </footer>
   );
 }
