@@ -14,6 +14,10 @@ export class UpdateMembroDto {
   @IsOptional()
   email?: string;
 
+  @IsString()
+  @IsOptional()
+  nomeExibicao?: string;
+
   @IsDateString()
   @IsOptional()
   dataNascimento?: string;
