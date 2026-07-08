@@ -217,6 +217,45 @@
   "ministries": {
     "title": "Ministries",
     "description": "Manage service teams, church departments, leaders and participants.",
+    "reload": "Reload",
+    "view": {
+      "pageTitle": "Ministries View",
+      "pageDescription": "Review ministries in a read-only view, with leaders, roles and operational summary.",
+      "filter": {
+        "nameLabel": "Ministry name",
+        "namePlaceholder": "Search ministries by name",
+        "structureLabel": "Composition",
+        "structureAll": "All",
+        "structureLeaders": "With leadership",
+        "structureFunctions": "With roles",
+        "structureEmpty": "No leadership or roles",
+        "apply": "Filter",
+        "clear": "Clear"
+      },
+      "stats": {
+        "total": "Ministries",
+        "members": "Members",
+        "functions": "Roles",
+        "leaders": "Leaderships"
+      },
+      "membersSingular": "member",
+      "membersPlural": "members",
+      "meta": {
+        "updated": "Updated"
+      },
+      "sections": {
+        "leaders": "Leadership",
+        "functions": "Roles"
+      },
+      "noDescription": "No description registered.",
+      "noFunctions": "No roles registered.",
+      "functionsSingular": "role",
+      "functionsPlural": "roles",
+      "leadersSingular": "leader",
+      "leadersPlural": "leaders",
+      "emptyTitle": "No ministries found",
+      "emptyDescription": "Active ministries will appear here for review."
+    },
     "new": "New Ministry",
     "noMinistries": "No ministries registered",
     "noMinistriesDesc": "Ministries organize members and service schedules.",
@@ -374,6 +413,18 @@
     "title": "Calendar",
     "pageTitle": "Church Calendar",
     "pageDescription": "Track services, rehearsals, meetings and official church events.",
+    "view": {
+      "pageTitle": "Calendar View",
+      "pageDescription": "Review events by period and status in read-only mode, without editing actions.",
+      "stats": {
+        "total": "Events",
+        "scheduled": "Scheduled",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "emptyTitle": "No events found",
+      "emptyDescription": "Adjust the period or status to find other events."
+    },
     "newEvent": "New Event",
     "reload": "Reload",
     "noEvents": "No events scheduled",
