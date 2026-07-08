@@ -25,6 +25,7 @@ export function MembroModal(props: MembroModalProps) {
 
 function MembroModalContent({ isOpen, onClose, onSave, membro }: MembroModalProps) {
   const [nome, setNome] = useState(membro?.nome || '');
+  const [nomeExibicao, setNomeExibicao] = useState(membro?.nomeExibicao || '');
   const [email, setEmail] = useState(membro?.email || '');
   const [whatsapp, setWhatsapp] = useState(membro?.whatsapp || '');
   const [dataNascimento, setDataNascimento] = useState(
@@ -49,6 +50,7 @@ function MembroModalContent({ isOpen, onClose, onSave, membro }: MembroModalProp
     try {
       const payload: Partial<Membro> = {
         nome: nome.trim(),
+        nomeExibicao: nomeExibicao.trim() || undefined,
         email: email.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
         dataNascimento: dataNascimento ? new Date(dataNascimento).toISOString() : undefined,
@@ -102,6 +104,15 @@ function MembroModalContent({ isOpen, onClose, onSave, membro }: MembroModalProp
           required
           value={nome}
           onChange={(e) => setNome(e.target.value)}
+          placeholder="Ex: Joao da Silva"
+        />
+
+        <InputField
+          id="nomeExibicao"
+          label="Nome de impressao"
+          type="text"
+          value={nomeExibicao}
+          onChange={(e) => setNomeExibicao(e.target.value)}
           placeholder="Ex: Joao da Silva"
         />
 
