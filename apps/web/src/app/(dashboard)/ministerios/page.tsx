@@ -273,7 +273,7 @@ export default function MinisteriosPage() {
     (membersOptions.find((m) => m.id === selectedMembroToAdd) as MembroOption | undefined) ?? null;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <PageHeader
         title={t('title')}
         description={t('description')}

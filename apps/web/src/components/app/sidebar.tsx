@@ -170,10 +170,12 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       return;
     }
 
-    api.get<unknown[]>('/api/ministerios')
-      .then((data) => setBasicHasLeadership(Array.isArray(data) && data.length > 0))
-      .catch(() => setBasicHasLeadership(false));
-  }, [user?.role]);
+    const hasLeadership = user.membro?.ministerios?.some(
+      (membership) => membership.role === 'LEADER' || membership.role === 'ASSISTANT_LEADER',
+    ) ?? false;
+
+    setBasicHasLeadership(hasLeadership);
+  }, [user]);
 
   useEffect(() => {
     if (!localeOpen) return;
@@ -225,6 +227,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       icon: ICONS.ministries,
       children: [
         { href: '/ministerios', label: t('manage'), icon: ICONS.manage },
+        { href: '/ministerios/visualizacao', label: t('view'), icon: ICONS.view },
         { href: '/ministerios/exportacao', label: t('export'), icon: ICONS.export },
         { href: '/ministerios/louvor', label: 'Louvor', comingSoon: true, divider: true, icon: ICONS.louvor },
         { href: '/ministerios/infantil', label: 'Infantil', comingSoon: true, icon: ICONS.infantil },
@@ -247,6 +250,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       icon: ICONS.agenda,
       children: [
         { href: '/agenda', label: t('manage'), icon: ICONS.manage },
+        { href: '/agenda/visualizacao', label: t('view'), icon: ICONS.view },
         { href: '/agenda/exportacao', label: t('export'), icon: ICONS.export },
       ],
     },
@@ -266,6 +270,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         icon: ICONS.ministries,
         children: [
           { href: '/ministerios', label: t('manage'), icon: ICONS.manage },
+          { href: '/ministerios/visualizacao', label: t('view'), icon: ICONS.view },
         ],
       },
       {
@@ -278,7 +283,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         ],
       },
     ] satisfies NavItem[] : []),
-    { href: '/agenda', label: t('agenda'), icon: ICONS.agenda },
+    { href: '/agenda/visualizacao', label: t('agenda'), icon: ICONS.agenda },
     { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
   ];
 

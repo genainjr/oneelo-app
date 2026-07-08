@@ -217,6 +217,45 @@
   "ministries": {
     "title": "Ministérios",
     "description": "Gira as equipas de serviço, departamentos da igreja, líderes e participantes.",
+    "reload": "Recarregar",
+    "view": {
+      "pageTitle": "Visualização de Ministérios",
+      "pageDescription": "Consulte os ministérios em leitura rápida, com líderes, funções e resumo operacional.",
+      "filter": {
+        "nameLabel": "Nome do ministério",
+        "namePlaceholder": "Pesquisar ministério pelo nome",
+        "structureLabel": "Composição",
+        "structureAll": "Todos",
+        "structureLeaders": "Com liderança",
+        "structureFunctions": "Com funções",
+        "structureEmpty": "Sem liderança nem funções",
+        "apply": "Filtrar",
+        "clear": "Limpar"
+      },
+      "stats": {
+        "total": "Ministérios",
+        "members": "Membros",
+        "functions": "Funções",
+        "leaders": "Lideranças"
+      },
+      "membersSingular": "membro",
+      "membersPlural": "membros",
+      "meta": {
+        "updated": "Atualizado"
+      },
+      "sections": {
+        "leaders": "Lideranças",
+        "functions": "Funções"
+      },
+      "noDescription": "Sem descrição registada.",
+      "noFunctions": "Nenhuma função registada.",
+      "functionsSingular": "função",
+      "functionsPlural": "funções",
+      "leadersSingular": "liderança",
+      "leadersPlural": "lideranças",
+      "emptyTitle": "Nenhum ministério encontrado",
+      "emptyDescription": "Os ministérios ativos aparecerão aqui para consulta."
+    },
     "new": "Novo Ministério",
     "noMinistries": "Nenhum ministério registado",
     "noMinistriesDesc": "Os ministérios organizam os membros e as escalas de serviço.",
@@ -374,6 +413,18 @@
     "title": "Agenda",
     "pageTitle": "Agenda da Igreja",
     "pageDescription": "Acompanhe cultos, ensaios, reuniões e eventos oficiais da igreja.",
+    "view": {
+      "pageTitle": "Visualização da Agenda",
+      "pageDescription": "Consulte os eventos por período e estado em modo apenas leitura, sem ações de edição.",
+      "stats": {
+        "total": "Eventos",
+        "scheduled": "Agendados",
+        "completed": "Realizados",
+        "cancelled": "Cancelados"
+      },
+      "emptyTitle": "Nenhum evento encontrado",
+      "emptyDescription": "Ajuste o período ou o estado para localizar outros eventos."
+    },
     "newEvent": "Novo Evento",
     "reload": "Recarregar",
     "noEvents": "Nenhum evento agendado",
