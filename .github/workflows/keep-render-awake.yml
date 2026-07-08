@@ -1,0 +1,28 @@
+name: Keep Render Awake
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-site:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Render service
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: |
+          if [ -z "$SITE_URL" ]; then
+            echo "SITE_URL secret is not configured."
+            exit 1
+          fi
+
+          curl --fail --silent --show-error \
+            --location \
+            --max-time 30 \
+            --retry 2 \
+            --retry-delay 10 \
+            --user-agent "github-actions-render-keepalive" \
+            "$SITE_URL" > /dev/null
