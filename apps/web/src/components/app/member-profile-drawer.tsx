@@ -2,6 +2,7 @@
 
 import { MembroVisualizacao } from '@/types';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
+import { getMemberDisplayName } from './escala-shared';
 import { InfoItem } from './info-item';
 import { StatusBadge } from './status-badge';
 
@@ -22,7 +23,7 @@ export function MemberProfileDrawer({ membro, onClose }: MemberProfileDrawerProp
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-6 py-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Perfil do membro</p>
-            <h2 className="mt-1 text-xl font-bold text-gray-900">{membro.nome}</h2>
+            <h2 className="mt-1 text-xl font-bold text-gray-900">{getMemberDisplayName(membro)}</h2>
           </div>
           <button
             onClick={onClose}
