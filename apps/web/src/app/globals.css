@@ -111,12 +111,52 @@ body {
     left: 0;
     margin: 0;
     border-top: 1px solid #cbd5e1;
-    padding-top: 3mm;
+    padding: 3mm 0 0;
     color: #64748b;
     font-size: 8pt;
     font-weight: 500;
-    text-align: right;
     background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8mm;
+  }
+
+  .print-schedule-footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 2.5mm;
+    min-width: 0;
+  }
+
+  .print-schedule-footer-logo {
+    width: 8mm;
+    height: 8mm;
+    border-radius: 1.5mm;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .print-schedule-footer-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5mm;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .print-schedule-footer-company {
+    color: #0f172a;
+    font-size: 8.5pt;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .print-schedule-footer-product {
+    color: #64748b;
+    font-size: 7pt;
+    font-weight: 600;
+    line-height: 1;
   }
 
   .print-schedule-table {
