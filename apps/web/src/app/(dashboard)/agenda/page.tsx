@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import { useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
@@ -13,7 +14,7 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { InputField, SelectField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
-import { Evento, AuthUser } from '@/types';
+import { Evento, AuthUser, StatusEvento } from '@/types';
 import { formatDate } from '@/lib/utils';
 
 type FeedbackMessage = {
@@ -21,8 +22,23 @@ type FeedbackMessage = {
   message: string;
 } | null;
 
+function toDateInputValue(date: Date) {
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
+}
+
 export default function AgendaPage() {
   const t = useTranslations('agenda');
+  const monthStart = useMemo(() => startOfMonth(new Date()), []);
+  const monthEnd = useMemo(() => endOfMonth(new Date()), []);
+  const initialFilter = useMemo(
+    () => ({
+      status: '',
+      dataInicio: toDateInputValue(monthStart),
+      dataFim: toDateInputValue(monthEnd),
+    }),
+    [monthStart, monthEnd],
+  );
 
   const {
     eventos,
@@ -33,7 +49,7 @@ export default function AgendaPage() {
     createEvento,
     updateEvento,
     deleteEvento,
-  } = useEventos();
+  } = useEventos(initialFilter);
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null);
@@ -52,16 +68,12 @@ export default function AgendaPage() {
     handleClear: handleClearFilters,
     handleSubmit: handleFilterSubmit,
   } = useFilterState({
-    initialState: {
-      status: '',
-      dataInicio: '',
-      dataFim: '',
-    },
+    initialState: initialFilter,
     onApply: (filters) => {
       applyFilter({
         status: filters.status || undefined,
-        dataInicio: filters.dataInicio ? new Date(filters.dataInicio).toISOString() : undefined,
-        dataFim: filters.dataFim ? new Date(filters.dataFim).toISOString() : undefined,
+        dataInicio: filters.dataInicio || undefined,
+        dataFim: filters.dataFim || undefined,
       });
     },
   });
@@ -99,6 +111,16 @@ export default function AgendaPage() {
       }
       setIsModalOpen(false);
       setSelectedEvento(null);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || t('errorSave') });
+    }
+  }
+
+  async function handleUpdateStatus(ev: Evento, nextStatus: StatusEvento) {
+    if (ev.status === nextStatus) return;
+
+    try {
+      await updateEvento(ev.id, { status: nextStatus });
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || t('errorSave') });
     }
@@ -283,14 +305,14 @@ export default function AgendaPage() {
                       <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      {t('event.start')}: {formatDate(ev.dataInicio)}
+                      {t('event.start')}: {formatDate(ev.dataInicio, 'dd/MM/yyyy HH:mm')}
                     </span>
                     {ev.dataFim && (
                       <span className="flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        {t('event.end')}: {formatDate(ev.dataFim)}
+                        {t('event.end')}: {formatDate(ev.dataFim, 'dd/MM/yyyy HH:mm')}
                       </span>
                     )}
                     {ev.local && (
@@ -306,7 +328,25 @@ export default function AgendaPage() {
                 </div>
 
                 {canManage && (
-                  <div className="flex gap-2 items-center justify-end self-end md:self-auto">
+                  <div className="flex flex-wrap gap-2 items-center justify-end self-end md:self-auto">
+                    {ev.status === 'AGENDADO' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateStatus(ev, 'REALIZADO')}
+                          className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all"
+                        >
+                          {t('actions.markCompleted')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateStatus(ev, 'CANCELADO')}
+                          className="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-100 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          {t('actions.cancelEvent')}
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={() => openEdit(ev)}
                       className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
