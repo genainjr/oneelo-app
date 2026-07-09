@@ -45,6 +45,7 @@ export interface AuthUser {
   membro?: {
     id: string;
     nome: string;
+    nomeExibicao?: string | null;
     email?: string | null;
     whatsapp?: string | null;
     dataNascimento?: string | null;

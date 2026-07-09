@@ -17,3 +17,4 @@ Rules:
 - Treat ai-core as the global source of truth.
 - Always read both directories before proposing architectural or code changes.
 - Follow repository conventions before introducing new patterns.
+- Before any implementation, confirm the work is starting from `development`, update it if needed, and create a descriptive feature branch. Do not edit code before that check.

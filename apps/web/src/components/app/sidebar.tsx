@@ -156,6 +156,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     top: number;
     left: number;
   } | null>(null);
+  const [basicHasMinisterio, setBasicHasMinisterio] = useState(false);
   const [basicHasLeadership, setBasicHasLeadership] = useState(false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -166,14 +167,17 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
   useEffect(() => {
     if (user?.role !== 'BASIC') {
+      setBasicHasMinisterio(false);
       setBasicHasLeadership(false);
       return;
     }
 
+    const hasMinisterio = user.membro?.ministerios?.length ?? 0;
     const hasLeadership = user.membro?.ministerios?.some(
       (membership) => membership.role === 'LEADER' || membership.role === 'ASSISTANT_LEADER',
     ) ?? false;
 
+    setBasicHasMinisterio(hasMinisterio > 0);
     setBasicHasLeadership(hasLeadership);
   }, [user]);
 
@@ -257,13 +261,13 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupModules' },
     { href: '/financeiro', label: t('finance'), icon: ICONS.finance, comingSoon: true },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
-    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile, groupStart: 'groupAccount' },
+    { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile, groupStart: 'groupAccount' },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 
   const basicNavItems: NavItem[] = [
     { href: '/personal-panel', label: t('personalPanel'), icon: ICONS.dashboard },
-    { href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules },
+    ...(basicHasMinisterio ? [{ href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules }] : []),
     ...(basicHasLeadership ? [
       {
         href: '/ministerios',
@@ -295,7 +299,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           ],
         }
       : { href: '/agenda/visualizacao', label: t('agenda'), icon: ICONS.agenda },
-    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
+    { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile },
   ];
 
   const baseItems = user?.role === 'BASIC' ? basicNavItems : navItems;
