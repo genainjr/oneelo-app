@@ -59,6 +59,11 @@ Para CRUD tabular:
 - Evitar `alert()` e `confirm()` em novos fluxos.
 - Manter a entidade selecionada em estado explicito (`editingItem`, `selectedItem` ou equivalente).
 - Distinguir destruir, arquivar e desativar pela linguagem da UI.
+- Em cards de gerenciamento, nao usar clique no card inteiro para editar; manter acoes explicitas no contexto do item.
+- Acoes de editar devem usar botao iconico compacto com borda neutra, fundo branco, hover neutro e icone indigo.
+- Acoes destrutivas ou de desativacao devem usar botao iconico compacto com borda vermelha clara, icone/texto vermelho e hover vermelho claro.
+- Em mobile, manter as mesmas acoes explicitas dos cards/tabelas desktop, alinhadas ao fim do card quando forem acoes administrativas.
+- Cards de gerenciamento nao devem parecer navegaveis quando nao houver acao de detalhe.
 
 ## Regras de navegacao
 

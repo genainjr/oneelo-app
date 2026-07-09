@@ -85,6 +85,9 @@ export interface Membro {
   observacoes?: string;
   createdAt: string;
   updatedAt: string;
+  ministerios?: (MinisterioMembro & {
+    ministerio?: Pick<Ministerio, 'id' | 'nome'>;
+  })[];
   tags: { tag: Tag }[];
 }
 
