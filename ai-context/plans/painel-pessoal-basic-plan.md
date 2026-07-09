@@ -177,4 +177,5 @@ Resultado esperado:
 - Etapa 2 concluida.
 - Etapa 3 concluida.
 - Etapa 4 concluida.
+- Mobile validado manualmente.
 - Nome do painel fechado como `Painel Pessoal`.
