@@ -59,6 +59,13 @@ export class EscalasController {
     return this.escalasService.findMinhas(tenantId, query, user);
   }
 
+  @Get('pendencias/count')
+  @Roles(Role.ADMIN, Role.STAFF)
+  countPendencias(@Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    return this.escalasService.countPendencias(tenantId);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   findOne(@Param('id') id: string, @Req() req: Request) {

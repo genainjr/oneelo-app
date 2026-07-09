@@ -416,6 +416,7 @@
     "view": {
       "pageTitle": "Visualização de Agenda",
       "pageDescription": "Consulte os eventos por período e status em modo apenas leitura, sem ações de edição.",
+      "noDescription": "Sem descrição cadastrada.",
       "stats": {
         "total": "Eventos",
         "scheduled": "Agendados",
