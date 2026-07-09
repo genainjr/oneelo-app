@@ -184,6 +184,13 @@ export interface MinhaEscalaItem extends EscalaItem {
 // ─── Evento ───────────────────────────────────────────────────────────────────
 
 export type StatusEvento = 'AGENDADO' | 'REALIZADO' | 'CANCELADO';
+export type EventoTipo = 'GERAL' | 'MINISTERIO' | 'REUNIAO_INTERNA';
+
+export interface EventoMinisterio {
+  eventoId: string;
+  ministerioId: string;
+  ministerio?: Pick<Ministerio, 'id' | 'nome'>;
+}
 
 export interface Evento {
   id: string;
@@ -191,11 +198,13 @@ export interface Evento {
   titulo: string;
   descricao?: string;
   local?: string;
+  tipo: EventoTipo;
   dataInicio: string;
   dataFim?: string;
   status: StatusEvento;
   createdAt: string;
   updatedAt: string;
+  ministerios?: EventoMinisterio[];
 }
 
 // ─── User (Sistema) ───────────────────────────────────────────────────────────
@@ -234,6 +243,7 @@ export interface DashboardStats {
   totalMembrosAtivos: number;
   escalasNaSemana: number;
   aniversariantesDoMes: number;
+  eventosDoMes: number;
   ministeriosAtivos: number;
   pendenciasConfirmacao: number;
 }

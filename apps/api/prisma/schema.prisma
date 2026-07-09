@@ -78,6 +78,14 @@ enum StatusEvento {
   @@map("event_status")
 }
 
+enum EventoTipo {
+  GERAL
+  MINISTERIO
+  REUNIAO_INTERNA
+
+  @@map("event_type")
+}
+
 enum AcaoAuditoria {
   CRIAR     @map("CREATE")
   ATUALIZAR @map("UPDATE")
@@ -197,6 +205,7 @@ model Ministerio {
   membros MinisterioMembro[]
   escalas Escala[]
   funcoes MinisterioFuncao[]
+  eventos EventoMinisterio[]
 
   @@index([tenantId])
   @@map("tb_ministry")
@@ -316,6 +325,7 @@ model Evento {
   tenantId   String       @map("tenant_id")
   titulo     String       @map("title")
   descricao  String?      @map("description")
+  tipo       EventoTipo   @default(GERAL) @map("type")
   dataInicio DateTime     @map("start_at")
   dataFim    DateTime?    @map("end_at")
   local      String?      @map("location")
@@ -325,10 +335,24 @@ model Evento {
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id])
   escalasDias EscalaDia[]
+  ministerios EventoMinisterio[]
 
   @@index([tenantId])
+  @@index([tenantId, tipo])
   @@index([tenantId, dataInicio])
   @@map("tb_event")
+}
+
+model EventoMinisterio {
+  eventoId     String @map("event_id")
+  ministerioId String @map("ministry_id")
+
+  evento     Evento     @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  ministerio Ministerio @relation(fields: [ministerioId], references: [id], onDelete: Cascade)
+
+  @@id([eventoId, ministerioId])
+  @@index([ministerioId])
+  @@map("tb_event_ministry")
 }
 
 model AuditLog {

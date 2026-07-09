@@ -1,9 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { endOfMonth, getMonth, getYear, startOfMonth } from 'date-fns';
 import { api } from '@/lib/api';
-import { DashboardStats, Membro, Escala, Ministerio } from '@/types';
-import { getMonth, getYear } from 'date-fns';
+import { DashboardStats, Membro, Escala, Ministerio, Evento } from '@/types';
+
+function toDateInputValue(date: Date) {
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
+}
 
 export function useDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -18,10 +23,13 @@ export function useDashboard() {
         const now = new Date();
         const currentMonth = getMonth(now) + 1;
         const currentYear = getYear(now);
+        const monthStart = toDateInputValue(startOfMonth(now));
+        const monthEnd = toDateInputValue(endOfMonth(now));
 
-        const [membros, escalasResp, ministeriosResp, pendenciasResp] = await Promise.allSettled([
+        const [membros, escalasResp, eventosResp, ministeriosResp, pendenciasResp] = await Promise.allSettled([
           api.get<Membro[]>('/api/membros?status=ATIVO'),
           api.get<Escala[]>(`/api/escalas?mes=${currentMonth}&ano=${currentYear}`),
+          api.get<Evento[]>(`/api/eventos?dataInicio=${monthStart}&dataFim=${monthEnd}`),
           api.get<Ministerio[]>('/api/ministerios?ativo=true'),
           api.get<number>('/api/escalas/pendencias/count'),
         ]);
@@ -46,6 +54,10 @@ export function useDashboard() {
               ? escalasResp.value.length
               : 0,
           aniversariantesDoMes: aniversariantes,
+          eventosDoMes:
+            eventosResp.status === 'fulfilled' && Array.isArray(eventosResp.value)
+              ? eventosResp.value.length
+              : 0,
           ministeriosAtivos:
             ministeriosResp.status === 'fulfilled' && Array.isArray(ministeriosResp.value)
               ? ministeriosResp.value.length

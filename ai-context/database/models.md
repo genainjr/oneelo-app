@@ -17,6 +17,7 @@ Physical database identifiers follow English `snake_case`, `tb_`-prefixed singul
 | `MemberStatus` | `member_status` | `ACTIVE`, `INACTIVE`, `VISITOR`, `TRANSFERRED` | Member lifecycle state. |
 | `ScheduleStatus` | `schedule_status` | `DRAFT`, `PUBLISHED`, `CLOSED` | Schedule lifecycle state. |
 | `ConfirmationStatus` | `confirmation_status` | `PENDING`, `CONFIRMED`, `DECLINED` | Assignment confirmation response. |
+| `EventType` | `event_type` | `GENERAL`, `MINISTRY`, `INTERNAL_MEETING` | Calendar event classification. |
 | `EventStatus` | `event_status` | `SCHEDULED`, `COMPLETED`, `CANCELLED` | Calendar event state. |
 | `AuditAction` | `audit_action` | `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT` | Audited action type. |
 
@@ -194,6 +195,7 @@ Calendar event.
 - `tenantId` / `tenant_id`
 - `title`
 - `description`
+- `type` / `event_type`
 - `startAt` / `start_at`
 - `endAt` / `end_at`
 - `location`
@@ -201,9 +203,22 @@ Calendar event.
 - `createdAt` / `created_at`
 - `updatedAt` / `updated_at`
 
-Pending decision: whether `Event` should receive an optional `ministryId` for ministry-specific calendars.
+### 15. EventMinistry (`tb_event_ministry`)
 
-### 15. AuditLog (`tb_audit_log`)
+Many-to-many relation between events and ministries.
+
+- `eventId` / `event_id`
+- `ministryId` / `ministry_id`
+- Composite key: `[eventId, ministryId]`.
+
+Rules:
+
+- `GENERAL` events can exist without ministries linked.
+- `MINISTRY` events use ministries as organization/filter metadata.
+- `INTERNAL_MEETING` events can be linked to none, one, or many ministries.
+- The frontend should render ministry names only when the relation exists.
+
+### 16. AuditLog (`tb_audit_log`)
 
 Historical record of sensitive mutations and events.
 
@@ -218,7 +233,7 @@ Historical record of sensitive mutations and events.
 - `ipAddress` / `ip_address`
 - `createdAt` / `created_at`
 
-### 16. Lead (`tb_lead`)
+### 17. Lead (`tb_lead`)
 
 Public acquisition/contact lead.
 

@@ -8,7 +8,13 @@ export interface FilterEventos {
   dataInicio?: string;
   dataFim?: string;
   status?: string;
+  tipo?: string;
+  ministerioId?: string;
 }
+
+export type EventoInput = Partial<Evento> & {
+  ministerioIds?: string[];
+};
 
 export function useEventos(initialFilter: FilterEventos = {}) {
   const [eventos, setEventos] = useState<Evento[]>([]);
@@ -33,13 +39,13 @@ export function useEventos(initialFilter: FilterEventos = {}) {
     fetchEventos(initialFilter);
   }, []);
 
-  async function createEvento(data: Partial<Evento>) {
+  async function createEvento(data: EventoInput) {
     const created = await api.post<Evento>('/api/eventos', data);
     setEventos((prev) => [created, ...prev]);
     return created;
   }
 
-  async function updateEvento(id: string, data: Partial<Evento>) {
+  async function updateEvento(id: string, data: EventoInput) {
     const updated = await api.patch<Evento>(`/api/eventos/${id}`, data);
     setEventos((prev) => prev.map((e) => (e.id === id ? updated : e)));
     return updated;
