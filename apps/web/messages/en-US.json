@@ -86,7 +86,8 @@
     "finance": "Financial",
     "groupManagement": "Management",
     "groupModules": "Modules",
-    "groupAccount": "Account"
+    "groupAccount": "Account",
+    "profile": "My Profile"
   },
   "dashboard": {
     "greeting": "Hello{name}!",
@@ -126,7 +127,8 @@
     "quickAccess": "Quick Access",
     "quickLinks": {
       "viewSchedules": "My Schedules",
-      "agenda": "Calendar"
+      "agenda": "Calendar",
+      "profile": "My Profile"
     },
     "errorLoading": "Error loading personal panel data.",
     "stats": {
@@ -139,6 +141,13 @@
       "upcomingEventsEmpty": "No events in this period",
       "pending": "Pending",
       "pendingDesc": "Confirmations awaiting your response"
+    },
+    "noMinistry": {
+      "greeting": "Hello, {name}! 👋",
+      "subtitle": "{date} · Your upcoming church commitments.",
+      "title": "You are not linked to a ministry yet",
+      "description": "Your panel stays available so you can follow the calendar, your profile, and general church information.",
+      "action": "View my profile"
     }
   },
   "members": {

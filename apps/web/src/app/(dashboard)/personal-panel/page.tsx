@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
+import { EmptyState } from '@/components/app/empty-state';
+import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useEventos } from '@/hooks/use-eventos';
@@ -98,8 +100,9 @@ export default function PersonalPanelPage() {
     return eventos.filter((event) => new Date(event.dataInicio) >= now);
   }, [eventos]);
   const nextEvent = useMemo(() => getNextEvent(futureEvents), [futureEvents]);
+  const hasMinisterio = (user?.membro?.ministerios?.length ?? 0) > 0;
 
-  const cards = [
+  const cards = hasMinisterio ? [
     {
       key: 'nextSchedule',
       title: t('stats.nextSchedule'),
@@ -131,16 +134,40 @@ export default function PersonalPanelPage() {
       color: 'emerald' as const,
       icon: <CalendarIcon />,
     },
+  ] : [
+    {
+      key: 'upcomingEvents',
+      title: t('stats.upcomingEvents'),
+      value: futureEvents.length,
+      description: nextEvent
+        ? `${formatDate(nextEvent.dataInicio, 'dd/MM')} · ${nextEvent.titulo}`
+        : t('stats.upcomingEventsEmpty'),
+      href: '/agenda/visualizacao',
+      color: 'emerald' as const,
+      icon: <CalendarIcon />,
+    },
   ];
 
   const error = errorEscalas || errorEventos;
   const loading = loadingEscalas || loadingEventos;
+  const quickAccessItems = [
+    ...(hasMinisterio ? [{ href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: '📋' }] : []),
+    { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: '🗓️' },
+    { href: '/meu-perfil', label: t('quickLinks.profile'), emoji: '👤' },
+  ];
+  const memberDisplayName = getMemberDisplayName(user?.membro);
+  const headerTitle = hasMinisterio
+    ? `${t('greeting', { name: memberDisplayName ? `, ${memberDisplayName}` : '' })} 👋`
+    : t('noMinistry.greeting', { name: memberDisplayName || user?.nome || '' });
+  const headerSubtitle = hasMinisterio
+    ? t('subtitle', { date: today })
+    : t('noMinistry.subtitle', { date: today });
 
   return (
     <div className="max-w-5xl mx-auto">
       <PageHeader
-        title={`${t('greeting', { name: user?.nome ? `, ${user.nome.split(' ')[0]}` : '' })} 👋`}
-        description={t('subtitle', { date: today })}
+        title={headerTitle}
+        description={headerSubtitle}
       />
 
       {error && (
@@ -167,13 +194,27 @@ export default function PersonalPanelPage() {
         ))}
       </div>
 
+      {!hasMinisterio && (
+        <div className="mb-8 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <EmptyState
+            title={t('noMinistry.title')}
+            description={t('noMinistry.description')}
+            action={(
+              <Link
+                href="/meu-perfil"
+                className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-indigo-700"
+              >
+                {t('noMinistry.action')}
+              </Link>
+            )}
+          />
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-4">{t('quickAccess')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[
-            { href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: '📋' },
-            { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: '🗓️' },
-          ].map((item) => (
+          {quickAccessItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}

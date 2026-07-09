@@ -10,6 +10,7 @@ Este workflow deve ser seguido para novas features e correcoes planejadas.
 2. Sempre atualizar `development` antes de criar a branch.
 3. Criar uma branch de feature/correcao com nome descritivo.
 4. Nao misturar refactors ou mudancas nao relacionadas.
+5. Nao iniciar edicao de codigo antes de validar os passos 1 a 3.
 
 Comandos esperados:
 

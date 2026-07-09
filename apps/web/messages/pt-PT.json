@@ -86,7 +86,8 @@
     "finance": "Financeiro",
     "groupManagement": "Gestão",
     "groupModules": "Módulos",
-    "groupAccount": "Conta"
+    "groupAccount": "Conta",
+    "profile": "O meu perfil"
   },
   "dashboard": {
     "greeting": "Olá{name}!",
@@ -126,7 +127,8 @@
     "quickAccess": "Acesso Rápido",
     "quickLinks": {
       "viewSchedules": "Minhas Escalas",
-      "agenda": "Agenda"
+      "agenda": "Agenda",
+      "profile": "O meu perfil"
     },
     "errorLoading": "Erro ao carregar dados do painel pessoal.",
     "stats": {
@@ -139,6 +141,13 @@
       "upcomingEventsEmpty": "Sem eventos neste período",
       "pending": "Pendências",
       "pendingDesc": "Confirmações à espera da sua resposta"
+    },
+    "noMinistry": {
+      "greeting": "Olá, {name}! 👋",
+      "subtitle": "{date} · Os seus próximos compromissos da igreja.",
+      "title": "Ainda não está associado a um ministério",
+      "description": "O seu painel continua disponível para acompanhar a agenda, o perfil e informações gerais da igreja.",
+      "action": "Ver o meu perfil"
     }
   },
   "members": {
