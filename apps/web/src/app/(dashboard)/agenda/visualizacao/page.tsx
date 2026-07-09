@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Clock3, MapPin } from 'lucide-react';
+import { CalendarDays, CircleDashed, Clock3, ListChecks, MapPin, TriangleAlert } from 'lucide-react';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useEventos } from '@/hooks/use-eventos';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { PageHeader } from '@/components/app/page-header';
+import { StatCard } from '@/components/app/stat-card';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { EmptyState } from '@/components/app/empty-state';
@@ -78,6 +79,14 @@ export default function AgendaVisualizacaoPage() {
     return [...eventos].sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime());
   }, [eventos]);
 
+  const stats = useMemo(() => {
+    const total = sortedEventos.length;
+    const agendados = sortedEventos.filter((evento) => evento.status === 'AGENDADO').length;
+    const realizados = sortedEventos.filter((evento) => evento.status === 'REALIZADO').length;
+    const cancelados = sortedEventos.filter((evento) => evento.status === 'CANCELADO').length;
+    return { total, agendados, realizados, cancelados };
+  }, [sortedEventos]);
+
   function handlePrint() {
     setPrintedAt(new Date());
     window.setTimeout(() => window.print(), 0);
@@ -100,6 +109,13 @@ export default function AgendaVisualizacaoPage() {
             </button>
           )}
         />
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard title={t('view.stats.total')} value={stats.total} icon={<CalendarDays className="w-5 h-5" />} color="indigo" />
+          <StatCard title={t('view.stats.scheduled')} value={stats.agendados} icon={<CircleDashed className="w-5 h-5" />} color="blue" />
+          <StatCard title={t('view.stats.completed')} value={stats.realizados} icon={<ListChecks className="w-5 h-5" />} color="emerald" />
+          <StatCard title={t('view.stats.cancelled')} value={stats.cancelados} icon={<TriangleAlert className="w-5 h-5" />} color="rose" />
+        </div>
 
         {error && (
           <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700 flex items-center justify-between gap-4">
@@ -188,26 +204,24 @@ export default function AgendaVisualizacaoPage() {
                       <h3 className="text-base font-bold text-gray-800 tracking-tight">{evento.titulo}</h3>
                     </div>
 
-                    {evento.descricao ? (
+                    {evento.descricao && (
                       <p className="text-sm text-gray-500 max-w-3xl">{evento.descricao}</p>
-                    ) : (
-                      <p className="text-sm text-gray-400 max-w-3xl">{t('view.noDescription')}</p>
                     )}
 
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400 font-medium">
                       <span className="inline-flex items-center gap-1.5">
-                        <Clock3 className="h-4 w-4 text-gray-400" />
+                        <Clock3 className="h-3.5 w-3.5 text-gray-400" />
                         {t('event.start')}: {formatDate(evento.dataInicio, 'dd/MM/yyyy HH:mm')}
                       </span>
                       {evento.dataFim && (
                         <span className="inline-flex items-center gap-1.5">
-                          <Clock3 className="h-4 w-4 text-gray-400" />
+                          <Clock3 className="h-3.5 w-3.5 text-gray-400" />
                           {t('event.end')}: {formatDate(evento.dataFim, 'dd/MM/yyyy HH:mm')}
                         </span>
                       )}
                       {evento.local && (
                         <span className="inline-flex items-center gap-1.5">
-                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <MapPin className="h-3.5 w-3.5 text-gray-400" />
                           {evento.local}
                         </span>
                       )}
