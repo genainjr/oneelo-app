@@ -15,10 +15,12 @@ import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
 import { InputField } from '@/components/app/form-field';
 import { StatusBadge } from '@/components/app/status-badge';
 import { ContactCell } from '@/components/app/contact-cell';
+import { EntityCard } from '@/components/app/entity-card';
 import { InitialsAvatar } from '@/components/app/initials-avatar';
+import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
-import { formatDate, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
+import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 
 type FeedbackMessage = {
   type: 'success' | 'error';
@@ -27,6 +29,19 @@ type FeedbackMessage = {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function getReadableTextColor(hexColor?: string | null) {
+  const hex = (hexColor || '').replace('#', '').trim();
+  if (hex.length !== 6) return '#111827';
+
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  if ([r, g, b].some((value) => Number.isNaN(value))) return '#111827';
+
+  const luminance = (0.299 * r) + (0.587 * g) + (0.114 * b);
+  return luminance > 170 ? '#111827' : '#ffffff';
 }
 
 export default function MembrosPage() {
@@ -55,7 +70,7 @@ export default function MembrosPage() {
   const [editingMembro, setEditingMembro] = useState<Membro | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [tagsList, setTagsList] = useState<Tag[]>([]);
-  const [selectedBulkTag, setSelectedBulkTag] = useState('');
+  const [selectedBulkTags, setSelectedBulkTags] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'ADD' | 'REMOVE'>('ADD');
 
   const [showNewTagInput, setShowNewTagInput] = useState(false);
@@ -182,11 +197,11 @@ export default function MembrosPage() {
   }
 
   async function handleBulkApply() {
-    if (selectedIds.length === 0 || !selectedBulkTag) return;
+    if (selectedIds.length === 0 || selectedBulkTags.length === 0) return;
     try {
-      await bulkTag(selectedIds, [selectedBulkTag], bulkAction);
+      await bulkTag(selectedIds, selectedBulkTags, bulkAction);
       setSelectedIds([]);
-      setSelectedBulkTag('');
+      setSelectedBulkTags([]);
       setFeedback({ type: 'success', message: t('bulk.success') });
     } catch (err: unknown) {
       setFeedback({ type: 'error', message: getErrorMessage(err, t('bulk.error')) });
@@ -257,16 +272,16 @@ export default function MembrosPage() {
               setEditingMembro(m);
               setIsModalOpen(true);
             }}
-            className="p-1 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-indigo-600 transition-colors"
+            className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
             title={t('editTooltip')}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
           <button
             onClick={() => handleDelete(m)}
-            className="p-1 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-red-600 transition-colors"
+            className="p-2 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 transition-all flex items-center justify-center"
             title={t('deleteTooltip')}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -379,6 +394,7 @@ export default function MembrosPage() {
             <div className="flex flex-wrap gap-2">
               {tagsList.map((tag) => {
                 const active = filterState.tags.includes(tag.nome);
+                const activeTextColor = getReadableTextColor(tag.cor);
                 return (
                   <button
                     key={tag.id}
@@ -386,11 +402,18 @@ export default function MembrosPage() {
                     onClick={() => handleToggleTagFilter(tag.nome)}
                     style={{
                       backgroundColor: active ? tag.cor : 'transparent',
-                      color: active ? '#ffffff' : tag.cor,
-                      borderColor: tag.cor,
+                      color: active ? activeTextColor : tag.cor,
+                      borderColor: active ? tag.cor : `${tag.cor}99`,
                     }}
-                    className="px-2.5 py-1 text-xs font-semibold border rounded-lg transition-all shadow-2xs hover:shadow-xs"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold border rounded-lg transition-all shadow-2xs hover:shadow-xs ${
+                      active ? 'ring-2 ring-offset-1 ring-indigo-200' : 'opacity-90'
+                    }`}
                   >
+                    {active && (
+                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
                     {tag.nome}
                   </button>
                 );
@@ -503,61 +526,165 @@ export default function MembrosPage() {
         onPageChange={setCurrentPage}
         emptyTitle={t('empty.noResults')}
         emptyDescription={t('empty.noResultsDesc')}
+        renderMobileCard={(membro) => (
+          <EntityCard
+            title={getMemberDisplayName(membro)}
+            subtitle={[formatPhone(membro.whatsapp), formatDate(membro.dataNascimento)].filter((value) => value !== '—').join(' • ')}
+            badge={
+              <StatusBadge
+                label={STATUS_MEMBRO_LABEL[membro.status]}
+                className={`font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}
+              />
+            }
+            className={selectedIds.includes(membro.id) ? 'ring-2 ring-indigo-200 border-indigo-200' : ''}
+            meta={(membro.ministerios || [])
+              .map((ministerio) => ministerio.ministerio?.nome)
+              .filter(Boolean)
+              .join(', ') || 'Sem ministério'}
+            footer={
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedIds.includes(membro.id)) {
+                    setSelectedIds(selectedIds.filter((id) => id !== membro.id));
+                  } else {
+                    setSelectedIds([...selectedIds, membro.id]);
+                  }
+                }}
+                className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-3 text-xs font-semibold transition-all ${
+                  selectedIds.includes(membro.id)
+                    ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                }`}
+                aria-pressed={selectedIds.includes(membro.id)}
+              >
+                <span>{selectedIds.includes(membro.id) ? 'Selecionado' : 'Selecionar para tags'}</span>
+                <svg
+                  className={`h-4 w-4 ${selectedIds.includes(membro.id) ? 'text-indigo-600' : 'text-gray-400'}`}
+                  fill={selectedIds.includes(membro.id) ? 'currentColor' : 'none'}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  {selectedIds.includes(membro.id) ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            }
+            actions={
+              <>
+                <button
+                  onClick={() => {
+                    setEditingMembro(membro);
+                    setIsModalOpen(true);
+                  }}
+                  className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+                  title={t('editTooltip')}
+                >
+                  <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => handleDelete(membro)}
+                  className="p-2 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 transition-all flex items-center justify-center"
+                  title={t('deleteTooltip')}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </>
+            }
+          />
+        )}
       />
 
       {/* Bulk Action Banner */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900 text-white rounded-2xl shadow-xl px-5 py-3.5 flex items-center gap-4 animate-in slide-in-from-bottom-6 duration-300 max-w-2xl w-full border border-gray-800">
-          <div className="flex-shrink-0 text-sm font-medium">
-            <span className="bg-indigo-500 text-white font-bold rounded-lg px-2.5 py-1 text-xs mr-2">
-              {selectedIds.length}
-            </span>
-            {t('bulk.selected', { count: selectedIds.length })}
+        <div className="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-4xl rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl animate-in slide-in-from-bottom-6 duration-300 sm:bottom-6 sm:px-5 sm:py-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-shrink-0 text-sm font-medium text-gray-700">
+                <span className="mr-2 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-bold text-white">
+                  {selectedIds.length}
+                </span>
+                {t('bulk.selected', { count: selectedIds.length })}
+              </div>
+
+              <button
+                onClick={() => setSelectedIds([])}
+                className="p-1 text-gray-400 transition-colors hover:text-gray-700"
+                title={t('bulk.cancelSelection')}
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <select
+                value={bulkAction}
+                onChange={(e) => setBulkAction(e.target.value as 'ADD' | 'REMOVE')}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 focus:outline-none sm:w-40"
+              >
+                <option value="ADD">{t('bulk.addTag')}</option>
+                <option value="REMOVE">{t('bulk.removeTag')}</option>
+              </select>
+
+              <div className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                  {t('bulk.selectTag')}
+                </div>
+                <div className="max-h-36 overflow-y-auto">
+                  <div className="flex flex-wrap gap-2">
+                    {tagsList.map((tag) => {
+                      const active = selectedBulkTags.includes(tag.id);
+                      const activeTextColor = getReadableTextColor(tag.cor);
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedBulkTags((prev) =>
+                              prev.includes(tag.id) ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]
+                            );
+                          }}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all ${
+                            active ? 'ring-2 ring-offset-1 ring-indigo-200' : 'opacity-90'
+                          }`}
+                          style={{
+                            backgroundColor: active ? tag.cor : 'transparent',
+                            color: active ? activeTextColor : tag.cor,
+                            borderColor: active ? tag.cor : `${tag.cor}99`,
+                          }}
+                        >
+                          {active && (
+                            <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                          {tag.nome}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleBulkApply}
+                disabled={selectedBulkTags.length === 0}
+                className="w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              >
+                {t('bulk.apply')}
+              </button>
+            </div>
           </div>
-
-          <div className="h-4 w-px bg-gray-700" />
-
-          <div className="flex items-center gap-2 flex-1">
-            <select
-              value={bulkAction}
-              onChange={(e) => setBulkAction(e.target.value as 'ADD' | 'REMOVE')}
-              className="bg-gray-800 text-white border border-gray-700 px-3 py-1.5 rounded-xl text-xs focus:outline-none"
-            >
-              <option value="ADD">{t('bulk.addTag')}</option>
-              <option value="REMOVE">{t('bulk.removeTag')}</option>
-            </select>
-
-            <select
-              value={selectedBulkTag}
-              onChange={(e) => setSelectedBulkTag(e.target.value)}
-              className="bg-gray-800 text-white border border-gray-700 px-3 py-1.5 rounded-xl text-xs focus:outline-none flex-1 max-w-[160px] truncate"
-            >
-              <option value="">{t('bulk.selectTag')}</option>
-              {tagsList.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.nome}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={handleBulkApply}
-              disabled={!selectedBulkTag}
-              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-xs transition-all flex-shrink-0"
-            >
-              {t('bulk.apply')}
-            </button>
-          </div>
-
-          <button
-            onClick={() => setSelectedIds([])}
-            className="p-1 text-gray-400 hover:text-white transition-colors"
-            title={t('bulk.cancelSelection')}
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
       )}
 

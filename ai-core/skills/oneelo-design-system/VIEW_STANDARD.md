@@ -50,6 +50,8 @@ Para grade read-only de escala:
 - Manter consistencia entre visualizacoes do sistema: se o modulo apresenta uma colecao administrativa, o cabecalho deve ter cards de resumo sempre que existirem contadores claros.
 - Permitir abrir detalhes sem mudar para modo de edicao.
 - Em mobile, trocar tabelas densas por cards quando a tabela nao couber bem.
+- Cards read-only podem ser clicaveis quando abrirem detalhe/drawer de consulta; nesse caso devem usar cursor/hover coerente com navegacao.
+- Se o card read-only nao abrir detalhe, ele nao deve parecer clicavel e nao deve conter acoes de edicao.
 - Usar `EmptyState` quando nao houver resultados.
 - Manter acao secundaria, como imprimir, no `PageHeader`.
 
