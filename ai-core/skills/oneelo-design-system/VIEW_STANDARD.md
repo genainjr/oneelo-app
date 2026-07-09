@@ -7,7 +7,7 @@ Definir o padrao unico para paginas de visualizacao, consulta e detalhes read-on
 ## Estrutura padrao
 
 1. `PageHeader` com titulo e descricao.
-2. Resumo opcional com metricas.
+2. Resumo com metricas usando `StatCard` quando a visualizacao consultar uma colecao ou tiver dados agregaveis.
 3. Filtros opcionais quando a visualizacao consultar colecoes.
 4. Conteudo read-only:
    - tabela/lista para entidades simples;
@@ -35,7 +35,7 @@ Para grade read-only de escala:
 
 ## Componentes opcionais
 
-- `StatCard` para metricas.
+- `StatCard` para metricas apenas quando a visualizacao nao tiver dados agregaveis ou for uma tela de detalhe individual.
 - Filtros com aplicar, limpar e recarregar.
 - Botao de imprimir em visualizacoes printaveis.
 - Drawer de detalhes.
@@ -46,11 +46,33 @@ Para grade read-only de escala:
 
 - Nao mostrar botoes de edicao em rotas de visualizacao.
 - Usar linguagem de consulta: "consulte", "acompanhe", "visualizacao".
-- Mostrar metricas antes da lista quando elas ajudam a leitura.
+- Mostrar metricas antes dos filtros e da lista em visualizacoes de colecao, usando `StatCard`.
+- Manter consistencia entre visualizacoes do sistema: se o modulo apresenta uma colecao administrativa, o cabecalho deve ter cards de resumo sempre que existirem contadores claros.
 - Permitir abrir detalhes sem mudar para modo de edicao.
 - Em mobile, trocar tabelas densas por cards quando a tabela nao couber bem.
 - Usar `EmptyState` quando nao houver resultados.
 - Manter acao secundaria, como imprimir, no `PageHeader`.
+
+## Tipografia de cards
+
+- Titulo principal do card: `text-base font-bold text-gray-800`.
+- Badge de status em cards: `text-xs font-bold`, com padding compacto e borda.
+- Descricao do card: `text-sm text-gray-500`.
+- Metadados de card, como data, hora, telefone, local e contadores secundarios: `text-xs text-gray-400 font-medium`.
+- Icones em metadados de card: `w-3.5 h-3.5 text-gray-400`.
+- Espacamento entre metadados: `gap-x-4 gap-y-1.5`, com `items-center`.
+- Telas de visualizacao e gerenciamento do mesmo modulo devem manter a mesma escala tipografica para cards equivalentes.
+
+## Acoes rapidas de status
+
+- Em telas de gerenciamento, mudancas simples de status podem aparecer como acoes rapidas no contexto do item.
+- As acoes devem seguir transicoes de negocio claras, como em escalas (`RASCUNHO` -> `PUBLICADA` -> `ENCERRADA`).
+- A edicao completa permanece no modal; a acao rapida deve alterar apenas o status.
+- Mostrar apenas transicoes validas para o status atual do item.
+- Evitar acoes rapidas de retorno quando o item ja estiver em estado final, como realizado ou cancelado; nesse caso, usar o modal de edicao para reduzir ruido visual e evitar ambiguidade.
+- Usar rotulos verbais orientados a acao quando o nome do status de destino puder ser ambiguo. Exemplo: `Cancelar evento` em vez de `Cancelado`.
+- Usar botoes compactos: `px-3 py-1.5 text-xs font-semibold rounded-xl`.
+- Acoes rapidas devem respeitar a mesma permissao visual das demais acoes de gerenciamento.
 
 ## Regras de navegacao
 

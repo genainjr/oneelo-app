@@ -434,6 +434,10 @@
     "errorSave": "Error saving event.",
     "errorDelete": "Error deleting event.",
     "deleteConfirm": "Are you sure you want to delete the event \"{title}\"?",
+    "actions": {
+      "markCompleted": "Mark as completed",
+      "cancelEvent": "Cancel event"
+    },
     "status": {
       "AGENDADO": "Scheduled",
       "REALIZADO": "Completed",

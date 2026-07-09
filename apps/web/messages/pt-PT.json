@@ -434,6 +434,10 @@
     "errorSave": "Erro ao guardar evento.",
     "errorDelete": "Erro ao eliminar evento.",
     "deleteConfirm": "Tem a certeza que deseja eliminar o evento \"{title}\"?",
+    "actions": {
+      "markCompleted": "Marcar como realizado",
+      "cancelEvent": "Cancelar evento"
+    },
     "status": {
       "AGENDADO": "Agendado",
       "REALIZADO": "Realizado",
