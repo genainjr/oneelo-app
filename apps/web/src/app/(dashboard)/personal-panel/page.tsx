@@ -98,6 +98,7 @@ export default function PersonalPanelPage() {
     return eventos.filter((event) => new Date(event.dataInicio) >= now);
   }, [eventos]);
   const nextEvent = useMemo(() => getNextEvent(futureEvents), [futureEvents]);
+  const hasMinisterio = (user?.membro?.ministerios?.length ?? 0) > 0;
 
   const cards = [
     {
@@ -169,9 +170,9 @@ export default function PersonalPanelPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-4">{t('quickAccess')}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={`grid gap-3 ${hasMinisterio ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
           {[
-            { href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: '📋' },
+            ...(hasMinisterio ? [{ href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: '📋' }] : []),
             { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: '🗓️' },
           ].map((item) => (
             <Link

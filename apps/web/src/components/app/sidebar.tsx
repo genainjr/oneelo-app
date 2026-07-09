@@ -156,6 +156,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     top: number;
     left: number;
   } | null>(null);
+  const [basicHasMinisterio, setBasicHasMinisterio] = useState(false);
   const [basicHasLeadership, setBasicHasLeadership] = useState(false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -166,14 +167,17 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
   useEffect(() => {
     if (user?.role !== 'BASIC') {
+      setBasicHasMinisterio(false);
       setBasicHasLeadership(false);
       return;
     }
 
+    const hasMinisterio = user.membro?.ministerios?.length ?? 0;
     const hasLeadership = user.membro?.ministerios?.some(
       (membership) => membership.role === 'LEADER' || membership.role === 'ASSISTANT_LEADER',
     ) ?? false;
 
+    setBasicHasMinisterio(hasMinisterio > 0);
     setBasicHasLeadership(hasLeadership);
   }, [user]);
 
@@ -263,7 +267,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
   const basicNavItems: NavItem[] = [
     { href: '/personal-panel', label: t('personalPanel'), icon: ICONS.dashboard },
-    { href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules },
+    ...(basicHasMinisterio ? [{ href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules }] : []),
     ...(basicHasLeadership ? [
       {
         href: '/ministerios',

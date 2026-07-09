@@ -8,11 +8,13 @@ import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 import { Calendar, AlertTriangle, List } from 'lucide-react';
 import { formatDate, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, MinhaEscalaItem } from '@/types';
 
 export default function MinhasEscalasPage() {
+  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
@@ -25,6 +27,14 @@ export default function MinhasEscalasPage() {
       .catch(() => setUser(null))
       .finally(() => setLoadingUser(false));
   }, []);
+
+  useEffect(() => {
+    if (loadingUser || !user) return;
+    const hasMinisterio = user.membro?.ministerios?.length ?? 0;
+    if (user.role === 'BASIC' && hasMinisterio === 0) {
+      router.replace('/personal-panel');
+    }
+  }, [loadingUser, router, user]);
 
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -107,6 +117,7 @@ export default function MinhasEscalasPage() {
   }
 
   const isLoading = loading || loadingUser;
+  const canShowContent = !loadingUser && !!user && (user.role !== 'BASIC' || (user.membro?.ministerios?.length ?? 0) > 0);
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -127,7 +138,7 @@ export default function MinhasEscalasPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {isLoading || !canShowContent ? (
         <SkeletonList count={3} className="h-32" />
       ) : !user?.memberId ? (
         <EmptyState title="Perfil sem membro vinculado" description="Seu usuario ainda nao esta vinculado a um cadastro de membro." />
