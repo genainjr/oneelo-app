@@ -16,6 +16,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     SuperAdminModule,
     LeadsModule,
   ],
+  controllers: [HealthController],
   providers: [
     // Filtro global de exceções HTTP
     {
