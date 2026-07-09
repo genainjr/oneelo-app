@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsNotEmpty } from 'class-validator';
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
+import { EventoTipo } from '@prisma/client';
 
 export enum StatusEvento {
   AGENDADO = 'AGENDADO',
@@ -25,6 +34,15 @@ export class CreateEventoDto {
   @IsString()
   @IsOptional()
   local?: string;
+
+  @IsEnum(EventoTipo)
+  @IsOptional()
+  tipo?: EventoTipo;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  ministerioIds?: string[];
 
   @IsEnum(StatusEvento)
   @IsOptional()

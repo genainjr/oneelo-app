@@ -37,6 +37,30 @@ export default function DashboardPage() {
       ),
     },
     {
+      key: 'ministeriosAtivos' as const,
+      title: t('stats.activeMinistries'),
+      description: t('stats.activeMinistriesDesc'),
+      color: 'emerald' as const,
+      href: '/ministerios/visualizacao',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      ),
+    },
+    {
+      key: 'eventosDoMes' as const,
+      title: t('stats.monthlyEvents'),
+      description: t('stats.monthlyEventsDesc'),
+      color: 'blue' as const,
+      href: '/agenda/visualizacao',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v4m8-4v4M4 10h16M5 6h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1z" />
+        </svg>
+      ),
+    },
+    {
       key: 'escalasNaSemana' as const,
       title: t('stats.monthlySchedules'),
       description: t('stats.monthlySchedulesDesc'),
@@ -57,18 +81,6 @@ export default function DashboardPage() {
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-1.5-.454M9 6l3-3 3 3M9 22V12h6v10" />
-        </svg>
-      ),
-    },
-    {
-      key: 'ministeriosAtivos' as const,
-      title: t('stats.activeMinistries'),
-      description: t('stats.activeMinistriesDesc'),
-      color: 'emerald' as const,
-      href: '/ministerios/visualizacao',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
         </svg>
       ),
     },

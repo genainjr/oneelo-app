@@ -72,7 +72,7 @@ body {
   .print-page {
     break-after: page;
     page-break-after: always;
-    padding-bottom: 14mm;
+    padding-bottom: 12mm;
   }
 
   .print-page:last-child {
@@ -81,8 +81,8 @@ body {
   }
 
   .print-schedule-header {
-    margin-bottom: 8mm;
-    padding-bottom: 4mm;
+    margin-bottom: 5mm;
+    padding-bottom: 3mm;
     border-bottom: 1px solid #b9c2cf;
     color: #111827;
   }
@@ -90,16 +90,16 @@ body {
   .print-schedule-header h1 {
     margin: 0;
     text-align: center;
-    font-size: 23pt;
+    font-size: 18pt;
     font-weight: 600;
-    line-height: 1.1;
+    line-height: 1.05;
     letter-spacing: 0;
   }
 
   .print-schedule-header p {
-    margin: 2.5mm 0 0;
+    margin: 1.5mm 0 0;
     text-align: right;
-    font-size: 14pt;
+    font-size: 10pt;
     font-weight: 500;
     color: #334155;
   }
@@ -111,9 +111,9 @@ body {
     left: 0;
     margin: 0;
     border-top: 1px solid #cbd5e1;
-    padding: 3mm 0 0;
+    padding: 2mm 0 0;
     color: #64748b;
-    font-size: 8pt;
+    font-size: 7pt;
     font-weight: 500;
     background: #ffffff;
     display: flex;
@@ -130,8 +130,8 @@ body {
   }
 
   .print-schedule-footer-logo {
-    width: 8mm;
-    height: 8mm;
+    width: 7mm;
+    height: 7mm;
     border-radius: 1.5mm;
     object-fit: cover;
     flex-shrink: 0;
@@ -147,14 +147,14 @@ body {
 
   .print-schedule-footer-company {
     color: #0f172a;
-    font-size: 8.5pt;
+    font-size: 7.5pt;
     font-weight: 700;
     line-height: 1;
   }
 
   .print-schedule-footer-product {
     color: #64748b;
-    font-size: 7pt;
+    font-size: 6.5pt;
     font-weight: 600;
     line-height: 1;
   }
@@ -164,14 +164,14 @@ body {
     border-collapse: collapse;
     table-layout: fixed;
     border: 1px solid #b9c2cf;
-    font-size: 9.5pt;
-    line-height: 1.25;
+    font-size: 7.5pt;
+    line-height: 1.08;
   }
 
   .print-schedule-table th,
   .print-schedule-table td {
     border: 1px solid #b9c2cf;
-    padding: 4.5px 6px;
+    padding: 2px 4px;
     vertical-align: middle;
     text-align: center;
     color: #111827;
@@ -180,7 +180,7 @@ body {
 
   .print-schedule-table th {
     background: #e8eef5 !important;
-    font-size: 10.5pt;
+    font-size: 8pt;
     font-weight: 700;
     color: #0f172a;
   }
@@ -210,32 +210,48 @@ body {
 
   .print-events-table th:nth-child(1),
   .print-events-table td:nth-child(1) {
-    width: 16%;
+    width: 11%;
     white-space: nowrap;
   }
 
   .print-events-table th:nth-child(2),
   .print-events-table td:nth-child(2) {
-    width: 24%;
+    width: 18%;
     text-align: left;
     font-weight: 700;
   }
 
   .print-events-table th:nth-child(3),
   .print-events-table td:nth-child(3) {
-    width: 12%;
+    width: 10%;
   }
 
   .print-events-table th:nth-child(4),
   .print-events-table td:nth-child(4) {
-    width: 16%;
+    width: 18%;
     text-align: left;
   }
 
   .print-events-table th:nth-child(5),
   .print-events-table td:nth-child(5) {
-    width: 32%;
+    width: 10%;
+  }
+
+  .print-events-table th:nth-child(6),
+  .print-events-table td:nth-child(6) {
+    width: 12%;
     text-align: left;
+  }
+
+  .print-events-table th:nth-child(7),
+  .print-events-table td:nth-child(7) {
+    width: 21%;
+    text-align: left;
+  }
+
+  .print-events-table {
+    font-size: 7.1pt;
+    line-height: 1.05;
   }
 
   .print-empty {

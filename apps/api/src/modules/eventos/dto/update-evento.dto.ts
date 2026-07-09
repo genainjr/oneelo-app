@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import {
+  IsArray,
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsDateString,
+  IsUUID,
+} from 'class-validator';
+import { EventoTipo } from '@prisma/client';
 import { StatusEvento } from './create-evento.dto';
 
 export class UpdateEventoDto {
@@ -21,6 +29,15 @@ export class UpdateEventoDto {
   @IsString()
   @IsOptional()
   local?: string;
+
+  @IsEnum(EventoTipo)
+  @IsOptional()
+  tipo?: EventoTipo;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  ministerioIds?: string[];
 
   @IsEnum(StatusEvento)
   @IsOptional()
