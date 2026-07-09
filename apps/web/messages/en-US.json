@@ -143,6 +143,8 @@
       "pendingDesc": "Confirmations awaiting your response"
     },
     "noMinistry": {
+      "greeting": "Hello, {name}! 👋",
+      "subtitle": "{date} · Your upcoming church commitments.",
       "title": "You are not linked to a ministry yet",
       "description": "Your panel stays available so you can follow the calendar, your profile, and general church information.",
       "action": "View my profile"

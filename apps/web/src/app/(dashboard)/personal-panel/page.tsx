@@ -7,6 +7,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
 import { EmptyState } from '@/components/app/empty-state';
+import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useEventos } from '@/hooks/use-eventos';
@@ -154,12 +155,19 @@ export default function PersonalPanelPage() {
     { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: '🗓️' },
     { href: '/meu-perfil', label: t('quickLinks.profile'), emoji: '👤' },
   ];
+  const memberDisplayName = getMemberDisplayName(user?.membro);
+  const headerTitle = hasMinisterio
+    ? `${t('greeting', { name: memberDisplayName ? `, ${memberDisplayName}` : '' })} 👋`
+    : t('noMinistry.greeting', { name: memberDisplayName || user?.nome || '' });
+  const headerSubtitle = hasMinisterio
+    ? t('subtitle', { date: today })
+    : t('noMinistry.subtitle', { date: today });
 
   return (
     <div className="max-w-5xl mx-auto">
       <PageHeader
-        title={`${t('greeting', { name: user?.nome ? `, ${user.nome.split(' ')[0]}` : '' })} 👋`}
-        description={t('subtitle', { date: today })}
+        title={headerTitle}
+        description={headerSubtitle}
       />
 
       {error && (

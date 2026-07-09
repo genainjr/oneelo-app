@@ -117,6 +117,7 @@ export class AuthService {
           select: {
             id: true,
             nome: true,
+            nomeExibicao: true,
             email: true,
             whatsapp: true,
             dataNascimento: true,

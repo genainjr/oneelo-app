@@ -143,6 +143,8 @@
       "pendingDesc": "Confirmações aguardando sua resposta"
     },
     "noMinistry": {
+      "greeting": "Olá, {name}! 👋",
+      "subtitle": "{date} · Seus próximos compromissos da igreja.",
       "title": "Você ainda não está vinculado a um ministério",
       "description": "Seu painel continua ativo para acompanhar agenda, perfil e informações gerais da igreja.",
       "action": "Ver meu perfil"
