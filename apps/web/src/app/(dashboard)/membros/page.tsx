@@ -50,7 +50,7 @@ export default function MembrosPage() {
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me').then((me) => {
-      if (me.role === 'BASIC') router.replace('/dashboard');
+      if (me.role === 'BASIC') router.replace('/personal-panel');
     }).catch(() => {});
   }, [router]);
 

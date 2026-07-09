@@ -65,6 +65,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "personalPanel": "Personal Panel",
     "members": "Members",
     "ministries": "Ministries",
     "manage": "Manage",
@@ -109,10 +110,35 @@
       "birthdaysDesc": "This month",
       "monthlyEvents": "Monthly Events",
       "monthlyEventsDesc": "This month's agenda",
+      "nextSchedule": "Next Schedule",
+      "nextScheduleDesc": "Your closest participation",
+      "nextScheduleEmpty": "No upcoming schedule",
+      "nextScheduleNone": "--",
       "activeMinistries": "Active Ministries",
       "activeMinistriesDesc": "Currently active",
       "pending": "Pending",
       "pendingDesc": "Schedule confirmations"
+    }
+  },
+  "dashboardPersonal": {
+    "greeting": "Hello{name}!",
+    "subtitle": "{date} · Your upcoming commitments and confirmations.",
+    "quickAccess": "Quick Access",
+    "quickLinks": {
+      "viewSchedules": "My Schedules",
+      "agenda": "Calendar"
+    },
+    "errorLoading": "Error loading personal panel data.",
+    "stats": {
+      "nextSchedule": "Next Schedule",
+      "nextScheduleDesc": "Your nearest participation",
+      "nextScheduleEmpty": "No upcoming schedule",
+      "nextScheduleNone": "--",
+      "upcomingEvents": "Upcoming Events",
+      "upcomingEventsDesc": "Events for the current month",
+      "upcomingEventsEmpty": "No events in this period",
+      "pending": "Pending",
+      "pendingDesc": "Confirmations awaiting your response"
     }
   },
   "members": {

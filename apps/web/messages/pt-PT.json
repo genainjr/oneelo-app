@@ -65,6 +65,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "personalPanel": "Painel Pessoal",
     "members": "Membros",
     "ministries": "Ministérios",
     "manage": "Gerir",
@@ -109,10 +110,35 @@
       "birthdaysDesc": "Neste mês",
       "monthlyEvents": "Eventos do Mês",
       "monthlyEventsDesc": "Agenda deste mês",
+      "nextSchedule": "Próxima Escala",
+      "nextScheduleDesc": "A sua participação mais próxima",
+      "nextScheduleEmpty": "Sem escala futura",
+      "nextScheduleNone": "--",
       "activeMinistries": "Ministérios Ativos",
       "activeMinistriesDesc": "Em funcionamento",
       "pending": "Pendências",
       "pendingDesc": "Confirmações de escala"
+    }
+  },
+  "dashboardPersonal": {
+    "greeting": "Olá{name}!",
+    "subtitle": "{date} · Os seus próximos compromissos e confirmações.",
+    "quickAccess": "Acesso Rápido",
+    "quickLinks": {
+      "viewSchedules": "Minhas Escalas",
+      "agenda": "Agenda"
+    },
+    "errorLoading": "Erro ao carregar dados do painel pessoal.",
+    "stats": {
+      "nextSchedule": "Próxima Escala",
+      "nextScheduleDesc": "A sua participação mais próxima",
+      "nextScheduleEmpty": "Sem escala futura",
+      "nextScheduleNone": "--",
+      "upcomingEvents": "Próximos Eventos",
+      "upcomingEventsDesc": "Eventos do mês atual",
+      "upcomingEventsEmpty": "Sem eventos neste período",
+      "pending": "Pendências",
+      "pendingDesc": "Confirmações à espera da sua resposta"
     }
   },
   "members": {

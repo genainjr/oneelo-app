@@ -28,7 +28,7 @@ function LoginForm() {
 
     try {
       const response = await api.post<LoginResponse>('/api/auth/login', { email, senha });
-      const fallback = response.user.role === 'BASIC' ? '/minhas-escalas' : '/dashboard';
+      const fallback = response.user.role === 'BASIC' ? '/personal-panel' : '/dashboard';
       const target = redirect && !(response.user.role === 'BASIC' && redirect === '/dashboard')
         ? redirect
         : fallback;
