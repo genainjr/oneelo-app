@@ -8,6 +8,25 @@ import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { MinistryRole, Role } from '@prisma/client';
 
+const memberListInclude = {
+  tags: {
+    include: {
+      tag: true,
+    },
+  },
+  ministerios: {
+    where: {
+      ministerio: { ativo: true },
+    },
+    include: {
+      ministerio: { select: { id: true, nome: true } },
+    },
+    orderBy: {
+      ministerio: { nome: 'asc' },
+    },
+  },
+};
+
 @Injectable()
 export class MembrosService {
   constructor(private readonly prisma: PrismaService) {}
@@ -148,6 +167,7 @@ export class MembrosService {
         ...dto,
         tenantId,
       },
+      include: memberListInclude,
     });
   }
 
@@ -199,13 +219,7 @@ export class MembrosService {
 
     return this.prisma.client.membro.findMany({
       where,
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
+      include: memberListInclude,
       orderBy: {
         nome: 'asc',
       },
@@ -215,13 +229,7 @@ export class MembrosService {
   async findOne(tenantId: string, id: string) {
     const membro = await this.prisma.client.membro.findFirst({
       where: { id, tenantId },
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
+      include: memberListInclude,
     });
 
     if (!membro) {
@@ -342,13 +350,7 @@ export class MembrosService {
     return this.prisma.client.membro.update({
       where: { id },
       data: dto,
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
+      include: memberListInclude,
     });
   }
 

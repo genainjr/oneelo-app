@@ -163,6 +163,47 @@ export default function ConfiguracoesPage() {
     );
   }
 
+  function renderUserRoleBadge(user: User) {
+    const badges: Record<string, string> = {
+      ADMIN: 'bg-red-50 text-red-700 border-red-100',
+      STAFF: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+      BASIC: 'bg-gray-50 text-gray-600 border-gray-200',
+    };
+
+    return (
+      <StatusBadge
+        label={tCommon(`roles.${user.role}` as any) || user.role}
+        className={`rounded-lg border ${badges[user.role] || 'bg-gray-50'}`}
+      />
+    );
+  }
+
+  function renderUserStatusBadge(user: User) {
+    return (
+      <StatusBadge
+        label={user.ativo ? t('users.status.active') : t('users.status.inactive')}
+        className={`border ${user.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-250'}`}
+      />
+    );
+  }
+
+  function renderAuditOperationBadge(log: AuditLog) {
+    const badges: Record<string, string> = {
+      CRIAR: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+      ATUALIZAR: 'bg-blue-50 text-blue-700 border-blue-100',
+      DELETAR: 'bg-rose-50 text-rose-700 border-rose-100',
+      LOGIN: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+      LOGOUT: 'bg-gray-100 text-gray-600 border-gray-200',
+    };
+
+    return (
+      <StatusBadge
+        label={log.acao}
+        className={`rounded-lg border font-bold ${badges[log.acao] || 'bg-gray-50'}`}
+      />
+    );
+  }
+
   const userColumns: Column<User>[] = [
     {
       key: 'nome',
@@ -179,19 +220,7 @@ export default function ConfiguracoesPage() {
     {
       key: 'role',
       header: t('users.columns.role'),
-      render: (u) => {
-        const badges: Record<string, string> = {
-          ADMIN: 'bg-red-50 text-red-700 border-red-100',
-          STAFF: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-          BASIC: 'bg-gray-50 text-gray-600 border-gray-200',
-        };
-        return (
-          <StatusBadge
-            label={tCommon(`roles.${u.role}` as any) || u.role}
-            className={`rounded-lg border ${badges[u.role] || 'bg-gray-50'}`}
-          />
-        );
-      },
+      render: renderUserRoleBadge,
     },
     {
       key: 'membro' as keyof User,
@@ -212,12 +241,7 @@ export default function ConfiguracoesPage() {
     {
       key: 'ativo',
       header: t('users.columns.status'),
-      render: (u) => (
-        <StatusBadge
-          label={u.ativo ? t('users.status.active') : t('users.status.inactive')}
-          className={`border ${u.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-250'}`}
-        />
-      ),
+      render: renderUserStatusBadge,
     },
     {
       key: 'createdAt',
@@ -234,20 +258,20 @@ export default function ConfiguracoesPage() {
           <button
             onClick={() => openEdit(u)}
             title={t('users.editTooltip')}
-            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+            className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
           {u.id !== currentUser?.id && (
-            <button
-              onClick={() => setDeletingUser(u)}
-              title={t('users.deactivateTooltip')}
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              <button
+                onClick={() => setDeletingUser(u)}
+                title={t('users.deactivateTooltip')}
+                className="p-2 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 transition-all flex items-center justify-center"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
           )}
@@ -275,21 +299,7 @@ export default function ConfiguracoesPage() {
     {
       key: 'acao',
       header: t('audit.columns.operation'),
-      render: (log) => {
-        const badges: Record<string, string> = {
-          CRIAR: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-          ATUALIZAR: 'bg-blue-50 text-blue-700 border-blue-100',
-          DELETAR: 'bg-rose-50 text-rose-700 border-rose-100',
-          LOGIN: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-          LOGOUT: 'bg-gray-100 text-gray-600 border-gray-200',
-        };
-        return (
-          <StatusBadge
-            label={log.acao}
-            className={`rounded-lg border font-bold ${badges[log.acao] || 'bg-gray-50'}`}
-          />
-        );
-      },
+      render: renderAuditOperationBadge,
     },
     {
       key: 'entidade',
@@ -311,7 +321,7 @@ export default function ConfiguracoesPage() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-5 px-4 py-4 sm:space-y-6 sm:p-6">
       <PageHeader
         title={t('pageTitle')}
         description={t('pageDescription')}
@@ -327,31 +337,33 @@ export default function ConfiguracoesPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-100 bg-white rounded-t-2xl px-5 border-t border-x shadow-2xs">
-        <button
-          onClick={() => { setActiveTab('usuarios'); setUserPage(1); }}
-          className={`py-4 text-sm font-semibold border-b-2 px-1 transition-all mr-8 flex items-center gap-2 ${activeTab === 'usuarios' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          {t('tabs.users')} ({users.length})
-        </button>
-        <button
-          onClick={() => { setActiveTab('audit'); setAuditPage(1); }}
-          className={`py-4 text-sm font-semibold border-b-2 px-1 transition-all flex items-center gap-2 ${activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          {t('tabs.audit')} ({auditLogs.length})
-        </button>
+      <div className="flex flex-col gap-3 border border-gray-100 bg-white rounded-t-2xl px-4 py-3 shadow-2xs sm:flex-row sm:items-center sm:px-5 sm:py-0">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-8">
+          <button
+            onClick={() => { setActiveTab('usuarios'); setUserPage(1); }}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === 'usuarios' ? 'bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600' : 'text-gray-500 hover:text-gray-700 sm:border-transparent'}`}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span className="truncate">{t('tabs.users')} ({users.length})</span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('audit'); setAuditPage(1); }}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === 'audit' ? 'bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600' : 'text-gray-500 hover:text-gray-700 sm:border-transparent'}`}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="truncate">{t('tabs.audit')} ({auditLogs.length})</span>
+          </button>
+        </div>
 
         {activeTab === 'usuarios' && (
-          <div className="ml-auto flex items-center">
+          <div className="flex items-center sm:ml-auto">
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-all my-2"
+              className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-all sm:w-auto sm:my-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -375,6 +387,49 @@ export default function ConfiguracoesPage() {
           onPageChange={setUserPage}
           emptyTitle={t('users.noUsers')}
           emptyDescription={t('users.noUsersDesc')}
+          renderMobileCard={(user) => (
+            <div className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-gray-800 truncate">{user.nome}</h3>
+                  <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                </div>
+                <div className="shrink-0">{renderUserStatusBadge(user)}</div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400 font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span>{t('users.columns.role')}:</span>
+                  {renderUserRoleBadge(user)}
+                </div>
+                <span>{t('users.columns.registeredAt')}: {formatDateTime(user.createdAt)}</span>
+                {user.membro && <span className="min-w-0 truncate">{t('users.columns.member')}: {user.membro.nome}</span>}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-3">
+                <button
+                  onClick={() => openEdit(user)}
+                  title={t('users.editTooltip')}
+                  className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+                >
+                  <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                {user.id !== currentUser?.id && (
+                  <button
+                    onClick={() => setDeletingUser(user)}
+                    title={t('users.deactivateTooltip')}
+                    className="p-2 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 transition-all flex items-center justify-center"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         />
       ) : (
         <DataTable
@@ -387,6 +442,23 @@ export default function ConfiguracoesPage() {
           onPageChange={setAuditPage}
           emptyTitle={t('audit.noLogs')}
           emptyDescription={t('audit.noLogsDesc')}
+          renderMobileCard={(log) => (
+            <div className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-gray-800 truncate">{log.user?.nome || t('audit.system')}</h3>
+                  {log.user?.email && <p className="text-sm text-gray-500 truncate">{log.user.email}</p>}
+                </div>
+                <div className="shrink-0">{renderAuditOperationBadge(log)}</div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400 font-medium">
+                <span>{formatDateTime(log.createdAt)}</span>
+                <span className="uppercase tracking-wider">{log.entidade}</span>
+                {log.ipAddress && <span className="font-mono">{log.ipAddress}</span>}
+              </div>
+            </div>
+          )}
         />
       )}
 

@@ -492,8 +492,8 @@
       "backToDashboard": "Voltar ao Dashboard"
     },
     "tabs": {
-      "users": "Usuários do Sistema",
-      "audit": "Log de Auditoria"
+      "users": "Usuários",
+      "audit": "Logs"
     },
     "users": {
       "new": "Novo Usuário",
