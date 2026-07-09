@@ -208,6 +208,36 @@ body {
     white-space: nowrap;
   }
 
+  .print-events-table th:nth-child(1),
+  .print-events-table td:nth-child(1) {
+    width: 16%;
+    white-space: nowrap;
+  }
+
+  .print-events-table th:nth-child(2),
+  .print-events-table td:nth-child(2) {
+    width: 24%;
+    text-align: left;
+    font-weight: 700;
+  }
+
+  .print-events-table th:nth-child(3),
+  .print-events-table td:nth-child(3) {
+    width: 12%;
+  }
+
+  .print-events-table th:nth-child(4),
+  .print-events-table td:nth-child(4) {
+    width: 16%;
+    text-align: left;
+  }
+
+  .print-events-table th:nth-child(5),
+  .print-events-table td:nth-child(5) {
+    width: 32%;
+    text-align: left;
+  }
+
   .print-empty {
     border: 1px dashed #cbd5e1;
     padding: 16px;

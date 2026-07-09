@@ -10,6 +10,7 @@ import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
+import { PrintScheduleFooter, PrintScheduleHeader } from '@/components/app/print-layout';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
@@ -222,9 +223,12 @@ export default function EscalasVisualizacaoPage() {
         <div className="print-area hidden" aria-hidden="true">
           {escalas.map((escala) => (
             <section key={escala.id} className="print-page">
-              <EscalaPrintHeader escala={escala} tenantName={tenantName} />
+              <PrintScheduleHeader
+                title={tenantName}
+                subtitle={`${escala.ministerio?.nome || 'Ministerio'} - ${getMesLabel(escala)}`}
+              />
               <EscalaPrintGrid escala={escala} />
-              <EscalaPrintFooter printedAt={printedAt} />
+              <PrintScheduleFooter printedAt={printedAt} />
             </section>
           ))}
         </div>
@@ -233,33 +237,7 @@ export default function EscalasVisualizacaoPage() {
   );
 }
 
-function EscalaPrintFooter({ printedAt }: { printedAt: Date }) {
-  const formatted = new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(printedAt);
-
-  return (
-    <footer className="print-schedule-footer">
-      <div className="print-schedule-footer-brand">
-        <img src="/logo.jpg" alt="Lookup Labs" className="print-schedule-footer-logo" />
-        <div className="print-schedule-footer-text">
-          <span className="print-schedule-footer-company">Lookup Labs</span>
-          <span className="print-schedule-footer-product">One Elo</span>
-        </div>
-      </div>
-      <span>Impresso em {formatted}</span>
-    </footer>
-  );
-}
-
-function EscalaPrintHeader({ escala, tenantName }: { escala: Escala; tenantName: string }) {
+function getMesLabel(escala: Escala) {
   const mesLabel = MESES.find((item) => item.value === String(escala.mes))?.label || String(escala.mes);
-
-  return (
-    <header className="print-schedule-header">
-      <h1>{tenantName}</h1>
-      <p>{escala.ministerio?.nome || 'Ministerio'} - {mesLabel} de {escala.ano}</p>
-    </header>
-  );
+  return `${mesLabel} de ${escala.ano}`;
 }

@@ -416,6 +416,7 @@
     "view": {
       "pageTitle": "Calendar View",
       "pageDescription": "Review events by period and status in read-only mode, without editing actions.",
+      "noDescription": "No description registered.",
       "stats": {
         "total": "Events",
         "scheduled": "Scheduled",
