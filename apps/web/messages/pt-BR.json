@@ -107,6 +107,8 @@
       "monthlySchedulesDesc": "No mês atual",
       "birthdays": "Aniversariantes",
       "birthdaysDesc": "Neste mês",
+      "monthlyEvents": "Eventos do Mês",
+      "monthlyEventsDesc": "Agenda deste mês",
       "activeMinistries": "Ministérios Ativos",
       "activeMinistriesDesc": "Em funcionamento",
       "pending": "Pendências",
@@ -446,6 +448,10 @@
     "filter": {
       "statusLabel": "Status",
       "allStatuses": "Todos os status",
+      "tipoLabel": "Tipo",
+      "allTypes": "Todos os tipos",
+      "ministryLabel": "Ministério",
+      "allMinisterios": "Todos os ministérios",
       "from": "A partir de (Data)",
       "to": "Até (Data)",
       "apply": "Filtrar",
@@ -454,7 +460,13 @@
     "event": {
       "start": "Início",
       "end": "Fim",
-      "location": "Local"
+      "location": "Local",
+      "ministerios": "Ministérios",
+      "type": {
+        "GERAL": "Geral",
+        "MINISTERIO": "Ministério",
+        "REUNIAO_INTERNA": "Reunião interna"
+      }
     },
     "modal": {
       "editTitle": "Editar Evento",
@@ -466,6 +478,8 @@
       "locationLabel": "Local / Templo",
       "locationPlaceholder": "Ex: Templo Principal, Sala 3",
       "statusLabel": "Status Evento",
+      "typeLabel": "Tipo do Evento",
+      "ministeriosLabel": "Ministérios vinculados",
       "descriptionLabel": "Descrição / Pautas",
       "descriptionPlaceholder": "Informações extras ou cronograma do evento...",
       "editTooltip": "Editar evento",

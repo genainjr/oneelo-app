@@ -4,8 +4,7 @@
 
 [circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
 [circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+<p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
     <p align="center">
 <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
 <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
@@ -30,6 +29,37 @@
 ```bash
 $ npm install
 ```
+
+## Database / Prisma
+
+Execute os comandos dentro de `apps/api`, porque o `schema.prisma` usa o `.env` local da API.
+
+### Gerar o client Prisma
+
+```powershell
+Set-Location apps/api
+npx.cmd prisma generate
+```
+
+### Desenvolvimento
+
+Use este comando para criar e aplicar migration no ambiente local:
+
+```powershell
+Set-Location apps/api
+npx.cmd prisma migrate dev
+```
+
+### Produção
+
+Use este comando para aplicar migrations já versionadas no repositório:
+
+```powershell
+Set-Location apps/api
+npx.cmd prisma migrate deploy
+```
+
+Se o Prisma reclamar de `DATABASE_URL`, confirme que o comando foi executado dentro de `apps/api` e que a variável está definida no `.env` correto.
 
 ## Compile and run the project
 

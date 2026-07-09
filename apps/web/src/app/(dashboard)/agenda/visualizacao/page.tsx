@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { CalendarDays, CircleDashed, Clock3, ListChecks, MapPin, TriangleAlert } from 'lucide-react';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useEventos } from '@/hooks/use-eventos';
+import { useMinisterios } from '@/hooks/use-ministerios';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
@@ -15,7 +16,7 @@ import { EntityCard } from '@/components/app/entity-card';
 import { PrintScheduleFooter, PrintScheduleHeader } from '@/components/app/print-layout';
 import { api } from '@/lib/api';
 import { formatDate, STATUS_EVENTO_LABEL } from '@/lib/utils';
-import type { AuthUser, Evento, StatusEvento } from '@/types';
+import type { AuthUser, Evento, EventoTipo, StatusEvento } from '@/types';
 
 const STATUS_OPTIONS: Array<{ value: '' | StatusEvento; labelKey: string }> = [
   { value: '', labelKey: 'filter.allStatuses' },
@@ -45,6 +46,8 @@ export default function AgendaVisualizacaoPage() {
   const initialFilter = useMemo(
     () => ({
       status: '',
+      tipo: '',
+      ministerioId: '',
       dataInicio: toDateInputValue(monthStart),
       dataFim: toDateInputValue(monthEnd),
     }),
@@ -52,6 +55,7 @@ export default function AgendaVisualizacaoPage() {
   );
 
   const { eventos, loading, error, applyFilter, refetch } = useEventos(initialFilter);
+  const { ministerios } = useMinisterios();
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
@@ -69,11 +73,18 @@ export default function AgendaVisualizacaoPage() {
     onApply: (filters) => {
       applyFilter({
         status: filters.status || undefined,
+        tipo: filters.tipo || undefined,
+        ministerioId: filters.ministerioId || undefined,
         dataInicio: filters.dataInicio || undefined,
         dataFim: filters.dataFim || undefined,
       });
     },
   });
+
+  const ministeriosAtivos = useMemo(
+    () => ministerios.filter((ministerio) => ministerio.ativo),
+    [ministerios],
+  );
 
   const sortedEventos = useMemo(() => {
     return [...eventos].sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime());
@@ -136,22 +147,46 @@ export default function AgendaVisualizacaoPage() {
             />
           }
         >
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-end">
-            <FilterSelect
-              label={t('filter.statusLabel')}
-              value={filterState.status}
-              onChange={(event) => setFilterField('status', event.target.value as '' | StatusEvento)}
-            >
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 items-end">
+          <FilterSelect
+            label={t('filter.statusLabel')}
+            value={filterState.status}
+            onChange={(event) => setFilterField('status', event.target.value as '' | StatusEvento)}
+          >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option.value || 'all'} value={option.value}>
-                  {t(option.labelKey as any)}
-                </option>
-              ))}
-            </FilterSelect>
+              {t(option.labelKey as any)}
+              </option>
+            ))}
+          </FilterSelect>
 
-            <FilterInput
-              label={t('filter.from')}
-              type="date"
+          <FilterSelect
+            label={t('filter.tipoLabel')}
+            value={filterState.tipo}
+            onChange={(event) => setFilterField('tipo', event.target.value as '' | EventoTipo)}
+          >
+            <option value="">{t('filter.allTypes')}</option>
+            <option value="GERAL">{t('event.type.GERAL')}</option>
+            <option value="MINISTERIO">{t('event.type.MINISTERIO')}</option>
+            <option value="REUNIAO_INTERNA">{t('event.type.REUNIAO_INTERNA')}</option>
+          </FilterSelect>
+
+          <FilterSelect
+            label={t('filter.ministryLabel')}
+            value={filterState.ministerioId}
+            onChange={(event) => setFilterField('ministerioId', event.target.value)}
+          >
+            <option value="">{t('filter.allMinisterios')}</option>
+            {ministeriosAtivos.map((ministerio) => (
+              <option key={ministerio.id} value={ministerio.id}>
+                {ministerio.nome}
+              </option>
+            ))}
+          </FilterSelect>
+
+          <FilterInput
+            label={t('filter.from')}
+            type="date"
               value={filterState.dataInicio}
               onChange={(event) => setFilterField('dataInicio', event.target.value)}
             />
@@ -201,6 +236,9 @@ export default function AgendaVisualizacaoPage() {
                       <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold border rounded-lg ${statusClass}`}>
                         {statusLabel}
                       </span>
+                      <span className="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-lg bg-gray-50 text-gray-600">
+                        {t(`event.type.${evento.tipo}` as any)}
+                      </span>
                       <h3 className="text-base font-bold text-gray-800 tracking-tight">{evento.titulo}</h3>
                     </div>
 
@@ -225,6 +263,12 @@ export default function AgendaVisualizacaoPage() {
                           {evento.local}
                         </span>
                       )}
+                      {evento.ministerios?.length ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CalendarDays className="h-3.5 w-3.5 text-gray-400" />
+                          {t('event.ministerios')}: {evento.ministerios.map((item) => item.ministerio?.nome).filter(Boolean).join(', ')}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </EntityCard>
@@ -241,7 +285,7 @@ export default function AgendaVisualizacaoPage() {
               title={tenantName}
               subtitle={`Agenda - ${formatDate(filterState.dataInicio, 'dd/MM/yyyy')} a ${formatDate(filterState.dataFim, 'dd/MM/yyyy')}`}
             />
-            <AgendaPrintTable eventos={sortedEventos} />
+            <AgendaPrintTable eventos={sortedEventos} t={t} />
             <PrintScheduleFooter printedAt={printedAt} />
           </section>
         </div>
@@ -250,13 +294,21 @@ export default function AgendaVisualizacaoPage() {
   );
 }
 
-function AgendaPrintTable({ eventos }: { eventos: Evento[] }) {
+function AgendaPrintTable({
+  eventos,
+  t,
+}: {
+  eventos: Evento[];
+  t: any;
+}) {
   return (
     <table className="print-schedule-table print-events-table">
       <thead>
         <tr>
           <th>Data</th>
           <th>Evento</th>
+          <th>Tipo</th>
+          <th>Ministérios</th>
           <th>Status</th>
           <th>Local</th>
           <th>Descricao</th>
@@ -267,6 +319,8 @@ function AgendaPrintTable({ eventos }: { eventos: Evento[] }) {
           <tr key={evento.id}>
             <td>{formatDate(evento.dataInicio, 'dd/MM/yyyy HH:mm')}</td>
             <td>{evento.titulo}</td>
+            <td>{t(`event.type.${evento.tipo}` as any)}</td>
+            <td>{evento.ministerios?.map((item) => item.ministerio?.nome).filter(Boolean).join(', ') || '-'}</td>
             <td>{STATUS_EVENTO_LABEL[evento.status]}</td>
             <td>{evento.local || '-'}</td>
             <td>{evento.descricao || '-'}</td>

@@ -283,7 +283,18 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         ],
       },
     ] satisfies NavItem[] : []),
-    { href: '/agenda/visualizacao', label: t('agenda'), icon: ICONS.agenda },
+    basicHasLeadership
+      ? {
+          href: '/agenda',
+          label: t('agenda'),
+          icon: ICONS.agenda,
+          children: [
+            { href: '/agenda', label: t('manage'), icon: ICONS.manage },
+            { href: '/agenda/visualizacao', label: t('view'), icon: ICONS.view },
+            { href: '/agenda/exportacao', label: t('export'), icon: ICONS.export },
+          ],
+        }
+      : { href: '/agenda/visualizacao', label: t('agenda'), icon: ICONS.agenda },
     { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
   ];
 

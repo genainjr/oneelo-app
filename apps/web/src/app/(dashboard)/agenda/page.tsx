@@ -11,10 +11,11 @@ import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
+import { useMinisterios } from '@/hooks/use-ministerios';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { InputField, SelectField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
-import { Evento, AuthUser, StatusEvento } from '@/types';
+import { Evento, AuthUser, EventoTipo, StatusEvento, Ministerio } from '@/types';
 import { formatDate } from '@/lib/utils';
 
 type FeedbackMessage = {
@@ -34,6 +35,8 @@ export default function AgendaPage() {
   const initialFilter = useMemo(
     () => ({
       status: '',
+      tipo: '',
+      ministerioId: '',
       dataInicio: toDateInputValue(monthStart),
       dataFim: toDateInputValue(monthEnd),
     }),
@@ -50,6 +53,7 @@ export default function AgendaPage() {
     updateEvento,
     deleteEvento,
   } = useEventos(initialFilter);
+  const { ministerios, loading: ministeriosLoading } = useMinisterios();
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null);
@@ -61,6 +65,8 @@ export default function AgendaPage() {
   const [dataFim, setDataFim] = useState('');
   const [local, setLocal] = useState('');
   const [status, setStatus] = useState<'AGENDADO' | 'REALIZADO' | 'CANCELADO'>('AGENDADO');
+  const [tipo, setTipo] = useState<EventoTipo>('GERAL');
+  const [ministerioIds, setMinisterioIds] = useState<string[]>([]);
 
   const {
     formState: filterState,
@@ -72,6 +78,8 @@ export default function AgendaPage() {
     onApply: (filters) => {
       applyFilter({
         status: filters.status || undefined,
+        tipo: filters.tipo || undefined,
+        ministerioId: filters.ministerioId || undefined,
         dataInicio: filters.dataInicio || undefined,
         dataFim: filters.dataFim || undefined,
       });
@@ -79,6 +87,7 @@ export default function AgendaPage() {
   });
 
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [pendingDeleteEvento, setPendingDeleteEvento] = useState<Evento | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
 
@@ -88,7 +97,35 @@ export default function AgendaPage() {
       .catch(() => setCurrentUser(null));
   }, []);
 
-  const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
+  const basicHasLeadership =
+    currentUser?.role === 'BASIC' &&
+    (currentUser.membro?.ministerios?.some(
+      (membership) => membership.role === 'LEADER' || membership.role === 'ASSISTANT_LEADER',
+    ) ?? false);
+  const canCreateGeneralEvent = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
+  const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF' || basicHasLeadership;
+  const ministeriosAtivos = useMemo(
+    () => ministerios.filter((ministerio: Ministerio) => ministerio.ativo),
+    [ministerios],
+  );
+  const ministeriosSelecionados = useMemo(
+    () => ministeriosAtivos.filter((ministerio) => ministerioIds.includes(ministerio.id)),
+    [ministeriosAtivos, ministerioIds],
+  );
+
+  useEffect(() => {
+    if (tipo === 'GERAL') {
+      setMinisterioIds([]);
+    }
+  }, [tipo]);
+
+  function toggleMinisterioId(ministerioId: string) {
+    setMinisterioIds((current) =>
+      current.includes(ministerioId)
+        ? current.filter((id) => id !== ministerioId)
+        : [...current, ministerioId],
+    );
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -98,10 +135,12 @@ export default function AgendaPage() {
       const payload: any = {
         titulo: titulo.trim(),
         descricao: descricao.trim() || undefined,
+        tipo,
         dataInicio: new Date(dataInicio).toISOString(),
         dataFim: dataFim ? new Date(dataFim).toISOString() : undefined,
         local: local.trim() || undefined,
         status,
+        ministerioIds: tipo === 'GERAL' ? [] : ministerioIds,
       };
 
       if (selectedEvento) {
@@ -111,8 +150,9 @@ export default function AgendaPage() {
       }
       setIsModalOpen(false);
       setSelectedEvento(null);
+      setModalError(null);
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || t('errorSave') });
+      setModalError(err.message || t('errorSave'));
     }
   }
 
@@ -159,6 +199,9 @@ export default function AgendaPage() {
     setDataFim(toLocalDatetimeString(ev.dataFim));
     setLocal(ev.local || '');
     setStatus(ev.status);
+    setTipo(ev.tipo);
+    setMinisterioIds((ev.ministerios || []).map((relacao) => relacao.ministerioId));
+    setModalError(null);
     setIsModalOpen(true);
   }
 
@@ -170,6 +213,9 @@ export default function AgendaPage() {
     setDataFim('');
     setLocal('');
     setStatus('AGENDADO');
+    setTipo(canCreateGeneralEvent ? 'GERAL' : 'MINISTERIO');
+    setMinisterioIds([]);
+    setModalError(null);
     setIsModalOpen(true);
   }
 
@@ -232,7 +278,7 @@ export default function AgendaPage() {
           />
         }
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <FilterSelect
             id="filter-status"
             label={t('filter.statusLabel')}
@@ -243,6 +289,32 @@ export default function AgendaPage() {
             <option value="AGENDADO">{t('status.AGENDADO')}</option>
             <option value="REALIZADO">{t('status.REALIZADO')}</option>
             <option value="CANCELADO">{t('status.CANCELADO')}</option>
+          </FilterSelect>
+
+          <FilterSelect
+            id="filter-tipo"
+            label={t('filter.tipoLabel')}
+            value={filterState.tipo}
+            onChange={(e) => setFilterField('tipo', e.target.value)}
+          >
+            <option value="">{t('filter.allTypes')}</option>
+            <option value="GERAL">{t('event.type.GERAL')}</option>
+            <option value="MINISTERIO">{t('event.type.MINISTERIO')}</option>
+            <option value="REUNIAO_INTERNA">{t('event.type.REUNIAO_INTERNA')}</option>
+          </FilterSelect>
+
+          <FilterSelect
+            id="filter-ministerio"
+            label={t('filter.ministryLabel')}
+            value={filterState.ministerioId}
+            onChange={(e) => setFilterField('ministerioId', e.target.value)}
+          >
+            <option value="">{t('filter.allMinisterios')}</option>
+            {ministeriosAtivos.map((ministerio) => (
+              <option key={ministerio.id} value={ministerio.id}>
+                {ministerio.nome}
+              </option>
+            ))}
           </FilterSelect>
 
           <FilterInput
@@ -282,6 +354,10 @@ export default function AgendaPage() {
               REALIZADO: 'bg-emerald-50 text-emerald-700 border-emerald-150',
               CANCELADO: 'bg-rose-50 text-rose-700 border-rose-150',
             };
+            const ministeriosRelacionados = (ev.ministerios || [])
+              .map((relacao) => relacao.ministerio?.nome)
+              .filter(Boolean)
+              .join(', ');
 
             return (
               <EntityCard
@@ -292,6 +368,9 @@ export default function AgendaPage() {
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold border rounded-lg ${colors[evStatus]}`}>
                       {t(`status.${evStatus}` as any)}
+                    </span>
+                    <span className="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-lg bg-gray-50 text-gray-600">
+                      {t(`event.type.${ev.tipo}` as any)}
                     </span>
                     <h3 className="text-base font-bold text-gray-800">{ev.titulo}</h3>
                   </div>
@@ -322,6 +401,14 @@ export default function AgendaPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         {t('event.location')}: {ev.local}
+                      </span>
+                    )}
+                    {ministeriosRelacionados && (
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                        </svg>
+                        {t('event.ministerios')}: {ministeriosRelacionados}
                       </span>
                     )}
                   </div>
@@ -378,10 +465,11 @@ export default function AgendaPage() {
       <ModalShell
         isOpen={isModalOpen}
         title={selectedEvento ? t('modal.editTitle') : t('modal.createTitle')}
-        onClose={() => { setIsModalOpen(false); setSelectedEvento(null); }}
+        onClose={() => { setIsModalOpen(false); setSelectedEvento(null); setModalError(null); }}
         size="md"
       >
         <form id="agenda-form" onSubmit={handleSave}>
+          <ModalError message={modalError} />
           <div className="space-y-4 p-6">
             <InputField
               id="ev-titulo"
@@ -432,6 +520,87 @@ export default function AgendaPage() {
               </SelectField>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SelectField
+                id="ev-tipo"
+                label={t('modal.typeLabel')}
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value as EventoTipo)}
+              >
+                {canCreateGeneralEvent && (
+                  <option value="GERAL">{t('event.type.GERAL')}</option>
+                )}
+                <option value="MINISTERIO">{t('event.type.MINISTERIO')}</option>
+                <option value="REUNIAO_INTERNA">{t('event.type.REUNIAO_INTERNA')}</option>
+              </SelectField>
+
+              {tipo !== 'GERAL' && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      {t('modal.ministeriosLabel')}
+                    </label>
+                    <span className="text-[11px] font-medium text-gray-400">
+                      {ministeriosSelecionados.length}/{ministeriosAtivos.length}
+                    </span>
+                  </div>
+                  <div className="max-h-44 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-2">
+                    {ministeriosLoading ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">
+                        Carregando ministérios...
+                      </div>
+                    ) : ministeriosAtivos.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">
+                        Nenhum ministério ativo disponível.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {ministeriosAtivos.map((ministerio) => {
+                          const checked = ministerioIds.includes(ministerio.id);
+                          return (
+                            <button
+                              key={ministerio.id}
+                              type="button"
+                              onClick={() => toggleMinisterioId(ministerio.id)}
+                              className={`flex items-start gap-3 rounded-xl border px-3 py-2 text-left transition-all ${
+                                checked
+                                  ? 'border-indigo-200 bg-indigo-50 text-indigo-900'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <span
+                                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                                  checked
+                                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                                    : 'border-gray-300 bg-white'
+                                }`}
+                                aria-hidden="true"
+                              >
+                                {checked && (
+                                  <svg className="h-3 w-3" viewBox="0 0 20 20" fill="none">
+                                    <path
+                                      d="M5 10.5L8.5 14L15 6.5"
+                                      stroke="currentColor"
+                                      strokeWidth="2.2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                )}
+                              </span>
+                              <span className="min-w-0 flex-1 text-sm font-medium leading-5">
+                                {ministerio.nome}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <TextareaField
               id="ev-desc"
               label={t('modal.descriptionLabel')}
@@ -445,7 +614,7 @@ export default function AgendaPage() {
           <ModalFooter
             form="agenda-form"
             primaryLabel={selectedEvento ? t('modal.save') : t('modal.save')}
-            onCancel={() => { setIsModalOpen(false); setSelectedEvento(null); }}
+            onCancel={() => { setIsModalOpen(false); setSelectedEvento(null); setModalError(null); }}
           />
         </form>
       </ModalShell>

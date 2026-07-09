@@ -107,6 +107,8 @@
       "monthlySchedulesDesc": "In the current month",
       "birthdays": "Birthdays",
       "birthdaysDesc": "This month",
+      "monthlyEvents": "Monthly Events",
+      "monthlyEventsDesc": "This month's agenda",
       "activeMinistries": "Active Ministries",
       "activeMinistriesDesc": "Currently active",
       "pending": "Pending",
@@ -446,6 +448,10 @@
     "filter": {
       "statusLabel": "Status",
       "allStatuses": "All statuses",
+      "tipoLabel": "Type",
+      "allTypes": "All types",
+      "ministryLabel": "Ministry",
+      "allMinisterios": "All ministries",
       "from": "From (Date)",
       "to": "To (Date)",
       "apply": "Filter",
@@ -454,7 +460,13 @@
     "event": {
       "start": "Start",
       "end": "End",
-      "location": "Location"
+      "location": "Location",
+      "ministerios": "Ministries",
+      "type": {
+        "GERAL": "General",
+        "MINISTERIO": "Ministry",
+        "REUNIAO_INTERNA": "Internal meeting"
+      }
     },
     "modal": {
       "editTitle": "Edit Event",
@@ -466,6 +478,8 @@
       "locationLabel": "Location / Venue",
       "locationPlaceholder": "E.g.: Main Sanctuary, Room 3",
       "statusLabel": "Event Status",
+      "typeLabel": "Event Type",
+      "ministeriosLabel": "Linked ministries",
       "descriptionLabel": "Description / Agenda",
       "descriptionPlaceholder": "Additional info or event schedule...",
       "editTooltip": "Edit event",
