@@ -86,7 +86,8 @@
     "finance": "Financeiro",
     "groupManagement": "Gestão",
     "groupModules": "Módulos",
-    "groupAccount": "Conta"
+    "groupAccount": "Conta",
+    "profile": "Meu Perfil"
   },
   "dashboard": {
     "greeting": "Olá{name}!",
@@ -126,7 +127,8 @@
     "quickAccess": "Acesso Rápido",
     "quickLinks": {
       "viewSchedules": "Minhas Escalas",
-      "agenda": "Agenda"
+      "agenda": "Agenda",
+      "profile": "Meu Perfil"
     },
     "errorLoading": "Erro ao carregar dados do painel pessoal.",
     "stats": {

@@ -86,7 +86,8 @@
     "finance": "Financial",
     "groupManagement": "Management",
     "groupModules": "Modules",
-    "groupAccount": "Account"
+    "groupAccount": "Account",
+    "profile": "My Profile"
   },
   "dashboard": {
     "greeting": "Hello{name}!",
@@ -126,7 +127,8 @@
     "quickAccess": "Quick Access",
     "quickLinks": {
       "viewSchedules": "My Schedules",
-      "agenda": "Calendar"
+      "agenda": "Calendar",
+      "profile": "My Profile"
     },
     "errorLoading": "Error loading personal panel data.",
     "stats": {

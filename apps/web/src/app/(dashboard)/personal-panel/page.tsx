@@ -149,6 +149,11 @@ export default function PersonalPanelPage() {
 
   const error = errorEscalas || errorEventos;
   const loading = loadingEscalas || loadingEventos;
+  const quickAccessItems = [
+    ...(hasMinisterio ? [{ href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: '📋' }] : []),
+    { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: '🗓️' },
+    { href: '/meu-perfil', label: t('quickLinks.profile'), emoji: '👤' },
+  ];
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -200,12 +205,8 @@ export default function PersonalPanelPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-4">{t('quickAccess')}</h3>
-        <div className={`grid gap-3 ${hasMinisterio ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-          {[
-            ...(hasMinisterio ? [{ href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: '📋' }] : []),
-            { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: '🗓️' },
-            ...(hasMinisterio ? [] : [{ href: '/meu-perfil', label: t('quickLinks.profile'), emoji: '👤' }]),
-          ].map((item) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {quickAccessItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}

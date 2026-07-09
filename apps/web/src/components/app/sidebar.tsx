@@ -261,7 +261,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupModules' },
     { href: '/financeiro', label: t('finance'), icon: ICONS.finance, comingSoon: true },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
-    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile, groupStart: 'groupAccount' },
+    { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile, groupStart: 'groupAccount' },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 
@@ -299,7 +299,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           ],
         }
       : { href: '/agenda/visualizacao', label: t('agenda'), icon: ICONS.agenda },
-    { href: '/meu-perfil', label: 'Meu Perfil', icon: ICONS.profile },
+    { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile },
   ];
 
   const baseItems = user?.role === 'BASIC' ? basicNavItems : navItems;
