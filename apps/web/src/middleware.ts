@@ -84,7 +84,7 @@ export function middleware(request: NextRequest) {
     );
 
     if (isBlocked) {
-      return NextResponse.redirect(new URL('/minhas-escalas', request.url));
+      return NextResponse.redirect(new URL('/personal-panel', request.url));
     }
   }
 

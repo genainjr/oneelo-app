@@ -131,7 +131,7 @@ interface SidebarProps {
 }
 
 // Roots where isActive must be an exact match (not startsWith)
-const EXACT_ROOTS = ['/dashboard', '/membros', '/ministerios', '/escalas', '/agenda', '/minhas-escalas', '/meu-perfil'];
+const EXACT_ROOTS = ['/dashboard', '/personal-panel', '/membros', '/ministerios', '/escalas', '/agenda', '/minhas-escalas', '/meu-perfil'];
 
 // Pill "Em breve" do menu — contraste legivel sobre o fundo indigo escuro
 const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-indigo-500/25 text-indigo-200';
@@ -262,6 +262,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   ];
 
   const basicNavItems: NavItem[] = [
+    { href: '/personal-panel', label: t('personalPanel'), icon: ICONS.dashboard },
     { href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules },
     ...(basicHasLeadership ? [
       {
@@ -291,7 +292,6 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           children: [
             { href: '/agenda', label: t('manage'), icon: ICONS.manage },
             { href: '/agenda/visualizacao', label: t('view'), icon: ICONS.view },
-            { href: '/agenda/exportacao', label: t('export'), icon: ICONS.export },
           ],
         }
       : { href: '/agenda/visualizacao', label: t('agenda'), icon: ICONS.agenda },
