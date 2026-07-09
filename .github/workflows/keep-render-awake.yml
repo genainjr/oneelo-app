@@ -19,10 +19,15 @@ jobs:
             exit 1
           fi
 
+          HEALTHCHECK_URL="${SITE_URL%/}"
+          if [ "${HEALTHCHECK_URL##*/}" != "health" ]; then
+            HEALTHCHECK_URL="$HEALTHCHECK_URL/api/health"
+          fi
+
           curl --fail --silent --show-error \
             --location \
             --max-time 30 \
             --retry 2 \
             --retry-delay 10 \
             --user-agent "github-actions-render-keepalive" \
-            "$SITE_URL" > /dev/null
+            "$HEALTHCHECK_URL" > /dev/null
