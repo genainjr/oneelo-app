@@ -139,6 +139,11 @@
       "upcomingEventsEmpty": "Sem eventos neste período",
       "pending": "Pendências",
       "pendingDesc": "Confirmações aguardando sua resposta"
+    },
+    "noMinistry": {
+      "title": "Você ainda não está vinculado a um ministério",
+      "description": "Seu painel continua ativo para acompanhar agenda, perfil e informações gerais da igreja.",
+      "action": "Ver meu perfil"
     }
   },
   "members": {

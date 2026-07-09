@@ -139,6 +139,11 @@
       "upcomingEventsEmpty": "No events in this period",
       "pending": "Pending",
       "pendingDesc": "Confirmations awaiting your response"
+    },
+    "noMinistry": {
+      "title": "You are not linked to a ministry yet",
+      "description": "Your panel stays available so you can follow the calendar, your profile, and general church information.",
+      "action": "View my profile"
     }
   },
   "members": {
