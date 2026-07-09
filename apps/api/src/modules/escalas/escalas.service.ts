@@ -428,6 +428,19 @@ export class EscalasService {
     return this.prisma.escala.update({
       where: { id },
       data,
+      });
+  }
+
+  async countPendencias(tenantId: string) {
+    return this.prisma.escalaItem.count({
+      where: {
+        statusConfirmacao: StatusConfirmacao.PENDENTE,
+        escalaDia: {
+          escala: {
+            tenantId,
+          },
+        },
+      },
     });
   }
 

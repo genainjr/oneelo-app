@@ -19,11 +19,11 @@ export function useDashboard() {
         const currentMonth = getMonth(now) + 1;
         const currentYear = getYear(now);
 
-        const [membros, escalasResp, ministeriosResp, pendencias] = await Promise.allSettled([
+        const [membros, escalasResp, ministeriosResp, pendenciasResp] = await Promise.allSettled([
           api.get<Membro[]>('/api/membros?status=ATIVO'),
           api.get<Escala[]>(`/api/escalas?mes=${currentMonth}&ano=${currentYear}`),
           api.get<Ministerio[]>('/api/ministerios?ativo=true'),
-          api.get<Escala[]>('/api/escalas?pendencias=true'),
+          api.get<number>('/api/escalas/pendencias/count'),
         ]);
 
         // Calcula aniversariantes do mês a partir da lista de membros ativos
@@ -51,8 +51,8 @@ export function useDashboard() {
               ? ministeriosResp.value.length
               : 0,
           pendenciasConfirmacao:
-            pendencias.status === 'fulfilled' && Array.isArray(pendencias.value)
-              ? pendencias.value.length
+            pendenciasResp.status === 'fulfilled' && typeof pendenciasResp.value === 'number'
+              ? pendenciasResp.value
               : 0,
         });
       } catch {
