@@ -155,10 +155,12 @@
       "stats": {
         "ministries": "Leadership ministries",
         "ministriesDesc": "Under your leadership or assistance",
-        "members": "Led members",
-        "membersDesc": "Members in the teams you lead",
-        "nextMonthPending": "Next month schedules",
-        "nextMonthPendingDesc": "Ministries not published yet"
+      "members": "Led members",
+      "membersDesc": "Members in the teams you lead",
+      "birthdays": "Birthdays",
+      "birthdaysDesc": "In your ministries",
+      "nextMonthPending": "Next month schedules",
+      "nextMonthPendingDesc": "Ministries not published yet"
       }
     },
     "noMinistry": {

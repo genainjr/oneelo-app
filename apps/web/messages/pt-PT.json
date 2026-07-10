@@ -155,10 +155,12 @@
       "stats": {
         "ministries": "Ministérios na liderança",
         "ministriesDesc": "Sob a sua liderança ou assistência",
-        "members": "Liderados",
-        "membersDesc": "Membros nas equipas que lidera",
-        "nextMonthPending": "Escalas do próximo mês",
-        "nextMonthPendingDesc": "Ministérios ainda sem publicação"
+      "members": "Liderados",
+      "membersDesc": "Membros nas equipas que lidera",
+      "birthdays": "Aniversariantes",
+      "birthdaysDesc": "Nos seus ministérios",
+      "nextMonthPending": "Escalas do próximo mês",
+      "nextMonthPendingDesc": "Ministérios ainda sem publicação"
       }
     },
     "noMinistry": {
