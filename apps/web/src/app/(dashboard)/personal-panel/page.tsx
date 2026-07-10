@@ -16,6 +16,7 @@ import type { AuthUser, Evento, MinhaEscalaItem } from '@/types';
 type MinisteriosResumo = {
   ministerios: number;
   membros: number;
+  aniversariantes: number;
 };
 
 type EscalaResumo = {
@@ -81,6 +82,14 @@ function UsersIcon() {
   );
 }
 
+function BirthdayIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-1.5-.454M9 6l3-3 3 3M9 22V12h6v10" />
+    </svg>
+  );
+}
+
 const QUICK_ACCESS_ICONS = {
   mySchedules: '📝',
   scheduleFolder: '📋',
@@ -103,6 +112,7 @@ export default function PersonalPanelPage() {
 
   const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+  const currentMonth = String(new Date().getMonth() + 1);
 
   const {
     items: minhasEscalas,
@@ -210,6 +220,15 @@ export default function PersonalPanelPage() {
       href: '/membros/visualizacao',
       color: 'indigo' as const,
       icon: <UsersIcon />,
+    },
+    {
+      key: 'leadershipBirthdays',
+      title: t('leader.stats.birthdays'),
+      value: ministeriosResumo?.aniversariantes ?? 0,
+      description: t('leader.stats.birthdaysDesc'),
+      href: `/membros/visualizacao?aniversarioMes=${currentMonth}&ordenacao=dataNascimento`,
+      color: 'amber' as const,
+      icon: <BirthdayIcon />,
     },
     {
       key: 'leadershipPendingSchedules',
@@ -344,7 +363,7 @@ export default function PersonalPanelPage() {
       )}
 
       {hasLeadership && (
-        <div className="grid gap-4 mb-4 sm:grid-cols-3">
+        <div className="grid gap-4 mb-4 sm:grid-cols-2 lg:grid-cols-4">
           {leadershipTopCards.map((card) => (
             <StatCard
               key={card.key}

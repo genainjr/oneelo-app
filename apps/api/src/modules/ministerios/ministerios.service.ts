@@ -111,10 +111,12 @@ export class MinisteriosService {
   async findResumo(tenantId: string, user: JwtPayload) {
     const where = this.buildVisibleWhere(tenantId, user);
     if (!where) {
-      return { ministerios: 0, membros: 0 };
+      return { ministerios: 0, membros: 0, aniversariantes: 0 };
     }
 
-    const [ministeriosCount, membros] = await Promise.all([
+    const currentMonth = new Date().getMonth() + 1;
+
+    const [ministeriosCount, membros, aniversariantes] = await Promise.all([
       this.prisma.ministerio.count({ where }),
       this.prisma.client.ministerioMembro.findMany({
         where: {
@@ -126,11 +128,34 @@ export class MinisteriosService {
         },
         distinct: ['membroId'],
       }),
+      this.prisma.client.ministerioMembro.findMany({
+        where: {
+          ministerio: where,
+          membro: {
+            deletedAt: null,
+            status: StatusMembro.ATIVO,
+            dataNascimento: { not: null },
+          },
+        },
+        distinct: ['membroId'],
+        select: {
+          membroId: true,
+          membro: {
+            select: {
+              dataNascimento: true,
+            },
+          },
+        },
+      }),
     ]);
 
     return {
       ministerios: ministeriosCount,
       membros: membros.length,
+      aniversariantes: aniversariantes.filter((item) => {
+        if (!item.membro?.dataNascimento) return false;
+        return new Date(item.membro.dataNascimento).getMonth() + 1 === currentMonth;
+      }).length,
     };
   }
 
