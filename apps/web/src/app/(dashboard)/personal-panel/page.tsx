@@ -3,16 +3,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { addMonths, format, startOfMonth, endOfMonth } from 'date-fns';
 import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
-import { EmptyState } from '@/components/app/empty-state';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useEventos } from '@/hooks/use-eventos';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import type { AuthUser, Evento, MinhaEscalaItem } from '@/types';
+
+type MinisteriosResumo = {
+  ministerios: number;
+  membros: number;
+};
+
+type EscalaResumo = {
+  ministerioId: string;
+  status: string;
+};
 
 function getNextSchedule(items: MinhaEscalaItem[]) {
   const today = new Date();
@@ -56,10 +65,41 @@ function BellIcon() {
   );
 }
 
+function MinistriesIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V7a2 2 0 00-2-2H7a2 2 0 00-2 2v14m14 0H5m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 6v-4a1 1 0 011-1h2a1 1 0 011 1v4m-4 0h4" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+const QUICK_ACCESS_ICONS = {
+  mySchedules: '📝',
+  scheduleFolder: '📋',
+  agenda: '🗓️',
+  profile: '👤',
+  ministries: '⛪',
+} as const;
+
 export default function PersonalPanelPage() {
   const t = useTranslations('dashboardPersonal');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [today, setToday] = useState('');
+  const [ministeriosResumo, setMinisteriosResumo] = useState<MinisteriosResumo | null>(null);
+  const [escalasProximoMes, setEscalasProximoMes] = useState<EscalaResumo[]>([]);
+  const nextMonthDate = useMemo(() => addMonths(new Date(), 1), []);
+  const nextMonthQuery = useMemo(() => ({
+    mes: format(nextMonthDate, 'M'),
+    ano: format(nextMonthDate, 'yyyy'),
+  }), [nextMonthDate]);
 
   const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
@@ -83,6 +123,29 @@ export default function PersonalPanelPage() {
       .catch(() => setUser(null));
   }, []);
 
+  useEffect(() => {
+    if (user?.role !== 'BASIC') {
+      setMinisteriosResumo(null);
+      setEscalasProximoMes([]);
+      return;
+    }
+
+    api.get<MinisteriosResumo>('/api/ministerios/resumo')
+      .then((data) => setMinisteriosResumo(data ?? null))
+      .catch(() => setMinisteriosResumo(null));
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.role !== 'BASIC') {
+      setEscalasProximoMes([]);
+      return;
+    }
+
+    api.get<EscalaResumo[]>(`/api/escalas?mes=${nextMonthQuery.mes}&ano=${nextMonthQuery.ano}`)
+      .then((data) => setEscalasProximoMes(Array.isArray(data) ? data : []))
+      .catch(() => setEscalasProximoMes([]));
+  }, [nextMonthQuery.ano, nextMonthQuery.mes, user]);
+
   const futureSchedules = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -100,9 +163,98 @@ export default function PersonalPanelPage() {
     return eventos.filter((event) => new Date(event.dataInicio) >= now);
   }, [eventos]);
   const nextEvent = useMemo(() => getNextEvent(futureEvents), [futureEvents]);
-  const hasMinisterio = (user?.membro?.ministerios?.length ?? 0) > 0;
+  const leadershipMinisterios = useMemo(() => {
+    const memberships = user?.role === 'BASIC'
+      ? (user.membro?.ministerios ?? []).filter(
+          (membership) => membership.role === 'LEADER' || membership.role === 'ASSISTANT_LEADER',
+        )
+      : [];
 
-  const cards = hasMinisterio ? [
+    return Array.from(
+      new Map(
+        memberships
+          .filter((membership) => membership.ministerio?.id)
+          .map((membership) => [membership.ministerio!.id, membership.ministerio!]),
+      ).values(),
+    );
+  }, [user]);
+
+  const hasLeadership = leadershipMinisterios.length > 0;
+  const hasEscalas = minhasEscalas.length > 0;
+  const nextMonthPendingCount = useMemo(() => {
+    if (!hasLeadership) return 0;
+
+    const publishedIds = new Set(
+      escalasProximoMes
+        .filter((escala) => escala.status === 'PUBLICADA')
+        .map((escala) => escala.ministerioId),
+    );
+
+    return leadershipMinisterios.filter((ministerio) => !publishedIds.has(ministerio.id)).length;
+  }, [escalasProximoMes, hasLeadership, leadershipMinisterios]);
+  const leadershipTopCards = hasLeadership ? [
+    {
+      key: 'leadershipMinistries',
+      title: t('leader.stats.ministries'),
+      value: ministeriosResumo?.ministerios ?? leadershipMinisterios.length,
+      description: t('leader.stats.ministriesDesc'),
+      href: '/ministerios',
+      color: 'amber' as const,
+      icon: <MinistriesIcon />,
+    },
+    {
+      key: 'leadershipMembers',
+      title: t('leader.stats.members'),
+      value: ministeriosResumo?.membros ?? 0,
+      description: t('leader.stats.membersDesc'),
+      href: '/ministerios/visualizacao',
+      color: 'indigo' as const,
+      icon: <UsersIcon />,
+    },
+    {
+      key: 'leadershipPendingSchedules',
+      title: t('leader.stats.nextMonthPending'),
+      value: nextMonthPendingCount,
+      description: t('leader.stats.nextMonthPendingDesc'),
+      href: '/escalas',
+      color: 'rose' as const,
+      icon: <CalendarIcon />,
+    },
+  ] : [];
+
+  const cards = hasLeadership ? [
+    {
+      key: 'nextSchedule',
+      title: t('stats.nextSchedule'),
+      value: nextSchedule ? formatDate(nextSchedule.data, 'dd/MM') : t('stats.nextScheduleNone'),
+      description: nextSchedule
+        ? `${nextSchedule.escala.ministerio?.nome ?? 'Ministério'} · ${nextSchedule.funcao?.nome ?? 'Função'}`
+        : t('stats.nextScheduleEmpty'),
+      href: '/minhas-escalas',
+      color: 'blue' as const,
+      icon: <DashboardIcon />,
+    },
+    {
+      key: 'pending',
+      title: t('stats.pending'),
+      value: pendingCount,
+      description: t('stats.pendingDesc'),
+      href: '/minhas-escalas',
+      color: 'rose' as const,
+      icon: <BellIcon />,
+    },
+    {
+      key: 'upcomingEvents',
+      title: t('stats.upcomingEvents'),
+      value: futureEvents.length,
+      description: nextEvent
+        ? `${formatDate(nextEvent.dataInicio, 'dd/MM')} · ${nextEvent.titulo}`
+        : t('stats.upcomingEventsEmpty'),
+      href: '/agenda/visualizacao',
+      color: 'emerald' as const,
+      icon: <CalendarIcon />,
+    },
+  ] : hasEscalas ? [
     {
       key: 'nextSchedule',
       title: t('stats.nextSchedule'),
@@ -150,18 +302,30 @@ export default function PersonalPanelPage() {
 
   const error = errorEscalas || errorEventos;
   const loading = loadingEscalas || loadingEventos;
-  const quickAccessItems = [
-    ...(hasMinisterio ? [{ href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: '📋' }] : []),
-    { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: '🗓️' },
-    { href: '/meu-perfil', label: t('quickLinks.profile'), emoji: '👤' },
-  ];
+  const quickAccessItems = hasLeadership
+    ? [
+        { href: '/ministerios', label: t('leader.quickLinks.ministries'), emoji: QUICK_ACCESS_ICONS.ministries },
+        { href: '/escalas', label: t('leader.quickLinks.schedules'), emoji: QUICK_ACCESS_ICONS.scheduleFolder },
+        ...(hasEscalas ? [{ href: '/minhas-escalas', label: t('leader.quickLinks.viewSchedules'), emoji: QUICK_ACCESS_ICONS.mySchedules }] : []),
+        { href: '/agenda', label: t('leader.quickLinks.agenda'), emoji: QUICK_ACCESS_ICONS.agenda },
+        { href: '/meu-perfil', label: t('leader.quickLinks.profile'), emoji: QUICK_ACCESS_ICONS.profile },
+      ]
+    : [
+        ...(hasEscalas ? [{ href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: QUICK_ACCESS_ICONS.mySchedules }] : []),
+        { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: QUICK_ACCESS_ICONS.agenda },
+        { href: '/meu-perfil', label: t('quickLinks.profile'), emoji: QUICK_ACCESS_ICONS.profile },
+      ];
   const memberDisplayName = getMemberDisplayName(user?.membro);
-  const headerTitle = hasMinisterio
+  const headerTitle = hasLeadership
     ? `${t('greeting', { name: memberDisplayName ? `, ${memberDisplayName}` : '' })} 👋`
-    : t('noMinistry.greeting', { name: memberDisplayName || user?.nome || '' });
-  const headerSubtitle = hasMinisterio
-    ? t('subtitle', { date: today })
-    : t('noMinistry.subtitle', { date: today });
+    : hasEscalas
+      ? `${t('greeting', { name: memberDisplayName ? `, ${memberDisplayName}` : '' })} 👋`
+      : t('noMinistry.greeting', { name: memberDisplayName || user?.nome || '' });
+  const headerSubtitle = hasLeadership
+    ? t('leader.subtitle', { date: today })
+    : hasEscalas
+      ? t('subtitle', { date: today })
+      : t('noMinistry.subtitle', { date: today });
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -179,7 +343,24 @@ export default function PersonalPanelPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      {hasLeadership && (
+        <div className="grid gap-4 mb-4 sm:grid-cols-3">
+          {leadershipTopCards.map((card) => (
+            <StatCard
+              key={card.key}
+              title={card.title}
+              value={card.value}
+              description={card.description}
+              icon={card.icon}
+              color={card.color}
+              loading={loading}
+              href={card.href}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className={`grid grid-cols-1 gap-4 mb-8 ${hasLeadership ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
         {cards.map((card) => (
           <StatCard
             key={card.key}
@@ -194,26 +375,9 @@ export default function PersonalPanelPage() {
         ))}
       </div>
 
-      {!hasMinisterio && (
-        <div className="mb-8 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <EmptyState
-            title={t('noMinistry.title')}
-            description={t('noMinistry.description')}
-            action={(
-              <Link
-                href="/meu-perfil"
-                className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-indigo-700"
-              >
-                {t('noMinistry.action')}
-              </Link>
-            )}
-          />
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-4">{t('quickAccess')}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className={`grid grid-cols-1 gap-3 ${hasLeadership ? 'sm:grid-cols-2 lg:grid-cols-5' : hasEscalas ? 'sm:grid-cols-3' : 'md:grid-cols-2'}`}>
           {quickAccessItems.map((item) => (
             <Link
               key={item.href}

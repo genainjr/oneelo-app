@@ -74,6 +74,7 @@
     "integrations": "Integrações",
     "settings": "Configurações",
     "comingSoon": "Em breve",
+    "membersView": "Membros",
     "logout": "Sair",
     "loggingOut": "Saindo...",
     "collapse": "Recolher menu",
@@ -142,10 +143,28 @@
       "pending": "Pendências",
       "pendingDesc": "Confirmações aguardando sua resposta"
     },
+    "leader": {
+      "subtitle": "{date} · Sua liderança, escalas e eventos sob acompanhamento.",
+      "quickLinks": {
+        "viewSchedules": "Minhas Escalas",
+        "ministries": "Ministérios",
+        "schedules": "Escalas",
+        "agenda": "Agenda",
+        "profile": "Meu Perfil"
+      },
+      "stats": {
+        "ministries": "Ministérios na liderança",
+        "ministriesDesc": "Sob sua liderança ou assistência",
+        "members": "Liderados",
+        "membersDesc": "Membros nas equipes que você lidera",
+        "nextMonthPending": "Escalas do próximo mês",
+        "nextMonthPendingDesc": "Ministérios ainda sem publicação"
+      }
+    },
     "noMinistry": {
       "greeting": "Olá, {name}! 👋",
       "subtitle": "{date} · Seus próximos compromissos da igreja.",
-      "title": "Você ainda não está vinculado a um ministério",
+      "title": "Você ainda não possui escalas vinculadas",
       "description": "Seu painel continua ativo para acompanhar agenda, perfil e informações gerais da igreja.",
       "action": "Ver meu perfil"
     }

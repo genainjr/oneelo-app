@@ -74,6 +74,7 @@
     "integrations": "Integrations",
     "settings": "Settings",
     "comingSoon": "Coming soon",
+    "membersView": "Members",
     "logout": "Sign out",
     "loggingOut": "Signing out...",
     "collapse": "Collapse menu",
@@ -142,10 +143,28 @@
       "pending": "Pending",
       "pendingDesc": "Confirmations awaiting your response"
     },
+    "leader": {
+      "subtitle": "{date} · Your leadership, schedules, and events under review.",
+      "quickLinks": {
+        "viewSchedules": "My Schedules",
+        "ministries": "Ministries",
+        "schedules": "Schedules",
+        "agenda": "Calendar",
+        "profile": "My Profile"
+      },
+      "stats": {
+        "ministries": "Leadership ministries",
+        "ministriesDesc": "Under your leadership or assistance",
+        "members": "Led members",
+        "membersDesc": "Members in the teams you lead",
+        "nextMonthPending": "Next month schedules",
+        "nextMonthPendingDesc": "Ministries not published yet"
+      }
+    },
     "noMinistry": {
       "greeting": "Hello, {name}! 👋",
       "subtitle": "{date} · Your upcoming church commitments.",
-      "title": "You are not linked to a ministry yet",
+      "title": "You do not have assigned schedules yet",
       "description": "Your panel stays available so you can follow the calendar, your profile, and general church information.",
       "action": "View my profile"
     }

@@ -29,12 +29,11 @@ export default function MinhasEscalasPage() {
   }, []);
 
   useEffect(() => {
-    if (loadingUser || !user) return;
-    const hasMinisterio = user.membro?.ministerios?.length ?? 0;
-    if (user.role === 'BASIC' && hasMinisterio === 0) {
+    if (loadingUser || loading || !user) return;
+    if (user.role === 'BASIC' && items.length === 0) {
       router.replace('/personal-panel');
     }
-  }, [loadingUser, router, user]);
+  }, [items.length, loading, loadingUser, router, user]);
 
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -117,7 +116,7 @@ export default function MinhasEscalasPage() {
   }
 
   const isLoading = loading || loadingUser;
-  const canShowContent = !loadingUser && !!user && (user.role !== 'BASIC' || (user.membro?.ministerios?.length ?? 0) > 0);
+  const canShowContent = !loadingUser && !loading && !!user && (user.role !== 'BASIC' || items.length > 0);
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
