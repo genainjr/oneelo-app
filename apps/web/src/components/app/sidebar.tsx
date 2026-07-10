@@ -10,6 +10,7 @@ import { getInitials, cn } from '@/lib/utils';
 import { locales, localeLabels, type Locale } from '@/i18n/config';
 import { FlagIcon } from '@/components/app/locale-flags';
 import { StatusBadge } from '@/components/app/status-badge';
+import { useEscalasVisualizacao, useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 
 const ICONS = {
   dashboard: (
@@ -156,7 +157,8 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     top: number;
     left: number;
   } | null>(null);
-  const [basicHasMinisterio, setBasicHasMinisterio] = useState(false);
+  const [basicHasEscalas, setBasicHasEscalas] = useState(false);
+  const [basicHasEscalasVisualizacao, setBasicHasEscalasVisualizacao] = useState(false);
   const [basicHasLeadership, setBasicHasLeadership] = useState(false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -165,21 +167,25 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     setCurrentLocale(readLocaleCookie());
   }, []);
 
+  const { items: minhasEscalas } = useMinhasEscalas({}, { enabled: user?.role === 'BASIC' });
+  const { escalas: escalasVisualizacao } = useEscalasVisualizacao({}, { enabled: user?.role === 'BASIC' });
+
   useEffect(() => {
     if (user?.role !== 'BASIC') {
-      setBasicHasMinisterio(false);
+      setBasicHasEscalas(false);
+      setBasicHasEscalasVisualizacao(false);
       setBasicHasLeadership(false);
       return;
     }
 
-    const hasMinisterio = user.membro?.ministerios?.length ?? 0;
     const hasLeadership = user.membro?.ministerios?.some(
       (membership) => membership.role === 'LEADER' || membership.role === 'ASSISTANT_LEADER',
     ) ?? false;
 
-    setBasicHasMinisterio(hasMinisterio > 0);
+    setBasicHasEscalas(minhasEscalas.length > 0);
+    setBasicHasEscalasVisualizacao(escalasVisualizacao.length > 0);
     setBasicHasLeadership(hasLeadership);
-  }, [user]);
+  }, [escalasVisualizacao, minhasEscalas, user]);
 
   useEffect(() => {
     if (!localeOpen) return;
@@ -267,7 +273,17 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
   const basicNavItems: NavItem[] = [
     { href: '/personal-panel', label: t('personalPanel'), icon: ICONS.dashboard },
-    ...(basicHasMinisterio ? [{ href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules }] : []),
+    ...(basicHasEscalas ? [{ href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules }] : []),
+    ...(!basicHasLeadership && basicHasEscalasVisualizacao
+      ? [{ href: '/escalas/visualizacao', label: t('schedules'), icon: ICONS.schedules }]
+      : []),
+    ...(basicHasLeadership ? [
+      {
+        href: '/membros/visualizacao',
+        label: t('membersView'),
+        icon: ICONS.members,
+      },
+    ] : []),
     ...(basicHasLeadership ? [
       {
         href: '/ministerios',

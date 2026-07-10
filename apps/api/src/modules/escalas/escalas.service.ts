@@ -137,8 +137,10 @@ export class EscalasService {
     const liderados = await this.prisma.ministerioMembro.findMany({
       where: {
         membroId: user.memberId,
-        role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
-        ministerio: { ativo: true },
+        ministerio: {
+          ativo: true,
+          escalas: { some: {} },
+        },
       },
       select: { ministerioId: true },
     });

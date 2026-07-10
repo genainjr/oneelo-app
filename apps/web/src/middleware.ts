@@ -79,6 +79,12 @@ export function middleware(request: NextRequest) {
       '/grupos',
       '/integracoes',
     ];
+    const allowedBasicPaths = ['/membros/visualizacao'];
+
+    if (allowedBasicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+      return NextResponse.next();
+    }
+
     const isBlocked = blockedBasicPaths.some(
       (path) => pathname === path || pathname.startsWith(`${path}/`),
     );
