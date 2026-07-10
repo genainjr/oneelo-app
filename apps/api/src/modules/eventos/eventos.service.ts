@@ -182,6 +182,42 @@ export class EventosService {
 
     if (user.role === Role.BASIC) {
       const ministerioIds = await this.getMinisterioIdsDoUsuario(tenantId, user);
+
+      if (query.scope === 'MANAGE') {
+        if (ministerioIds.length === 0) {
+          return {
+            ...where,
+            id: '__no_results__',
+          };
+        }
+
+        return {
+          ...where,
+          OR: [
+            {
+              tipo: EventoTipo.MINISTERIO,
+              ministerios: {
+                some: {
+                  ministerioId: {
+                    in: ministerioIds,
+                  },
+                },
+              },
+            },
+            {
+              tipo: EventoTipo.REUNIAO_INTERNA,
+              ministerios: {
+                some: {
+                  ministerioId: {
+                    in: ministerioIds,
+                  },
+                },
+              },
+            },
+          ],
+        };
+      }
+
       const visibleScopes: Prisma.EventoWhereInput[] = [
         {
           tipo: {

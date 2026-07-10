@@ -12,11 +12,16 @@ export interface FilterEventos {
   ministerioId?: string;
 }
 
+export interface UseEventosOptions {
+  scope?: 'PUBLIC' | 'MANAGE';
+}
+
 export type EventoInput = Partial<Evento> & {
   ministerioIds?: string[];
 };
 
-export function useEventos(initialFilter: FilterEventos = {}) {
+export function useEventos(initialFilter: FilterEventos = {}, options: UseEventosOptions = {}) {
+  const scope = options.scope ?? 'PUBLIC';
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,14 +31,14 @@ export function useEventos(initialFilter: FilterEventos = {}) {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<Evento[]>(`/api/eventos${buildQuery(f as any)}`);
+      const data = await api.get<Evento[]>(`/api/eventos${buildQuery({ ...f, scope } as any)}`);
       setEventos(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Erro ao carregar eventos.');
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, scope]);
 
   useEffect(() => {
     fetchEventos(initialFilter);
