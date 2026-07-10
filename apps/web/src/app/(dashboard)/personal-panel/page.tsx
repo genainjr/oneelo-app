@@ -207,7 +207,7 @@ export default function PersonalPanelPage() {
       title: t('leader.stats.members'),
       value: ministeriosResumo?.membros ?? 0,
       description: t('leader.stats.membersDesc'),
-      href: '/ministerios/visualizacao',
+      href: '/membros/visualizacao',
       color: 'indigo' as const,
       icon: <UsersIcon />,
     },
