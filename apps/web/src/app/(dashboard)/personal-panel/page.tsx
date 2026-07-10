@@ -375,9 +375,9 @@ export default function PersonalPanelPage() {
         ))}
       </div>
 
-      <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-5 ${!hasEscalas && !hasLeadership ? 'w-fit max-w-full' : 'w-full'}`}>
+      <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-4">{t('quickAccess')}</h3>
-        <div className={`grid grid-cols-1 gap-3 ${hasLeadership ? 'sm:grid-cols-2 lg:grid-cols-5' : hasEscalas ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:w-fit lg:min-w-[24rem]'}`}>
+        <div className={`grid grid-cols-1 gap-3 ${hasLeadership ? 'sm:grid-cols-2 lg:grid-cols-5' : hasEscalas ? 'sm:grid-cols-3' : 'md:grid-cols-2'}`}>
           {quickAccessItems.map((item) => (
             <Link
               key={item.href}

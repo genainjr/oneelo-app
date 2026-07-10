@@ -131,7 +131,7 @@ export default function DashboardPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-4">{t('quickAccess')}</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {[
             { href: '/membros', label: t('quickLinks.viewMembers'), emoji: '👥' },
             { href: '/escalas', label: t('quickLinks.viewSchedules'), emoji: '📋' },
