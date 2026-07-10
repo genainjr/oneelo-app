@@ -21,17 +21,18 @@ import type { Request } from 'express';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 
 @Controller('membros')
-@Roles(Role.ADMIN, Role.STAFF)
 export class MembrosController {
   constructor(private readonly membrosService: MembrosService) {}
 
   @Post()
+  @Roles(Role.ADMIN, Role.STAFF)
   create(@Body() createMembroDto: CreateMembroDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.create(tenantId, createMembroDto);
   }
 
   @Get()
+  @Roles(Role.ADMIN, Role.STAFF)
   findAll(@Query() query: FilterMembrosDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.findAll(tenantId, query);
@@ -54,18 +55,21 @@ export class MembrosController {
   }
 
   @Post('bulk-tag')
+  @Roles(Role.ADMIN, Role.STAFF)
   bulkTag(@Body() bulkTagMembrosDto: BulkTagMembrosDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.bulkTag(tenantId, bulkTagMembrosDto);
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN, Role.STAFF)
   findOne(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.findOne(tenantId, id);
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN, Role.STAFF)
   update(
     @Param('id') id: string,
     @Body() updateMembroDto: UpdateMembroDto,
@@ -76,6 +80,7 @@ export class MembrosController {
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN, Role.STAFF)
   remove(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.remove(tenantId, id);
