@@ -52,7 +52,7 @@ export default function AgendaPage() {
     createEvento,
     updateEvento,
     deleteEvento,
-  } = useEventos(initialFilter);
+  } = useEventos(initialFilter, { scope: 'MANAGE' });
   const { ministerios, loading: ministeriosLoading } = useMinisterios();
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
