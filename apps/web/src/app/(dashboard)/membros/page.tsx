@@ -549,6 +549,7 @@ export default function MembrosPage() {
         emptyDescription={t('empty.noResultsDesc')}
         renderMobileCard={(membro) => (
           <EntityCard
+            leadingVisual={<InitialsAvatar name={membro.nome} src={membro.fotoUrl} alt={membro.nome} />}
             title={getMemberDisplayName(membro)}
             subtitle={[formatPhone(membro.whatsapp), formatDate(membro.dataNascimento)].filter((value) => value !== '—').join(' • ')}
             badge={
