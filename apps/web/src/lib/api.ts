@@ -32,15 +32,21 @@ export class HttpError extends Error {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, ...rest } = options;
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const isBlob = typeof Blob !== 'undefined' && body instanceof Blob;
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...rest,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: isFormData || isBlob
+      ? {
+          ...headers,
+        }
+      : {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+    body: body === undefined ? undefined : isFormData || isBlob ? body : JSON.stringify(body),
   });
 
   // Sem conteúdo (ex: DELETE retornando 204)

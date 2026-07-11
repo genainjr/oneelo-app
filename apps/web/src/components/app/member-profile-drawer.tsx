@@ -5,6 +5,7 @@ import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STAT
 import { getMemberDisplayName } from './escala-shared';
 import { InfoItem } from './info-item';
 import { StatusBadge } from './status-badge';
+import { InitialsAvatar } from './initials-avatar';
 
 interface MemberProfileDrawerProps {
   membro: MembroVisualizacao | null;
@@ -21,9 +22,12 @@ export function MemberProfileDrawer({ membro, onClose }: MemberProfileDrawerProp
         onClick={(event) => event.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-6 py-5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Perfil do membro</p>
-            <h2 className="mt-1 text-xl font-bold text-gray-900">{getMemberDisplayName(membro)}</h2>
+          <div className="flex min-w-0 items-center gap-3">
+            <InitialsAvatar name={getMemberDisplayName(membro)} src={membro.fotoUrl} alt={getMemberDisplayName(membro)} />
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Perfil do membro</p>
+              <h2 className="mt-1 truncate text-xl font-bold text-gray-900">{getMemberDisplayName(membro)}</h2>
+            </div>
           </div>
           <button
             onClick={onClose}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, buildQuery, HttpError } from '@/lib/api';
+import { buildImageFormData } from '@/lib/image-upload';
 import { Membro } from '@/types';
 
 export interface FilterMembros {
@@ -52,6 +53,18 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     setMembros((prev) => prev.filter((m) => m.id !== id));
   }
 
+  async function uploadMembroFoto(id: string, file: File) {
+    const updated = await api.post<Membro>(`/api/membros/${id}/foto`, buildImageFormData(file));
+    setMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
+    return updated;
+  }
+
+  async function removeMembroFoto(id: string) {
+    const updated = await api.delete<Membro>(`/api/membros/${id}/foto`);
+    setMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
+    return updated;
+  }
+
   async function bulkTag(membrosIds: string[], tagsIds: string[], acao: 'ADD' | 'REMOVE') {
     await api.post('/api/membros/bulk-tag', { membrosIds, tagsIds, acao });
     // Refetch to get updated tags for members
@@ -74,6 +87,8 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     createMembro,
     updateMembro,
     deleteMembro,
+    uploadMembroFoto,
+    removeMembroFoto,
     bulkTag,
   };
 }

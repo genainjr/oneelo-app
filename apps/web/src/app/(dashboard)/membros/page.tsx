@@ -21,6 +21,7 @@ import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { Membro, Tag, AuthUser } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
+import { useAuthUser } from '@/contexts/auth-user-context';
 
 type FeedbackMessage = {
   type: 'success' | 'error';
@@ -47,6 +48,22 @@ function getReadableTextColor(hexColor?: string | null) {
 export default function MembrosPage() {
   const t = useTranslations('members');
   const router = useRouter();
+  const { setUser: setAuthUser } = useAuthUser();
+
+  function syncAuthenticatedMemberPhoto(memberId: string, member: Membro) {
+    setAuthUser((current) => {
+      if (!current?.membro || current.memberId !== memberId) return current;
+
+      return {
+        ...current,
+        membro: {
+          ...current.membro,
+          fotoUrl: member.fotoUrl ?? null,
+          fotoKey: member.fotoKey ?? null,
+        },
+      };
+    });
+  }
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me').then((me) => {
@@ -62,6 +79,8 @@ export default function MembrosPage() {
     createMembro,
     updateMembro,
     deleteMembro,
+    uploadMembroFoto,
+    removeMembroFoto,
     bulkTag,
   } = useMembros();
 
@@ -153,12 +172,14 @@ export default function MembrosPage() {
   }, [membros, currentPage]);
 
   async function handleSaveMembro(data: Partial<Membro>) {
+    let saved: Membro;
     if (editingMembro) {
-      await updateMembro(editingMembro.id, data);
+      saved = await updateMembro(editingMembro.id, data);
     } else {
-      await createMembro(data);
+      saved = await createMembro(data);
     }
     fetchTags();
+    return saved;
   }
 
   function handleDelete(membro: Membro) {
@@ -215,7 +236,7 @@ export default function MembrosPage() {
       className: 'font-medium text-gray-900',
       render: (m) => (
         <div className="flex items-center gap-3">
-          <InitialsAvatar name={m.nome} />
+          <InitialsAvatar name={m.nome} src={m.fotoUrl} alt={m.nome} />
           <span className="font-bold text-gray-900 hover:text-indigo-600 cursor-pointer" onClick={() => { setEditingMembro(m); setIsModalOpen(true); }}>
             {m.nome}
           </span>
@@ -695,6 +716,18 @@ export default function MembrosPage() {
           setEditingMembro(null);
         }}
         onSave={handleSaveMembro}
+        onUploadPhoto={async (id, file) => {
+          const updated = await uploadMembroFoto(id, file);
+          setEditingMembro(updated);
+          syncAuthenticatedMemberPhoto(id, updated);
+          return updated;
+        }}
+        onRemovePhoto={async (id) => {
+          const updated = await removeMembroFoto(id);
+          setEditingMembro(updated);
+          syncAuthenticatedMemberPhoto(id, updated);
+          return updated;
+        }}
         membro={editingMembro}
       />
 

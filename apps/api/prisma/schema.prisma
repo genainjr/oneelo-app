@@ -107,6 +107,8 @@ model Tenant {
   email            String?
   telefone         String?          @map("phone")
   idioma           String?          @map("language")
+  logoUrl          String?          @map("logo_url")
+  logoKey          String?          @map("logo_key")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
@@ -150,6 +152,8 @@ model Membro {
   whatsapp       String?      @map("mobile_phone")
   email          String?
   dataNascimento DateTime?    @map("birth_date")
+  fotoUrl        String?      @map("photo_url")
+  fotoKey        String?      @map("photo_key")
   status         StatusMembro @default(ATIVO) @map("member_status")
   observacoes    String?      @map("notes")
   deletedAt      DateTime?    @map("deleted_at")

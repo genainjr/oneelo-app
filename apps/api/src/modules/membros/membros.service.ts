@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateMembroDto } from './dto/create-membro.dto';
 import { UpdateMembroDto } from './dto/update-membro.dto';
@@ -7,6 +11,9 @@ import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { MinistryRole, Role } from '@prisma/client';
+import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
+import type { Multer } from 'multer';
+import { getMemberPhotoPath, validateImageUpload } from '../../common/storage/image-upload';
 
 const memberListInclude = {
   tags: {
@@ -29,7 +36,12 @@ const memberListInclude = {
 
 @Injectable()
 export class MembrosService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly memberPhotoBucket = 'member-photos';
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: SupabaseStorageService,
+  ) {}
 
   private sortByVisualizacao(
     membros: Array<{ nome: string; dataNascimento?: Date | null }>,
@@ -354,8 +366,77 @@ export class MembrosService {
     });
   }
 
+  async uploadMemberPhoto(tenantId: string, memberId: string, file: Multer.File) {
+    validateImageUpload(file, 'foto');
+
+    const member = await this.prisma.client.membro.findFirst({
+      where: { id: memberId, tenantId },
+      select: { id: true, fotoKey: true },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Membro nao encontrado.');
+    }
+
+    const path = getMemberPhotoPath(tenantId, memberId, file);
+    const photoUrl = await this.storageService.uploadPublicObject(
+      this.memberPhotoBucket,
+      path,
+      file.buffer,
+      file.mimetype,
+    );
+
+    const updated = await this.prisma.client.membro.update({
+      where: { id: memberId },
+      data: {
+        fotoUrl: photoUrl,
+        fotoKey: path,
+      },
+      include: memberListInclude,
+    });
+
+    if (member.fotoKey && member.fotoKey !== path) {
+      await this.storageService.deleteObject(this.memberPhotoBucket, member.fotoKey).catch(() => undefined);
+    }
+
+    return updated;
+  }
+
+  async removeMemberPhoto(tenantId: string, memberId: string) {
+    const member = await this.prisma.client.membro.findFirst({
+      where: { id: memberId, tenantId },
+      select: { id: true, fotoKey: true },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Membro nao encontrado.');
+    }
+
+    const updated = await this.prisma.client.membro.update({
+      where: { id: memberId },
+      data: {
+        fotoUrl: null,
+        fotoKey: null,
+      },
+      include: memberListInclude,
+    });
+
+    await this.storageService.deleteObject(this.memberPhotoBucket, member.fotoKey);
+
+    return updated;
+  }
+
   async remove(tenantId: string, id: string) {
-    await this.findOne(tenantId, id);
+    const member = await this.prisma.client.membro.findFirst({
+      where: { id, tenantId },
+      select: { id: true, fotoKey: true },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Membro nao encontrado.');
+    }
+
+    await this.storageService.deleteObject(this.memberPhotoBucket, member.fotoKey);
 
     const deletedAt = new Date();
 
@@ -368,7 +449,11 @@ export class MembrosService {
       }),
       this.prisma.membro.update({
         where: { id },
-        data: { deletedAt },
+        data: {
+          deletedAt,
+          fotoUrl: null,
+          fotoKey: null,
+        },
       }),
     ]);
 

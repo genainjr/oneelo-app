@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAdmin, CreateTenantPayload, UpdateTenantPayload, CreateTenantUserPayload } from '@/hooks/use-admin';
 import { Tenant, Plano } from '@/types';
 import { HttpError } from '@/lib/api';
+import { IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { InputField, SelectField, PasswordField } from '@/components/app/form-field';
 import { DataTable, Column } from '@/components/app/data-table';
+import { ImageUploadPanel } from '@/components/app/image-upload-panel';
 
 const PLANO_LABELS: Record<Plano, string> = {
   GRATUITO: 'Gratuito',
@@ -27,7 +29,7 @@ function Badge({ label, color }: { label: string; color: string }) {
 // ─── Modal Criar Tenant ────────────────────────────────────────────────────────
 
 function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const { createTenant } = useAdmin();
+  const { createTenant, uploadTenantLogo } = useAdmin();
   const [form, setForm] = useState<CreateTenantPayload>({
     nome: '', slug: '', plano: 'GRATUITO',
     email: '', telefone: '', idioma: 'pt-BR',
@@ -35,6 +37,18 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState('');
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
 
   function set(key: keyof CreateTenantPayload, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -51,12 +65,44 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
     return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
 
+  function openLogoPicker() {
+    logoInputRef.current?.click();
+  }
+
+  function handleLogoSelected(file: File | undefined) {
+    if (!file) return;
+
+    setLogoError('');
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setLogoError(validationError);
+      return;
+    }
+
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
+  function clearSelectedLogo() {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setLogoError('');
+    if (logoInputRef.current) {
+      logoInputRef.current.value = '';
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setLogoError('');
     setLoading(true);
     try {
-      await createTenant(form);
+      const created = await createTenant(form);
+      if (logoFile && created.tenant?.id) {
+        await uploadTenantLogo(created.tenant.id, logoFile);
+      }
       onSuccess();
       onClose();
     } catch (err) {
@@ -71,6 +117,34 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
       <form id="create-tenant-form" onSubmit={handleSubmit}>
         <div className="space-y-4 p-6">
           <ModalError message={error} />
+
+          <div>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept={IMAGE_UPLOAD_ACCEPT}
+              className="hidden"
+              onChange={(event) => handleLogoSelected(event.target.files?.[0])}
+            />
+            <ImageUploadPanel
+              title="Logo da igreja"
+              description="Opcional. A logo sera enviada depois que o tenant for criado."
+              imageUrl={logoPreview}
+              fallbackName={form.nome || 'Igreja'}
+              alt={form.nome || 'Logo da igreja'}
+              uploading={loading && !!logoFile}
+              disabled={loading}
+              removeDisabled={!logoFile}
+              onUploadClick={openLogoPicker}
+              onRemoveClick={clearSelectedLogo}
+            />
+          </div>
+
+          {logoError && (
+            <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {logoError}
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <InputField label="Nome da Igreja" required value={form.nome} onChange={(e) => handleNomeChange(e.target.value)} placeholder="Igreja Exemplo" />
@@ -121,7 +195,7 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
 // ─── Modal Editar Tenant ──────────────────────────────────────────────────────
 
 function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClose: () => void; onSuccess: () => void }) {
-  const { updateTenant } = useAdmin();
+  const { updateTenant, uploadTenantLogo, removeTenantLogo } = useAdmin();
   const [form, setForm] = useState<UpdateTenantPayload>({
     nome: tenant.nome,
     plano: tenant.plano,
@@ -132,9 +206,54 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(tenant.logoUrl ?? null);
+  const [selectedLogo, setSelectedLogo] = useState<File | null>(null);
+  const [logoRemovalPending, setLogoRemovalPending] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const [logoLoading, setLogoLoading] = useState(false);
+  const [logoRemoving, setLogoRemoving] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
 
   function set(key: keyof UpdateTenantPayload, value: unknown) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function openLogoPicker() {
+    logoInputRef.current?.click();
+  }
+
+  function handleLogoSelected(file: File | undefined) {
+    if (!file) return;
+
+    setLogoError('');
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setLogoError(validationError);
+      return;
+    }
+
+    if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview);
+    setSelectedLogo(file);
+    setLogoPreview(URL.createObjectURL(file));
+    setLogoRemovalPending(false);
+  }
+
+  function handleRemoveLogo() {
+    setLogoError('');
+    if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview);
+    setSelectedLogo(null);
+    setLogoPreview(null);
+    setLogoRemovalPending(Boolean(tenant.logoUrl));
+    if (logoInputRef.current) logoInputRef.current.value = '';
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -143,21 +262,59 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
     setLoading(true);
     try {
       await updateTenant(tenant.id, form);
+
+      if (selectedLogo) {
+        setLogoLoading(true);
+        await uploadTenantLogo(tenant.id, selectedLogo);
+      } else if (logoRemovalPending) {
+        setLogoRemoving(true);
+        await removeTenantLogo(tenant.id);
+      }
+
       onSuccess();
       onClose();
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Erro ao atualizar tenant.');
     } finally {
+      setLogoLoading(false);
+      setLogoRemoving(false);
       setLoading(false);
     }
   }
 
   return (
-    <ModalShell isOpen title={`Editar — ${tenant.nome}`} onClose={onClose} size="md">
+    <ModalShell isOpen title={`Editar — ${tenant.nome}`} onClose={onClose} size="lg">
       <form id="edit-tenant-form" onSubmit={handleSubmit}>
         <div className="space-y-4 p-6">
           <ModalError message={error} />
 
+          <div>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept={IMAGE_UPLOAD_ACCEPT}
+              className="hidden"
+              onChange={(event) => handleLogoSelected(event.target.files?.[0])}
+            />
+            <ImageUploadPanel
+              title="Logo da igreja"
+              description="Use a logo que sera exibida nas telas e impressoes do tenant."
+              imageUrl={logoPreview}
+              fallbackName={tenant.nome}
+              alt={tenant.nome}
+              uploading={logoLoading}
+              removing={logoRemoving}
+              removeDisabled={!logoPreview}
+              onUploadClick={openLogoPicker}
+              onRemoveClick={handleRemoveLogo}
+            />
+          </div>
+
+          {logoError && (
+            <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {logoError}
+            </p>
+          )}
           <InputField label="Nome da Igreja" required value={form.nome} onChange={(e) => set('nome', e.target.value)} />
 
           <div className="grid grid-cols-2 gap-3">
