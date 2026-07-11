@@ -16,6 +16,8 @@ export interface Tenant {
   email?: string;
   telefone?: string;
   idioma?: string;
+  logoUrl?: string | null;
+  logoKey?: string | null;
   createdAt: string;
   _count?: { users: number };
 }
@@ -41,11 +43,15 @@ export interface AuthUser {
     slug: string;
     plano: Plano;
     limiteMembros: number;
+    logoUrl?: string | null;
+    logoKey?: string | null;
   };
   membro?: {
     id: string;
     nome: string;
     nomeExibicao?: string | null;
+    fotoUrl?: string | null;
+    fotoKey?: string | null;
     email?: string | null;
     whatsapp?: string | null;
     dataNascimento?: string | null;
@@ -81,6 +87,8 @@ export interface Membro {
   email?: string;
   whatsapp?: string;
   dataNascimento?: string;
+  fotoUrl?: string | null;
+  fotoKey?: string | null;
   status: StatusMembro;
   endereco?: string;
   observacoes?: string;

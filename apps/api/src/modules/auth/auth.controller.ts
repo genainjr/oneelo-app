@@ -11,6 +11,8 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -27,6 +29,9 @@ import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { getClientIp } from '../../common/utils/request-ip';
 import { Role } from '@prisma/client';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { MAX_IMAGE_SIZE } from '../../common/storage/image-upload';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -92,6 +97,58 @@ export class AuthController {
     @Req() req: Request,
   ) {
     return this.authService.changePassword(user.sub, user.tenantId!, dto, getClientIp(req));
+  }
+
+  @Post('me/photo')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: MAX_IMAGE_SIZE,
+      },
+    }),
+  )
+  async updateMyPhoto(
+    @UploadedFile() file: any,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.authService.updateMyPhoto(user.sub, user.tenantId!, file);
+  }
+
+  @Delete('me/photo')
+  @UseGuards(JwtAuthGuard)
+  async removeMyPhoto(@CurrentUser() user: JwtPayload) {
+    return this.authService.removeMyPhoto(user.sub, user.tenantId!);
+  }
+
+  @Post('tenant/logo')
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: MAX_IMAGE_SIZE,
+      },
+    }),
+  )
+  async updateTenantLogo(
+    @UploadedFile() file: any,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.authService.updateTenantLogo(user.tenantId!, file, user.sub, getClientIp(req));
+  }
+
+  @Delete('tenant/logo')
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.ADMIN)
+  async removeTenantLogo(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.authService.removeTenantLogo(user.tenantId!, user.sub, getClientIp(req));
   }
 
   @Get('users')

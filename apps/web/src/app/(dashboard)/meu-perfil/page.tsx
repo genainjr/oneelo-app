@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
@@ -8,20 +8,29 @@ import { EmptyState } from '@/components/app/empty-state';
 import { PasswordField } from '@/components/app/form-field';
 import { InfoItem } from '@/components/app/info-item';
 import { StatusBadge } from '@/components/app/status-badge';
+import { ImageUploadPanel } from '@/components/app/image-upload-panel';
 import { api } from '@/lib/api';
+import { buildImageFormData, IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { AuthUser } from '@/types';
+import { useAuthUser } from '@/contexts/auth-user-context';
 
 export default function MeuPerfilPage() {
+  const { setUser: setLayoutUser } = useAuthUser();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoRemoving, setPhotoRemoving] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const [photoSuccess, setPhotoSuccess] = useState('');
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
@@ -64,6 +73,77 @@ export default function MeuPerfilPage() {
     }
   }
 
+  function openPhotoPicker() {
+    photoInputRef.current?.click();
+  }
+
+  async function handlePhotoSelected(file: File | undefined) {
+    if (!user?.membro || !file) return;
+
+    setPhotoError('');
+    setPhotoSuccess('');
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setPhotoError(validationError);
+      return;
+    }
+
+    setPhotoLoading(true);
+    try {
+      const updated = await api.post<AuthUser['membro']>(`/api/auth/me/photo`, buildImageFormData(file));
+      const nextUser: AuthUser = {
+        ...user,
+        membro: updated ?? user.membro,
+      };
+      setUser(nextUser);
+      setLayoutUser(nextUser);
+      setPhotoSuccess('Foto atualizada com sucesso.');
+    } catch (err: any) {
+      setPhotoError(err?.message || 'Nao foi possivel atualizar a foto.');
+    } finally {
+      setPhotoLoading(false);
+      if (photoInputRef.current) {
+        photoInputRef.current.value = '';
+      }
+    }
+  }
+
+  async function handleRemovePhoto() {
+    if (!user?.membro) return;
+
+    setPhotoError('');
+    setPhotoSuccess('');
+    setPhotoRemoving(true);
+    try {
+      await api.delete(`/api/auth/me/photo`);
+      const nextUser: AuthUser = {
+        ...user,
+        membro: {
+          ...user.membro,
+          fotoUrl: null,
+          fotoKey: null,
+        },
+      };
+      setUser(nextUser);
+      setLayoutUser(nextUser);
+      setPhotoSuccess('Foto removida com sucesso.');
+    } catch (err: any) {
+      setPhotoError(err?.message || 'Nao foi possivel remover a foto.');
+    } finally {
+      setPhotoRemoving(false);
+    }
+  }
+
+  function getInitials(name: string) {
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('');
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <PageHeader
@@ -78,15 +158,62 @@ export default function MeuPerfilPage() {
       ) : user ? (
         <div className="space-y-5">
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-lg font-bold text-indigo-700">
-                {user.nome.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 overflow-hidden rounded-2xl border border-gray-200 bg-indigo-50">
+                  {user.membro?.fotoUrl ? (
+                    <img
+                      src={user.membro.fotoUrl}
+                      alt={user.membro.nome}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-indigo-100 text-lg font-bold text-indigo-700">
+                      {getInitials(user.membro?.nome || user.nome)}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">{user.nome}</h2>
+                  <p className="text-sm text-gray-500">{user.email}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">{user.nome}</h2>
-                <p className="text-sm text-gray-500">{user.email}</p>
-              </div>
+
+              {user.membro && (
+                <div className="w-full lg:w-[calc((100%_-_0.75rem)/2)] lg:max-w-none lg:shrink-0">
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept={IMAGE_UPLOAD_ACCEPT}
+                    className="hidden"
+                    onChange={(event) => handlePhotoSelected(event.target.files?.[0])}
+                  />
+                  <ImageUploadPanel
+                    title="Foto do membro"
+                    description="A imagem usada nas telas e impressoes do sistema sera a foto deste cadastro."
+                    imageUrl={user.membro.fotoUrl}
+                    fallbackName={user.membro.nome || user.nome}
+                    alt={user.membro.nome}
+                    uploading={photoLoading}
+                    removing={photoRemoving}
+                    removeDisabled={!user.membro.fotoUrl}
+                    onUploadClick={openPhotoPicker}
+                    onRemoveClick={handleRemovePhoto}
+                  />
+                </div>
+              )}
             </div>
+
+            {photoError && (
+              <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {photoError}
+              </p>
+            )}
+            {photoSuccess && (
+              <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                {photoSuccess}
+              </p>
+            )}
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <InfoItem label="Perfil de acesso" value={ROLE_LABEL[user.role]} />

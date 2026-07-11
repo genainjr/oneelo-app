@@ -1,0 +1,2 @@
+SUPABASE_URL              = "https://prod-project-ref.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY = "COLOQUE_SUA_SERVICE_ROLE_KEY_AQUI"

@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
 import { Skeleton } from '@/components/app/skeleton';
 import { DataTable, Column, SortState } from '@/components/app/data-table';
 import { StatusBadge } from '@/components/app/status-badge';
 import { UsuarioModal } from '@/components/app/usuario-modal';
+import { ImageUploadPanel } from '@/components/app/image-upload-panel';
 import { api } from '@/lib/api';
+import { buildImageFormData, IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
 import { User, AuditLog, AuthUser } from '@/types';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
+
+type TenantLogoPayload = NonNullable<AuthUser['tenant']>;
 
 export default function ConfiguracoesPage() {
   const t = useTranslations('settings');
@@ -29,6 +33,11 @@ export default function ConfiguracoesPage() {
 
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [logoLoading, setLogoLoading] = useState(false);
+  const [logoRemoving, setLogoRemoving] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const [logoSuccess, setLogoSuccess] = useState('');
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const [userPage, setUserPage] = useState(1);
   const [auditPage, setAuditPage] = useState(1);
@@ -65,6 +74,7 @@ export default function ConfiguracoesPage() {
   }, []);
 
   const isAdmin = currentUser?.role === 'ADMIN';
+  const logoPreview = currentUser?.tenant?.logoUrl ?? null;
 
   const loadData = useCallback(async () => {
     if (!isAdmin) return;
@@ -122,6 +132,66 @@ export default function ConfiguracoesPage() {
       setDeletingUser(null);
     } finally {
       setDeleteLoading(false);
+    }
+  }
+
+  function openLogoPicker() {
+    logoInputRef.current?.click();
+  }
+
+  function updateTenantLogoState(tenant: TenantLogoPayload) {
+    setCurrentUser((current) =>
+      current
+        ? {
+            ...current,
+            tenant: {
+              ...current.tenant!,
+              ...tenant,
+            },
+          }
+        : current,
+    );
+  }
+
+  async function handleLogoSelected(file: File | undefined) {
+    if (!file) return;
+
+    setLogoError('');
+    setLogoSuccess('');
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setLogoError(validationError);
+      return;
+    }
+
+    setLogoLoading(true);
+    try {
+      const updated = await api.post<TenantLogoPayload>('/api/auth/tenant/logo', buildImageFormData(file));
+      updateTenantLogoState(updated);
+      setLogoSuccess('Logo atualizada com sucesso.');
+    } catch (err: any) {
+      setLogoError(err?.message || 'Nao foi possivel atualizar a logo.');
+    } finally {
+      setLogoLoading(false);
+      if (logoInputRef.current) {
+        logoInputRef.current.value = '';
+      }
+    }
+  }
+
+  async function handleRemoveLogo() {
+    setLogoError('');
+    setLogoSuccess('');
+    setLogoRemoving(true);
+    try {
+      const updated = await api.delete<TenantLogoPayload>('/api/auth/tenant/logo');
+      updateTenantLogoState(updated);
+      setLogoSuccess('Logo removida com sucesso.');
+    } catch (err: any) {
+      setLogoError(err?.message || 'Nao foi possivel remover a logo.');
+    } finally {
+      setLogoRemoving(false);
     }
   }
 
@@ -335,6 +405,39 @@ export default function ConfiguracoesPage() {
           </button>
         </div>
       )}
+
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-2xs">
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept={IMAGE_UPLOAD_ACCEPT}
+          className="hidden"
+          onChange={(event) => handleLogoSelected(event.target.files?.[0])}
+        />
+        <ImageUploadPanel
+          title="Logo da igreja"
+          description="Imagem usada para identificar o tenant nas telas e impressoes."
+          imageUrl={logoPreview}
+          fallbackName={currentUser.tenant?.nome || 'Igreja'}
+          alt={currentUser.tenant?.nome || 'Logo da igreja'}
+          uploading={logoLoading}
+          removing={logoRemoving}
+          removeDisabled={!logoPreview}
+          onUploadClick={openLogoPicker}
+          onRemoveClick={handleRemoveLogo}
+          className="border-0 bg-transparent p-0 shadow-none"
+        />
+        {logoError && (
+          <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {logoError}
+          </p>
+        )}
+        {logoSuccess && (
+          <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            {logoSuccess}
+          </p>
+        )}
+      </section>
 
       {/* Tabs */}
       <div className="flex flex-col gap-3 border border-gray-100 bg-white rounded-t-2xl px-4 py-3 shadow-2xs sm:flex-row sm:items-center sm:px-5 sm:py-0">

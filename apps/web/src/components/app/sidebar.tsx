@@ -131,6 +131,18 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+function SidebarUserAvatar({ user }: { user: AuthUser }) {
+  return (
+    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-500 text-xs font-semibold text-white">
+      {user.membro?.fotoUrl ? (
+        <img src={user.membro.fotoUrl} alt={user.membro.nome || user.nome} className="h-full w-full object-cover" />
+      ) : (
+        getInitials(user.nome)
+      )}
+    </div>
+  );
+}
+
 // Roots where isActive must be an exact match (not startsWith)
 const EXACT_ROOTS = ['/dashboard', '/personal-panel', '/membros', '/ministerios', '/escalas', '/agenda', '/minhas-escalas', '/meu-perfil'];
 
@@ -662,9 +674,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         <div className={cn('p-2 border-t border-indigo-900 flex-shrink-0', collapsed && 'flex flex-col items-center')}>
           {user && !collapsed && (
             <div className="flex items-center gap-3 px-3 py-2 mb-1">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500 text-white text-xs font-semibold flex-shrink-0">
-                {getInitials(user.nome)}
-              </div>
+              <SidebarUserAvatar user={user} />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-medium truncate">{user.nome}</p>
                 <p className="text-indigo-400 text-xs truncate">{tCommon(`roles.${user.role}` as any)}</p>
@@ -675,9 +685,9 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           {user && collapsed && (
             <div
               title={user.nome}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500 text-white text-xs font-semibold mb-2 mt-1"
+              className="mb-2 mt-1"
             >
-              {getInitials(user.nome)}
+              <SidebarUserAvatar user={user} />
             </div>
           )}
 

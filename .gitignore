@@ -1,6 +1,16 @@
 node_modules
 /docs
 
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+
 /PASSO_A_PASSO.md
 /DOCKER_FLUXO.md
 /DOCKER_GUIDE.md
