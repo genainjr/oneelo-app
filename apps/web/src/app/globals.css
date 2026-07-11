@@ -62,17 +62,58 @@ body {
     position: absolute;
     inset: 0;
     width: 100%;
-    background: #ffffff;
-    color: #111827;
+    background: var(--print-color-surface);
+    color: var(--print-color-text);
     font-family: var(--font-inter), Arial, sans-serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
+  .print-document {
+    --print-color-surface: #ffffff;
+    --print-color-text: #1f2937;
+    --print-color-strong: #111827;
+    --print-color-heading: #0f172a;
+    --print-color-muted: #64748b;
+    --print-color-border: #cbd5e1;
+    --print-color-border-strong: #cbd5e1;
+    --print-color-table-header: #e5e7eb;
+    --print-color-zebra: #f8fafc;
+    --print-color-fixed-cell: #eef2f7;
+    --print-font-family: var(--font-inter), Arial, sans-serif;
+    --print-font-size-title: 24pt;
+    --print-font-size-document-title: 12pt;
+    --print-font-size-period: 9pt;
+    --print-font-size-table-header: 8.5pt;
+    --print-font-size-footer: 7pt;
+    --print-font-size-footer-company: 7.5pt;
+    --print-font-size-footer-product: 6.5pt;
+    --print-font-size-empty: 11pt;
+    --print-font-size-table: 8pt;
+    --print-line-height-table: 1.14;
+    --print-border-width: 1px;
+    --print-space-cell-x: 5px;
+    --print-space-cell-y: 4px;
+    --print-space-header-bottom: 4mm;
+    --print-space-header-padding: 5mm;
+    --print-space-footer-top: 2mm;
+    --print-page-bottom-space: 12mm;
+    color: var(--print-color-text);
+    font-family: var(--print-font-family);
+  }
+
+  .print-document--schedule {
+    --print-color-sunday-bg: #fef3c7;
+    --print-color-sunday-text: #1f2937;
+    --print-space-cell-x: 5px;
+    --print-space-cell-y: 4px;
+    --print-line-height-table: 1.12;
+  }
+
   .print-page {
     break-after: page;
     page-break-after: always;
-    padding-bottom: 12mm;
+    padding-bottom: var(--print-page-bottom-space);
   }
 
   .print-page:last-child {
@@ -80,28 +121,80 @@ body {
     page-break-after: auto;
   }
 
-  .print-schedule-header {
-    margin-bottom: 5mm;
-    padding-bottom: 3mm;
-    border-bottom: 1px solid #b9c2cf;
-    color: #111827;
+  .print-document-header {
+    display: grid;
+    grid-template-columns: 34mm minmax(0, 1fr) 52mm;
+    align-items: center;
+    column-gap: 5mm;
+    min-height: 28mm;
+    margin-bottom: var(--print-space-header-bottom);
+    padding-bottom: var(--print-space-header-padding);
+    border-bottom: 0;
+    color: var(--print-color-strong);
   }
 
-  .print-schedule-header h1 {
+  .print-document-header-logo {
+    justify-self: center;
+    align-self: start;
+    width: 24mm;
+    height: 24mm;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: 16px;
+  }
+
+  .print-document-header-content {
+    min-width: 0;
+    width: 100%;
+    display: contents;
+  }
+
+  .print-document-header:not(:has(.print-document-header-logo)) .print-document-header-content {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) 52mm;
+    align-items: center;
+    column-gap: 5mm;
+  }
+
+  .print-document-header h1 {
+    grid-column: 2;
     margin: 0;
-    text-align: center;
-    font-size: 18pt;
-    font-weight: 600;
-    line-height: 1.05;
+    font-size: var(--print-font-size-title);
+    font-weight: 800;
+    line-height: 1;
     letter-spacing: 0;
+    text-align: center;
+    white-space: nowrap;
+    color: var(--print-color-heading);
   }
 
-  .print-schedule-header p {
-    margin: 1.5mm 0 0;
+  .print-document-header:not(:has(.print-document-header-logo)) h1 {
+    grid-column: 1;
+  }
+
+  .print-document-header-meta {
+    grid-column: 3;
+    justify-self: end;
+    border-left: var(--print-border-width) solid var(--print-color-border);
+    padding-left: 5mm;
     text-align: right;
-    font-size: 10pt;
+  }
+
+  .print-document-header-title {
+    margin: 0;
+    color: var(--print-color-heading);
+    font-size: var(--print-font-size-document-title);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .print-document-header-period {
+    margin: 0.8mm 0 0;
+    color: var(--print-color-muted);
+    font-size: var(--print-font-size-period);
     font-weight: 500;
-    color: #334155;
+    line-height: 1.15;
   }
 
   .print-schedule-footer {
@@ -110,12 +203,12 @@ body {
     bottom: 0;
     left: 0;
     margin: 0;
-    border-top: 1px solid #cbd5e1;
-    padding: 2mm 0 0;
-    color: #64748b;
-    font-size: 7pt;
+    border-top: 0;
+    padding: var(--print-space-footer-top) 0 0;
+    color: var(--print-color-muted);
+    font-size: var(--print-font-size-footer);
     font-weight: 500;
-    background: #ffffff;
+    background: var(--print-color-surface);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -146,43 +239,59 @@ body {
   }
 
   .print-schedule-footer-company {
-    color: #0f172a;
-    font-size: 7.5pt;
-    font-weight: 700;
+    color: var(--print-color-muted);
+    font-size: var(--print-font-size-footer-product);
+    font-weight: 400;
     line-height: 1;
   }
 
   .print-schedule-footer-product {
-    color: #64748b;
-    font-size: 6.5pt;
-    font-weight: 600;
+    color: var(--print-color-heading);
+    font-size: var(--print-font-size-footer-company);
+    font-weight: 800;
     line-height: 1;
   }
 
   .print-schedule-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     table-layout: fixed;
-    border: 1px solid #b9c2cf;
-    font-size: 7.5pt;
-    line-height: 1.08;
+    border: 1.5px solid var(--print-color-border-strong);
+    border-radius: 8px;
+    font-size: var(--print-font-size-table);
+    line-height: var(--print-line-height-table);
+    overflow: hidden;
   }
 
   .print-schedule-table th,
   .print-schedule-table td {
-    border: 1px solid #b9c2cf;
-    padding: 2px 4px;
+    border: 0;
+    border-bottom: var(--print-border-width) solid var(--print-color-border);
+    padding: var(--print-space-cell-y) var(--print-space-cell-x);
     vertical-align: middle;
     text-align: center;
-    color: #111827;
+    color: var(--print-color-strong);
     overflow-wrap: anywhere;
   }
 
   .print-schedule-table th {
-    background: #e8eef5 !important;
-    font-size: 8pt;
-    font-weight: 700;
-    color: #0f172a;
+    background: var(--print-color-table-header) !important;
+    font-size: var(--print-font-size-table-header);
+    font-weight: 800;
+    color: var(--print-color-heading);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    border-bottom: 1.5px solid var(--print-color-border-strong);
+  }
+
+  .print-schedule-table th + th,
+  .print-schedule-table td + td {
+    border-left: var(--print-border-width) solid #e2e8f0;
+  }
+
+  .print-schedule-table tbody tr:last-child td {
+    border-bottom: 0;
   }
 
   .print-schedule-table tbody tr {
@@ -191,21 +300,41 @@ body {
   }
 
   .print-schedule-table tbody tr:nth-child(even) td {
-    background: #f8fafc !important;
+    background: var(--print-color-zebra) !important;
+  }
+
+  .print-schedule-table tbody tr:nth-child(even) td.print-day-column,
+  .print-schedule-table tbody tr:nth-child(even) td.print-date-column {
+    background: var(--print-color-fixed-cell) !important;
+  }
+
+  .print-document--schedule .print-schedule-table tbody tr td.print-schedule-sunday-cell {
+    background: var(--print-color-sunday-bg) !important;
+    color: var(--print-color-sunday-text) !important;
+    font-weight: 700;
   }
 
   .print-day-column {
     width: 11%;
-    background: #f4f1ec !important;
+    background: var(--print-color-fixed-cell) !important;
     font-weight: 700;
     text-transform: lowercase;
   }
 
   .print-date-column {
     width: 13%;
-    background: #f4f1ec !important;
+    background: var(--print-color-fixed-cell) !important;
     font-weight: 700;
     white-space: nowrap;
+  }
+
+  .print-document--schedule .print-schedule-table th,
+  .print-document--schedule .print-schedule-table td {
+    padding-block: var(--print-space-cell-y);
+  }
+
+  .print-document--schedule .print-schedule-table td {
+    min-height: 8mm;
   }
 
   .print-events-table th:nth-child(1),
@@ -255,9 +384,9 @@ body {
   }
 
   .print-empty {
-    border: 1px dashed #cbd5e1;
+    border: var(--print-border-width) dashed var(--print-color-border);
     padding: 16px;
-    color: #475569;
-    font-size: 11pt;
+    color: var(--print-color-muted);
+    font-size: var(--print-font-size-empty);
   }
 }
