@@ -137,7 +137,7 @@ export default function MembrosVisualizacaoPage() {
       header: 'Nome',
       render: (membro) => (
         <div className="flex items-center gap-3">
-          <InitialsAvatar name={membro.nome} />
+          <InitialsAvatar name={membro.nome} src={membro.fotoUrl} alt={membro.nome} />
           <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
             {getMemberDisplayName(membro)}
           </button>

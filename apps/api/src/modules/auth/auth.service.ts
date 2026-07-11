@@ -8,13 +8,16 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { MembrosService } from '../membros/membros.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
+import { TenantMediaService } from '../../common/storage/tenant-media.service';
 import { AcaoAuditoria, StatusMembro } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import type { Multer } from 'multer';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +25,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly membrosService: MembrosService,
+    private readonly tenantMediaService: TenantMediaService,
   ) {}
 
   async login(dto: LoginDto, ip?: string) {
@@ -118,6 +123,8 @@ export class AuthService {
             id: true,
             nome: true,
             nomeExibicao: true,
+            fotoUrl: true,
+            fotoKey: true,
             email: true,
             whatsapp: true,
             dataNascimento: true,
@@ -139,7 +146,7 @@ export class AuthService {
           },
         },
         tenant: {
-          select: { nome: true, slug: true, plano: true, limiteMembros: true },
+          select: { nome: true, slug: true, plano: true, limiteMembros: true, logoUrl: true, logoKey: true },
         },
       },
     });
@@ -411,5 +418,44 @@ export class AuthService {
       select: { id: true, nome: true, email: true },
       orderBy: { nome: 'asc' },
     });
+  }
+
+  async updateMyPhoto(userId: string, tenantId: string, file: any) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, ativo: true },
+      select: { memberId: true },
+    });
+
+    if (!user?.memberId) {
+      throw new ForbiddenException('Seu usuario nao possui membro vinculado.');
+    }
+
+    return this.membrosService.uploadMemberPhoto(tenantId, user.memberId, file);
+  }
+
+  async removeMyPhoto(userId: string, tenantId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, ativo: true },
+      select: { memberId: true },
+    });
+
+    if (!user?.memberId) {
+      throw new ForbiddenException('Seu usuario nao possui membro vinculado.');
+    }
+
+    return this.membrosService.removeMemberPhoto(tenantId, user.memberId);
+  }
+
+  async updateTenantLogo(
+    tenantId: string,
+    file: Multer.File,
+    actorId: string,
+    ip?: string,
+  ) {
+    return this.tenantMediaService.uploadTenantLogo(tenantId, file, actorId, ip);
+  }
+
+  async removeTenantLogo(tenantId: string, actorId: string, ip?: string) {
+    return this.tenantMediaService.removeTenantLogo(tenantId, actorId, ip);
   }
 }

@@ -8,7 +8,12 @@ import {
   Delete,
   Query,
   Req,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import type { Multer } from 'multer';
 import { MembrosService } from './membros.service';
 import { CreateMembroDto } from './dto/create-membro.dto';
 import { UpdateMembroDto } from './dto/update-membro.dto';
@@ -19,6 +24,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
+import { MAX_IMAGE_SIZE } from '../../common/storage/image-upload';
 
 @Controller('membros')
 export class MembrosController {
@@ -84,5 +90,31 @@ export class MembrosController {
   remove(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.remove(tenantId, id);
+  }
+
+  @Post(':id/foto')
+  @Roles(Role.ADMIN, Role.STAFF)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: MAX_IMAGE_SIZE,
+      },
+    }),
+  )
+  uploadFoto(
+    @Param('id') id: string,
+    @UploadedFile() file: Multer.File,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    return this.membrosService.uploadMemberPhoto(tenantId, id, file);
+  }
+
+  @Delete(':id/foto')
+  @Roles(Role.ADMIN, Role.STAFF)
+  removeFoto(@Param('id') id: string, @Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    return this.membrosService.removeMemberPhoto(tenantId, id);
   }
 }

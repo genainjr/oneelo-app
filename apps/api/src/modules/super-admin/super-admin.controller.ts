@@ -10,7 +10,13 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Delete,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import type { Multer } from 'multer';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { SuperAdminService } from './super-admin.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
@@ -24,6 +30,7 @@ import { getClientIp } from '../../common/utils/request-ip';
 import { Role } from '@prisma/client';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import type { Response, Request } from 'express';
+import { MAX_IMAGE_SIZE } from '../../common/storage/image-upload';
 
 @Controller('admin')
 @Roles(Role.SUPER_ADMIN)
@@ -75,6 +82,33 @@ export class SuperAdminController {
     @Req() req: Request,
   ) {
     return this.superAdminService.updateTenant(id, dto, admin.sub, getClientIp(req));
+  }
+
+  @Post('tenants/:id/logo')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: MAX_IMAGE_SIZE,
+      },
+    }),
+  )
+  async uploadTenantLogo(
+    @Param('id') id: string,
+    @UploadedFile() file: Multer.File,
+    @CurrentUser() admin: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.superAdminService.uploadTenantLogo(id, file, admin.sub, getClientIp(req));
+  }
+
+  @Delete('tenants/:id/logo')
+  async removeTenantLogo(
+    @Param('id') id: string,
+    @CurrentUser() admin: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.superAdminService.removeTenantLogo(id, admin.sub, getClientIp(req));
   }
 
   @Post('tenants/:id/usuarios')

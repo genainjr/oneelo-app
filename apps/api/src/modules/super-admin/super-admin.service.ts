@@ -8,12 +8,14 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
+import { TenantMediaService } from '../../common/storage/tenant-media.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
 import { Role, AcaoAuditoria } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import type { Multer } from 'multer';
 
 @Injectable()
 export class SuperAdminService {
@@ -21,6 +23,7 @@ export class SuperAdminService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly tenantMediaService: TenantMediaService,
   ) {}
 
   async login(dto: AdminLoginDto) {
@@ -62,6 +65,8 @@ export class SuperAdminService {
         email: true,
         telefone: true,
         idioma: true,
+        logoUrl: true,
+        logoKey: true,
         createdAt: true,
         _count: { select: { users: true } },
       },
@@ -141,6 +146,8 @@ export class SuperAdminService {
         email: true,
         telefone: true,
         idioma: true,
+        logoUrl: true,
+        logoKey: true,
         createdAt: true,
       },
     });
@@ -159,6 +166,19 @@ export class SuperAdminService {
     });
 
     return updated;
+  }
+
+  async uploadTenantLogo(
+    tenantId: string,
+    file: Multer.File,
+    adminId: string,
+    ip?: string,
+  ) {
+    return this.tenantMediaService.uploadTenantLogo(tenantId, file, adminId, ip);
+  }
+
+  async removeTenantLogo(tenantId: string, adminId: string, ip?: string) {
+    return this.tenantMediaService.removeTenantLogo(tenantId, adminId, ip);
   }
 
   async createTenantUser(tenantId: string, dto: CreateTenantUserDto, adminId: string, ip?: string) {
