@@ -13,7 +13,7 @@ import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { EmptyState } from '@/components/app/empty-state';
 import { EntityCard } from '@/components/app/entity-card';
-import { PrintScheduleFooter, PrintScheduleHeader } from '@/components/app/print-layout';
+import { PrintDocumentHeader, PrintScheduleFooter } from '@/components/app/print-layout';
 import { api } from '@/lib/api';
 import { formatDate, STATUS_EVENTO_LABEL } from '@/lib/utils';
 import type { AuthUser, Evento, EventoTipo, StatusEvento } from '@/types';
@@ -39,6 +39,7 @@ function toDateInputValue(date: Date) {
 export default function AgendaVisualizacaoPage() {
   const t = useTranslations('agenda');
   const [tenantName, setTenantName] = useState('OneElo');
+  const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState(() => new Date());
 
   const monthStart = useMemo(() => startOfMonth(new Date()), []);
@@ -59,8 +60,14 @@ export default function AgendaVisualizacaoPage() {
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
-      .then((user) => setTenantName(user.tenant?.nome || 'OneElo'))
-      .catch(() => setTenantName('OneElo'));
+      .then((user) => {
+        setTenantName(user.tenant?.nome || 'OneElo');
+        setTenantLogoUrl(user.tenant?.logoUrl ?? null);
+      })
+      .catch(() => {
+        setTenantName('OneElo');
+        setTenantLogoUrl(null);
+      });
   }, []);
 
   const {
@@ -279,11 +286,13 @@ export default function AgendaVisualizacaoPage() {
       </div>
 
       {!loading && sortedEventos.length > 0 && (
-        <div className="print-area hidden" aria-hidden="true">
+        <div className="print-area print-document print-document--agenda hidden" aria-hidden="true">
           <section className="print-page">
-            <PrintScheduleHeader
-              title={tenantName}
-              subtitle={`Agenda - ${formatDate(filterState.dataInicio, 'dd/MM/yyyy')} a ${formatDate(filterState.dataFim, 'dd/MM/yyyy')}`}
+            <PrintDocumentHeader
+              organizationName={tenantName}
+              documentTitle="Agenda de Eventos"
+              period={`${formatDate(filterState.dataInicio, 'dd/MM/yyyy')} a ${formatDate(filterState.dataFim, 'dd/MM/yyyy')}`}
+              logoUrl={tenantLogoUrl}
             />
             <AgendaPrintTable eventos={sortedEventos} t={t} />
             <PrintScheduleFooter printedAt={printedAt} />
