@@ -5,6 +5,7 @@ interface EntityCardProps {
   title?: string;
   subtitle?: string;
   description?: string;
+  leadingVisual?: React.ReactNode;
   badge?: React.ReactNode;
   meta?: React.ReactNode;
   footer?: React.ReactNode;
@@ -27,6 +28,7 @@ export function EntityCard({
   title,
   subtitle,
   description,
+  leadingVisual,
   badge,
   meta,
   footer,
@@ -61,7 +63,7 @@ export function EntityCard({
     );
   }
 
-  const hasConvenienceProps = title !== undefined || subtitle !== undefined || badge !== undefined ||
+  const hasConvenienceProps = title !== undefined || subtitle !== undefined || leadingVisual !== undefined || badge !== undefined ||
     description !== undefined || meta !== undefined || footer !== undefined || actions !== undefined;
 
   // Shell mode: wrap children directly, no opinionated layout
@@ -86,15 +88,18 @@ export function EntityCard({
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
-      {(title || subtitle || badge) && (
+      {(title || subtitle || leadingVisual || badge) && (
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            {title && (
-              <h3 className="text-base font-bold text-gray-800 leading-snug">{title}</h3>
-            )}
-            {subtitle && (
-              <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
-            )}
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            {leadingVisual && <div className="shrink-0">{leadingVisual}</div>}
+            <div className="min-w-0 flex-1">
+              {title && (
+                <h3 className="text-base font-bold text-gray-800 leading-snug">{title}</h3>
+              )}
+              {subtitle && (
+                <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
+              )}
+            </div>
           </div>
           {badge && <div className="shrink-0">{badge}</div>}
         </div>
