@@ -10,7 +10,7 @@ import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
-import { PrintScheduleFooter, PrintScheduleHeader } from '@/components/app/print-layout';
+import { PrintDocumentHeader, PrintScheduleFooter } from '@/components/app/print-layout';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
@@ -37,6 +37,7 @@ export default function EscalasVisualizacaoPage() {
   const now = new Date();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [tenantName, setTenantName] = useState('OneElo');
+  const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState(() => new Date());
   const { escalas, loading, error, applyFilter, refetch } = useEscalasVisualizacao({
     mes: String(now.getMonth() + 1),
@@ -73,8 +74,14 @@ export default function EscalasVisualizacaoPage() {
       .catch(() => setMinisterios([]));
 
     api.get<AuthUser>('/api/auth/me')
-      .then((user) => setTenantName(user.tenant?.nome || 'OneElo'))
-      .catch(() => setTenantName('OneElo'));
+      .then((user) => {
+        setTenantName(user.tenant?.nome || 'OneElo');
+        setTenantLogoUrl(user.tenant?.logoUrl ?? null);
+      })
+      .catch(() => {
+        setTenantName('OneElo');
+        setTenantLogoUrl(null);
+      });
   }, []);
 
   const totais = useMemo(() => {
@@ -220,12 +227,14 @@ export default function EscalasVisualizacaoPage() {
       </div>
 
       {!loading && escalas.length > 0 && (
-        <div className="print-area hidden" aria-hidden="true">
+        <div className="print-area print-document print-document--schedule hidden" aria-hidden="true">
           {escalas.map((escala) => (
             <section key={escala.id} className="print-page">
-              <PrintScheduleHeader
-                title={tenantName}
-                subtitle={`${escala.ministerio?.nome || 'Ministerio'} - ${getMesLabel(escala)}`}
+              <PrintDocumentHeader
+                organizationName={tenantName}
+                documentTitle={`Escala - ${escala.ministerio?.nome || 'Ministerio'}`}
+                period={getMesLabel(escala)}
+                logoUrl={tenantLogoUrl}
               />
               <EscalaPrintGrid escala={escala} />
               <PrintScheduleFooter printedAt={printedAt} />
