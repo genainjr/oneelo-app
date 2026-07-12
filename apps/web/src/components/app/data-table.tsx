@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { EmptyState } from './empty-state';
 import { cn } from '@/lib/utils';
 
@@ -100,6 +101,7 @@ export function DataTable<T>({
   emptyDescription = 'Tente ajustar os seus filtros de busca.',
   emptyAction,
 }: DataTableProps<T>) {
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const getRowId = (item: T): string => {
     if (typeof rowKey === 'function') {
@@ -132,6 +134,25 @@ export function DataTable<T>({
     onSortChange({ key, direction });
   };
 
+  const handlePageChange = (page: number) => {
+    onPageChange?.(page);
+
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        const dashboardScrollContainer = tableRef.current?.closest<HTMLElement>(
+          '[data-dashboard-scroll-container]',
+        );
+
+        if (dashboardScrollContainer) {
+          dashboardScrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+  };
+
   const allSelected = data.length > 0 && selectedIds?.length === data.length;
   const someSelected = selectedIds && selectedIds.length > 0 && selectedIds.length < data.length;
 
@@ -140,7 +161,7 @@ export function DataTable<T>({
   const hasMobile = !!renderMobileCard;
 
   return (
-    <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+    <div ref={tableRef} className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
       <div className={cn('overflow-x-auto', hasMobile && DESKTOP_SHOW[mobileBreakpoint])}>
         <table className="w-full text-left border-collapse">
           <thead>
@@ -286,14 +307,14 @@ export function DataTable<T>({
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => onPageChange(currentPage - 1)}
+              onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
               className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Anterior
             </button>
             <button
-              onClick={() => onPageChange(currentPage + 1)}
+              onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
               className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >

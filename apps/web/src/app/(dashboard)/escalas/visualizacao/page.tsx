@@ -91,7 +91,11 @@ export default function EscalasVisualizacaoPage() {
     ), 0);
     const pendentes = escalas.reduce((acc, escala) => (
       acc + (escala.dias || []).reduce((diaAcc, dia) => (
-        diaAcc + (dia.itens || []).filter((item) => item.statusConfirmacao === 'PENDENTE').length
+        diaAcc + (
+          escala.status === 'PUBLICADA'
+            ? (dia.itens || []).filter((item) => item.statusConfirmacao === 'PENDENTE').length
+            : 0
+        )
       ), 0)
     ), 0);
     return { dias, itens, pendentes };

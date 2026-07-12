@@ -20,6 +20,53 @@ import { JwtPayload } from '../../common/types/jwt-payload.interface';
 export class EscalasService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private appendDiaFilter(where: any, diaFilter: any) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      { dias: { some: diaFilter } },
+    ];
+  }
+
+  private applyEscalaPendenciasFilter(where: any, requestedStatus?: StatusEscala): boolean {
+    if (requestedStatus && requestedStatus !== StatusEscala.PUBLICADA) {
+      return false;
+    }
+
+    where.status = StatusEscala.PUBLICADA;
+    this.appendDiaFilter(where, {
+      itens: {
+        some: { statusConfirmacao: StatusConfirmacao.PENDENTE },
+      },
+    });
+
+    return true;
+  }
+
+  private applyItemPendenciasFilter(
+    itemWhere: any,
+    escalaWhere: any,
+    requestedStatus?: StatusEscala,
+  ): boolean {
+    if (requestedStatus && requestedStatus !== StatusEscala.PUBLICADA) {
+      return false;
+    }
+
+    escalaWhere.status = StatusEscala.PUBLICADA;
+    itemWhere.statusConfirmacao = StatusConfirmacao.PENDENTE;
+
+    return true;
+  }
+
+  private getDateRangeForScheduleDay(date: Date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  }
+
   /**
    * Verifica se o usuário BASIC tem role de LEADER ou ASSISTANT_LEADER no ministério.
    */
@@ -122,13 +169,8 @@ export class EscalasService {
       where.ano = parseInt(query.ano, 10);
     }
     if (query.pendentesApenas === 'true') {
-      where.dias = {
-        some: {
-          itens: {
-            some: { statusConfirmacao: StatusConfirmacao.PENDENTE },
-          },
-        },
-      };
+      const hasCompatibleStatus = this.applyEscalaPendenciasFilter(where, query.status);
+      if (!hasCompatibleStatus) return false;
     }
 
     if (user.role !== Role.BASIC) return true;
@@ -174,6 +216,10 @@ export class EscalasService {
     if (query.ano) {
       where.ano = parseInt(query.ano, 10);
     }
+    if (query.pendentesApenas === 'true') {
+      const hasCompatibleStatus = this.applyEscalaPendenciasFilter(where, query.status);
+      if (!hasCompatibleStatus) return [];
+    }
 
     if (user.role === Role.BASIC) {
       if (!user.memberId) return [];
@@ -192,17 +238,13 @@ export class EscalasService {
         // Líder/co-líder vê escalas dos seus ministérios
         if (query.ministerioId && !idsLiderados.includes(query.ministerioId)) {
           // Se pediu um ministério específico que não lidera, mostra só onde está escalado
-          where.dias = {
-            some: { itens: { some: { membroId: user.memberId } } }
-          };
+          this.appendDiaFilter(where, { itens: { some: { membroId: user.memberId } } });
         } else {
           where.ministerioId = { in: idsLiderados };
         }
       } else {
         // Membro comum: vê apenas escalas onde está escalado
-        where.dias = {
-          some: { itens: { some: { membroId: user.memberId } } }
-        };
+        this.appendDiaFilter(where, { itens: { some: { membroId: user.memberId } } });
       }
     }
 
@@ -305,7 +347,8 @@ export class EscalasService {
     };
 
     if (query.pendentesApenas === 'true') {
-      where.statusConfirmacao = StatusConfirmacao.PENDENTE;
+      const hasCompatibleStatus = this.applyItemPendenciasFilter(where, escalaWhere, query.status);
+      if (!hasCompatibleStatus) return [];
     }
 
     const itens = await this.prisma.escalaItem.findMany({
@@ -440,6 +483,7 @@ export class EscalasService {
         escalaDia: {
           escala: {
             tenantId,
+            status: StatusEscala.PUBLICADA,
           },
         },
       },
@@ -548,18 +592,46 @@ export class EscalasService {
       throw new NotFoundException('Membro não encontrado neste tenant.');
     }
 
-    // Verificar conflito
-    const hasConflito = await this.prisma.escalaItem.findFirst({
+    const { start, end } = this.getDateRangeForScheduleDay(dia.data);
+    const conflitoNoDia = await this.prisma.escalaItem.findFirst({
       where: {
-        escalaDiaId: diaId,
         membroId: dto.membroId,
-      }
+        NOT: {
+          escalaDiaId: diaId,
+          ministerioFuncaoId: dto.ministerioFuncaoId,
+        },
+        escalaDia: {
+          data: {
+            gte: start,
+            lte: end,
+          },
+          escala: {
+            tenantId,
+          },
+        },
+      },
+      include: {
+        funcao: { select: { nome: true } },
+        escalaDia: {
+          include: {
+            escala: {
+              include: {
+                ministerio: { select: { nome: true } },
+              },
+            },
+          },
+        },
+      },
     });
 
-    if (hasConflito && hasConflito.ministerioFuncaoId !== dto.ministerioFuncaoId) {
-      throw new BadRequestException('Membro já está escalado neste dia em outra função. Remova-o primeiro.');
-    }
+    if (conflitoNoDia) {
+      const ministerio = conflitoNoDia.escalaDia.escala.ministerio?.nome ?? 'outro ministerio';
+      const funcao = conflitoNoDia.funcao?.nome ?? 'outra funcao';
 
+      throw new BadRequestException(
+        `Membro ja esta escalado neste dia em ${ministerio} (${funcao}). Escolha outro membro ou entre em contato com a lideranca desse ministerio.`,
+      );
+    }
     return this.prisma.escalaItem.upsert({
       where: {
         escalaDiaId_membroId_ministerioFuncaoId: {

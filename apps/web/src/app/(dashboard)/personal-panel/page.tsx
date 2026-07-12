@@ -164,7 +164,10 @@ export default function PersonalPanelPage() {
 
   const nextSchedule = useMemo(() => getNextSchedule(futureSchedules), [futureSchedules]);
   const pendingCount = useMemo(
-    () => futureSchedules.filter((item) => item.statusConfirmacao === 'PENDENTE').length,
+    () => futureSchedules.filter((item) => (
+      item.escala.status === 'PUBLICADA' &&
+      item.statusConfirmacao === 'PENDENTE'
+    )).length,
     [futureSchedules],
   );
   const futureEvents = useMemo(() => {
