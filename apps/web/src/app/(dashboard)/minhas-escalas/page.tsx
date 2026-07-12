@@ -39,7 +39,11 @@ export default function MinhasEscalasPage() {
   hoje.setHours(0, 0, 0, 0);
 
   const pendentes = useMemo(
-    () => items.filter((item) => item.statusConfirmacao === 'PENDENTE' && new Date(item.data) >= hoje),
+    () => items.filter((item) => (
+      item.escala.status === 'PUBLICADA' &&
+      item.statusConfirmacao === 'PENDENTE' &&
+      new Date(item.data) >= hoje
+    )),
     [items],
   );
   const futuras = useMemo(

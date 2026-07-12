@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { MembrosModule } from '../membros/membros.module';
 import { StorageModule } from '../../common/storage/storage.module';
+import { getUserSessionExpiresIn } from './auth-session';
 
 @Module({
   imports: [
@@ -15,7 +16,9 @@ import { StorageModule } from '../../common/storage/storage.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '8h' },
+        signOptions: {
+          expiresIn: getUserSessionExpiresIn(config.get<string>('JWT_EXPIRES_IN')),
+        },
       }),
     }),
   ],
