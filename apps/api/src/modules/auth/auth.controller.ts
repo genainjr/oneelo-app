@@ -32,6 +32,7 @@ import { Role } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { MAX_IMAGE_SIZE } from '../../common/storage/image-upload';
+import { parseDurationToMilliseconds } from './auth-session';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -52,17 +53,17 @@ export class AuthController {
     @Req() req: Request,
   ) {
     const ip = getClientIp(req);
-    const { accessToken, user } = await this.authService.login(dto, ip);
+    const { accessToken, user, expiresIn, expiresAt } = await this.authService.login(dto, ip);
 
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: isProd,
       sameSite: 'lax',
-      maxAge: 8 * 60 * 60 * 1000,
+      maxAge: parseDurationToMilliseconds(expiresIn),
     });
 
-    return { message: 'Login realizado com sucesso.', user };
+    return { message: 'Login realizado com sucesso.', user, expiresIn, expiresAt };
   }
 
   @Post('logout')

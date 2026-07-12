@@ -18,6 +18,7 @@ import { TenantMediaService } from '../../common/storage/tenant-media.service';
 import { AcaoAuditoria, StatusMembro } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import type { Multer } from 'multer';
+import { getUserSessionExpiresIn, parseDurationToMilliseconds } from './auth-session';
 
 @Injectable()
 export class AuthService {
@@ -62,9 +63,11 @@ export class AuthService {
     };
 
     // 4. Gerar token
+    const expiresIn = getUserSessionExpiresIn(this.configService.get<string>('JWT_EXPIRES_IN'));
+    const expiresAt = new Date(Date.now() + parseDurationToMilliseconds(expiresIn)).toISOString();
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: '8h',
+      expiresIn,
     });
 
     // 5. Registrar audit log de login
@@ -81,6 +84,8 @@ export class AuthService {
 
     return {
       accessToken,
+      expiresIn,
+      expiresAt,
       user: {
         id: user.id,
         nome: user.nome,
