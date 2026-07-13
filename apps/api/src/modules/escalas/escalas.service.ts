@@ -528,7 +528,7 @@ export class EscalasService {
 
     await this.notificationsService.sendToUsers(tenantId, userIds, {
       title: 'Nova Escala Publicada',
-      body: `Você foi escalado em ${escala.ministerio.nome}. Confirme sua presença no One Elo.`,
+      body: `Você foi escalado em ${escala.ministerio.nome}.\nConfirme sua presença no One Elo.`,
       url: '/minhas-escalas?pendentesApenas=true',
     });
   }

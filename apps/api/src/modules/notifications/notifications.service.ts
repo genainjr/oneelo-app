@@ -278,7 +278,7 @@ export class NotificationsService {
         [userId],
         {
           title: 'Confirmação Pendente',
-          body: `Você ainda não confirmou sua presença na escala de amanhã em ${item.escalaDia.escala.ministerio.nome}.`,
+          body: `Sua confirmação ainda está pendente para amanhã em ${item.escalaDia.escala.ministerio.nome}.\nConfirme sua presença no One Elo.`,
           url: '/minhas-escalas?pendentesApenas=true',
         },
       );
@@ -373,7 +373,7 @@ export class NotificationsService {
         [userId],
         {
           title: 'Escala Hoje',
-          body: `Você está escalado hoje em ${item.escalaDia.escala.ministerio.nome}. Confira os detalhes no One Elo.`,
+          body: `Sua escala é hoje em ${item.escalaDia.escala.ministerio.nome}.\nConfira os detalhes no One Elo.`,
           url: '/minhas-escalas',
         },
       );
