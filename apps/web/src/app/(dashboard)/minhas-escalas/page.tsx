@@ -10,7 +10,7 @@ import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { Calendar, AlertTriangle, List } from 'lucide-react';
-import { formatDate, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
+import { getDatePartsWithWeekday, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, MinhaEscalaItem } from '@/types';
 
 export default function MinhasEscalasPage() {
@@ -70,13 +70,15 @@ export default function MinhasEscalasPage() {
 
   function renderItem(item: MinhaEscalaItem, showActions = false) {
     const canConfirm = item.escala.status === 'PUBLICADA';
+    const { weekday, date } = getDatePartsWithWeekday(item.data, 'dd/MM/yyyy');
 
     return (
       <div key={item.id} className="rounded-lg border border-gray-100 bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase text-indigo-600">{item.escala.ministerio?.nome || 'Ministerio'}</p>
-            <h3 className="mt-1 text-base font-bold text-gray-900">{formatDate(item.data, 'dd/MM/yyyy')}</h3>
+            <p className="mt-1 text-xs font-bold uppercase text-indigo-600">{weekday}</p>
+            <h3 className="text-base font-bold text-gray-900">{date}</h3>
             {item.titulo && <p className="mt-0.5 text-sm text-gray-500">{item.titulo}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
