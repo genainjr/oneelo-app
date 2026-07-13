@@ -46,6 +46,7 @@ export function PushNotificationButton() {
   const [status, setStatus] = useState<PushSupportStatus>('unsupported');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [showPermissionIntro, setShowPermissionIntro] = useState(false);
 
   useEffect(() => {
     if (!message) return;
@@ -72,19 +73,40 @@ export function PushNotificationButton() {
       return;
     }
 
+    if (status !== 'enabled') {
+      setMessage('');
+      setShowPermissionIntro(true);
+      return;
+    }
+
+    await handleDisable();
+  }
+
+  async function handleDisable() {
     setLoading(true);
     setMessage('');
 
     try {
-      if (status === 'enabled') {
-        await disablePushNotifications();
-        setStatus('disabled');
-        setMessage('Notificacoes desativadas neste dispositivo.');
-      } else {
-        await enablePushNotifications();
-        setStatus('enabled');
-        setMessage('Notificacoes ativadas neste dispositivo.');
-      }
+      await disablePushNotifications();
+      setStatus('disabled');
+      setMessage('Notificacoes desativadas neste dispositivo.');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Nao foi possivel alterar as notificacoes.');
+      getPushStatus().then(setStatus).catch(() => undefined);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEnableConfirmed() {
+    setShowPermissionIntro(false);
+    setLoading(true);
+    setMessage('');
+
+    try {
+      await enablePushNotifications();
+      setStatus('enabled');
+      setMessage('Notificacoes ativadas neste dispositivo.');
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Nao foi possivel alterar as notificacoes.');
       getPushStatus().then(setStatus).catch(() => undefined);
@@ -125,6 +147,44 @@ export function PushNotificationButton() {
           >
             ×
           </button>
+        </div>
+      )}
+      {showPermissionIntro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                <BellIcon enabled />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold text-gray-900">Ativar notificações?</h2>
+                <p className="text-sm leading-relaxed text-gray-600">
+                  O One Elo pode te avisar sobre escalas, eventos, lembretes importantes e comunicados da igreja.
+                </p>
+              </div>
+            </div>
+
+            <p className="mb-5 text-xs leading-relaxed text-gray-500">
+              Você pode permitir agora e, se quiser, desativar depois nas configurações do navegador ou do dispositivo.
+            </p>
+
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowPermissionIntro(false)}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+              >
+                Agora não
+              </button>
+              <button
+                type="button"
+                onClick={handleEnableConfirmed}
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              >
+                Permitir notificações
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

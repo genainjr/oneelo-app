@@ -198,6 +198,7 @@ model PushSubscription {
 ### Permissao de notificacao
 
 - permissao do navegador deve ser solicitada apenas por acao explicita do usuario;
+- antes do prompt nativo, a UI deve explicar o uso das notificacoes e oferecer "Permitir notificacoes" ou "Agora nao";
 - se o navegador negar a permissao, a UI deve indicar que notificacoes estao bloqueadas;
 - se o servidor nao tiver chave publica VAPID, a UI deve impedir ativacao e informar indisponibilidade.
 
@@ -244,7 +245,7 @@ Comportamento:
 
 - header autenticado passa a exibir controle de notificacoes;
 - o controle registra o Service Worker;
-- o controle solicita permissao explicitamente;
+- o controle exibe uma explicacao antes de solicitar permissao nativa do navegador;
 - ao ativar, salva a subscription no backend;
 - ao desativar, marca a subscription como inativa no backend e remove do navegador.
 
@@ -294,6 +295,7 @@ Entregas:
 - [x] Service Worker publico.
 - [x] Pagina offline segura.
 - [x] Botao de notificacoes no header autenticado.
+- [x] Pre-prompt explicativo antes da permissao nativa do navegador.
 - [x] Helper frontend de Push API.
 - [x] Manifest atualizado.
 - [x] `.env.example` atualizado.
@@ -554,6 +556,7 @@ Checklist:
 - API desativa subscription autenticada.
 - Frontend registra Service Worker por acao do usuario.
 - Frontend solicita permissao de notificacao apenas apos clique.
+- Frontend exibe contexto amigavel antes de abrir o prompt nativo de permissao.
 - Frontend salva subscription no backend.
 - Frontend permite desativar subscription.
 - Service Worker trata evento `push`.
