@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -25,6 +26,8 @@ import { HealthController } from './health.controller';
     ConfigModule.forRoot({ isGlobal: true }),
     // Rate limiting global — login usa configuração mais restritiva via @Throttle()
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
+    // Jobs internos simples, sem Redis/BullMQ.
+    ScheduleModule.forRoot(),
     // Banco de dados global
     PrismaModule,
     // Módulos de funcionalidade — Fase 2

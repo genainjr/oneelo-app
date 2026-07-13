@@ -1,6 +1,6 @@
 # Plano - Fortalecimento PWA e Push Notifications
 
-Status geral: etapa 5 validada para notificacao unica de escala publicada - branch pronta para fechamento
+Status geral: etapa 5 em andamento - escala publicada validada e lembrete 24h interno implementado tecnicamente
 Ultima atualizacao: 2026-07-13
 
 ## Objetivo
@@ -96,7 +96,7 @@ Motivo:
 - nem toda alteracao e relevante para todos os membros;
 - o primeiro uso deve ser simples, previsivel e com baixo risco de ruido.
 
-O primeiro evento real de push deve ser a publicacao de escala com itens pendentes de confirmacao.
+O primeiro evento real de push deve ser a publicacao de escala para os membros escalados.
 
 ## Estado Atual do Codigo
 
@@ -198,6 +198,10 @@ model PushSubscription {
 ### Permissao de notificacao
 
 - permissao do navegador deve ser solicitada apenas por acao explicita do usuario;
+- antes do prompt nativo, a UI deve explicar o uso das notificacoes e oferecer "Permitir notificacoes" ou "Agora nao";
+- a explicacao pode abrir automaticamente uma unica vez por dispositivo/navegador;
+- em iOS, a abertura automatica da explicacao deve ocorrer apenas quando o app estiver instalado/standalone;
+- se o usuario escolher "Agora nao", a explicacao nao deve aparecer automaticamente de novo naquele dispositivo/navegador;
 - se o navegador negar a permissao, a UI deve indicar que notificacoes estao bloqueadas;
 - se o servidor nao tiver chave publica VAPID, a UI deve impedir ativacao e informar indisponibilidade.
 
@@ -244,7 +248,7 @@ Comportamento:
 
 - header autenticado passa a exibir controle de notificacoes;
 - o controle registra o Service Worker;
-- o controle solicita permissao explicitamente;
+- o controle exibe uma explicacao antes de solicitar permissao nativa do navegador;
 - ao ativar, salva a subscription no backend;
 - ao desativar, marca a subscription como inativa no backend e remove do navegador.
 
@@ -294,6 +298,8 @@ Entregas:
 - [x] Service Worker publico.
 - [x] Pagina offline segura.
 - [x] Botao de notificacoes no header autenticado.
+- [x] Pre-prompt explicativo antes da permissao nativa do navegador.
+- [x] Autoexibir pre-prompt uma vez por dispositivo, respeitando iOS instalado/standalone.
 - [x] Helper frontend de Push API.
 - [x] Manifest atualizado.
 - [x] `.env.example` atualizado.
@@ -455,8 +461,9 @@ Objetivo:
 
 Candidatos:
 
-- escala publicada com membro pendente de confirmacao;
-- lembrete de confirmacao pendente;
+- escala publicada para membros escalados;
+- lembrete de confirmacao pendente 24h antes da escala;
+- lembrete no dia da escala;
 - aviso para lider quando membro recusar.
 
 Fora do escopo inicial:
@@ -467,7 +474,9 @@ Fora do escopo inicial:
 
 Saida esperada:
 
-- Membro com usuario vinculado e subscription ativa recebe notificacao quando uma escala publicada incluir sua participacao pendente.
+- Membro escalado com usuario vinculado e subscription ativa recebe notificacao quando a escala for publicada.
+- Membro com confirmacao pendente recebe lembrete no dia anterior a escala, se tiver usuario vinculado e subscription ativa.
+- Membro escalado recebe lembrete no dia da escala, se nao tiver recusado e tiver usuario vinculado/subscription ativa.
 - A notificacao leva o membro para `/minhas-escalas`.
 - Nao ha disparo para escala em rascunho.
 - Nao ha disparo para escala apenas editada.
@@ -477,11 +486,13 @@ Checklist:
 - [x] Definir que escala alterada fica fora do escopo inicial.
 - [x] Definir payload da notificacao de escala publicada.
 - [x] Implementar notificacao quando escala muda de `RASCUNHO` para `PUBLICADA`.
-- [x] Enviar somente para itens com `statusConfirmacao = PENDENTE`.
+- [x] Enviar para os membros escalados, sem filtrar por status de confirmacao na publicacao.
 - [x] Enviar somente para membros com usuario vinculado.
 - [x] Enviar somente para usuarios com subscription ativa.
 - [x] Validar recebimento real da notificacao de escala publicada no navegador.
-- [ ] Implementar lembrete de confirmacao pendente.
+- [x] Implementar lembrete de confirmacao pendente 24h antes da escala.
+- [x] Criar job interno da API para executar o lembrete diariamente.
+- [x] Implementar lembrete no dia da escala as 09:00.
 - [ ] Implementar aviso para lider quando membro recusar.
 - [ ] Evitar duplicidade em edicoes sucessivas.
 - [ ] Garantir isolamento por tenant.
@@ -491,10 +502,30 @@ Implementacao inicial:
 
 - `EscalasService.update` dispara notificacao apenas na transicao `RASCUNHO` -> `PUBLICADA`.
 - O destinatario e resolvido por `Membro -> User`, nao por `EscalaItem.userId`, para evitar enviar para quem criou a escala.
+- Na publicacao, nao ha filtro por `statusConfirmacao`, porque os membros ainda nao tiveram oportunidade de confirmar.
 - O envio usa subscriptions ativas do tenant atual.
 - A notificacao abre `/minhas-escalas?pendentesApenas=true`.
-- Mensagem final: `Você foi escalado em {ministerio}. Confirme sua presença no One Elo.`
+- Mensagem final: `Você foi escalado em {ministerio}.\nDá uma olhada e confirma sua presença no One Elo.`
 - Nao existe disparo para escala alterada.
+
+Implementacao do lembrete 24h:
+
+- A API usa `@nestjs/schedule` para executar o job internamente, sem cron externo.
+- O job roda todos os dias as 08:00 e 13:00 no fuso `America/Sao_Paulo`.
+- O job busca itens com `statusConfirmacao = PENDENTE`, escala `PUBLICADA` e data da escala no dia seguinte.
+- O envio considera apenas membros com usuario vinculado e ativo.
+- Nao ha campo de controle de envio no banco; se continuar pendente, o membro pode receber novamente no segundo horario.
+- Mensagem do lembrete: `Sua confirmação para amanhã ainda está pendente em {ministerio}.\nPassa no One Elo rapidinho para confirmar?`
+
+Implementacao do lembrete no dia da escala:
+
+- A API usa `@nestjs/schedule` para executar o job internamente, sem cron externo.
+- O job roda todos os dias as 09:00 no fuso `America/Sao_Paulo`.
+- O job busca itens da data atual em escala `PUBLICADA`.
+- O envio considera itens com `statusConfirmacao` `PENDENTE` ou `CONFIRMADO`.
+- Itens `RECUSADO` nao recebem lembrete do dia.
+- O envio considera apenas membros com usuario vinculado e ativo.
+- Mensagem: `Hoje é dia de servir em {ministerio}.\nConfira os detalhes da sua escala no One Elo.`
 
 ### Etapa 6 - Preferencias e Robustez
 
@@ -529,6 +560,8 @@ Checklist:
 - API desativa subscription autenticada.
 - Frontend registra Service Worker por acao do usuario.
 - Frontend solicita permissao de notificacao apenas apos clique.
+- Frontend exibe contexto amigavel antes de abrir o prompt nativo de permissao.
+- Frontend nao autoexibe a explicacao novamente apos "Agora nao" no mesmo dispositivo/navegador.
 - Frontend salva subscription no backend.
 - Frontend permite desativar subscription.
 - Service Worker trata evento `push`.
@@ -544,6 +577,9 @@ Checklist:
 ```bash
 npx.cmd prisma generate --schema apps/api/prisma/schema.prisma
 npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
+npm.cmd install @nestjs/schedule --workspace apps/api
+npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
+npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 npx.cmd tsc -p apps/web/tsconfig.json --noEmit --pretty false
 $env:DATABASE_URL='postgresql://dev:dev@localhost:5433/oneelo_saas'; npx.cmd prisma validate --schema apps/api/prisma/schema.prisma
 node --check apps/api/scripts/generate-vapid-keys.mjs
@@ -552,6 +588,8 @@ npx.cmd tsc -p apps/web/tsconfig.json --noEmit --pretty false
 npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 npx.cmd tsc -p apps/web/tsconfig.json --noEmit --pretty false
+npx.cmd prisma generate --schema apps/api/prisma/schema.prisma
+npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 ```
 
 Resultado:
@@ -561,6 +599,8 @@ Resultado:
 - a subscription foi confirmada no banco local pelo usuario.
 - o envio tecnico foi implementado via `web-push`; recebimento real fica para validacao em HTTPS/nuvem.
 - a primeira notificacao de negocio da etapa 5 foi implementada e validada para publicacao de escala.
+- o lembrete de confirmacao pendente 24h antes da escala foi implementado tecnicamente como job interno da API.
+- o lembrete no dia da escala as 09:00 foi implementado tecnicamente como job interno da API.
 
 Observacao:
 
