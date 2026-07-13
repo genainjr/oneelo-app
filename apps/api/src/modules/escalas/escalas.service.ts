@@ -292,6 +292,7 @@ export class EscalasService {
             { data: 'asc' },
           ],
           include: {
+            evento: { select: { id: true, titulo: true } },
             funcoesOcultas: { select: { funcaoId: true } },
             itens: {
               include: {
@@ -362,6 +363,7 @@ export class EscalasService {
         funcao: true,
         escalaDia: {
           include: {
+            evento: { select: { id: true, titulo: true } },
             escala: {
               include: {
                 ministerio: { select: { id: true, nome: true } },
@@ -382,7 +384,8 @@ export class EscalasService {
         statusConfirmacao: item.statusConfirmacao,
         observacoes: item.observacoes,
         data: item.escalaDia.data,
-        titulo: item.escalaDia.titulo,
+        titulo: item.escalaDia.titulo ?? item.escalaDia.evento?.titulo ?? null,
+        evento: item.escalaDia.evento,
         funcao: item.funcao,
         membro: item.membro,
         escala: item.escalaDia.escala,
@@ -401,6 +404,7 @@ export class EscalasService {
         dias: {
           orderBy: { ordem: 'asc' },
           include: {
+            evento: { select: { id: true, titulo: true } },
             funcoesOcultas: { select: { funcaoId: true } },
             itens: {
               include: {

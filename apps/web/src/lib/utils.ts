@@ -19,28 +19,54 @@ export function cn(...inputs: ClassValue[]) {
 
 // ─── Formatação de datas ──────────────────────────────────────────────────────
 
-export function formatDate(date: string | Date | null | undefined, fmt = 'dd/MM/yyyy', dfLocale: Locale = ptBR): string {
+type DateInput = string | Date | null | undefined;
+const WEEKDAY_SHORT_LABELS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+
+function parseDateForFormat(date: DateInput, fmt: string): Date | null {
+  if (!date) return null;
+  if (typeof date === 'string') {
+    const hasTimeTokens = /[Hhms]/.test(fmt);
+    if (!hasTimeTokens && date.includes('T')) {
+      return parseISO(date.split('T')[0]);
+    }
+    return parseISO(date);
+  }
+  return date;
+}
+
+export function formatDate(date: DateInput, fmt = 'dd/MM/yyyy', dfLocale: Locale = ptBR): string {
   if (!date) return '—';
   try {
-    let d: Date;
-    if (typeof date === 'string') {
-      const hasTimeTokens = /[Hhms]/.test(fmt);
-      if (!hasTimeTokens && date.includes('T')) {
-        d = parseISO(date.split('T')[0]);
-      } else {
-        d = parseISO(date);
-      }
-    } else {
-      d = date;
-    }
-    if (!isValid(d)) return '—';
+    const d = parseDateForFormat(date, fmt);
+    if (!d || !isValid(d)) return '—';
     return format(d, fmt, { locale: dfLocale });
   } catch {
     return '—';
   }
 }
 
-export function formatDateTime(date: string | Date | null | undefined, at = 'às', dfLocale: Locale = ptBR): string {
+export function getDatePartsWithWeekday(date: DateInput, fmt = 'dd/MM/yyyy', dfLocale: Locale = ptBR): { weekday: string; date: string } {
+  if (!date) return { weekday: '—', date: '—' };
+  try {
+    const d = parseDateForFormat(date, fmt);
+    if (!d || !isValid(d)) return { weekday: '—', date: '—' };
+
+    return {
+      weekday: WEEKDAY_SHORT_LABELS[d.getDay()] ?? '—',
+      date: format(d, fmt, { locale: dfLocale }),
+    };
+  } catch {
+    return { weekday: '—', date: '—' };
+  }
+}
+
+export function formatDateWithWeekday(date: DateInput, fmt = 'dd/MM/yyyy', dfLocale: Locale = ptBR): string {
+  const parts = getDatePartsWithWeekday(date, fmt, dfLocale);
+  if (parts.weekday === '—' || parts.date === '—') return '—';
+  return `${parts.weekday} · ${parts.date}`;
+}
+
+export function formatDateTime(date: DateInput, at = 'às', dfLocale: Locale = ptBR): string {
   return formatDate(date, `dd/MM/yyyy '${at}' HH:mm`, dfLocale);
 }
 
