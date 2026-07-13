@@ -199,6 +199,9 @@ model PushSubscription {
 
 - permissao do navegador deve ser solicitada apenas por acao explicita do usuario;
 - antes do prompt nativo, a UI deve explicar o uso das notificacoes e oferecer "Permitir notificacoes" ou "Agora nao";
+- a explicacao pode abrir automaticamente uma unica vez por dispositivo/navegador;
+- em iOS, a abertura automatica da explicacao deve ocorrer apenas quando o app estiver instalado/standalone;
+- se o usuario escolher "Agora nao", a explicacao nao deve aparecer automaticamente de novo naquele dispositivo/navegador;
 - se o navegador negar a permissao, a UI deve indicar que notificacoes estao bloqueadas;
 - se o servidor nao tiver chave publica VAPID, a UI deve impedir ativacao e informar indisponibilidade.
 
@@ -296,6 +299,7 @@ Entregas:
 - [x] Pagina offline segura.
 - [x] Botao de notificacoes no header autenticado.
 - [x] Pre-prompt explicativo antes da permissao nativa do navegador.
+- [x] Autoexibir pre-prompt uma vez por dispositivo, respeitando iOS instalado/standalone.
 - [x] Helper frontend de Push API.
 - [x] Manifest atualizado.
 - [x] `.env.example` atualizado.
@@ -557,6 +561,7 @@ Checklist:
 - Frontend registra Service Worker por acao do usuario.
 - Frontend solicita permissao de notificacao apenas apos clique.
 - Frontend exibe contexto amigavel antes de abrir o prompt nativo de permissao.
+- Frontend nao autoexibe a explicacao novamente apos "Agora nao" no mesmo dispositivo/navegador.
 - Frontend salva subscription no backend.
 - Frontend permite desativar subscription.
 - Service Worker trata evento `push`.

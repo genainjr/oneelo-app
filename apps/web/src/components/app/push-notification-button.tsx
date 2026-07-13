@@ -7,6 +7,9 @@ import {
   getPushStatus,
   type PushSupportStatus,
 } from '@/lib/push-notifications';
+import { detectInstallPlatform, isStandaloneMode } from '@/lib/pwa-install';
+
+const AUTO_PROMPT_DISMISSED_KEY = 'oneelo:push-permission-intro-dismissed';
 
 const STATUS_LABEL: Record<PushSupportStatus, string> = {
   unsupported: 'Notificacoes indisponiveis',
@@ -60,7 +63,20 @@ export function PushNotificationButton() {
 
   useEffect(() => {
     getPushStatus()
-      .then(setStatus)
+      .then((currentStatus) => {
+        setStatus(currentStatus);
+
+        const autoPromptDismissed = localStorage.getItem(AUTO_PROMPT_DISMISSED_KEY) === 'true';
+        const isIOS = detectInstallPlatform() === 'ios';
+        const canAutoPrompt =
+          !autoPromptDismissed &&
+          (currentStatus === 'default' || currentStatus === 'disabled') &&
+          (!isIOS || isStandaloneMode());
+
+        if (canAutoPrompt) {
+          setShowPermissionIntro(true);
+        }
+      })
       .catch(() => setStatus('unsupported'))
       .finally(() => setLoading(false));
   }, []);
@@ -99,6 +115,7 @@ export function PushNotificationButton() {
   }
 
   async function handleEnableConfirmed() {
+    localStorage.setItem(AUTO_PROMPT_DISMISSED_KEY, 'true');
     setShowPermissionIntro(false);
     setLoading(true);
     setMessage('');
@@ -171,7 +188,10 @@ export function PushNotificationButton() {
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => setShowPermissionIntro(false)}
+                onClick={() => {
+                  localStorage.setItem(AUTO_PROMPT_DISMISSED_KEY, 'true');
+                  setShowPermissionIntro(false);
+                }}
                 className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
               >
                 Agora não
