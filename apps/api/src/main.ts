@@ -7,6 +7,9 @@ import cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Necessario para detectar HTTPS corretamente atras de proxy/load balancer.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // Prefixo global da API
   app.setGlobalPrefix('api');
 
@@ -25,10 +28,29 @@ async function bootstrap() {
     }),
   );
 
-  // CORS — permite o frontend acessar a API com cookies em cross-domain
+  const configuredOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3001')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const localNetworkOriginPattern = /^http:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+
+  // CORS - permite o frontend acessar a API com cookies em cross-domain.
   app.enableCors({
-    origin: (process.env.CORS_ORIGIN ?? 'http://localhost:3001').split(','),
-    credentials: true, // Permite envio/recebimento de cookies
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (configuredOrigins.includes(origin) || (isDevelopment && localNetworkOriginPattern.test(origin))) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, false);
+    },
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });

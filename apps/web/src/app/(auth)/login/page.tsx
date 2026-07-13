@@ -10,6 +10,29 @@ interface LoginResponse {
   user: AuthUser;
 }
 
+function isSafeAppRedirect(value: string | null) {
+  if (!value) return false;
+  if (!value.startsWith('/')) return false;
+  if (value.startsWith('//')) return false;
+
+  const [pathname] = value.split('?');
+
+  if (
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    pathname === '/login' ||
+    pathname === '/admin/login' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/sw.js' ||
+    pathname === '/offline.html' ||
+    /\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?|webmanifest)$/.test(pathname)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 function LoginForm() {
   const t = useTranslations('auth.login');
   const router = useRouter();
@@ -29,8 +52,9 @@ function LoginForm() {
     try {
       const response = await api.post<LoginResponse>('/api/auth/login', { email, senha });
       const fallback = response.user.role === 'BASIC' ? '/personal-panel' : '/dashboard';
-      const target = redirect && !(response.user.role === 'BASIC' && redirect === '/dashboard')
-        ? redirect
+      const safeRedirect = isSafeAppRedirect(redirect) ? redirect : null;
+      const target = safeRedirect && !(response.user.role === 'BASIC' && safeRedirect === '/dashboard')
+        ? safeRedirect
         : fallback;
       window.location.href = target;
     } catch (err) {

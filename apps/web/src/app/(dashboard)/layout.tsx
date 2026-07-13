@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/app/sidebar';
 import { Header } from '@/components/app/header';
 import { ChatbotButton } from '@/components/app/chatbot-button';
+import { InstallAppPrompt } from '@/components/app/install-app-prompt';
 import { api } from '@/lib/api';
 import { AuthUser } from '@/types';
 import { AuthUserProvider } from '@/contexts/auth-user-context';
@@ -37,6 +38,7 @@ export default function DashboardLayout({
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
         <main data-dashboard-scroll-container className="flex-1 overflow-y-auto p-4 md:p-6">
+          <InstallAppPrompt />
           {children}
         </main>
       </div>
