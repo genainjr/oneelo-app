@@ -457,6 +457,7 @@ Candidatos:
 
 - escala publicada para membros escalados;
 - lembrete de confirmacao pendente 24h antes da escala;
+- lembrete no dia da escala;
 - aviso para lider quando membro recusar.
 
 Fora do escopo inicial:
@@ -469,6 +470,7 @@ Saida esperada:
 
 - Membro escalado com usuario vinculado e subscription ativa recebe notificacao quando a escala for publicada.
 - Membro com confirmacao pendente recebe lembrete no dia anterior a escala, se tiver usuario vinculado e subscription ativa.
+- Membro escalado recebe lembrete no dia da escala, se nao tiver recusado e tiver usuario vinculado/subscription ativa.
 - A notificacao leva o membro para `/minhas-escalas`.
 - Nao ha disparo para escala em rascunho.
 - Nao ha disparo para escala apenas editada.
@@ -484,6 +486,7 @@ Checklist:
 - [x] Validar recebimento real da notificacao de escala publicada no navegador.
 - [x] Implementar lembrete de confirmacao pendente 24h antes da escala.
 - [x] Criar job interno da API para executar o lembrete diariamente.
+- [x] Implementar lembrete no dia da escala as 09:00.
 - [ ] Implementar aviso para lider quando membro recusar.
 - [ ] Evitar duplicidade em edicoes sucessivas.
 - [ ] Garantir isolamento por tenant.
@@ -507,6 +510,16 @@ Implementacao do lembrete 24h:
 - O envio considera apenas membros com usuario vinculado e ativo.
 - Nao ha campo de controle de envio no banco; se continuar pendente, o membro pode receber novamente no segundo horario.
 - Mensagem do lembrete: `Você ainda não confirmou sua presença na escala de amanhã em {ministerio}.`
+
+Implementacao do lembrete no dia da escala:
+
+- A API usa `@nestjs/schedule` para executar o job internamente, sem cron externo.
+- O job roda todos os dias as 09:00 no fuso `America/Sao_Paulo`.
+- O job busca itens da data atual em escala `PUBLICADA`.
+- O envio considera itens com `statusConfirmacao` `PENDENTE` ou `CONFIRMADO`.
+- Itens `RECUSADO` nao recebem lembrete do dia.
+- O envio considera apenas membros com usuario vinculado e ativo.
+- Mensagem: `Você está escalado hoje em {ministerio}. Confira os detalhes no One Elo.`
 
 ### Etapa 6 - Preferencias e Robustez
 
@@ -558,6 +571,7 @@ npx.cmd prisma generate --schema apps/api/prisma/schema.prisma
 npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 npm.cmd install @nestjs/schedule --workspace apps/api
 npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
+npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 npx.cmd tsc -p apps/web/tsconfig.json --noEmit --pretty false
 $env:DATABASE_URL='postgresql://dev:dev@localhost:5433/oneelo_saas'; npx.cmd prisma validate --schema apps/api/prisma/schema.prisma
 node --check apps/api/scripts/generate-vapid-keys.mjs
@@ -578,6 +592,7 @@ Resultado:
 - o envio tecnico foi implementado via `web-push`; recebimento real fica para validacao em HTTPS/nuvem.
 - a primeira notificacao de negocio da etapa 5 foi implementada e validada para publicacao de escala.
 - o lembrete de confirmacao pendente 24h antes da escala foi implementado tecnicamente como job interno da API.
+- o lembrete no dia da escala as 09:00 foi implementado tecnicamente como job interno da API.
 
 Observacao:
 

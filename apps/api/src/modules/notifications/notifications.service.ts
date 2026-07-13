@@ -51,6 +51,16 @@ export class NotificationsService {
     return { start, end };
   }
 
+  private getTodayRange(referenceDate = new Date()) {
+    const start = new Date(referenceDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  }
+
   getPublicKey() {
     const publicKey = this.configService.get<string>('WEB_PUSH_PUBLIC_KEY') ?? '';
 
@@ -293,6 +303,101 @@ export class NotificationsService {
     };
 
     this.logger.log(`Lembrete 24h de confirmacao processado: ${JSON.stringify(result)}`);
+
+    return result;
+  }
+
+  @Cron('0 9 * * *', {
+    name: 'schedule-day-reminder',
+    timeZone: 'America/Sao_Paulo',
+  })
+  async runScheduleDayReminderJob() {
+    const { start, end } = this.getTodayRange();
+
+    const items = await this.prisma.escalaItem.findMany({
+      where: {
+        statusConfirmacao: {
+          in: [StatusConfirmacao.PENDENTE, StatusConfirmacao.CONFIRMADO],
+        },
+        escalaDia: {
+          data: {
+            gte: start,
+            lte: end,
+          },
+          escala: {
+            status: StatusEscala.PUBLICADA,
+          },
+        },
+        membro: {
+          user: {
+            is: {
+              ativo: true,
+            },
+          },
+        },
+      },
+      include: {
+        membro: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                ativo: true,
+              },
+            },
+          },
+        },
+        escalaDia: {
+          include: {
+            escala: {
+              include: {
+                ministerio: { select: { nome: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let sent = 0;
+    let failed = 0;
+    let totalSubscriptions = 0;
+    let withoutSubscription = 0;
+
+    for (const item of items) {
+      const userId = item.membro.user?.id;
+      if (!userId) continue;
+
+      const result = await this.sendToUsers(
+        item.escalaDia.escala.tenantId,
+        [userId],
+        {
+          title: 'Escala Hoje',
+          body: `Você está escalado hoje em ${item.escalaDia.escala.ministerio.nome}. Confira os detalhes no One Elo.`,
+          url: '/minhas-escalas',
+        },
+      );
+
+      sent += result.sent;
+      failed += result.failed;
+      totalSubscriptions += result.total;
+
+      if (result.total === 0) {
+        withoutSubscription += 1;
+      }
+    }
+
+    const result = {
+      windowStart: start.toISOString(),
+      windowEnd: end.toISOString(),
+      scheduledItems: items.length,
+      withoutSubscription,
+      sent,
+      failed,
+      totalSubscriptions,
+    };
+
+    this.logger.log(`Lembrete do dia da escala processado: ${JSON.stringify(result)}`);
 
     return result;
   }
