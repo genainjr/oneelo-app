@@ -55,10 +55,12 @@ export class AuthController {
     const ip = getClientIp(req);
     const { accessToken, user, expiresIn, expiresAt } = await this.authService.login(dto, ip);
 
-    const isProd = process.env.NODE_ENV === 'production';
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const isHttpsRequest = req.secure || forwardedProto === 'https';
+
     res.cookie('access_token', accessToken, {
       httpOnly: true,
-      secure: isProd,
+      secure: isHttpsRequest,
       sameSite: 'lax',
       maxAge: parseDurationToMilliseconds(expiresIn),
     });

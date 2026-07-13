@@ -12,6 +12,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EscalasModule } from './modules/escalas/escalas.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 import { LeadsModule } from './modules/leads/leads.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -37,6 +38,7 @@ import { HealthController } from './health.controller';
     EscalasModule,
     SuperAdminModule,
     LeadsModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [

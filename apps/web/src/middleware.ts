@@ -42,6 +42,10 @@ export function middleware(request: NextRequest) {
     PUBLIC_PATHS.some((p) => pathname === p || (p !== '/' && pathname.startsWith(p))) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
+    pathname.startsWith('/.well-known') ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/sw.js' ||
+    pathname === '/offline.html' ||
     /\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$/.test(pathname)
   ) {
     return NextResponse.next();
@@ -109,5 +113,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|\\.well-known/|manifest.webmanifest|sw.js|offline.html|api/|.*\\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$).*)'],
 };

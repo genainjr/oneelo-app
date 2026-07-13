@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { PushNotificationButton } from './push-notification-button';
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
@@ -41,7 +42,9 @@ export function Header({ onMenuClick }: HeaderProps) {
       </button>
 
       {/* Título */}
-      <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
+      <h1 className="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900">{title}</h1>
+
+      <PushNotificationButton />
     </header>
   );
 }

@@ -119,6 +119,7 @@ model Tenant {
   escalas     Escala[]
   eventos     Evento[]
   auditLogs   AuditLog[]
+  pushSubscriptions PushSubscription[]
 
   @@map("tb_tenant")
 }
@@ -139,6 +140,7 @@ model User {
   membro       Membro?      @relation(fields: [memberId], references: [id])
   escalasItens EscalaItem[]
   auditLogs    AuditLog[]
+  pushSubscriptions PushSubscription[]
 
   @@index([tenantId])
   @@map("tb_user")
@@ -377,6 +379,27 @@ model AuditLog {
   @@index([tenantId])
   @@index([tenantId, entidade, entidadeId])
   @@map("tb_audit_log")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?  @map("user_agent")
+  ativo     Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, userId, ativo])
+  @@map("tb_push_subscription")
 }
 
 model Lead {
