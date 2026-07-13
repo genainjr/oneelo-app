@@ -38,6 +38,14 @@ export function isFuncaoOculta(dia: EscalaDia, funcaoId: string) {
   return dia.funcoesOcultas?.some((oculta) => oculta.funcaoId === funcaoId) ?? false;
 }
 
+export function getDiaDisplayTitle(dia: Pick<EscalaDia, 'titulo' | 'evento'>) {
+  const titulo = dia.titulo?.trim();
+  if (titulo) return titulo;
+
+  const eventoTitulo = dia.evento?.titulo?.trim();
+  return eventoTitulo || '';
+}
+
 export function getMemberDisplayName(member?: { nome?: string | null; nomeExibicao?: string | null } | null) {
   const nomeExibicao = member?.nomeExibicao?.trim();
   if (nomeExibicao) return nomeExibicao;

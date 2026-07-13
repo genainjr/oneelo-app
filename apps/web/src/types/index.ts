@@ -163,6 +163,7 @@ export interface EscalaDia {
   data: string;
   titulo?: string;
   eventoId?: string;
+  evento?: Pick<Evento, 'id' | 'titulo'> | null;
   observacoes?: string;
   itens?: EscalaItem[];
   funcoesOcultas?: { funcaoId: string }[];
