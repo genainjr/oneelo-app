@@ -19,6 +19,8 @@ export default function MinhasEscalasPage() {
   const [loadingUser, setLoadingUser] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const [proximasMinimizadas, setProximasMinimizadas] = useState(false);
+  const [historicoMinimizado, setHistoricoMinimizado] = useState(true);
   const { items, loading, error, refetch } = useMinhasEscalas();
 
   useEffect(() => {
@@ -151,7 +153,7 @@ export default function MinhasEscalasPage() {
         <EmptyState title="Nenhuma escala encontrada" description="Voce ainda nao possui participacoes em escalas." />
       ) : (
         <div className="space-y-8">
-          <section>
+          <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Pendentes</h2>
             <div className="space-y-3">
               {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true)) : (
@@ -160,22 +162,62 @@ export default function MinhasEscalasPage() {
             </div>
           </section>
 
-          <section>
-            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Proximas</h2>
-            <div className="space-y-3">
-              {futuras.length > 0 ? futuras.map((item) => renderItem(item)) : (
-                <EmptyState compact title="Nenhuma escala futura." />
+          <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Proximas</h2>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {futuras.length} {futuras.length === 1 ? 'escala futura' : 'escalas futuras'}
+                </p>
+              </div>
+              {futuras.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setProximasMinimizadas((value) => !value)}
+                  aria-expanded={!proximasMinimizadas}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
+                >
+                  {proximasMinimizadas ? 'Mostrar proximas' : 'Minimizar proximas'}
+                </button>
               )}
             </div>
+
+            {(!proximasMinimizadas || futuras.length === 0) && (
+              <div className="space-y-3">
+                {futuras.length > 0 ? futuras.map((item) => renderItem(item)) : (
+                  <EmptyState compact title="Nenhuma escala futura." />
+                )}
+              </div>
+            )}
           </section>
 
-          <section>
-            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Historico</h2>
-            <div className="space-y-3">
-              {passadas.length > 0 ? passadas.map((item) => renderItem(item)) : (
-                <EmptyState compact title="Nenhuma escala passada." />
+          <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Historico</h2>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {passadas.length} {passadas.length === 1 ? 'escala passada' : 'escalas passadas'}
+                </p>
+              </div>
+              {passadas.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setHistoricoMinimizado((value) => !value)}
+                  aria-expanded={!historicoMinimizado}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
+                >
+                  {historicoMinimizado ? 'Mostrar historico' : 'Minimizar historico'}
+                </button>
               )}
             </div>
+
+            {(!historicoMinimizado || passadas.length === 0) && (
+              <div className="space-y-3">
+                {passadas.length > 0 ? passadas.map((item) => renderItem(item)) : (
+                  <EmptyState compact title="Nenhuma escala passada." />
+                )}
+              </div>
+            )}
           </section>
         </div>
       )}
