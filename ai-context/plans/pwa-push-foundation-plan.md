@@ -499,7 +499,7 @@ Implementacao inicial:
 - Na publicacao, nao ha filtro por `statusConfirmacao`, porque os membros ainda nao tiveram oportunidade de confirmar.
 - O envio usa subscriptions ativas do tenant atual.
 - A notificacao abre `/minhas-escalas?pendentesApenas=true`.
-- Mensagem final: `Você foi escalado em {ministerio}.\nConfirme sua presença no One Elo.`
+- Mensagem final: `Você foi escalado em {ministerio}.\nDá uma olhada e confirma sua presença no One Elo.`
 - Nao existe disparo para escala alterada.
 
 Implementacao do lembrete 24h:
@@ -509,7 +509,7 @@ Implementacao do lembrete 24h:
 - O job busca itens com `statusConfirmacao = PENDENTE`, escala `PUBLICADA` e data da escala no dia seguinte.
 - O envio considera apenas membros com usuario vinculado e ativo.
 - Nao ha campo de controle de envio no banco; se continuar pendente, o membro pode receber novamente no segundo horario.
-- Mensagem do lembrete: `Sua confirmação ainda está pendente para amanhã em {ministerio}.\nConfirme sua presença no One Elo.`
+- Mensagem do lembrete: `Sua confirmação para amanhã ainda está pendente em {ministerio}.\nPassa no One Elo rapidinho para confirmar?`
 
 Implementacao do lembrete no dia da escala:
 
@@ -519,7 +519,7 @@ Implementacao do lembrete no dia da escala:
 - O envio considera itens com `statusConfirmacao` `PENDENTE` ou `CONFIRMADO`.
 - Itens `RECUSADO` nao recebem lembrete do dia.
 - O envio considera apenas membros com usuario vinculado e ativo.
-- Mensagem: `Sua escala é hoje em {ministerio}.\nConfira os detalhes no One Elo.`
+- Mensagem: `Hoje é dia de servir em {ministerio}.\nConfira os detalhes da sua escala no One Elo.`
 
 ### Etapa 6 - Preferencias e Robustez
 
