@@ -38,7 +38,7 @@ export function StatCard({
           <p className="mt-1 text-3xl font-bold text-gray-900">{value}</p>
         )}
         {description && (
-          <p className="mt-1 text-xs text-gray-400">{description}</p>
+          <p className="mt-1 whitespace-pre-line text-xs text-gray-400">{description}</p>
         )}
       </div>
       <div className={cn('p-2.5 rounded-xl flex-shrink-0 ml-3', colorMap[color])}>

@@ -4,8 +4,8 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { InputField, SelectField } from '@/components/app/form-field';
 import { Escala, MinisterioMembro } from '@/types';
-import { getDias, getFuncoes, getItens, isFuncaoOculta, MemberChip } from './escala-shared';
-import { STATUS_CONFIRMACAO_COLOR } from '@/lib/utils';
+import { getDiaDisplayTitle, getDias, getFuncoes, getItens, isFuncaoOculta, MemberChip } from './escala-shared';
+import { getDatePartsWithWeekday, STATUS_CONFIRMACAO_COLOR } from '@/lib/utils';
 
 interface EscalaGridProps {
   escala: Escala;
@@ -18,12 +18,6 @@ interface EscalaGridProps {
   onReorderDias: (diaIds: string[]) => Promise<void>;
   onToggleCelula: (diaId: string, funcaoId: string, ocultar: boolean) => void;
   tGrid: ReturnType<typeof useTranslations>;
-}
-
-function formatDayDate(dateStr: string) {
-  const date = new Date(dateStr);
-  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
-  return { dayName: days[date.getUTCDay()], day: date.getUTCDate() };
 }
 
 export function EscalaGrid({
@@ -100,15 +94,20 @@ export function EscalaGrid({
         </div>
       ) : (
         dias.map((dia, diaIndex) => {
-          const { dayName, day } = formatDayDate(dia.data);
+          const { weekday, date } = getDatePartsWithWeekday(dia.data, 'dd/MM/yyyy');
+          const diaTitle = getDiaDisplayTitle(dia);
           const canDrag = canManage && escala.status === 'RASCUNHO';
           return (
             <section key={dia.id} className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase text-indigo-600">{dayName}</p>
-                  <p className="text-lg font-extrabold leading-none text-gray-900">{day}</p>
-                  {dia.titulo && <p className="mt-1 text-xs text-gray-500">{dia.titulo}</p>}
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase text-indigo-600">{weekday}</p>
+                  <p className="text-sm font-bold text-gray-900">{date}</p>
+                  {diaTitle && (
+                    <p className="mt-1 max-w-full whitespace-normal break-words text-xs leading-snug text-gray-500">
+                      {diaTitle}
+                    </p>
+                  )}
                 </div>
                 {canManage && (
                   <div className="flex items-center gap-1">
@@ -268,7 +267,8 @@ export function EscalaGrid({
             </tr>
           ) : (
             dias.map((dia) => {
-              const { dayName, day } = formatDayDate(dia.data);
+              const { weekday, date } = getDatePartsWithWeekday(dia.data, 'dd/MM');
+              const diaTitle = getDiaDisplayTitle(dia);
               const isDragOver = dragOverId === dia.id;
               const canDrag = canManage && escala.status === 'RASCUNHO';
               return (
@@ -305,10 +305,14 @@ export function EscalaGrid({
                             </svg>
                           </span>
                         )}
-                        <div>
-                          <div className="text-xs font-bold text-indigo-600">{dayName}</div>
-                          <div className="text-lg font-extrabold text-gray-800 leading-none">{day}</div>
-                          {dia.titulo && <div className="text-[11px] text-gray-400 mt-0.5 leading-tight">{dia.titulo}</div>}
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold uppercase text-indigo-600">{weekday}</div>
+                          <div className="text-sm font-bold text-gray-900">{date}</div>
+                          {diaTitle && (
+                            <div className="mt-1 max-w-[7.5rem] whitespace-normal break-words text-xs leading-snug text-gray-500">
+                              {diaTitle}
+                            </div>
+                          )}
                         </div>
                       </div>
                       {canManage && (

@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatDateWithWeekday } from '@/lib/utils';
 import { useEventos } from '@/hooks/use-eventos';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import type { AuthUser, Evento, MinhaEscalaItem } from '@/types';
@@ -163,6 +163,9 @@ export default function PersonalPanelPage() {
   }, [minhasEscalas]);
 
   const nextSchedule = useMemo(() => getNextSchedule(futureSchedules), [futureSchedules]);
+  const nextScheduleValue = nextSchedule
+    ? formatDateWithWeekday(nextSchedule.data, 'dd/MM')
+    : t('stats.nextScheduleNone');
   const pendingCount = useMemo(
     () => futureSchedules.filter((item) => (
       item.escala.status === 'PUBLICADA' &&
@@ -176,6 +179,9 @@ export default function PersonalPanelPage() {
     return eventos.filter((event) => new Date(event.dataInicio) >= now);
   }, [eventos]);
   const nextEvent = useMemo(() => getNextEvent(futureEvents), [futureEvents]);
+  const nextEventDescription = nextEvent
+    ? `${formatDateWithWeekday(nextEvent.dataInicio, 'dd/MM')}\n${nextEvent.titulo}`
+    : t('stats.upcomingEventsEmpty');
   const leadershipMinisterios = useMemo(() => {
     const memberships = user?.role === 'BASIC'
       ? (user.membro?.ministerios ?? []).filter(
@@ -248,7 +254,7 @@ export default function PersonalPanelPage() {
     {
       key: 'nextSchedule',
       title: t('stats.nextSchedule'),
-      value: nextSchedule ? formatDate(nextSchedule.data, 'dd/MM') : t('stats.nextScheduleNone'),
+      value: nextScheduleValue,
       description: nextSchedule
         ? `${nextSchedule.escala.ministerio?.nome ?? 'Ministério'} · ${nextSchedule.funcao?.nome ?? 'Função'}`
         : t('stats.nextScheduleEmpty'),
@@ -269,9 +275,7 @@ export default function PersonalPanelPage() {
       key: 'upcomingEvents',
       title: t('stats.upcomingEvents'),
       value: futureEvents.length,
-      description: nextEvent
-        ? `${formatDate(nextEvent.dataInicio, 'dd/MM')} · ${nextEvent.titulo}`
-        : t('stats.upcomingEventsEmpty'),
+      description: nextEventDescription,
       href: '/agenda/visualizacao',
       color: 'emerald' as const,
       icon: <CalendarIcon />,
@@ -280,7 +284,7 @@ export default function PersonalPanelPage() {
     {
       key: 'nextSchedule',
       title: t('stats.nextSchedule'),
-      value: nextSchedule ? formatDate(nextSchedule.data, 'dd/MM') : t('stats.nextScheduleNone'),
+      value: nextScheduleValue,
       description: nextSchedule
         ? `${nextSchedule.escala.ministerio?.nome ?? 'Ministério'} · ${nextSchedule.funcao?.nome ?? 'Função'}`
         : t('stats.nextScheduleEmpty'),
@@ -301,9 +305,7 @@ export default function PersonalPanelPage() {
       key: 'upcomingEvents',
       title: t('stats.upcomingEvents'),
       value: futureEvents.length,
-      description: nextEvent
-        ? `${formatDate(nextEvent.dataInicio, 'dd/MM')} · ${nextEvent.titulo}`
-        : t('stats.upcomingEventsEmpty'),
+      description: nextEventDescription,
       href: '/agenda/visualizacao',
       color: 'emerald' as const,
       icon: <CalendarIcon />,
@@ -313,9 +315,7 @@ export default function PersonalPanelPage() {
       key: 'upcomingEvents',
       title: t('stats.upcomingEvents'),
       value: futureEvents.length,
-      description: nextEvent
-        ? `${formatDate(nextEvent.dataInicio, 'dd/MM')} · ${nextEvent.titulo}`
-        : t('stats.upcomingEventsEmpty'),
+      description: nextEventDescription,
       href: '/agenda/visualizacao',
       color: 'emerald' as const,
       icon: <CalendarIcon />,
