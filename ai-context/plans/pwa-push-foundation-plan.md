@@ -96,7 +96,7 @@ Motivo:
 - nem toda alteracao e relevante para todos os membros;
 - o primeiro uso deve ser simples, previsivel e com baixo risco de ruido.
 
-O primeiro evento real de push deve ser a publicacao de escala com itens pendentes de confirmacao.
+O primeiro evento real de push deve ser a publicacao de escala para os membros escalados.
 
 ## Estado Atual do Codigo
 
@@ -455,7 +455,7 @@ Objetivo:
 
 Candidatos:
 
-- escala publicada com membro pendente de confirmacao;
+- escala publicada para membros escalados;
 - lembrete de confirmacao pendente;
 - aviso para lider quando membro recusar.
 
@@ -467,7 +467,7 @@ Fora do escopo inicial:
 
 Saida esperada:
 
-- Membro com usuario vinculado e subscription ativa recebe notificacao quando uma escala publicada incluir sua participacao pendente.
+- Membro escalado com usuario vinculado e subscription ativa recebe notificacao quando a escala for publicada.
 - A notificacao leva o membro para `/minhas-escalas`.
 - Nao ha disparo para escala em rascunho.
 - Nao ha disparo para escala apenas editada.
@@ -477,7 +477,7 @@ Checklist:
 - [x] Definir que escala alterada fica fora do escopo inicial.
 - [x] Definir payload da notificacao de escala publicada.
 - [x] Implementar notificacao quando escala muda de `RASCUNHO` para `PUBLICADA`.
-- [x] Enviar somente para itens com `statusConfirmacao = PENDENTE`.
+- [x] Enviar para os membros escalados, sem filtrar por status de confirmacao na publicacao.
 - [x] Enviar somente para membros com usuario vinculado.
 - [x] Enviar somente para usuarios com subscription ativa.
 - [x] Validar recebimento real da notificacao de escala publicada no navegador.
@@ -491,6 +491,7 @@ Implementacao inicial:
 
 - `EscalasService.update` dispara notificacao apenas na transicao `RASCUNHO` -> `PUBLICADA`.
 - O destinatario e resolvido por `Membro -> User`, nao por `EscalaItem.userId`, para evitar enviar para quem criou a escala.
+- Na publicacao, nao ha filtro por `statusConfirmacao`, porque os membros ainda nao tiveram oportunidade de confirmar.
 - O envio usa subscriptions ativas do tenant atual.
 - A notificacao abre `/minhas-escalas?pendentesApenas=true`.
 - Mensagem final: `Você foi escalado em {ministerio}. Confirme sua presença no One Elo.`

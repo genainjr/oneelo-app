@@ -498,7 +498,6 @@ export class EscalasService {
         dias: {
           include: {
             itens: {
-              where: { statusConfirmacao: StatusConfirmacao.PENDENTE },
               include: {
                 membro: {
                   include: {
