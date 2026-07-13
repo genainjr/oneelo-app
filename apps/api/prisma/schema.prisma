@@ -314,6 +314,7 @@ model EscalaItem {
   userId             String?           @map("user_id")
   ministerioFuncaoId String            @map("ministry_position_id")
   statusConfirmacao  StatusConfirmacao @default(PENDENTE) @map("confirmation_status")
+  lembreteConfirmacao24hEnviadoEm DateTime? @map("confirmation_reminder_24h_sent_at")
   observacoes        String?           @map("notes")
 
   escalaDia EscalaDia         @relation(fields: [escalaDiaId], references: [id], onDelete: Cascade)
@@ -323,6 +324,7 @@ model EscalaItem {
 
   @@unique([escalaDiaId, membroId])
   @@unique([escalaDiaId, membroId, ministerioFuncaoId])
+  @@index([statusConfirmacao, lembreteConfirmacao24hEnviadoEm])
   @@map("tb_schedule_assignment")
 }
 

@@ -1,6 +1,6 @@
 # Plano - Fortalecimento PWA e Push Notifications
 
-Status geral: etapa 5 validada para notificacao unica de escala publicada - branch pronta para fechamento
+Status geral: etapa 5 em andamento - escala publicada validada e lembrete 24h interno implementado tecnicamente
 Ultima atualizacao: 2026-07-13
 
 ## Objetivo
@@ -456,7 +456,7 @@ Objetivo:
 Candidatos:
 
 - escala publicada para membros escalados;
-- lembrete de confirmacao pendente;
+- lembrete de confirmacao pendente 24h antes da escala;
 - aviso para lider quando membro recusar.
 
 Fora do escopo inicial:
@@ -468,6 +468,7 @@ Fora do escopo inicial:
 Saida esperada:
 
 - Membro escalado com usuario vinculado e subscription ativa recebe notificacao quando a escala for publicada.
+- Membro com confirmacao pendente recebe lembrete no dia anterior a escala, se tiver usuario vinculado e subscription ativa.
 - A notificacao leva o membro para `/minhas-escalas`.
 - Nao ha disparo para escala em rascunho.
 - Nao ha disparo para escala apenas editada.
@@ -481,7 +482,9 @@ Checklist:
 - [x] Enviar somente para membros com usuario vinculado.
 - [x] Enviar somente para usuarios com subscription ativa.
 - [x] Validar recebimento real da notificacao de escala publicada no navegador.
-- [ ] Implementar lembrete de confirmacao pendente.
+- [x] Implementar lembrete de confirmacao pendente 24h antes da escala.
+- [x] Marcar item da escala apos envio do lembrete para evitar duplicidade.
+- [x] Criar job interno da API para executar o lembrete diariamente.
 - [ ] Implementar aviso para lider quando membro recusar.
 - [ ] Evitar duplicidade em edicoes sucessivas.
 - [ ] Garantir isolamento por tenant.
@@ -496,6 +499,16 @@ Implementacao inicial:
 - A notificacao abre `/minhas-escalas?pendentesApenas=true`.
 - Mensagem final: `Você foi escalado em {ministerio}. Confirme sua presença no One Elo.`
 - Nao existe disparo para escala alterada.
+
+Implementacao do lembrete 24h:
+
+- `EscalaItem.lembreteConfirmacao24hEnviadoEm` registra quando o lembrete de 24h foi enviado.
+- A API usa `@nestjs/schedule` para executar o job internamente, sem cron externo.
+- O job roda todos os dias as 08:00 no fuso `America/Sao_Paulo`.
+- O job busca itens com `statusConfirmacao = PENDENTE`, escala `PUBLICADA` e data da escala no dia seguinte.
+- O envio considera apenas membros com usuario vinculado e ativo.
+- O item so e marcado como notificado quando pelo menos uma subscription recebe o push com sucesso.
+- Mensagem do lembrete: `Você ainda não confirmou sua presença na escala de amanhã em {ministerio}.`
 
 ### Etapa 6 - Preferencias e Robustez
 
@@ -545,6 +558,8 @@ Checklist:
 ```bash
 npx.cmd prisma generate --schema apps/api/prisma/schema.prisma
 npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
+npm.cmd install @nestjs/schedule --workspace apps/api
+npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 npx.cmd tsc -p apps/web/tsconfig.json --noEmit --pretty false
 $env:DATABASE_URL='postgresql://dev:dev@localhost:5433/oneelo_saas'; npx.cmd prisma validate --schema apps/api/prisma/schema.prisma
 node --check apps/api/scripts/generate-vapid-keys.mjs
@@ -553,6 +568,8 @@ npx.cmd tsc -p apps/web/tsconfig.json --noEmit --pretty false
 npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 npx.cmd tsc -p apps/web/tsconfig.json --noEmit --pretty false
+npx.cmd prisma generate --schema apps/api/prisma/schema.prisma
+npx.cmd tsc -p apps/api/tsconfig.build.json --noEmit --pretty false
 ```
 
 Resultado:
@@ -562,6 +579,7 @@ Resultado:
 - a subscription foi confirmada no banco local pelo usuario.
 - o envio tecnico foi implementado via `web-push`; recebimento real fica para validacao em HTTPS/nuvem.
 - a primeira notificacao de negocio da etapa 5 foi implementada e validada para publicacao de escala.
+- o lembrete de confirmacao pendente 24h antes da escala foi implementado tecnicamente como job interno da API.
 
 Observacao:
 

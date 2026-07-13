@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { StatusConfirmacao, StatusEscala } from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
 import webPush from 'web-push';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
@@ -19,6 +21,8 @@ type PushNotificationPayload = {
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -34,6 +38,17 @@ export class NotificationsService {
     if (!publicKey || !privateKey) return;
 
     webPush.setVapidDetails(subject, publicKey, privateKey);
+  }
+
+  private getTomorrowRange(referenceDate = new Date()) {
+    const start = new Date(referenceDate);
+    start.setDate(start.getDate() + 1);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
   }
 
   getPublicKey() {
@@ -187,5 +202,116 @@ export class NotificationsService {
       failed,
       total: subscriptions.length,
     };
+  }
+
+  @Cron('0 8 * * *', {
+    name: 'pending-confirmations-24h',
+    timeZone: 'America/Sao_Paulo',
+  })
+  async runPendingConfirmationReminderJob() {
+    const { start, end } = this.getTomorrowRange();
+
+    const items = await this.prisma.escalaItem.findMany({
+      where: {
+        statusConfirmacao: StatusConfirmacao.PENDENTE,
+        lembreteConfirmacao24hEnviadoEm: null,
+        escalaDia: {
+          data: {
+            gte: start,
+            lte: end,
+          },
+          escala: {
+            status: StatusEscala.PUBLICADA,
+          },
+        },
+        membro: {
+          user: {
+            is: {
+              ativo: true,
+            },
+          },
+        },
+      },
+      include: {
+        membro: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                ativo: true,
+              },
+            },
+          },
+        },
+        escalaDia: {
+          include: {
+            escala: {
+              include: {
+                ministerio: { select: { nome: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let sent = 0;
+    let failed = 0;
+    let totalSubscriptions = 0;
+    let withoutSubscription = 0;
+    const notifiedItemIds: string[] = [];
+
+    for (const item of items) {
+      const userId = item.membro.user?.id;
+      if (!userId) continue;
+
+      const result = await this.sendToUsers(
+        item.escalaDia.escala.tenantId,
+        [userId],
+        {
+          title: 'Confirmação Pendente',
+          body: `Você ainda não confirmou sua presença na escala de amanhã em ${item.escalaDia.escala.ministerio.nome}.`,
+          url: '/minhas-escalas?pendentesApenas=true',
+        },
+      );
+
+      sent += result.sent;
+      failed += result.failed;
+      totalSubscriptions += result.total;
+
+      if (result.total === 0) {
+        withoutSubscription += 1;
+      }
+
+      if (result.sent > 0) {
+        notifiedItemIds.push(item.id);
+      }
+    }
+
+    if (notifiedItemIds.length > 0) {
+      await this.prisma.escalaItem.updateMany({
+        where: {
+          id: { in: notifiedItemIds },
+        },
+        data: {
+          lembreteConfirmacao24hEnviadoEm: new Date(),
+        },
+      });
+    }
+
+    const result = {
+      windowStart: start.toISOString(),
+      windowEnd: end.toISOString(),
+      pendingItems: items.length,
+      notifiedItems: notifiedItemIds.length,
+      withoutSubscription,
+      sent,
+      failed,
+      totalSubscriptions,
+    };
+
+    this.logger.log(`Lembrete 24h de confirmacao processado: ${JSON.stringify(result)}`);
+
+    return result;
   }
 }
