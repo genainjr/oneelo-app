@@ -10,7 +10,7 @@ import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { Calendar, AlertTriangle, List } from 'lucide-react';
-import { formatDate, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
+import { getDatePartsWithWeekday, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, MinhaEscalaItem } from '@/types';
 
 export default function MinhasEscalasPage() {
@@ -19,6 +19,8 @@ export default function MinhasEscalasPage() {
   const [loadingUser, setLoadingUser] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const [proximasMinimizadas, setProximasMinimizadas] = useState(false);
+  const [historicoMinimizado, setHistoricoMinimizado] = useState(true);
   const { items, loading, error, refetch } = useMinhasEscalas();
 
   useEffect(() => {
@@ -70,13 +72,15 @@ export default function MinhasEscalasPage() {
 
   function renderItem(item: MinhaEscalaItem, showActions = false) {
     const canConfirm = item.escala.status === 'PUBLICADA';
+    const { weekday, date } = getDatePartsWithWeekday(item.data, 'dd/MM/yyyy');
 
     return (
       <div key={item.id} className="rounded-lg border border-gray-100 bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase text-indigo-600">{item.escala.ministerio?.nome || 'Ministerio'}</p>
-            <h3 className="mt-1 text-base font-bold text-gray-900">{formatDate(item.data, 'dd/MM/yyyy')}</h3>
+            <p className="mt-1 text-xs font-bold uppercase text-indigo-600">{weekday}</p>
+            <h3 className="text-base font-bold text-gray-900">{date}</h3>
             {item.titulo && <p className="mt-0.5 text-sm text-gray-500">{item.titulo}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +153,7 @@ export default function MinhasEscalasPage() {
         <EmptyState title="Nenhuma escala encontrada" description="Voce ainda nao possui participacoes em escalas." />
       ) : (
         <div className="space-y-8">
-          <section>
+          <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Pendentes</h2>
             <div className="space-y-3">
               {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true)) : (
@@ -158,22 +162,62 @@ export default function MinhasEscalasPage() {
             </div>
           </section>
 
-          <section>
-            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Proximas</h2>
-            <div className="space-y-3">
-              {futuras.length > 0 ? futuras.map((item) => renderItem(item)) : (
-                <EmptyState compact title="Nenhuma escala futura." />
+          <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Proximas</h2>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {futuras.length} {futuras.length === 1 ? 'escala futura' : 'escalas futuras'}
+                </p>
+              </div>
+              {futuras.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setProximasMinimizadas((value) => !value)}
+                  aria-expanded={!proximasMinimizadas}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
+                >
+                  {proximasMinimizadas ? 'Mostrar proximas' : 'Minimizar proximas'}
+                </button>
               )}
             </div>
+
+            {(!proximasMinimizadas || futuras.length === 0) && (
+              <div className="space-y-3">
+                {futuras.length > 0 ? futuras.map((item) => renderItem(item)) : (
+                  <EmptyState compact title="Nenhuma escala futura." />
+                )}
+              </div>
+            )}
           </section>
 
-          <section>
-            <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Historico</h2>
-            <div className="space-y-3">
-              {passadas.length > 0 ? passadas.map((item) => renderItem(item)) : (
-                <EmptyState compact title="Nenhuma escala passada." />
+          <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Historico</h2>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {passadas.length} {passadas.length === 1 ? 'escala passada' : 'escalas passadas'}
+                </p>
+              </div>
+              {passadas.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setHistoricoMinimizado((value) => !value)}
+                  aria-expanded={!historicoMinimizado}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
+                >
+                  {historicoMinimizado ? 'Mostrar historico' : 'Minimizar historico'}
+                </button>
               )}
             </div>
+
+            {(!historicoMinimizado || passadas.length === 0) && (
+              <div className="space-y-3">
+                {passadas.length > 0 ? passadas.map((item) => renderItem(item)) : (
+                  <EmptyState compact title="Nenhuma escala passada." />
+                )}
+              </div>
+            )}
           </section>
         </div>
       )}
