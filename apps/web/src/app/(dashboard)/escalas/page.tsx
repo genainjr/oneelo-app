@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useEscalas } from '@/hooks/use-escalas';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/app/page-header';
@@ -21,6 +21,17 @@ import { STATUS_ESCALA_COLOR } from '@/lib/utils';
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function normalizeScheduleConflictMessage(message: string) {
+  if (!message.toLowerCase().includes('membro ja esta escalado neste dia')) {
+    return message;
+  }
+
+  const match = message.match(/em\s+(.+?)\s+\((.+?)\)\./i);
+  const context = match ? ` em ${match[1]} (${match[2]})` : '';
+
+  return `Este membro já está escalado neste dia${context}. Escolha outro membro ou entre em contato com a liderança desse ministério.`;
 }
 
 export default function EscalasPage() {
@@ -85,6 +96,7 @@ export default function EscalasPage() {
   const [createError, setCreateError] = useState('');
 
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [aiToastOpen, setAiToastOpen] = useState(false);
   const [pendingConfirmAction, setPendingConfirmAction] = useState<{
     type: 'deleteEscala' | 'removeDia';
@@ -94,9 +106,28 @@ export default function EscalasPage() {
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+
+    const normalizedMsg = type === 'error' ? normalizeScheduleConflictMessage(msg) : msg;
+
+    setToast({ msg: normalizedMsg, type });
+    toastTimeoutRef.current = setTimeout(() => setToast(null), type === 'error' ? 12000 : 4000);
   }
+
+  function closeToast() {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast(null);
+  }
+
+  useEffect(() => () => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me').then(setCurrentUser).catch(() => setCurrentUser(null));
@@ -283,16 +314,28 @@ export default function EscalasPage() {
   return (
     <div className="p-6 max-w-full mx-auto space-y-6">
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-medium border animate-in slide-in-from-bottom-3 ${
+        <div className={`fixed bottom-6 right-6 z-50 flex max-w-md items-start gap-3 rounded-2xl border px-5 py-3.5 text-sm font-medium shadow-xl animate-in slide-in-from-bottom-3 ${
           toast.type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'
         }`}>
-          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             {toast.type === 'success'
               ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              : <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              : <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
             }
           </svg>
-          {toast.msg}
+          <span className="flex-1 leading-relaxed">{toast.msg}</span>
+          <button
+            type="button"
+            onClick={closeToast}
+            aria-label="Fechar mensagem"
+            className={`-mr-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition ${
+              toast.type === 'success'
+                ? 'text-green-700 hover:bg-green-100'
+                : 'text-red-700 hover:bg-red-100'
+            }`}
+          >
+            ×
+          </button>
         </div>
       )}
 

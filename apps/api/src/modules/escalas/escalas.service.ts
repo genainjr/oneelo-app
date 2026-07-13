@@ -15,10 +15,14 @@ import { ReorderDiasDto } from './dto/reorder-dias.dto';
 import { ToggleDiaFuncaoOcultaDto } from './dto/toggle-dia-funcao-oculta.dto';
 import { Role, MinistryRole, StatusConfirmacao, StatusEscala } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class EscalasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private appendDiaFilter(where: any, diaFilter: any) {
     where.AND = [
@@ -470,10 +474,64 @@ export class EscalasService {
     if (dto.status) data.status = dto.status;
     if (dto.observacoes !== undefined) data.observacoes = dto.observacoes;
 
-    return this.prisma.escala.update({
+    const updated = await this.prisma.escala.update({
       where: { id },
       data,
       });
+
+    if (escala.status === StatusEscala.RASCUNHO && dto.status === StatusEscala.PUBLICADA) {
+      await this.notifyEscalaPublished(tenantId, id);
+    }
+
+    return updated;
+  }
+
+  private async notifyEscalaPublished(tenantId: string, escalaId: string) {
+    const escala = await this.prisma.escala.findFirst({
+      where: {
+        id: escalaId,
+        tenantId,
+        status: StatusEscala.PUBLICADA,
+      },
+      include: {
+        ministerio: { select: { nome: true } },
+        dias: {
+          include: {
+            itens: {
+              where: { statusConfirmacao: StatusConfirmacao.PENDENTE },
+              include: {
+                membro: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        ativo: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!escala) return;
+
+    const userIds = escala.dias
+      .flatMap((dia) => dia.itens)
+      .map((item) => item.membro.user)
+      .filter((user): user is { id: string; ativo: boolean } => Boolean(user?.id && user.ativo))
+      .map((user) => user.id);
+
+    if (userIds.length === 0) return;
+
+    await this.notificationsService.sendToUsers(tenantId, userIds, {
+      title: 'Nova escala publicada',
+      body: `Você foi escalado em ${escala.ministerio.nome}. Confirme sua presença no One Elo.`,
+      url: '/minhas-escalas?pendentesApenas=true',
+    });
   }
 
   async countPendencias(tenantId: string) {
