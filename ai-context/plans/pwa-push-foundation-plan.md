@@ -483,7 +483,6 @@ Checklist:
 - [x] Enviar somente para usuarios com subscription ativa.
 - [x] Validar recebimento real da notificacao de escala publicada no navegador.
 - [x] Implementar lembrete de confirmacao pendente 24h antes da escala.
-- [x] Marcar item da escala apos envio do lembrete para evitar duplicidade.
 - [x] Criar job interno da API para executar o lembrete diariamente.
 - [ ] Implementar aviso para lider quando membro recusar.
 - [ ] Evitar duplicidade em edicoes sucessivas.
@@ -502,12 +501,11 @@ Implementacao inicial:
 
 Implementacao do lembrete 24h:
 
-- `EscalaItem.lembreteConfirmacao24hEnviadoEm` registra quando o lembrete de 24h foi enviado.
 - A API usa `@nestjs/schedule` para executar o job internamente, sem cron externo.
-- O job roda todos os dias as 08:00 no fuso `America/Sao_Paulo`.
+- O job roda todos os dias as 08:00 e 13:00 no fuso `America/Sao_Paulo`.
 - O job busca itens com `statusConfirmacao = PENDENTE`, escala `PUBLICADA` e data da escala no dia seguinte.
 - O envio considera apenas membros com usuario vinculado e ativo.
-- O item so e marcado como notificado quando pelo menos uma subscription recebe o push com sucesso.
+- Nao ha campo de controle de envio no banco; se continuar pendente, o membro pode receber novamente no segundo horario.
 - Mensagem do lembrete: `Você ainda não confirmou sua presença na escala de amanhã em {ministerio}.`
 
 ### Etapa 6 - Preferencias e Robustez

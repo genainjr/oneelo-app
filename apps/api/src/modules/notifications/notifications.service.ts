@@ -204,7 +204,7 @@ export class NotificationsService {
     };
   }
 
-  @Cron('0 8 * * *', {
+  @Cron('0 8,13 * * *', {
     name: 'pending-confirmations-24h',
     timeZone: 'America/Sao_Paulo',
   })
@@ -214,7 +214,6 @@ export class NotificationsService {
     const items = await this.prisma.escalaItem.findMany({
       where: {
         statusConfirmacao: StatusConfirmacao.PENDENTE,
-        lembreteConfirmacao24hEnviadoEm: null,
         escalaDia: {
           data: {
             gte: start,
@@ -259,7 +258,6 @@ export class NotificationsService {
     let failed = 0;
     let totalSubscriptions = 0;
     let withoutSubscription = 0;
-    const notifiedItemIds: string[] = [];
 
     for (const item of items) {
       const userId = item.membro.user?.id;
@@ -282,28 +280,12 @@ export class NotificationsService {
       if (result.total === 0) {
         withoutSubscription += 1;
       }
-
-      if (result.sent > 0) {
-        notifiedItemIds.push(item.id);
-      }
-    }
-
-    if (notifiedItemIds.length > 0) {
-      await this.prisma.escalaItem.updateMany({
-        where: {
-          id: { in: notifiedItemIds },
-        },
-        data: {
-          lembreteConfirmacao24hEnviadoEm: new Date(),
-        },
-      });
     }
 
     const result = {
       windowStart: start.toISOString(),
       windowEnd: end.toISOString(),
       pendingItems: items.length,
-      notifiedItems: notifiedItemIds.length,
       withoutSubscription,
       sent,
       failed,
