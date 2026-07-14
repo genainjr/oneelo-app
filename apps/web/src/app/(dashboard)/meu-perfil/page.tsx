@@ -12,8 +12,13 @@ import { ImageUploadPanel } from '@/components/app/image-upload-panel';
 import { api } from '@/lib/api';
 import { buildImageFormData, IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
-import { AuthUser } from '@/types';
+import { AuthUser, ConnectedAuthProvider } from '@/types';
 import { useAuthUser } from '@/contexts/auth-user-context';
+
+const AUTH_PROVIDER_LABEL: Record<ConnectedAuthProvider['provider'], string> = {
+  GOOGLE: 'Google',
+  APPLE: 'Apple',
+};
 
 export default function MeuPerfilPage() {
   const { setUser: setLayoutUser } = useAuthUser();
@@ -30,6 +35,11 @@ export default function MeuPerfilPage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [authProviders, setAuthProviders] = useState<ConnectedAuthProvider[]>([]);
+  const [authProvidersLoading, setAuthProvidersLoading] = useState(false);
+  const [authProviderError, setAuthProviderError] = useState('');
+  const [authProviderSuccess, setAuthProviderSuccess] = useState('');
+  const [unlinkingProvider, setUnlinkingProvider] = useState<ConnectedAuthProvider['provider'] | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -38,6 +48,20 @@ export default function MeuPerfilPage() {
       .catch(() => setError('Nao foi possivel carregar seu perfil.'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    setAuthProvidersLoading(true);
+    setAuthProviderError('');
+
+    api.get<ConnectedAuthProvider[]>('/api/auth/me/auth-providers')
+      .then((data) => setAuthProviders(Array.isArray(data) ? data : []))
+      .catch((err: any) => {
+        setAuthProviderError(err?.message || 'Nao foi possivel carregar os provedores conectados.');
+      })
+      .finally(() => setAuthProvidersLoading(false));
+  }, [user]);
 
   async function handleChangePassword(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -70,6 +94,27 @@ export default function MeuPerfilPage() {
       setPasswordError(err?.message || 'Nao foi possivel alterar a senha.');
     } finally {
       setPasswordLoading(false);
+    }
+  }
+
+  async function handleUnlinkProvider(provider: ConnectedAuthProvider['provider']) {
+    const label = AUTH_PROVIDER_LABEL[provider] || provider;
+    const confirmed = window.confirm(`Deseja desvincular sua conta ${label} do One Elo?`);
+
+    if (!confirmed) return;
+
+    setAuthProviderError('');
+    setAuthProviderSuccess('');
+    setUnlinkingProvider(provider);
+
+    try {
+      await api.delete(`/api/auth/me/auth-providers/${provider}`);
+      setAuthProviders((current) => current.filter((item) => item.provider !== provider));
+      setAuthProviderSuccess(`Conta ${label} desvinculada com sucesso.`);
+    } catch (err: any) {
+      setAuthProviderError(err?.message || `Nao foi possivel desvincular a conta ${label}.`);
+    } finally {
+      setUnlinkingProvider(null);
     }
   }
 
@@ -275,6 +320,93 @@ export default function MeuPerfilPage() {
                 </button>
               </div>
             </form>
+          </section>
+
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Login conectado</h2>
+              <p className="text-sm text-gray-500">
+                Gerencie as contas externas que podem ser usadas para entrar no One Elo.
+              </p>
+            </div>
+
+            {authProviderError && (
+              <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {authProviderError}
+              </p>
+            )}
+            {authProviderSuccess && (
+              <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                {authProviderSuccess}
+              </p>
+            )}
+
+            <div className="mt-5">
+              {authProvidersLoading ? (
+                <SkeletonList count={1} className="h-20 rounded-2xl" />
+              ) : authProviders.length ? (
+                <div className="space-y-3">
+                  {authProviders.map((provider) => {
+                    const label = AUTH_PROVIDER_LABEL[provider.provider] || provider.provider;
+                    const unlinking = unlinkingProvider === provider.provider;
+
+                    return (
+                      <div
+                        key={provider.provider}
+                        className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          {provider.avatarUrl ? (
+                            <img
+                              src={provider.avatarUrl}
+                              alt={provider.displayName || provider.email || label}
+                              className="h-11 w-11 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-sm font-bold text-indigo-700 ring-1 ring-gray-200">
+                              {label.slice(0, 1)}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-bold text-gray-900">{label}</p>
+                              {provider.emailVerified && (
+                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                                  E-mail verificado
+                                </span>
+                              )}
+                            </div>
+                            <p className="truncate text-sm text-gray-500">
+                              {provider.email || 'E-mail nao informado pelo provedor'}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              Vinculado em {formatDate(provider.linkedAt, 'dd/MM/yyyy')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleUnlinkProvider(provider.provider)}
+                          disabled={!provider.canUnlink || unlinking}
+                          className="inline-flex items-center justify-center rounded-xl border border-red-100 bg-white px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          title={!provider.canUnlink ? 'Este provedor nao pode ser removido porque voce ficaria sem forma valida de acesso.' : undefined}
+                        >
+                          {unlinking ? 'Removendo...' : 'Desvincular'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-5">
+                  <p className="text-sm font-semibold text-gray-700">Nenhuma conta externa conectada.</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Para conectar uma conta externa, saia do sistema e use uma opcao de login social na tela de login.
+                  </p>
+                </div>
+              )}
+            </div>
           </section>
 
           {user.membro ? (

@@ -4,6 +4,8 @@ export type Role = 'ADMIN' | 'STAFF' | 'BASIC' | 'SUPER_ADMIN';
 
 export type Plano = 'GRATUITO' | 'BASICO' | 'PROFISSIONAL';
 
+export type AuthProvider = 'GOOGLE' | 'APPLE';
+
 // ─── Tenant (Super Admin) ─────────────────────────────────────────────────────
 
 export interface Tenant {
@@ -66,6 +68,17 @@ export interface AuthUser {
 export interface LoginDto {
   email: string;
   senha: string;
+}
+
+export interface ConnectedAuthProvider {
+  provider: AuthProvider;
+  email: string | null;
+  emailVerified: boolean;
+  displayName: string | null;
+  avatarUrl: string | null;
+  linkedAt: string;
+  lastLoginAt: string | null;
+  canUnlink: boolean;
 }
 
 // ─── Tag ──────────────────────────────────────────────────────────────────────

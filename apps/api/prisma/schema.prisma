@@ -37,6 +37,13 @@ enum Role {
   @@map("role")
 }
 
+enum AuthProvider {
+  GOOGLE
+  APPLE
+
+  @@map("auth_provider")
+}
+
 enum MinistryRole {
   LEADER
   ASSISTANT_LEADER
@@ -141,9 +148,35 @@ model User {
   escalasItens EscalaItem[]
   auditLogs    AuditLog[]
   pushSubscriptions PushSubscription[]
+  authProviders UserAuthProvider[]
 
   @@index([tenantId])
   @@map("tb_user")
+}
+
+model UserAuthProvider {
+  id             String       @id @default(uuid())
+  userId         String       @map("user_id")
+  provider       AuthProvider
+  providerUserId String       @map("provider_user_id")
+  email          String?
+  emailVerified  Boolean      @default(false) @map("email_verified")
+  displayName    String?      @map("display_name")
+  avatarUrl      String?      @map("avatar_url")
+  ativo          Boolean      @default(true) @map("is_active")
+  linkedAt       DateTime     @default(now()) @map("linked_at")
+  lastLoginAt    DateTime?    @map("last_login_at")
+  revokedAt      DateTime?    @map("revoked_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([email])
+  @@map("tb_user_auth_provider")
 }
 
 model Membro {

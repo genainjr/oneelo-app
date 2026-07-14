@@ -5,10 +5,12 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Res,
   Req,
   Get,
   HttpCode,
+  HttpException,
   HttpStatus,
   UseGuards,
   UseInterceptors,
@@ -17,6 +19,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { SocialAuthService, type GoogleCallbackResult } from './social-auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -33,17 +36,96 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { MAX_IMAGE_SIZE } from '../../common/storage/image-upload';
 import { parseDurationToMilliseconds } from './auth-session';
+import {
+  OAUTH_PENDING_LINK_COOKIE,
+  OAUTH_STATE_COOKIE,
+} from './social-auth.constants';
 
 @ApiTags('Autenticação')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly socialAuthService: SocialAuthService,
+  ) {}
+
+  private isHttpsRequest(req: Request): boolean {
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    return req.secure || forwardedProto === 'https';
+  }
+
+  private setAccessTokenCookie(
+    res: Response,
+    req: Request,
+    accessToken: string,
+    expiresIn: string,
+  ) {
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: this.isHttpsRequest(req),
+      sameSite: 'lax',
+      maxAge: parseDurationToMilliseconds(expiresIn),
+    });
+  }
+
+  private setTransientCookie(
+    res: Response,
+    req: Request,
+    name: string,
+    value: string,
+    maxAge: number,
+  ) {
+    res.cookie(name, value, {
+      httpOnly: true,
+      secure: this.isHttpsRequest(req),
+      sameSite: 'lax',
+      maxAge,
+      path: '/',
+    });
+  }
+
+  private clearTransientCookie(res: Response, name: string) {
+    res.clearCookie(name, { path: '/' });
+  }
+
+  private getSocialLoginErrorMessage(error: unknown): string {
+    if (error instanceof HttpException) {
+      const response = error.getResponse();
+
+      if (typeof response === 'string') {
+        return response;
+      }
+
+      if (response && typeof response === 'object' && 'message' in response) {
+        const message = (response as { message?: string | string[] }).message;
+
+        if (Array.isArray(message)) {
+          return message.join(' ');
+        }
+
+        if (typeof message === 'string') {
+          return message;
+        }
+      }
+    }
+
+    return 'Nao foi possivel concluir o login social. Tente novamente.';
+  }
+
+  private buildSocialLoginErrorRedirect(error: unknown, provider: string) {
+    const params = new URLSearchParams({
+      provider,
+      message: this.getSocialLoginErrorMessage(error),
+    });
+
+    return `/login/social-link?${params.toString()}`;
+  }
 
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   @ApiOperation({ summary: 'Autentica um usuário e gera um cookie de sessão JWT' })
   @ApiResponse({ status: 200, description: 'Login efetuado com sucesso.' })
   @ApiResponse({ status: 401, description: 'E-mail ou senha incorretos.' })
@@ -55,17 +137,120 @@ export class AuthController {
     const ip = getClientIp(req);
     const { accessToken, user, expiresIn, expiresAt } = await this.authService.login(dto, ip);
 
-    const forwardedProto = req.headers['x-forwarded-proto'];
-    const isHttpsRequest = req.secure || forwardedProto === 'https';
-
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: isHttpsRequest,
-      sameSite: 'lax',
-      maxAge: parseDurationToMilliseconds(expiresIn),
-    });
+    this.setAccessTokenCookie(res, req, accessToken, expiresIn);
 
     return { message: 'Login realizado com sucesso.', user, expiresIn, expiresAt };
+  }
+
+  @Public()
+  @Get('oauth/google/start')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Inicia o fluxo OAuth de login com Google' })
+  async startGoogleLogin(
+    @Query('redirect') redirect: string | undefined,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
+    const { authorizationUrl, stateToken, maxAgeMs } =
+      await this.socialAuthService.createGoogleAuthorizationUrl(redirect);
+
+    this.setTransientCookie(res, req, OAUTH_STATE_COOKIE, stateToken, maxAgeMs);
+
+    return res.redirect(authorizationUrl);
+  }
+
+  @Public()
+  @Get('oauth/google/callback')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @ApiOperation({ summary: 'Recebe o callback OAuth do Google' })
+  async handleGoogleCallback(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
+    let result: GoogleCallbackResult;
+
+    try {
+      result = await this.socialAuthService.handleGoogleCallback(
+        code,
+        state,
+        req.cookies?.[OAUTH_STATE_COOKIE],
+        getClientIp(req),
+      );
+    } catch (error) {
+      this.clearTransientCookie(res, OAUTH_STATE_COOKIE);
+      this.clearTransientCookie(res, OAUTH_PENDING_LINK_COOKIE);
+      return res.redirect(this.buildSocialLoginErrorRedirect(error, 'GOOGLE'));
+    }
+
+    this.clearTransientCookie(res, OAUTH_STATE_COOKIE);
+    this.clearTransientCookie(res, OAUTH_PENDING_LINK_COOKIE);
+
+    if (result.status === 'authenticated') {
+      this.setAccessTokenCookie(res, req, result.session.accessToken, result.session.expiresIn);
+      return res.redirect(result.redirectPath);
+    }
+
+    this.setTransientCookie(
+      res,
+      req,
+      OAUTH_PENDING_LINK_COOKIE,
+      result.pendingToken,
+      result.pending.expiresInMs,
+    );
+
+    return res.redirect(result.redirectPath);
+  }
+
+  @Public()
+  @Get('oauth/google/pending-link')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @ApiOperation({ summary: 'Consulta a confirmacao pendente de primeiro vinculo Google' })
+  async getGooglePendingLink(@Req() req: Request) {
+    return this.socialAuthService.getPendingLink(req.cookies?.[OAUTH_PENDING_LINK_COOKIE]);
+  }
+
+  @Public()
+  @Post('oauth/google/confirm-link')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Confirma o primeiro vinculo Google e cria sessao' })
+  async confirmGoogleLink(
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+  ) {
+    const { accessToken, user, expiresIn, expiresAt, redirectPath } =
+      await this.socialAuthService.confirmPendingLink(
+        req.cookies?.[OAUTH_PENDING_LINK_COOKIE],
+        getClientIp(req),
+      );
+
+    this.clearTransientCookie(res, OAUTH_PENDING_LINK_COOKIE);
+    this.setAccessTokenCookie(res, req, accessToken, expiresIn);
+
+    return {
+      message: 'Conta Google vinculada com sucesso.',
+      user,
+      expiresIn,
+      expiresAt,
+      redirectPath,
+    };
+  }
+
+  @Public()
+  @Post('oauth/google/cancel-link')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Cancela a confirmacao pendente de primeiro vinculo Google' })
+  cancelGoogleLink(@Res({ passthrough: true }) res: Response) {
+    this.clearTransientCookie(res, OAUTH_PENDING_LINK_COOKIE);
+    return { message: 'Vinculacao com Google cancelada.' };
   }
 
   @Post('logout')
@@ -88,6 +273,30 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() user: JwtPayload) {
     return this.authService.me(user.sub, user.tenantId!);
+  }
+
+  @Get('me/auth-providers')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Lista provedores de login conectados ao usuario atual' })
+  async getMyAuthProviders(@CurrentUser() user: JwtPayload) {
+    return this.socialAuthService.listConnectedProviders(user.sub, user.tenantId!);
+  }
+
+  @Delete('me/auth-providers/:provider')
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Desvincula um provedor de login do usuario atual' })
+  async unlinkMyAuthProvider(
+    @Param('provider') provider: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.socialAuthService.unlinkProvider(
+      user.sub,
+      user.tenantId!,
+      provider,
+      getClientIp(req),
+    );
   }
 
   @Patch('me/password')
