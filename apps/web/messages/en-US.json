@@ -57,7 +57,10 @@
       "passwordPlaceholder": "••••••••",
       "submit": "Sign in",
       "submitting": "Signing in...",
+      "or": "or",
+      "googleSubmit": "Sign in with Google",
       "errorInvalid": "Incorrect email or password.",
+      "errorRateLimit": "Too many login attempts. Please wait one minute and try again.",
       "errorServer": "Login error. Please try again.",
       "errorConnection": "Connection error. Please check if the server is running.",
       "copyright": "© {year} Lookup Labs. All rights reserved."
