@@ -1,41 +1,18 @@
 'use client';
 
 import { useState, FormEvent, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { api, HttpError } from '@/lib/api';
+import { getPostLoginTarget, isSafeAppRedirect } from '@/lib/auth-redirect';
 import { AuthUser } from '@/types';
 
 interface LoginResponse {
   user: AuthUser;
 }
 
-function isSafeAppRedirect(value: string | null) {
-  if (!value) return false;
-  if (!value.startsWith('/')) return false;
-  if (value.startsWith('//')) return false;
-
-  const [pathname] = value.split('?');
-
-  if (
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/_next') ||
-    pathname === '/login' ||
-    pathname === '/admin/login' ||
-    pathname === '/manifest.webmanifest' ||
-    pathname === '/sw.js' ||
-    pathname === '/offline.html' ||
-    /\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?|webmanifest)$/.test(pathname)
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
 function LoginForm() {
   const t = useTranslations('auth.login');
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
 
@@ -51,16 +28,14 @@ function LoginForm() {
 
     try {
       const response = await api.post<LoginResponse>('/api/auth/login', { email, senha });
-      const fallback = response.user.role === 'BASIC' ? '/personal-panel' : '/dashboard';
-      const safeRedirect = isSafeAppRedirect(redirect) ? redirect : null;
-      const target = safeRedirect && !(response.user.role === 'BASIC' && safeRedirect === '/dashboard')
-        ? safeRedirect
-        : fallback;
+      const target = getPostLoginTarget(response.user, redirect);
       window.location.href = target;
     } catch (err) {
       if (err instanceof HttpError) {
         if (err.status === 401) {
           setError(t('errorInvalid'));
+        } else if (err.status === 429) {
+          setError(t('errorRateLimit'));
         } else {
           setError(t('errorServer'));
         }
@@ -70,6 +45,11 @@ function LoginForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleGoogleLogin() {
+    const safeRedirect = isSafeAppRedirect(redirect) && redirect ? redirect : '/dashboard';
+    window.location.href = `/api/auth/oauth/google/start?redirect=${encodeURIComponent(safeRedirect)}`;
   }
 
   return (
@@ -154,6 +134,30 @@ function LoginForm() {
             )}
           </button>
         </form>
+
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/15" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-200/70">
+            {t('or')}
+          </span>
+          <div className="h-px flex-1 bg-white/15" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-lg shadow-black/10 transition hover:bg-gray-50"
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+              <path fill="#4285F4" d="M21.805 10.023h-9.58v3.955h5.515c-.238 1.27-.96 2.348-2.044 3.066v2.55h3.31c1.937-1.784 3.054-4.414 3.054-7.524 0-.714-.064-1.402-.255-2.047z" />
+              <path fill="#34A853" d="M12.225 22c2.766 0 5.09-.916 6.786-2.486l-3.31-2.55c-.916.615-2.088.98-3.476.98-2.67 0-4.932-1.802-5.74-4.227H3.07v2.63C4.758 19.7 8.224 22 12.225 22z" />
+              <path fill="#FBBC05" d="M6.485 13.717a5.994 5.994 0 0 1 0-3.834v-2.63H3.07a10.004 10.004 0 0 0 0 9.094l3.415-2.63z" />
+              <path fill="#EA4335" d="M12.225 5.856c1.504 0 2.854.517 3.916 1.532l2.934-2.934C17.3 2.8 14.98 1.8 12.225 1.8c-4 0-7.467 2.3-9.155 5.453l3.415 2.63c.808-2.425 3.07-4.027 5.74-4.027z" />
+            </svg>
+          </span>
+          {t('googleSubmit')}
+        </button>
       </div>
 
       <p className="text-center text-indigo-400/60 text-xs mt-6">
