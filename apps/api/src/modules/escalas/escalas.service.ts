@@ -13,7 +13,7 @@ import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
 import { ReorderDiasDto } from './dto/reorder-dias.dto';
 import { ToggleDiaFuncaoOcultaDto } from './dto/toggle-dia-funcao-oculta.dto';
-import { Role, MinistryRole, StatusConfirmacao, StatusEscala } from '@prisma/client';
+import { Role, MinistryRole, StatusConfirmacao, StatusEscala, StatusMembro } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -531,6 +531,11 @@ export class EscalasService {
                     },
                   },
                 },
+                funcao: {
+                  select: {
+                    nome: true,
+                  },
+                },
               },
             },
           },
@@ -540,18 +545,126 @@ export class EscalasService {
 
     if (!escala) return;
 
-    const userIds = escala.dias
+    const notificationsByUser = new Map<string, { funcaoNome: string }>();
+
+    escala.dias
       .flatMap((dia) => dia.itens)
-      .map((item) => item.membro.user)
-      .filter((user): user is { id: string; ativo: boolean } => Boolean(user?.id && user.ativo))
-      .map((user) => user.id);
+      .forEach((item) => {
+        const user = item.membro.user;
+        if (!user?.id || !user.ativo || notificationsByUser.has(user.id)) return;
+
+        notificationsByUser.set(user.id, {
+          funcaoNome: item.funcao.nome,
+        });
+      });
+
+    if (notificationsByUser.size === 0) return;
+
+    await Promise.all(
+      Array.from(notificationsByUser.entries()).map(([userId, notification]) =>
+        this.notificationsService.sendToUsers(tenantId, [userId], {
+          title: 'Você foi escalado',
+          body: `Você servirá no ministério de ${escala.ministerio.nome} como ${notification.funcaoNome}. Confirme sua presença.`,
+          url: '/minhas-escalas?pendentesApenas=true',
+        }),
+      ),
+    );
+  }
+
+  private getMembroDisplayName(membro: { nome: string; nomeExibicao?: string | null }) {
+    return membro.nomeExibicao?.trim() || membro.nome;
+  }
+
+  private async getLeadershipUserIds(
+    tenantId: string,
+    ministerioId: string,
+    excludedUserId?: string,
+  ) {
+    const liderancas = await this.prisma.ministerioMembro.findMany({
+      where: {
+        ministerioId,
+        role: {
+          in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER],
+        },
+        membro: {
+          tenantId,
+          deletedAt: null,
+          status: StatusMembro.ATIVO,
+          user: {
+            is: {
+              ativo: true,
+            },
+          },
+        },
+      },
+      select: {
+        membro: {
+          select: {
+            user: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return Array.from(
+      new Set(
+        liderancas
+          .map((lideranca) => lideranca.membro.user?.id)
+          .filter((userId): userId is string => Boolean(userId && userId !== excludedUserId)),
+      ),
+    );
+  }
+
+  private async notifyLeadershipAboutConfirmationResponse(
+    tenantId: string,
+    item: {
+      membro: { nome: string; nomeExibicao?: string | null };
+      funcao?: { nome: string } | null;
+      escalaDia: {
+        escala: {
+          ministerioId: string;
+          ministerio: { nome: string };
+        };
+      };
+    },
+    statusConfirmacao: StatusConfirmacao,
+    actorUserId?: string,
+  ) {
+    if (
+      statusConfirmacao !== StatusConfirmacao.CONFIRMADO &&
+      statusConfirmacao !== StatusConfirmacao.RECUSADO
+    ) {
+      return;
+    }
+
+    const userIds = await this.getLeadershipUserIds(
+      tenantId,
+      item.escalaDia.escala.ministerioId,
+      actorUserId,
+    );
 
     if (userIds.length === 0) return;
 
+    const membroNome = this.getMembroDisplayName(item.membro);
+    const ministerioNome = item.escalaDia.escala.ministerio.nome;
+
+    if (statusConfirmacao === StatusConfirmacao.CONFIRMADO) {
+      await this.notificationsService.sendToUsers(tenantId, userIds, {
+        title: `${membroNome} confirmou presença`,
+        body: `Escala de ${ministerioNome} atualizada.`,
+        url: '/escalas',
+      });
+      return;
+    }
+
     await this.notificationsService.sendToUsers(tenantId, userIds, {
-      title: 'Nova Escala Publicada',
-      body: `Você foi escalado em ${escala.ministerio.nome}.\nDá uma olhada e confirma sua presença no One Elo.`,
-      url: '/minhas-escalas?pendentesApenas=true',
+      title: `${membroNome} não poderá servir`,
+      body: `A escala de ${ministerioNome} precisa de atenção.`,
+      url: '/escalas',
     });
   }
 
@@ -783,9 +896,16 @@ export class EscalasService {
       where: { id: itemId },
       include: {
         escalaDia: {
-          include: { escala: true }
+          include: {
+            escala: {
+              include: {
+                ministerio: { select: { nome: true } },
+              },
+            },
+          },
         },
-        membro: true
+        membro: { select: { id: true, nome: true, nomeExibicao: true } },
+        funcao: { select: { nome: true } },
       }
     });
 
@@ -810,13 +930,29 @@ export class EscalasService {
       );
     }
 
-    return this.prisma.escalaItem.update({
+    const shouldNotifyLeadership =
+      item.statusConfirmacao !== dto.statusConfirmacao &&
+      (dto.statusConfirmacao === StatusConfirmacao.CONFIRMADO ||
+        dto.statusConfirmacao === StatusConfirmacao.RECUSADO);
+
+    const updated = await this.prisma.escalaItem.update({
       where: { id: itemId },
       data: {
         statusConfirmacao: dto.statusConfirmacao,
         observacoes: dto.observacoes || item.observacoes,
       },
     });
+
+    if (shouldNotifyLeadership) {
+      await this.notifyLeadershipAboutConfirmationResponse(
+        tenantId,
+        item,
+        dto.statusConfirmacao,
+        user.sub,
+      );
+    }
+
+    return updated;
   }
 
   async toggleDiaFuncaoOculta(
