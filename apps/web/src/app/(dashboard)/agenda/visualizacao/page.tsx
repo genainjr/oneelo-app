@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CalendarDays, CircleDashed, Clock3, ListChecks, MapPin, TriangleAlert } from 'lucide-react';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { endOfWeek, startOfWeek } from 'date-fns';
 import { useEventos } from '@/hooks/use-eventos';
 import { useMinisterios } from '@/hooks/use-ministerios';
 import { useFilterState } from '@/hooks/use-filter-state';
@@ -42,17 +42,17 @@ export default function AgendaVisualizacaoPage() {
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState(() => new Date());
 
-  const monthStart = useMemo(() => startOfMonth(new Date()), []);
-  const monthEnd = useMemo(() => endOfMonth(new Date()), []);
+  const weekStart = useMemo(() => startOfWeek(new Date(), { weekStartsOn: 1 }), []);
+  const weekEnd = useMemo(() => endOfWeek(new Date(), { weekStartsOn: 1 }), []);
   const initialFilter = useMemo(
     () => ({
       status: '',
       tipo: '',
       ministerioId: '',
-      dataInicio: toDateInputValue(monthStart),
-      dataFim: toDateInputValue(monthEnd),
+      dataInicio: toDateInputValue(weekStart),
+      dataFim: toDateInputValue(weekEnd),
     }),
-    [monthStart, monthEnd],
+    [weekStart, weekEnd],
   );
 
   const { eventos, loading, error, applyFilter, refetch } = useEventos(initialFilter);

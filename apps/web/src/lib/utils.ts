@@ -34,6 +34,48 @@ function parseDateForFormat(date: DateInput, fmt: string): Date | null {
   return date;
 }
 
+export function getCivilDateKey(date: DateInput): string | null {
+  if (!date) return null;
+
+  if (typeof date === 'string') {
+    const dateOnly = date.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+    if (dateOnly) return dateOnly;
+  }
+
+  try {
+    const parsed = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(parsed)) return null;
+    return format(parsed, 'yyyy-MM-dd');
+  } catch {
+    return null;
+  }
+}
+
+export function compareCivilDates(left: DateInput, right: DateInput): number {
+  const leftKey = getCivilDateKey(left);
+  const rightKey = getCivilDateKey(right);
+
+  if (!leftKey && !rightKey) return 0;
+  if (!leftKey) return 1;
+  if (!rightKey) return -1;
+
+  return leftKey.localeCompare(rightKey);
+}
+
+export function isCivilDateOnOrAfter(date: DateInput, reference: DateInput = new Date()): boolean {
+  const dateKey = getCivilDateKey(date);
+  const referenceKey = getCivilDateKey(reference);
+
+  return !!dateKey && !!referenceKey && dateKey >= referenceKey;
+}
+
+export function isCivilDateBefore(date: DateInput, reference: DateInput = new Date()): boolean {
+  const dateKey = getCivilDateKey(date);
+  const referenceKey = getCivilDateKey(reference);
+
+  return !!dateKey && !!referenceKey && dateKey < referenceKey;
+}
+
 export function formatDate(date: DateInput, fmt = 'dd/MM/yyyy', dfLocale: Locale = ptBR): string {
   if (!date) return '—';
   try {
@@ -102,8 +144,8 @@ export const STATUS_MEMBRO_COLOR: Record<StatusMembro, string> = {
 
 export const STATUS_ESCALA_LABEL: Record<StatusEscala, string> = {
   RASCUNHO: 'Rascunho',
-  PUBLICADA: 'Publicada',
-  ENCERRADA: 'Encerrada',
+  PUBLICADA: 'Em andamento',
+  ENCERRADA: 'Finalizada',
 };
 
 export const STATUS_ESCALA_COLOR: Record<StatusEscala, string> = {

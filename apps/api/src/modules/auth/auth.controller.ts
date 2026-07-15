@@ -24,6 +24,8 @@ import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
+import { AuditLogsQueryDto } from './dto/audit-logs-query.dto';
 import type { Response, Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -275,6 +277,18 @@ export class AuthController {
     return this.authService.me(user.sub, user.tenantId!);
   }
 
+  @Patch('me/profile')
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Atualiza dados pessoais do usuario autenticado' })
+  async updateMyProfile(
+    @Body() dto: UpdateMyProfileDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.authService.updateMyProfile(user.sub, user.tenantId!, dto, getClientIp(req));
+  }
+
   @Get('me/auth-providers')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Lista provedores de login conectados ao usuario atual' })
@@ -381,8 +395,11 @@ export class AuthController {
   @Get('audit-logs')
   @UseGuards(JwtAuthGuard)
   @Roles(Role.ADMIN, Role.STAFF)
-  async getAuditLogs(@CurrentUser() user: JwtPayload) {
-    return this.authService.findAllAuditLogs(user.tenantId!);
+  async getAuditLogs(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: AuditLogsQueryDto,
+  ) {
+    return this.authService.findAllAuditLogs(user.tenantId!, query);
   }
 
   @Post('users')

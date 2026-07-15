@@ -303,6 +303,8 @@ export default function EscalasPage() {
     (currentUser?.role === 'BASIC' &&
       !!detailedEscala?.ministerioId &&
       ledMinisterioIds.has(detailedEscala.ministerioId));
+  const canEditSelectedEscala =
+    canManageSelectedEscala && detailedEscala?.status !== 'ENCERRADA';
   const anos = Array.from({ length: 4 }, (_, i) => hoje.getFullYear() - 1 + i);
 
   const STATUS_LABELS: Record<string, string> = {
@@ -310,6 +312,12 @@ export default function EscalasPage() {
     PUBLICADA: t('status.PUBLICADA'),
     ENCERRADA: t('status.ENCERRADA'),
   };
+  const statusIndicatorClass =
+    'inline-flex h-8 items-center justify-center rounded-xl border px-3 text-xs font-semibold';
+  const statusCardIndicatorClass =
+    'inline-flex items-center justify-center rounded-xl border px-2 py-0.5 text-[11px] font-semibold';
+  const statusActionButtonClass =
+    'inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-all';
 
   return (
     <div className="p-6 max-w-full mx-auto space-y-6">
@@ -496,7 +504,7 @@ export default function EscalasPage() {
                   </div>
                   <StatusBadge
                     label={STATUS_LABELS[e.status]}
-                    className={`text-[11px] border ${STATUS_ESCALA_COLOR[e.status]}`}
+                    className={`${statusCardIndicatorClass} ${STATUS_ESCALA_COLOR[e.status]}`}
                   />
                 </div>
                 <div className="mt-2 text-xs text-gray-400">
@@ -537,9 +545,35 @@ export default function EscalasPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {canManageSelectedEscala && detailedEscala.status === 'PUBLICADA' && (
+                    <button
+                      onClick={() => handleUpdateStatus('RASCUNHO')}
+                      aria-label={t('statusActions.returnDraftTitle')}
+                      title={t('statusActions.returnDraftTitle')}
+                      className={`${statusActionButtonClass} border-gray-200 bg-white text-gray-600 hover:bg-gray-50`}
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                      </svg>
+                      {t('statusActions.returnDraft')}
+                    </button>
+                  )}
+                  {canManageSelectedEscala && detailedEscala.status === 'ENCERRADA' && (
+                    <button
+                      onClick={() => handleUpdateStatus('PUBLICADA')}
+                      aria-label={t('statusActions.reopenTitle')}
+                      title={t('statusActions.reopenTitle')}
+                      className={`${statusActionButtonClass} border-gray-200 bg-white text-gray-600 hover:bg-gray-50`}
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 9.75H21m0 0v-4.5m0 4.5-3.2-3.2a7.5 7.5 0 1 0 1.7 7.7" />
+                      </svg>
+                      {t('statusActions.reopen')}
+                    </button>
+                  )}
                   <StatusBadge
                     label={STATUS_LABELS[detailedEscala.status]}
-                    className={`px-2.5 py-1 font-bold border ${STATUS_ESCALA_COLOR[detailedEscala.status]}`}
+                    className={`${statusIndicatorClass} ${STATUS_ESCALA_COLOR[detailedEscala.status]}`}
                   />
                   {canManageSelectedEscala && (
                     <>
@@ -547,22 +581,22 @@ export default function EscalasPage() {
                         <button
                           id="btn-publicar-escala"
                           onClick={() => handleUpdateStatus('PUBLICADA')}
-                          className="px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all"
+                          className={`${statusActionButtonClass} border-blue-600 bg-blue-600 text-white hover:border-blue-700 hover:bg-blue-700`}
                         >
-                          {t('status.PUBLICADA')}
+                          {t('statusActions.publish')}
                         </button>
                       )}
                       {detailedEscala.status === 'PUBLICADA' && (
                         <button
                           onClick={() => handleUpdateStatus('ENCERRADA')}
-                          className="px-3 py-1.5 text-xs font-semibold text-white bg-gray-700 hover:bg-gray-800 rounded-xl transition-all"
+                          className={`${statusActionButtonClass} border-emerald-600 bg-emerald-600 text-white hover:border-emerald-700 hover:bg-emerald-700`}
                         >
-                          {t('status.ENCERRADA')}
+                          {t('statusActions.close')}
                         </button>
                       )}
                       <button
                         onClick={handleDelete}
-                        className="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-100 hover:bg-red-50 rounded-xl transition-all"
+                        className={`${statusActionButtonClass} border-red-100 bg-white text-red-600 hover:bg-red-50`}
                       >
                         Excluir
                       </button>
@@ -574,7 +608,7 @@ export default function EscalasPage() {
               <EscalaGrid
                 escala={detailedEscala}
                 ministryMembers={ministryMembers}
-                canManage={canManageSelectedEscala}
+                canManage={canEditSelectedEscala}
                 tGrid={tGrid}
                 onToggleCelula={handleToggleCelula}
                 onAddMembro={async (diaId, membroId, funcaoId) => {
@@ -671,7 +705,7 @@ export default function EscalasPage() {
                       onClick={() => setNewDiasSemana(prev =>
                         selected ? prev.filter(d => d !== value) : [...prev, value]
                       )}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all select-none ${
+                      className={`inline-flex h-8 items-center justify-center rounded-xl border px-3 text-xs font-bold transition-all select-none ${
                         selected
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                           : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'

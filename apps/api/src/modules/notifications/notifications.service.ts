@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StatusConfirmacao, StatusEscala } from '@prisma/client';
+import { AcaoAuditoria, StatusConfirmacao, StatusEscala } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import webPush from 'web-push';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -75,7 +75,12 @@ export class NotificationsService {
     user: JwtPayload,
     dto: UpsertPushSubscriptionDto,
   ) {
-    return this.prisma.pushSubscription.upsert({
+    const existing = await this.prisma.pushSubscription.findUnique({
+      where: { endpoint: dto.endpoint },
+      select: { id: true, ativo: true },
+    });
+
+    const subscription = await this.prisma.pushSubscription.upsert({
       where: { endpoint: dto.endpoint },
       create: {
         tenantId,
@@ -100,6 +105,24 @@ export class NotificationsService {
         updatedAt: true,
       },
     });
+
+    if (!existing || !existing.ativo) {
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: user.sub,
+          entidade: 'push_subscription',
+          entidadeId: subscription.id,
+          acao: AcaoAuditoria.CRIAR,
+          payloadAfter: {
+            ativo: true,
+            userAgent: dto.userAgent,
+          },
+        },
+      });
+    }
+
+    return subscription;
   }
 
   async deleteSubscription(
@@ -107,6 +130,19 @@ export class NotificationsService {
     user: JwtPayload,
     dto: DeletePushSubscriptionDto,
   ) {
+    const existing = await this.prisma.pushSubscription.findFirst({
+      where: {
+        tenantId,
+        userId: user.sub,
+        endpoint: dto.endpoint,
+      },
+      select: {
+        id: true,
+        ativo: true,
+        userAgent: true,
+      },
+    });
+
     await this.prisma.pushSubscription.updateMany({
       where: {
         tenantId,
@@ -117,6 +153,25 @@ export class NotificationsService {
         ativo: false,
       },
     });
+
+    if (existing?.ativo) {
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: user.sub,
+          entidade: 'push_subscription',
+          entidadeId: existing.id,
+          acao: AcaoAuditoria.DELETAR,
+          payloadBefore: {
+            ativo: true,
+            userAgent: existing.userAgent,
+          },
+          payloadAfter: {
+            ativo: false,
+          },
+        },
+      });
+    }
 
     return { message: 'Subscription de notificacao removida.' };
   }

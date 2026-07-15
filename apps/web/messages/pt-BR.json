@@ -401,8 +401,16 @@
     "errorLoadDetail": "Erro ao carregar detalhes da escala.",
     "status": {
       "RASCUNHO": "Rascunho",
-      "PUBLICADA": "Publicada",
-      "ENCERRADA": "Encerrada"
+      "PUBLICADA": "Em andamento",
+      "ENCERRADA": "Finalizada"
+    },
+    "statusActions": {
+      "publish": "Publicar",
+      "returnDraft": "Rascunho",
+      "returnDraftTitle": "Mover escala para Rascunho",
+      "close": "Finalizar escala",
+      "reopen": "Em andamento",
+      "reopenTitle": "Mover escala para Em andamento"
     },
     "filter": {
       "month": "Mês",
@@ -598,7 +606,33 @@
         "resource": "Recurso",
         "ipAddress": "IP Address"
       },
-      "system": "Sistema"
+      "system": "Sistema",
+      "platformOperator": "Lookup Labs (Super Admin)",
+      "filters": {
+        "operator": "Operador",
+        "operation": "Operação",
+        "resource": "Recurso",
+        "allOperators": "Todos os operadores",
+        "allOperations": "Todas as operações",
+        "allResources": "Todos os recursos"
+      },
+      "actions": {
+        "CRIAR": "Criação",
+        "ATUALIZAR": "Atualização",
+        "DELETAR": "Exclusão",
+        "LOGIN": "Login",
+        "LOGOUT": "Logout"
+      },
+      "resources": {
+        "usuarios": "Usuários",
+        "User": "Usuários do tenant",
+        "user_auth_provider": "Vínculo de login social",
+        "push_subscription": "Notificações",
+        "membros": "Membros",
+        "ministerios": "Ministérios",
+        "escalas": "Escalas",
+        "Tenant": "Dados do tenant"
+      }
     },
     "deactivate": {
       "title": "Desativar usuário",

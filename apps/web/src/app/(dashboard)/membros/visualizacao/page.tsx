@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { MemberProfileDrawer } from '@/components/app/member-profile-drawer';
 import { DataTable, Column } from '@/components/app/data-table';
@@ -46,6 +46,7 @@ export default function MembrosVisualizacaoPage() {
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [selected, setSelected] = useState<MembroVisualizacao | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const membersViewListTopRef = useRef<HTMLDivElement | null>(null);
   const itemsPerPage = 10;
   const {
     formState: filterState,
@@ -131,6 +132,36 @@ export default function MembrosVisualizacaoPage() {
     return sortedMembros.slice(start, start + itemsPerPage);
   }, [sortedMembros, currentPage]);
 
+  function scrollMembersViewListToTop() {
+    if (typeof window === 'undefined') return;
+
+    window.requestAnimationFrame(() => {
+      const target = membersViewListTopRef.current;
+      if (!target) return;
+
+      const dashboardScrollContainer = target.closest<HTMLElement>('[data-dashboard-scroll-container]');
+
+      if (dashboardScrollContainer) {
+        const containerRect = dashboardScrollContainer.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const top = dashboardScrollContainer.scrollTop + targetRect.top - containerRect.top - 16;
+
+        dashboardScrollContainer.scrollTo({
+          top: Math.max(top, 0),
+          behavior: 'auto',
+        });
+        return;
+      }
+
+      target.scrollIntoView({ behavior: 'auto', block: 'start' });
+    });
+  }
+
+  function handleMembersViewPageChange(page: number) {
+    setCurrentPage(page);
+    scrollMembersViewListToTop();
+  }
+
   const memberColumns: Column<MembroVisualizacao>[] = [
     {
       key: 'nome',
@@ -195,19 +226,20 @@ export default function MembrosVisualizacaoPage() {
         <StatCard title="Sem telefone" value={stats.semContato} icon={<PhoneOff className="w-5 h-5" />} color="rose" />
       </div>
 
-      <FilterShell
-        onSubmit={handleFilterSubmit}
-        actions={
-          <FilterActions
-            submitLabel="Filtrar"
-            clearLabel="Limpar"
-            reloadLabel="Recarregar"
-            onClear={() => handleClearFilters()}
-            onReload={refetch}
-          />
-        }
-      >
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-6 items-end">
+      <div ref={membersViewListTopRef}>
+        <FilterShell
+          onSubmit={handleFilterSubmit}
+          actions={
+            <FilterActions
+              submitLabel="Filtrar"
+              clearLabel="Limpar"
+              reloadLabel="Recarregar"
+              onClear={() => handleClearFilters()}
+              onReload={refetch}
+            />
+          }
+        >
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-6 items-end">
           <FilterInput
             label="Nome"
             value={filterState.nome}
@@ -259,8 +291,9 @@ export default function MembrosVisualizacaoPage() {
             />
             Sem telefone
           </label>
-        </div>
-      </FilterShell>
+          </div>
+        </FilterShell>
+      </div>
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
@@ -275,7 +308,8 @@ export default function MembrosVisualizacaoPage() {
         currentPage={currentPage}
         totalItems={membros.length}
         itemsPerPage={itemsPerPage}
-        onPageChange={setCurrentPage}
+        onPageChange={handleMembersViewPageChange}
+        scrollOnPageChange={false}
         emptyTitle="Nenhum membro encontrado"
         emptyDescription="Ajuste os filtros para localizar outros membros."
       renderMobileCard={(membro) => (

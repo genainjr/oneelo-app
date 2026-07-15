@@ -10,7 +10,7 @@ import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { Calendar, AlertTriangle, List } from 'lucide-react';
-import { getDatePartsWithWeekday, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
+import { getCivilDateKey, getDatePartsWithWeekday, isCivilDateBefore, isCivilDateOnOrAfter, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, MinhaEscalaItem } from '@/types';
 
 export default function MinhasEscalasPage() {
@@ -37,24 +37,23 @@ export default function MinhasEscalasPage() {
     }
   }, [items.length, loading, loadingUser, router, user]);
 
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  const todayDateKey = getCivilDateKey(new Date()) ?? '';
 
   const pendentes = useMemo(
     () => items.filter((item) => (
       item.escala.status === 'PUBLICADA' &&
       item.statusConfirmacao === 'PENDENTE' &&
-      new Date(item.data) >= hoje
+      isCivilDateOnOrAfter(item.data, todayDateKey)
     )),
-    [items],
+    [items, todayDateKey],
   );
   const futuras = useMemo(
-    () => items.filter((item) => new Date(item.data) >= hoje),
-    [items],
+    () => items.filter((item) => isCivilDateOnOrAfter(item.data, todayDateKey)),
+    [items, todayDateKey],
   );
   const passadas = useMemo(
-    () => items.filter((item) => new Date(item.data) < hoje).slice().reverse(),
-    [items],
+    () => items.filter((item) => isCivilDateBefore(item.data, todayDateKey)).slice().reverse(),
+    [items, todayDateKey],
   );
 
   async function updateConfirmacao(itemId: string, statusConfirmacao: 'CONFIRMADO' | 'RECUSADO') {

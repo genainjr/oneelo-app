@@ -71,6 +71,21 @@ export class EscalasService {
     return { start, end };
   }
 
+  private isValidStatusTransition(current: StatusEscala, next: StatusEscala) {
+    return (
+      (current === StatusEscala.RASCUNHO && next === StatusEscala.PUBLICADA) ||
+      (current === StatusEscala.PUBLICADA && next === StatusEscala.ENCERRADA) ||
+      (current === StatusEscala.PUBLICADA && next === StatusEscala.RASCUNHO) ||
+      (current === StatusEscala.ENCERRADA && next === StatusEscala.PUBLICADA)
+    );
+  }
+
+  private assertEscalaAbertaParaEdicao(status: StatusEscala) {
+    if (status === StatusEscala.ENCERRADA) {
+      throw new BadRequestException('Não é possível alterar uma escala encerrada. Reabra a escala antes de editar.');
+    }
+  }
+
   /**
    * Verifica se o usuário BASIC tem role de LEADER ou ASSISTANT_LEADER no ministério.
    */
@@ -463,9 +478,7 @@ export class EscalasService {
     }
 
     if (dto.status && dto.status !== escala.status) {
-      const transicaoValida =
-        (escala.status === StatusEscala.RASCUNHO && dto.status === StatusEscala.PUBLICADA) ||
-        (escala.status === StatusEscala.PUBLICADA && dto.status === StatusEscala.ENCERRADA);
+      const transicaoValida = this.isValidStatusTransition(escala.status, dto.status);
 
       if (!transicaoValida) {
         throw new BadRequestException(
@@ -473,6 +486,11 @@ export class EscalasService {
         );
       }
     }
+
+    const shouldNotifyPublished =
+      escala.status === StatusEscala.RASCUNHO &&
+      dto.status === StatusEscala.PUBLICADA &&
+      Math.abs(escala.updatedAt.getTime() - escala.createdAt.getTime()) < 1000;
 
     const data: any = {};
     if (dto.status) data.status = dto.status;
@@ -483,7 +501,7 @@ export class EscalasService {
       data,
       });
 
-    if (escala.status === StatusEscala.RASCUNHO && dto.status === StatusEscala.PUBLICADA) {
+    if (shouldNotifyPublished) {
       await this.notifyEscalaPublished(tenantId, id);
     }
 
@@ -572,6 +590,8 @@ export class EscalasService {
       await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
+    this.assertEscalaAbertaParaEdicao(escala.status);
+
     const last = await this.prisma.escalaDia.findFirst({
       where: { escalaId },
       orderBy: { ordem: 'desc' },
@@ -595,6 +615,8 @@ export class EscalasService {
       await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
+    this.assertEscalaAbertaParaEdicao(escala.status);
+
     await Promise.all(
       dto.diaIds.map((id, index) =>
         this.prisma.escalaDia.update({ where: { id }, data: { ordem: index } })
@@ -616,6 +638,8 @@ export class EscalasService {
     if (user.role === Role.BASIC) {
       await this.checkMinistryAccess(dia.escala.ministerioId, user.memberId);
     }
+
+    this.assertEscalaAbertaParaEdicao(dia.escala.status);
 
     await this.prisma.escalaDia.delete({ where: { id: diaId } });
     return { message: 'Dia removido com sucesso.' };
@@ -641,9 +665,7 @@ export class EscalasService {
       await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
-    if (escala.status === StatusEscala.ENCERRADA) {
-      throw new BadRequestException('Não é possível adicionar membros a uma escala encerrada.');
-    }
+    this.assertEscalaAbertaParaEdicao(escala.status);
 
     const membro = await this.prisma.client.membro.findFirst({
       where: { id: dto.membroId, tenantId },
@@ -740,9 +762,7 @@ export class EscalasService {
       await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
-    if (escala.status === StatusEscala.ENCERRADA) {
-      throw new BadRequestException('Não é possível remover membros de uma escala encerrada.');
-    }
+    this.assertEscalaAbertaParaEdicao(escala.status);
 
     await this.prisma.escalaItem.delete({
       where: { id: itemId },
@@ -815,6 +835,8 @@ export class EscalasService {
     if (user.role === Role.BASIC) {
       await this.checkMinistryAccess(dia.escala.ministerioId, user.memberId);
     }
+
+    this.assertEscalaAbertaParaEdicao(dia.escala.status);
 
     if (dto.ocultar) {
       await this.prisma.escalaDiaFuncaoOculta.upsert({

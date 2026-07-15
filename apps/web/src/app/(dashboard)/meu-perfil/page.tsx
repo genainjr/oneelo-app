@@ -5,7 +5,7 @@ import type { FormEvent } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
-import { PasswordField } from '@/components/app/form-field';
+import { InputField, PasswordField } from '@/components/app/form-field';
 import { InfoItem } from '@/components/app/info-item';
 import { StatusBadge } from '@/components/app/status-badge';
 import { ImageUploadPanel } from '@/components/app/image-upload-panel';
@@ -20,11 +20,33 @@ const AUTH_PROVIDER_LABEL: Record<ConnectedAuthProvider['provider'], string> = {
   APPLE: 'Apple',
 };
 
+type ProfileFormState = {
+  nome: string;
+  nomeExibicao: string;
+  whatsapp: string;
+};
+
+function buildProfileForm(user: AuthUser): ProfileFormState {
+  return {
+    nome: user.nome ?? '',
+    nomeExibicao: user.membro?.nomeExibicao ?? '',
+    whatsapp: user.membro?.whatsapp ?? '',
+  };
+}
+
 export default function MeuPerfilPage() {
   const { setUser: setLayoutUser } = useAuthUser();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [profileForm, setProfileForm] = useState<ProfileFormState>({
+    nome: '',
+    nomeExibicao: '',
+    whatsapp: '',
+  });
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoRemoving, setPhotoRemoving] = useState(false);
   const [photoError, setPhotoError] = useState('');
@@ -44,10 +66,63 @@ export default function MeuPerfilPage() {
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
-      .then(setUser)
+      .then((data) => {
+        setUser(data);
+        setProfileForm(buildProfileForm(data));
+      })
       .catch(() => setError('Nao foi possivel carregar seu perfil.'))
       .finally(() => setLoading(false));
   }, []);
+
+  function handleProfileFieldChange(field: keyof ProfileFormState, value: string) {
+    setProfileForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function handleResetProfileForm() {
+    if (!user) return;
+    setProfileError('');
+    setProfileSuccess('');
+    setProfileForm(buildProfileForm(user));
+  }
+
+  async function handleUpdateProfile(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!user) return;
+
+    setProfileError('');
+    setProfileSuccess('');
+
+    const nome = profileForm.nome.trim();
+
+    if (!nome) {
+      setProfileError('Nome completo e obrigatorio.');
+      return;
+    }
+
+    const payload = user.membro
+      ? {
+          nome,
+          nomeExibicao: profileForm.nomeExibicao.trim() || null,
+          whatsapp: profileForm.whatsapp.trim() || null,
+        }
+      : { nome };
+
+    setProfileLoading(true);
+    try {
+      const updated = await api.patch<AuthUser>('/api/auth/me/profile', payload);
+      setUser(updated);
+      setLayoutUser(updated);
+      setProfileForm(buildProfileForm(updated));
+      setProfileSuccess('Dados pessoais atualizados com sucesso.');
+    } catch (err: any) {
+      setProfileError(err?.message || 'Nao foi possivel atualizar seus dados pessoais.');
+    } finally {
+      setProfileLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -180,15 +255,6 @@ export default function MeuPerfilPage() {
     }
   }
 
-  function getInitials(name: string) {
-    return name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('');
-  }
-
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <PageHeader
@@ -204,24 +270,10 @@ export default function MeuPerfilPage() {
         <div className="space-y-5">
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 overflow-hidden rounded-2xl border border-gray-200 bg-indigo-50">
-                  {user.membro?.fotoUrl ? (
-                    <img
-                      src={user.membro.fotoUrl}
-                      alt={user.membro.nome}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-indigo-100 text-lg font-bold text-indigo-700">
-                      {getInitials(user.membro?.nome || user.nome)}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">{user.nome}</h2>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Dados da conta</p>
+                <h2 className="mt-1 text-lg font-bold text-gray-900">{user.nome}</h2>
+                <p className="text-sm text-gray-500">{user.email}</p>
               </div>
 
               {user.membro && (
@@ -266,6 +318,80 @@ export default function MeuPerfilPage() {
               <InfoItem label="Plano" value={user.tenant?.plano || '-'} />
               <InfoItem label="Criado em" value={formatDate(user.createdAt, 'dd/MM/yyyy')} />
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Dados pessoais</h2>
+              <p className="text-sm text-gray-500">
+                Atualize as informacoes usadas para identificacao no sistema e nas impressoes.
+              </p>
+            </div>
+
+            {!user.membro && (
+              <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                Seu usuario ainda nao possui membro vinculado. Por enquanto, somente o nome completo pode ser alterado aqui.
+              </p>
+            )}
+
+            <form onSubmit={handleUpdateProfile} className="mt-5 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <InputField
+                  id="profile-nome"
+                  label="Nome completo"
+                  required
+                  value={profileForm.nome}
+                  onChange={(event) => handleProfileFieldChange('nome', event.target.value)}
+                  autoComplete="name"
+                />
+                <InputField
+                  id="profile-nome-exibicao"
+                  label="Nome de impressao"
+                  optionalLabel={user.membro ? 'Opcional' : 'Requer membro vinculado'}
+                  value={profileForm.nomeExibicao}
+                  onChange={(event) => handleProfileFieldChange('nomeExibicao', event.target.value)}
+                  disabled={!user.membro}
+                />
+                <InputField
+                  id="profile-whatsapp"
+                  label="Telefone"
+                  optionalLabel={user.membro ? 'Opcional' : 'Requer membro vinculado'}
+                  value={profileForm.whatsapp}
+                  onChange={(event) => handleProfileFieldChange('whatsapp', event.target.value)}
+                  autoComplete="tel"
+                  disabled={!user.membro}
+                />
+              </div>
+
+              {profileError && (
+                <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                  {profileError}
+                </p>
+              )}
+              {profileSuccess && (
+                <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                  {profileSuccess}
+                </p>
+              )}
+
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={handleResetProfileForm}
+                  disabled={profileLoading}
+                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Descartar alteracoes
+                </button>
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {profileLoading ? 'Salvando...' : 'Salvar dados'}
+                </button>
+              </div>
+            </form>
           </section>
 
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
@@ -424,6 +550,7 @@ export default function MeuPerfilPage() {
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <InfoItem label="Nome" value={user.membro.nome} />
+                <InfoItem label="Nome de impressao" value={user.membro.nomeExibicao || '-'} />
                 <InfoItem label="E-mail" value={user.membro.email || '-'} />
                 <InfoItem label="WhatsApp" value={formatPhone(user.membro.whatsapp)} />
                 <InfoItem label="Nascimento" value={formatDate(user.membro.dataNascimento, 'dd/MM/yyyy')} />
