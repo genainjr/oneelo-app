@@ -257,7 +257,7 @@ export interface AuditLog {
   payloadBefore?: unknown;
   payloadAfter?: unknown;
   createdAt: string;
-  user?: Pick<User, 'id' | 'nome' | 'email'>;
+  user?: Pick<User, 'id' | 'nome' | 'email' | 'role'>;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -275,6 +275,13 @@ export interface DashboardStats {
 
 export interface PaginatedResponse<T> {
   data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedItemsResponse<T> {
+  items: T[];
   total: number;
   page: number;
   limit: number;

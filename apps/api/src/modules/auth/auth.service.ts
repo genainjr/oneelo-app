@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -13,9 +14,10 @@ import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { TenantMediaService } from '../../common/storage/tenant-media.service';
-import { AcaoAuditoria, StatusMembro } from '@prisma/client';
+import { AcaoAuditoria, Prisma, Role, StatusMembro } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import type { Multer } from 'multer';
 import { getUserSessionExpiresIn, parseDurationToMilliseconds } from './auth-session';
@@ -204,6 +206,144 @@ export class AuthService {
     return { message: 'Senha alterada com sucesso.' };
   }
 
+  async updateMyProfile(
+    userId: string,
+    tenantId: string,
+    dto: UpdateMyProfileDto,
+    ip?: string,
+  ) {
+    const hasNome = Object.prototype.hasOwnProperty.call(dto, 'nome');
+    const hasNomeExibicao = Object.prototype.hasOwnProperty.call(dto, 'nomeExibicao');
+    const hasWhatsapp = Object.prototype.hasOwnProperty.call(dto, 'whatsapp');
+
+    if (!hasNome && !hasNomeExibicao && !hasWhatsapp) {
+      throw new BadRequestException('Informe ao menos um campo para atualizar.');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, ativo: true },
+      select: {
+        id: true,
+        nome: true,
+        memberId: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Sessao invalida.');
+    }
+
+    const member = user.memberId
+      ? await this.prisma.membro.findFirst({
+          where: {
+            id: user.memberId,
+            tenantId,
+            deletedAt: null,
+            status: StatusMembro.ATIVO,
+          },
+          select: {
+            id: true,
+            nome: true,
+            nomeExibicao: true,
+            whatsapp: true,
+          },
+        })
+      : null;
+
+    const trimmedNome = hasNome && typeof dto.nome === 'string' ? dto.nome.trim() : undefined;
+    const trimmedNomeExibicao = hasNomeExibicao && typeof dto.nomeExibicao === 'string'
+      ? dto.nomeExibicao.trim()
+      : dto.nomeExibicao;
+    const trimmedWhatsapp = hasWhatsapp && typeof dto.whatsapp === 'string'
+      ? dto.whatsapp.trim()
+      : dto.whatsapp;
+
+    if (hasNome && !trimmedNome) {
+      throw new BadRequestException('Nome completo e obrigatorio.');
+    }
+
+    const hasMemberFieldValue = (value: string | null | undefined) => value !== undefined && value !== null && value !== '';
+    const hasNomeExibicaoValue = hasNomeExibicao && hasMemberFieldValue(trimmedNomeExibicao);
+    const hasWhatsappValue = hasWhatsapp && hasMemberFieldValue(trimmedWhatsapp);
+
+    if (!member && (hasNomeExibicaoValue || hasWhatsappValue)) {
+      throw new ForbiddenException(
+        'Seu usuario nao possui membro vinculado para alterar nome de impressao ou telefone.',
+      );
+    }
+
+    if (!member && !hasNome) {
+      throw new BadRequestException('Informe ao menos um campo para atualizar.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (hasNome) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { nome: trimmedNome },
+        });
+      }
+
+      if (member) {
+        const memberData: Prisma.MembroUpdateInput = {};
+
+        if (hasNome) {
+          memberData.nome = trimmedNome;
+        }
+
+        if (hasNomeExibicao) {
+          memberData.nomeExibicao = trimmedNomeExibicao || null;
+        }
+
+        if (hasWhatsapp) {
+          memberData.whatsapp = trimmedWhatsapp || null;
+        }
+
+        if (Object.keys(memberData).length > 0) {
+          await tx.membro.update({
+            where: { id: member.id },
+            data: memberData,
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId,
+          entidade: 'usuarios',
+          entidadeId: userId,
+          acao: AcaoAuditoria.ATUALIZAR,
+          payloadBefore: {
+            nome: user.nome,
+            membro: member
+              ? {
+                  id: member.id,
+                  nome: member.nome,
+                  nomeExibicao: member.nomeExibicao,
+                  whatsapp: member.whatsapp,
+                }
+              : null,
+          },
+          payloadAfter: {
+            nome: hasNome ? trimmedNome : user.nome,
+            membro: member
+              ? {
+                  id: member.id,
+                  nome: hasNome ? trimmedNome : member.nome,
+                  nomeExibicao: hasNomeExibicao ? (trimmedNomeExibicao || null) : member.nomeExibicao,
+                  whatsapp: hasWhatsapp ? (trimmedWhatsapp || null) : member.whatsapp,
+                }
+              : null,
+          },
+          ipAddress: ip,
+        },
+      });
+    });
+
+    return this.me(userId, tenantId);
+  }
+
   async findAllUsers(tenantId: string) {
     return this.prisma.user.findMany({
       where: { tenantId },
@@ -223,17 +363,51 @@ export class AuthService {
     });
   }
 
-  async findAllAuditLogs(tenantId: string) {
-    return this.prisma.auditLog.findMany({
-      where: { tenantId },
-      include: {
-        user: {
-          select: { id: true, nome: true, email: true },
+  async findAllAuditLogs(
+    tenantId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      acao?: AcaoAuditoria;
+      entidade?: string;
+      operador?: string;
+    } = {},
+  ) {
+    const page = Math.max(1, Math.trunc(options.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Math.trunc(options.limit ?? 15)));
+    const skip = (page - 1) * limit;
+    const where: Prisma.AuditLogWhereInput = {
+      tenantId,
+      ...(options.acao ? { acao: options.acao } : {}),
+      ...(options.entidade ? { entidade: options.entidade } : {}),
+      ...(options.operador === 'platform'
+        ? { user: { role: Role.SUPER_ADMIN } }
+        : options.operador
+          ? { userId: options.operador }
+          : {}),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.auditLog.findMany({
+        where,
+        include: {
+          user: {
+            select: { id: true, nome: true, email: true, role: true },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+    };
   }
 
   async createUser(

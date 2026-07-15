@@ -37,6 +37,7 @@ interface DataTableProps<T> {
   totalItems?: number;
   itemsPerPage?: number;
   onPageChange?: (page: number) => void;
+  scrollOnPageChange?: boolean;
 
   // Ordenacao (controlada — o DataTable nao ordena os dados, apenas emite o evento)
   sort?: SortState;
@@ -93,6 +94,7 @@ export function DataTable<T>({
   totalItems = 0,
   itemsPerPage = 10,
   onPageChange,
+  scrollOnPageChange = true,
   sort,
   onSortChange,
   renderMobileCard,
@@ -137,7 +139,7 @@ export function DataTable<T>({
   const handlePageChange = (page: number) => {
     onPageChange?.(page);
 
-    if (typeof window !== 'undefined') {
+    if (scrollOnPageChange && typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
         const dashboardScrollContainer = tableRef.current?.closest<HTMLElement>(
           '[data-dashboard-scroll-container]',

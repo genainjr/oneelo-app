@@ -36,6 +36,19 @@ export class EventosService {
     return [...new Set((ids ?? []).map((id) => id.trim()).filter(Boolean))];
   }
 
+  private buildDataFimFilter(dataFim: string): Prisma.DateTimeFilter {
+    const dateOnlyMatch = dataFim.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!dateOnlyMatch) {
+      return { lte: new Date(dataFim) };
+    }
+
+    const [, year, month, day] = dateOnlyMatch;
+    const nextDay = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day) + 1));
+
+    return { lt: nextDay };
+  }
+
   private async getMinisterioIdsDoUsuario(tenantId: string, user: JwtPayload) {
     if (!user.memberId) {
       return [];
@@ -175,7 +188,7 @@ export class EventosService {
 
       if (query.dataFim) {
         where.AND.push({
-          dataInicio: { lte: new Date(query.dataFim) },
+          dataInicio: this.buildDataFimFilter(query.dataFim),
         });
       }
     }

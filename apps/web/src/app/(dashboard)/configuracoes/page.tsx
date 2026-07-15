@@ -8,9 +8,9 @@ import { DataTable, Column, SortState } from '@/components/app/data-table';
 import { StatusBadge } from '@/components/app/status-badge';
 import { UsuarioModal } from '@/components/app/usuario-modal';
 import { ImageUploadPanel } from '@/components/app/image-upload-panel';
-import { api } from '@/lib/api';
+import { api, buildQuery } from '@/lib/api';
 import { buildImageFormData, IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
-import { User, AuditLog, AuthUser } from '@/types';
+import { User, AuditLog, AuthUser, PaginatedItemsResponse } from '@/types';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 
 type TenantLogoPayload = NonNullable<AuthUser['tenant']>;
@@ -25,7 +25,9 @@ export default function ConfiguracoesPage() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -38,11 +40,15 @@ export default function ConfiguracoesPage() {
   const [logoError, setLogoError] = useState('');
   const [logoSuccess, setLogoSuccess] = useState('');
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const auditLogsTopRef = useRef<HTMLElement | null>(null);
 
   const [userPage, setUserPage] = useState(1);
   const [auditPage, setAuditPage] = useState(1);
+  const [auditActionFilter, setAuditActionFilter] = useState('');
+  const [auditResourceFilter, setAuditResourceFilter] = useState('');
+  const [auditOperatorFilter, setAuditOperatorFilter] = useState('');
   const [userSort, setUserSort] = useState<SortState>({ key: 'nome', direction: 'asc' });
-  const itemsPerPage = 15;
+  const itemsPerPage = 10;
 
   const sortedUsers = useMemo(() => {
     const arr = [...users];
@@ -62,11 +68,6 @@ export default function ConfiguracoesPage() {
     () => sortedUsers.slice((userPage - 1) * itemsPerPage, userPage * itemsPerPage),
     [sortedUsers, userPage],
   );
-  const pagedAudit = useMemo(
-    () => auditLogs.slice((auditPage - 1) * itemsPerPage, auditPage * itemsPerPage),
-    [auditLogs, auditPage],
-  );
-
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
       .then(setCurrentUser)
@@ -75,31 +76,88 @@ export default function ConfiguracoesPage() {
 
   const isAdmin = currentUser?.role === 'ADMIN';
   const logoPreview = currentUser?.tenant?.logoUrl ?? null;
+  const auditActionOptions = [
+    { value: '', label: t('audit.filters.allOperations') },
+    { value: 'CRIAR', label: t('audit.actions.CRIAR') },
+    { value: 'ATUALIZAR', label: t('audit.actions.ATUALIZAR') },
+    { value: 'DELETAR', label: t('audit.actions.DELETAR') },
+    { value: 'LOGIN', label: t('audit.actions.LOGIN') },
+    { value: 'LOGOUT', label: t('audit.actions.LOGOUT') },
+  ];
+  const auditResourceOptions = [
+    { value: '', label: t('audit.filters.allResources') },
+    { value: 'usuarios', label: t('audit.resources.usuarios') },
+    { value: 'User', label: t('audit.resources.User') },
+    { value: 'user_auth_provider', label: t('audit.resources.user_auth_provider') },
+    { value: 'push_subscription', label: t('audit.resources.push_subscription') },
+    { value: 'membros', label: t('audit.resources.membros') },
+    { value: 'ministerios', label: t('audit.resources.ministerios') },
+    { value: 'escalas', label: t('audit.resources.escalas') },
+    { value: 'Tenant', label: t('audit.resources.Tenant') },
+  ];
+  const auditOperatorOptions = [
+    { value: '', label: t('audit.filters.allOperators') },
+    { value: 'platform', label: t('audit.platformOperator') },
+    ...sortedUsers.map((user) => ({ value: user.id, label: user.nome })),
+  ];
 
-  const loadData = useCallback(async () => {
+  const loadUsers = useCallback(async () => {
     if (!isAdmin) return;
-    setLoading(true);
+    setUsersLoading(true);
     setError(null);
     try {
-      if (activeTab === 'usuarios') {
-        const data = await api.get<User[]>('/api/auth/users');
-        setUsers(Array.isArray(data) ? data : []);
+      const data = await api.get<User[]>('/api/auth/users');
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setError(err?.message || t('errorLoading'));
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [isAdmin, t]);
+
+  const loadAuditLogs = useCallback(async (page: number) => {
+    if (!isAdmin) return;
+    setAuditLoading(true);
+    setError(null);
+    try {
+      const query = buildQuery({
+        page,
+        limit: itemsPerPage,
+        acao: auditActionFilter || undefined,
+        entidade: auditResourceFilter || undefined,
+        operador: auditOperatorFilter || undefined,
+      });
+      const data = await api.get<PaginatedItemsResponse<AuditLog> | AuditLog[]>(`/api/auth/audit-logs${query}`);
+
+      if (Array.isArray(data)) {
+        setAuditLogs(data);
+        setAuditTotal(data.length);
       } else {
-        const data = await api.get<AuditLog[]>('/api/auth/audit-logs');
-        setAuditLogs(Array.isArray(data) ? data : []);
+        setAuditLogs(Array.isArray(data.items) ? data.items : []);
+        setAuditTotal(typeof data.total === 'number' ? data.total : 0);
       }
     } catch (err: any) {
       setError(err?.message || t('errorLoading'));
     } finally {
-      setLoading(false);
+      setAuditLoading(false);
     }
-  }, [isAdmin, activeTab, t]);
+  }, [auditActionFilter, auditOperatorFilter, auditResourceFilter, isAdmin, t]);
+
+  const reloadActiveData = useCallback(() => {
+    return activeTab === 'usuarios' ? loadUsers() : loadAuditLogs(auditPage);
+  }, [activeTab, auditPage, loadAuditLogs, loadUsers]);
 
   useEffect(() => {
-    if (currentUser) {
-      loadData();
+    if (currentUser && isAdmin) {
+      loadUsers();
     }
-  }, [currentUser, activeTab, loadData]);
+  }, [currentUser, isAdmin, loadUsers]);
+
+  useEffect(() => {
+    if (currentUser && isAdmin) {
+      loadAuditLogs(auditPage);
+    }
+  }, [currentUser, isAdmin, auditPage, loadAuditLogs]);
 
   function openCreate() {
     setEditingUser(null);
@@ -117,7 +175,12 @@ export default function ConfiguracoesPage() {
     } else {
       await api.post('/api/auth/users', data);
     }
-    await loadData();
+    await loadUsers();
+    if (auditPage === 1) {
+      await loadAuditLogs(1);
+    } else {
+      setAuditPage(1);
+    }
   }
 
   async function handleDelete() {
@@ -126,7 +189,12 @@ export default function ConfiguracoesPage() {
     try {
       await api.delete(`/api/auth/users/${deletingUser.id}`);
       setDeletingUser(null);
-      await loadData();
+      await loadUsers();
+      if (auditPage === 1) {
+        await loadAuditLogs(1);
+      } else {
+        setAuditPage(1);
+      }
     } catch (err: any) {
       setError(err?.message || t('errorDeactivate'));
       setDeletingUser(null);
@@ -195,6 +263,36 @@ export default function ConfiguracoesPage() {
     }
   }
 
+  function scrollAuditLogsToTop() {
+    if (typeof window === 'undefined') return;
+
+    window.setTimeout(() => {
+      const target = auditLogsTopRef.current;
+      if (!target) return;
+
+      const dashboardScrollContainer = target.closest<HTMLElement>('[data-dashboard-scroll-container]');
+
+      if (dashboardScrollContainer) {
+        const containerRect = dashboardScrollContainer.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const top = dashboardScrollContainer.scrollTop + targetRect.top - containerRect.top - 16;
+
+        dashboardScrollContainer.scrollTo({
+          top: Math.max(top, 0),
+          behavior: 'smooth',
+        });
+        return;
+      }
+
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+  }
+
+  function handleAuditPageChange(page: number) {
+    setAuditPage(page);
+    scrollAuditLogsToTop();
+  }
+
   if (!currentUser) {
     return (
       <div className="p-6 max-w-7xl mx-auto flex items-center justify-center min-h-[50vh]">
@@ -257,6 +355,41 @@ export default function ConfiguracoesPage() {
     );
   }
 
+  function getAuditActionLabel(action: string) {
+    const labels: Record<string, string> = {
+      CRIAR: t('audit.actions.CRIAR'),
+      ATUALIZAR: t('audit.actions.ATUALIZAR'),
+      DELETAR: t('audit.actions.DELETAR'),
+      LOGIN: t('audit.actions.LOGIN'),
+      LOGOUT: t('audit.actions.LOGOUT'),
+    };
+
+    return labels[action] ?? action;
+  }
+
+  function getAuditResourceLabel(resource: string) {
+    const labels: Record<string, string> = {
+      usuarios: t('audit.resources.usuarios'),
+      User: t('audit.resources.User'),
+      user_auth_provider: t('audit.resources.user_auth_provider'),
+      push_subscription: t('audit.resources.push_subscription'),
+      membros: t('audit.resources.membros'),
+      ministerios: t('audit.resources.ministerios'),
+      escalas: t('audit.resources.escalas'),
+      Tenant: t('audit.resources.Tenant'),
+    };
+
+    return labels[resource] ?? resource;
+  }
+
+  function getAuditOperatorName(log: AuditLog) {
+    if (log.user?.role === 'SUPER_ADMIN') {
+      return t('audit.platformOperator');
+    }
+
+    return log.user?.nome || t('audit.system');
+  }
+
   function renderAuditOperationBadge(log: AuditLog) {
     const badges: Record<string, string> = {
       CRIAR: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -268,7 +401,7 @@ export default function ConfiguracoesPage() {
 
     return (
       <StatusBadge
-        label={log.acao}
+        label={getAuditActionLabel(log.acao)}
         className={`rounded-lg border font-bold ${badges[log.acao] || 'bg-gray-50'}`}
       />
     );
@@ -361,7 +494,7 @@ export default function ConfiguracoesPage() {
       header: t('audit.columns.operator'),
       render: (log) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-gray-800 text-xs">{log.user?.nome || t('audit.system')}</span>
+          <span className="font-semibold text-gray-800 text-xs">{getAuditOperatorName(log)}</span>
           {log.user?.email && <span className="text-[10px] text-gray-400">{log.user.email}</span>}
         </div>
       ),
@@ -377,7 +510,7 @@ export default function ConfiguracoesPage() {
       hideOnMobile: true,
       render: (log) => (
         <div className="flex flex-col gap-0.5">
-          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">{log.entidade}</span>
+          <span className="text-xs font-medium text-gray-700">{getAuditResourceLabel(log.entidade)}</span>
           {log.entidadeId && <span className="text-[9px] text-gray-400 font-mono">ID: {log.entidadeId}</span>}
         </div>
       ),
@@ -400,7 +533,7 @@ export default function ConfiguracoesPage() {
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => loadData()} className="underline font-semibold hover:text-red-800">
+          <button onClick={() => reloadActiveData()} className="underline font-semibold hover:text-red-800">
             {t('retry')}
           </button>
         </div>
@@ -458,7 +591,7 @@ export default function ConfiguracoesPage() {
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span className="truncate">{t('tabs.audit')} ({auditLogs.length})</span>
+            <span className="truncate">{t('tabs.audit')} ({auditTotal})</span>
           </button>
         </div>
 
@@ -477,11 +610,77 @@ export default function ConfiguracoesPage() {
         )}
       </div>
 
+      {activeTab === 'audit' && (
+        <section ref={auditLogsTopRef} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-2xs">
+          <div className="grid gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-3">
+            <label className="space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {t('audit.filters.operation')}
+              </span>
+              <select
+                value={auditActionFilter}
+                onChange={(event) => {
+                  setAuditActionFilter(event.target.value);
+                  setAuditPage(1);
+                }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-all focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+              >
+                {auditActionOptions.map((option) => (
+                  <option key={option.value || 'all-actions'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {t('audit.filters.resource')}
+              </span>
+              <select
+                value={auditResourceFilter}
+                onChange={(event) => {
+                  setAuditResourceFilter(event.target.value);
+                  setAuditPage(1);
+                }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-all focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+              >
+                {auditResourceOptions.map((option) => (
+                  <option key={option.value || 'all-resources'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {t('audit.filters.operator')}
+              </span>
+              <select
+                value={auditOperatorFilter}
+                onChange={(event) => {
+                  setAuditOperatorFilter(event.target.value);
+                  setAuditPage(1);
+                }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-all focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+              >
+                {auditOperatorOptions.map((option) => (
+                  <option key={option.value || 'all-operators'} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
+      )}
+
       {activeTab === 'usuarios' ? (
         <DataTable
           columns={userColumns}
           data={pagedUsers}
-          loading={loading}
+          loading={usersLoading}
           sort={userSort}
           onSortChange={(s) => { setUserSort(s); setUserPage(1); }}
           currentPage={userPage}
@@ -537,19 +736,19 @@ export default function ConfiguracoesPage() {
       ) : (
         <DataTable
           columns={auditColumns}
-          data={pagedAudit}
-          loading={loading}
+          data={auditLogs}
+          loading={auditLoading}
           currentPage={auditPage}
-          totalItems={auditLogs.length}
+          totalItems={auditTotal}
           itemsPerPage={itemsPerPage}
-          onPageChange={setAuditPage}
+          onPageChange={handleAuditPageChange}
           emptyTitle={t('audit.noLogs')}
           emptyDescription={t('audit.noLogsDesc')}
           renderMobileCard={(log) => (
             <div className="p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-base font-bold text-gray-800 truncate">{log.user?.nome || t('audit.system')}</h3>
+                  <h3 className="text-base font-bold text-gray-800 truncate">{getAuditOperatorName(log)}</h3>
                   {log.user?.email && <p className="text-sm text-gray-500 truncate">{log.user.email}</p>}
                 </div>
                 <div className="shrink-0">{renderAuditOperationBadge(log)}</div>
@@ -557,7 +756,7 @@ export default function ConfiguracoesPage() {
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400 font-medium">
                 <span>{formatDateTime(log.createdAt)}</span>
-                <span className="uppercase tracking-wider">{log.entidade}</span>
+                <span>{getAuditResourceLabel(log.entidade)}</span>
                 {log.ipAddress && <span className="font-mono">{log.ipAddress}</span>}
               </div>
             </div>

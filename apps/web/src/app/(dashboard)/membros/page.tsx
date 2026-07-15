@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useMembros } from '@/hooks/use-membros';
@@ -98,6 +98,7 @@ export default function MembrosPage() {
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [pendingDeleteMembro, setPendingDeleteMembro] = useState<Membro | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const membersListTopRef = useRef<HTMLDivElement | null>(null);
 
   const itemsPerPage = 10;
 
@@ -170,6 +171,36 @@ export default function MembrosPage() {
     const start = (currentPage - 1) * itemsPerPage;
     return membros.slice(start, start + itemsPerPage);
   }, [membros, currentPage]);
+
+  function scrollMembersListToTop() {
+    if (typeof window === 'undefined') return;
+
+    window.requestAnimationFrame(() => {
+      const target = membersListTopRef.current;
+      if (!target) return;
+
+      const dashboardScrollContainer = target.closest<HTMLElement>('[data-dashboard-scroll-container]');
+
+      if (dashboardScrollContainer) {
+        const containerRect = dashboardScrollContainer.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const top = dashboardScrollContainer.scrollTop + targetRect.top - containerRect.top - 16;
+
+        dashboardScrollContainer.scrollTo({
+          top: Math.max(top, 0),
+          behavior: 'auto',
+        });
+        return;
+      }
+
+      target.scrollIntoView({ behavior: 'auto', block: 'start' });
+    });
+  }
+
+  function handleMembersPageChange(page: number) {
+    setCurrentPage(page);
+    scrollMembersListToTop();
+  }
 
   async function handleSaveMembro(data: Partial<Membro>) {
     let saved: Membro;
@@ -362,133 +393,135 @@ export default function MembrosPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <FilterShell
-        onSubmit={handleFilterSubmit}
-        actions={
-          <FilterActions
-            submitLabel={t('filter.apply')}
-            clearLabel={t('filter.clear')}
-            onClear={() => handleClearFilters()}
-          />
-        }
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FilterInput
-            id="search-nome"
-            type="text"
-            label={t('filter.nameLabel')}
-            value={filterState.nome}
-            onChange={(e) => setFilterField('nome', e.target.value)}
-            placeholder={t('filter.namePlaceholder')}
-          />
+      <div ref={membersListTopRef}>
+        {/* Filters */}
+        <FilterShell
+          onSubmit={handleFilterSubmit}
+          actions={
+            <FilterActions
+              submitLabel={t('filter.apply')}
+              clearLabel={t('filter.clear')}
+              onClear={() => handleClearFilters()}
+            />
+          }
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FilterInput
+              id="search-nome"
+              type="text"
+              label={t('filter.nameLabel')}
+              value={filterState.nome}
+              onChange={(e) => setFilterField('nome', e.target.value)}
+              placeholder={t('filter.namePlaceholder')}
+            />
 
-          <FilterInput
-            id="search-whatsapp"
-            type="text"
-            label={t('filter.whatsappLabel')}
-            value={filterState.whatsapp}
-            onChange={(e) => setFilterField('whatsapp', e.target.value)}
-            placeholder={t('filter.whatsappPlaceholder')}
-          />
+            <FilterInput
+              id="search-whatsapp"
+              type="text"
+              label={t('filter.whatsappLabel')}
+              value={filterState.whatsapp}
+              onChange={(e) => setFilterField('whatsapp', e.target.value)}
+              placeholder={t('filter.whatsappPlaceholder')}
+            />
 
-          <FilterSelect
-            id="search-status"
-            label={t('filter.statusLabel')}
-            value={filterState.status}
-            onChange={(e) => setFilterField('status', e.target.value)}
-          >
-            <option value="">{t('filter.allStatuses')}</option>
-            <option value="ATIVO">{t('status.ATIVO')}</option>
-            <option value="INATIVO">{t('status.INATIVO')}</option>
-            <option value="VISITANTE">{t('status.VISITANTE')}</option>
-            <option value="TRANSFERIDO">{t('status.TRANSFERIDO')}</option>
-          </FilterSelect>
-        </div>
-
-        {/* Tags filter */}
-        <div className="pt-3 border-t border-gray-100 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex-1">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">
-              {t('filter.tagsLabel')}
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {tagsList.map((tag) => {
-                const active = filterState.tags.includes(tag.nome);
-                const activeTextColor = getReadableTextColor(tag.cor);
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => handleToggleTagFilter(tag.nome)}
-                    style={{
-                      backgroundColor: active ? tag.cor : 'transparent',
-                      color: active ? activeTextColor : tag.cor,
-                      borderColor: active ? tag.cor : `${tag.cor}99`,
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold border rounded-lg transition-all shadow-2xs hover:shadow-xs ${
-                      active ? 'ring-2 ring-offset-1 ring-indigo-200' : 'opacity-90'
-                    }`}
-                  >
-                    {active && (
-                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                    {tag.nome}
-                  </button>
-                );
-              })}
-
-              <button
-                type="button"
-                onClick={() => setShowNewTagInput(true)}
-                className="px-2 py-1 text-xs font-medium border border-dashed border-gray-300 hover:border-indigo-500 rounded-lg text-gray-500 hover:text-indigo-600 transition-all flex items-center gap-1"
-              >
-                {t('filter.newTag')}
-              </button>
-            </div>
+            <FilterSelect
+              id="search-status"
+              label={t('filter.statusLabel')}
+              value={filterState.status}
+              onChange={(e) => setFilterField('status', e.target.value)}
+            >
+              <option value="">{t('filter.allStatuses')}</option>
+              <option value="ATIVO">{t('status.ATIVO')}</option>
+              <option value="INATIVO">{t('status.INATIVO')}</option>
+              <option value="VISITANTE">{t('status.VISITANTE')}</option>
+              <option value="TRANSFERIDO">{t('status.TRANSFERIDO')}</option>
+            </FilterSelect>
           </div>
 
-          {filterState.tags.length > 1 && (
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 p-1.5 rounded-xl self-start md:self-auto">
-              <span className="text-xs font-medium text-gray-500 px-1">{t('filter.compositeFilter')}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterField('operacao', 'AND');
-                  applyFilter({
-                    nome: filterState.nome || undefined,
-                    whatsapp: filterState.whatsapp || undefined,
-                    status: filterState.status || undefined,
-                    tags: filterState.tags.join(',') || undefined,
-                    operacao: 'AND',
-                  });
-                }}
-                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'AND' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
-              >
-                AND (E)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterField('operacao', 'OR');
-                  applyFilter({
-                    nome: filterState.nome || undefined,
-                    whatsapp: filterState.whatsapp || undefined,
-                    status: filterState.status || undefined,
-                    tags: filterState.tags.join(',') || undefined,
-                    operacao: 'OR',
-                  });
-                }}
-                className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'OR' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
-              >
-                OR (OU)
-              </button>
+          {/* Tags filter */}
+          <div className="pt-3 border-t border-gray-100 mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">
+                {t('filter.tagsLabel')}
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {tagsList.map((tag) => {
+                  const active = filterState.tags.includes(tag.nome);
+                  const activeTextColor = getReadableTextColor(tag.cor);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => handleToggleTagFilter(tag.nome)}
+                      style={{
+                        backgroundColor: active ? tag.cor : 'transparent',
+                        color: active ? activeTextColor : tag.cor,
+                        borderColor: active ? tag.cor : `${tag.cor}99`,
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold border rounded-lg transition-all shadow-2xs hover:shadow-xs ${
+                        active ? 'ring-2 ring-offset-1 ring-indigo-200' : 'opacity-90'
+                      }`}
+                    >
+                      {active && (
+                        <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      {tag.nome}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setShowNewTagInput(true)}
+                  className="px-2 py-1 text-xs font-medium border border-dashed border-gray-300 hover:border-indigo-500 rounded-lg text-gray-500 hover:text-indigo-600 transition-all flex items-center gap-1"
+                >
+                  {t('filter.newTag')}
+                </button>
+              </div>
             </div>
-          )}
-        </div>
-      </FilterShell>
+
+            {filterState.tags.length > 1 && (
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 p-1.5 rounded-xl self-start md:self-auto">
+                <span className="text-xs font-medium text-gray-500 px-1">{t('filter.compositeFilter')}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterField('operacao', 'AND');
+                    applyFilter({
+                      nome: filterState.nome || undefined,
+                      whatsapp: filterState.whatsapp || undefined,
+                      status: filterState.status || undefined,
+                      tags: filterState.tags.join(',') || undefined,
+                      operacao: 'AND',
+                    });
+                  }}
+                  className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'AND' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
+                >
+                  AND (E)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterField('operacao', 'OR');
+                    applyFilter({
+                      nome: filterState.nome || undefined,
+                      whatsapp: filterState.whatsapp || undefined,
+                      status: filterState.status || undefined,
+                      tags: filterState.tags.join(',') || undefined,
+                      operacao: 'OR',
+                    });
+                  }}
+                  className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'OR' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
+                >
+                  OR (OU)
+                </button>
+              </div>
+            )}
+          </div>
+        </FilterShell>
+      </div>
 
       {/* New Tag Modal */}
       <ModalShell
@@ -544,7 +577,8 @@ export default function MembrosPage() {
         currentPage={currentPage}
         totalItems={membros.length}
         itemsPerPage={itemsPerPage}
-        onPageChange={setCurrentPage}
+        onPageChange={handleMembersPageChange}
+        scrollOnPageChange={false}
         emptyTitle={t('empty.noResults')}
         emptyDescription={t('empty.noResultsDesc')}
         renderMobileCard={(membro) => (
