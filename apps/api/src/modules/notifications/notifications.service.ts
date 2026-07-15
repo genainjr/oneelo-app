@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AcaoAuditoria, StatusConfirmacao, StatusEscala } from '@prisma/client';
+import {
+  AcaoAuditoria,
+  EventoTipo,
+  StatusConfirmacao,
+  StatusEscala,
+  StatusEvento,
+  StatusMembro,
+} from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import webPush from 'web-push';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -59,6 +66,70 @@ export class NotificationsService {
     end.setHours(23, 59, 59, 999);
 
     return { start, end };
+  }
+
+  private getEventReminderRange(referenceDate = new Date()) {
+    const start = new Date(referenceDate);
+    start.setSeconds(0, 0);
+    start.setHours(start.getHours() + 2);
+
+    const end = new Date(start);
+    end.setMinutes(end.getMinutes() + 1);
+
+    return { start, end };
+  }
+
+  private formatNotificationTime(date: Date) {
+    return new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    }).format(date);
+  }
+
+  private async getTenantMemberUserIds(tenantId: string) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        tenantId,
+        ativo: true,
+        membro: {
+          is: {
+            tenantId,
+            deletedAt: null,
+            status: StatusMembro.ATIVO,
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    return users.map((user) => user.id);
+  }
+
+  private async getMinistryMemberUserIds(tenantId: string, ministerioIds: string[]) {
+    if (ministerioIds.length === 0) return [];
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        tenantId,
+        ativo: true,
+        membro: {
+          is: {
+            tenantId,
+            deletedAt: null,
+            status: StatusMembro.ATIVO,
+            ministerios: {
+              some: {
+                ministerioId: { in: ministerioIds },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    return users.map((user) => user.id);
   }
 
   getPublicKey() {
@@ -332,8 +403,8 @@ export class NotificationsService {
         item.escalaDia.escala.tenantId,
         [userId],
         {
-          title: 'Confirmação Pendente',
-          body: `Sua confirmação para amanhã ainda está pendente em ${item.escalaDia.escala.ministerio.nome}.\nPassa no One Elo rapidinho para confirmar?`,
+          title: 'Confirmação pendente',
+          body: 'Sua escala de amanhã ainda aguarda confirmação. Toque para confirmar ou informar indisponibilidade.',
           url: '/minhas-escalas?pendentesApenas=true',
         },
       );
@@ -404,6 +475,11 @@ export class NotificationsService {
         },
         escalaDia: {
           include: {
+            evento: {
+              select: {
+                dataInicio: true,
+              },
+            },
             escala: {
               include: {
                 ministerio: { select: { nome: true } },
@@ -423,12 +499,14 @@ export class NotificationsService {
       const userId = item.membro.user?.id;
       if (!userId) continue;
 
+      const horario = this.formatNotificationTime(item.escalaDia.evento?.dataInicio ?? item.escalaDia.data);
+
       const result = await this.sendToUsers(
         item.escalaDia.escala.tenantId,
         [userId],
         {
-          title: 'Escala Hoje',
-          body: `Hoje é dia de servir em ${item.escalaDia.escala.ministerio.nome}.\nConfira os detalhes da sua escala no One Elo.`,
+          title: 'Sua escala é hoje',
+          body: `Hoje você servirá no ministério de ${item.escalaDia.escala.ministerio.nome} às ${horario}. Veja os detalhes.`,
           url: '/minhas-escalas',
         },
       );
@@ -453,6 +531,87 @@ export class NotificationsService {
     };
 
     this.logger.log(`Lembrete do dia da escala processado: ${JSON.stringify(result)}`);
+
+    return result;
+  }
+
+  @Cron('* * * * *', {
+    name: 'event-reminder-2h',
+    timeZone: 'America/Sao_Paulo',
+  })
+  async runEventReminderJob() {
+    const { start, end } = this.getEventReminderRange();
+
+    const eventos = await this.prisma.evento.findMany({
+      where: {
+        status: StatusEvento.AGENDADO,
+        tipo: {
+          in: [EventoTipo.GERAL, EventoTipo.MINISTERIO],
+        },
+        dataInicio: {
+          gte: start,
+          lt: end,
+        },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        titulo: true,
+        tipo: true,
+        dataInicio: true,
+        ministerios: {
+          select: {
+            ministerioId: true,
+          },
+        },
+      },
+    });
+
+    let sent = 0;
+    let failed = 0;
+    let totalSubscriptions = 0;
+    let withoutRecipients = 0;
+    let withoutSubscription = 0;
+
+    for (const evento of eventos) {
+      const ministerioIds = evento.ministerios.map((relacao) => relacao.ministerioId);
+      const userIds = evento.tipo === EventoTipo.GERAL
+        ? await this.getTenantMemberUserIds(evento.tenantId)
+        : await this.getMinistryMemberUserIds(evento.tenantId, ministerioIds);
+
+      if (userIds.length === 0) {
+        withoutRecipients += 1;
+        continue;
+      }
+
+      const horario = this.formatNotificationTime(evento.dataInicio);
+      const result = await this.sendToUsers(evento.tenantId, userIds, {
+        title: 'Evento em 2 horas',
+        body: `${evento.titulo} começa às ${horario}. Esperamos você!`,
+        url: '/agenda/visualizacao',
+      });
+
+      sent += result.sent;
+      failed += result.failed;
+      totalSubscriptions += result.total;
+
+      if (result.total === 0) {
+        withoutSubscription += 1;
+      }
+    }
+
+    const result = {
+      windowStart: start.toISOString(),
+      windowEnd: end.toISOString(),
+      events: eventos.length,
+      withoutRecipients,
+      withoutSubscription,
+      sent,
+      failed,
+      totalSubscriptions,
+    };
+
+    this.logger.log(`Lembrete 2h de eventos processado: ${JSON.stringify(result)}`);
 
     return result;
   }
