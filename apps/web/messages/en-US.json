@@ -401,8 +401,16 @@
     "errorLoadDetail": "Error loading schedule details.",
     "status": {
       "RASCUNHO": "Draft",
-      "PUBLICADA": "Published",
-      "ENCERRADA": "Closed"
+      "PUBLICADA": "In progress",
+      "ENCERRADA": "Finished"
+    },
+    "statusActions": {
+      "publish": "Publish",
+      "returnDraft": "Draft",
+      "returnDraftTitle": "Move schedule to Draft",
+      "close": "Finish schedule",
+      "reopen": "In progress",
+      "reopenTitle": "Move schedule to In Progress"
     },
     "filter": {
       "month": "Month",
@@ -598,7 +606,33 @@
         "resource": "Resource",
         "ipAddress": "IP Address"
       },
-      "system": "System"
+      "system": "System",
+      "platformOperator": "Lookup Labs (Super Admin)",
+      "filters": {
+        "operator": "Operator",
+        "operation": "Operation",
+        "resource": "Resource",
+        "allOperators": "All operators",
+        "allOperations": "All operations",
+        "allResources": "All resources"
+      },
+      "actions": {
+        "CRIAR": "Created",
+        "ATUALIZAR": "Updated",
+        "DELETAR": "Deleted",
+        "LOGIN": "Login",
+        "LOGOUT": "Logout"
+      },
+      "resources": {
+        "usuarios": "Users",
+        "User": "Tenant users",
+        "user_auth_provider": "Social login link",
+        "push_subscription": "Notifications",
+        "membros": "Members",
+        "ministerios": "Ministries",
+        "escalas": "Schedules",
+        "Tenant": "Tenant data"
+      }
     },
     "deactivate": {
       "title": "Deactivate user",

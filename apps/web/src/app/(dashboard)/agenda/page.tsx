@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { endOfWeek, startOfWeek } from 'date-fns';
 import { useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
@@ -30,17 +30,17 @@ function toDateInputValue(date: Date) {
 
 export default function AgendaPage() {
   const t = useTranslations('agenda');
-  const monthStart = useMemo(() => startOfMonth(new Date()), []);
-  const monthEnd = useMemo(() => endOfMonth(new Date()), []);
+  const weekStart = useMemo(() => startOfWeek(new Date(), { weekStartsOn: 1 }), []);
+  const weekEnd = useMemo(() => endOfWeek(new Date(), { weekStartsOn: 1 }), []);
   const initialFilter = useMemo(
     () => ({
       status: '',
       tipo: '',
       ministerioId: '',
-      dataInicio: toDateInputValue(monthStart),
-      dataFim: toDateInputValue(monthEnd),
+      dataInicio: toDateInputValue(weekStart),
+      dataFim: toDateInputValue(weekEnd),
     }),
-    [monthStart, monthEnd],
+    [weekStart, weekEnd],
   );
 
   const {

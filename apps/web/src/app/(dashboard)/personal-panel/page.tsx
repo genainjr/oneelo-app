@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
-import { formatDate, formatDateWithWeekday } from '@/lib/utils';
+import { compareCivilDates, formatDate, formatDateWithWeekday, getCivilDateKey, isCivilDateOnOrAfter } from '@/lib/utils';
 import { useEventos } from '@/hooks/use-eventos';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import type { AuthUser, Evento, MinhaEscalaItem } from '@/types';
@@ -24,13 +24,10 @@ type EscalaResumo = {
   status: string;
 };
 
-function getNextSchedule(items: MinhaEscalaItem[]) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
+function getNextSchedule(items: MinhaEscalaItem[], referenceDate: string) {
   return [...items]
-    .filter((item) => new Date(item.data) >= today)
-    .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())[0] ?? null;
+    .filter((item) => isCivilDateOnOrAfter(item.data, referenceDate))
+    .sort((a, b) => compareCivilDates(a.data, b.data))[0] ?? null;
 }
 
 function getNextEvent(events: Evento[]) {
@@ -125,6 +122,7 @@ export default function PersonalPanelPage() {
     loading: loadingEventos,
     error: errorEventos,
   } = useEventos({ dataInicio: monthStart, dataFim: monthEnd });
+  const todayDateKey = getCivilDateKey(new Date()) ?? '';
 
   useEffect(() => {
     setToday(formatDate(new Date()));
@@ -157,12 +155,10 @@ export default function PersonalPanelPage() {
   }, [nextMonthQuery.ano, nextMonthQuery.mes, user]);
 
   const futureSchedules = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return minhasEscalas.filter((item) => new Date(item.data) >= now);
-  }, [minhasEscalas]);
+    return minhasEscalas.filter((item) => isCivilDateOnOrAfter(item.data, todayDateKey));
+  }, [minhasEscalas, todayDateKey]);
 
-  const nextSchedule = useMemo(() => getNextSchedule(futureSchedules), [futureSchedules]);
+  const nextSchedule = useMemo(() => getNextSchedule(futureSchedules, todayDateKey), [futureSchedules, todayDateKey]);
   const nextScheduleValue = nextSchedule
     ? formatDateWithWeekday(nextSchedule.data, 'dd/MM')
     : t('stats.nextScheduleNone');
