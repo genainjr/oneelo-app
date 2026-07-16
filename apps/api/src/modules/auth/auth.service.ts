@@ -13,17 +13,25 @@ import { MembrosService } from '../membros/membros.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ActivateAccountDto } from './dto/activate-account.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { TenantMediaService } from '../../common/storage/tenant-media.service';
-import { AcaoAuditoria, Prisma, Role, StatusMembro } from '@prisma/client';
+import { AcaoAuditoria, Prisma, Role, StatusMembro, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import type { Multer } from 'multer';
 import { getUserSessionExpiresIn, parseDurationToMilliseconds } from './auth-session';
+import {
+  ACCOUNT_DISABLED_MESSAGE,
+  ACCOUNT_PENDING_ACTIVATION_MESSAGE,
+} from './auth-access.constants';
 
 @Injectable()
 export class AuthService {
+  private readonly activationTokenTtlMs = 72 * 60 * 60 * 1000;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -32,21 +40,133 @@ export class AuthService {
     private readonly tenantMediaService: TenantMediaService,
   ) {}
 
-  async login(dto: LoginDto, ip?: string) {
-    // 1. Buscar usuário pelo email — sem filtro de tenantId pois o email é único globalmente
-    const user = await this.prisma.user.findFirst({
-      where: { email: dto.email, ativo: true },
-      include: { tenant: true },
-    });
+  private hashActivationToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
 
-    if (!user || user.role === 'SUPER_ADMIN') {
-      throw new UnauthorizedException('Credenciais inválidas.');
+  private createActivationToken() {
+    const token = randomBytes(32).toString('hex');
+    const now = new Date();
+
+    return {
+      token,
+      tokenHash: this.hashActivationToken(token),
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + this.activationTokenTtlMs),
+    };
+  }
+
+  private buildActivationLink(token: string) {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL')?.trim() ||
+      this.configService.get<string>('APP_URL')?.trim() ||
+      'http://localhost:3001';
+
+    return `${frontendUrl.replace(/\/$/, '')}/activate/${token}`;
+  }
+
+  private assertTenantUserCanLogin(user: {
+    ativo: boolean;
+    status: UserStatus;
+    role: Role;
+    tenantId: string | null;
+    tenant?: { ativo: boolean } | null;
+  }) {
+    if (user.role === Role.SUPER_ADMIN) {
+      throw new UnauthorizedException('Credenciais invalidas.');
     }
 
-    if (!user.tenant?.ativo) {
+    if (user.status === UserStatus.PENDING) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_PENDING_ACTIVATION',
+        message: ACCOUNT_PENDING_ACTIVATION_MESSAGE,
+      });
+    }
+
+    if (!user.ativo || user.status === UserStatus.DISABLED) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_DISABLED',
+        message: ACCOUNT_DISABLED_MESSAGE,
+      });
+    }
+
+    if (!user.tenantId || !user.tenant?.ativo) {
       throw new ForbiddenException(
         'Acesso suspenso. Entre em contato com o administrador.',
       );
+    }
+  }
+
+  private async createSessionForUser(
+    user: {
+      id: string;
+      nome: string;
+      email: string;
+      role: Role;
+      memberId: string | null;
+      onboardingCompletedAt: Date | null;
+      tenantId: string | null;
+      tenant: { nome: string } | null;
+    },
+    ip?: string,
+  ) {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      memberId: user.memberId ?? undefined,
+      tenantId: user.tenantId ?? undefined,
+    };
+
+    const expiresIn = getUserSessionExpiresIn(this.configService.get<string>('JWT_EXPIRES_IN'));
+    const expiresAt = new Date(Date.now() + parseDurationToMilliseconds(expiresIn)).toISOString();
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.get<string>('JWT_SECRET'),
+      expiresIn,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: user.id,
+        entidade: 'usuarios',
+        entidadeId: user.id,
+        acao: AcaoAuditoria.LOGIN,
+        ipAddress: ip,
+      },
+    });
+
+    return {
+      accessToken,
+      expiresIn,
+      expiresAt,
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        role: user.role,
+        onboardingCompletedAt: user.onboardingCompletedAt,
+        tenantId: user.tenantId,
+        tenantNome: user.tenant!.nome,
+      },
+    };
+  }
+
+  async login(dto: LoginDto, ip?: string) {
+    // 1. Buscar usuário pelo email — sem filtro de tenantId pois o email é único globalmente
+    const user = await this.prisma.user.findFirst({
+      where: { email: dto.email },
+      include: { tenant: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Credenciais inválidas.');
+    }
+
+    this.assertTenantUserCanLogin(user);
+
+    if (!user.senhaHash) {
+      throw new UnauthorizedException('Credenciais invÃ¡lidas.');
     }
 
     // 2. Verificar senha
@@ -93,10 +213,104 @@ export class AuthService {
         nome: user.nome,
         email: user.email,
         role: user.role,
+        onboardingCompletedAt: user.onboardingCompletedAt,
         tenantId: user.tenantId,
-        tenantNome: user.tenant.nome,
+        tenantNome: user.tenant!.nome,
       },
     };
+  }
+
+  async validateActivationToken(token: string) {
+    const tokenHash = this.hashActivationToken(token);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        activationTokenHash: tokenHash,
+        status: UserStatus.PENDING,
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        activationExpiresAt: true,
+        tenant: {
+          select: { nome: true, slug: true, logoUrl: true },
+        },
+      },
+    });
+
+    if (!user || !user.activationExpiresAt || user.activationExpiresAt <= new Date()) {
+      throw new BadRequestException('Link de ativacao expirado ou invalido.');
+    }
+
+    return {
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+      },
+      tenant: user.tenant,
+      expiresAt: user.activationExpiresAt,
+    };
+  }
+
+  async activateWithPassword(
+    token: string,
+    dto: ActivateAccountDto,
+    ip?: string,
+  ) {
+    if (dto.senha !== dto.confirmarSenha) {
+      throw new BadRequestException('A confirmacao nao confere com a senha.');
+    }
+
+    const tokenHash = this.hashActivationToken(token);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        activationTokenHash: tokenHash,
+        status: UserStatus.PENDING,
+      },
+      include: { tenant: true },
+    });
+
+    if (!user || !user.activationExpiresAt || user.activationExpiresAt <= new Date()) {
+      throw new BadRequestException('Link de ativacao expirado ou invalido.');
+    }
+
+    if (!user.tenantId || !user.tenant?.ativo) {
+      throw new ForbiddenException(
+        'Acesso suspenso. Entre em contato com o administrador.',
+      );
+    }
+
+    const now = new Date();
+    const senhaHash = await bcrypt.hash(dto.senha, 10);
+    const activatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        senhaHash,
+        status: UserStatus.ACTIVE,
+        ativo: true,
+        activatedAt: now,
+        activationTokenHash: null,
+        activationExpiresAt: null,
+        activationCreatedAt: null,
+      },
+      include: { tenant: true },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: activatedUser.tenantId,
+        userId: activatedUser.id,
+        entidade: 'usuarios',
+        entidadeId: activatedUser.id,
+        acao: AcaoAuditoria.ATUALIZAR,
+        payloadBefore: { status: UserStatus.PENDING },
+        payloadAfter: { status: UserStatus.ACTIVE, activatedAt: now.toISOString() },
+        ipAddress: ip,
+      },
+    });
+
+    return this.createSessionForUser(activatedUser, ip);
   }
 
   async logout(userId: string, tenantId?: string, ip?: string) {
@@ -115,12 +329,15 @@ export class AuthService {
 
   async me(userId: string, tenantId: string) {
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, ativo: true },
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
       select: {
         id: true,
         nome: true,
         email: true,
         role: true,
+        status: true,
+        senhaHash: true,
+        onboardingCompletedAt: true,
         tenantId: true,
         memberId: true,
         createdAt: true,
@@ -162,7 +379,48 @@ export class AuthService {
       throw new UnauthorizedException('Sessão inválida.');
     }
 
-    return user;
+    const { senhaHash, ...safeUser } = user;
+
+    return {
+      ...safeUser,
+      hasPassword: Boolean(senhaHash),
+    };
+  }
+
+  async completeOnboarding(userId: string, tenantId: string, ip?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
+      select: {
+        id: true,
+        onboardingCompletedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Sessao invalida.');
+    }
+
+    if (!user.onboardingCompletedAt) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { onboardingCompletedAt: new Date() },
+      });
+
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId,
+          entidade: 'usuarios',
+          entidadeId: userId,
+          acao: AcaoAuditoria.ATUALIZAR,
+          payloadBefore: { onboardingCompletedAt: null },
+          payloadAfter: { onboardingCompletedAt: 'completed' },
+          ipAddress: ip,
+        },
+      });
+    }
+
+    return this.me(userId, tenantId);
   }
 
   async changePassword(
@@ -172,17 +430,36 @@ export class AuthService {
     ip?: string,
   ) {
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, ativo: true },
-      select: { id: true, senhaHash: true },
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
+      select: {
+        id: true,
+        senhaHash: true,
+        authProviders: {
+          where: { ativo: true },
+          select: { id: true },
+        },
+      },
     });
 
     if (!user) {
       throw new UnauthorizedException('Sessao invalida.');
     }
 
-    const senhaAtualValida = await bcrypt.compare(dto.senhaAtual, user.senhaHash);
-    if (!senhaAtualValida) {
-      throw new UnauthorizedException('Senha atual invalida.');
+    const isCreatingFirstPassword = !user.senhaHash;
+
+    if (isCreatingFirstPassword) {
+      if (user.authProviders.length === 0) {
+        throw new BadRequestException('Esta conta nao possui uma forma valida de acesso para criar a primeira senha.');
+      }
+    } else {
+      if (!dto.senhaAtual?.trim()) {
+        throw new BadRequestException('Senha atual e obrigatoria.');
+      }
+
+      const senhaAtualValida = await bcrypt.compare(dto.senhaAtual, user.senhaHash!);
+      if (!senhaAtualValida) {
+        throw new UnauthorizedException('Senha atual invalida.');
+      }
     }
 
     const senhaHash = await bcrypt.hash(dto.novaSenha, 10);
@@ -203,7 +480,12 @@ export class AuthService {
       },
     });
 
-    return { message: 'Senha alterada com sucesso.' };
+    return {
+      message: isCreatingFirstPassword
+        ? 'Senha criada com sucesso.'
+        : 'Senha alterada com sucesso.',
+      hasPassword: true,
+    };
   }
 
   async updateMyProfile(
@@ -221,7 +503,7 @@ export class AuthService {
     }
 
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, ativo: true },
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
       select: {
         id: true,
         nome: true,
@@ -353,6 +635,11 @@ export class AuthService {
         email: true,
         role: true,
         ativo: true,
+        status: true,
+        activationExpiresAt: true,
+        activationCreatedAt: true,
+        activatedAt: true,
+        onboardingCompletedAt: true,
         memberId: true,
         createdAt: true,
         membro: {
@@ -423,7 +710,15 @@ export class AuthService {
       throw new ConflictException('Já existe um usuário com este e-mail.');
     }
 
-    const senhaHash = await bcrypt.hash(dto.senha, 10);
+    const senhaHash = dto.senha ? await bcrypt.hash(dto.senha, 10) : null;
+    const status = dto.ativo === false
+      ? UserStatus.DISABLED
+      : senhaHash
+        ? UserStatus.ACTIVE
+        : UserStatus.PENDING;
+    const activation = status === UserStatus.PENDING
+      ? this.createActivationToken()
+      : null;
 
     // Validar memberId se fornecido
     if (dto.memberId) {
@@ -446,7 +741,12 @@ export class AuthService {
         email: dto.email,
         senhaHash,
         role: dto.role,
-        ativo: dto.ativo ?? true,
+        status,
+        ativo: status === UserStatus.ACTIVE,
+        activationTokenHash: activation?.tokenHash ?? null,
+        activationExpiresAt: activation?.expiresAt ?? null,
+        activationCreatedAt: activation?.createdAt ?? null,
+        activatedAt: status === UserStatus.ACTIVE ? new Date() : null,
         memberId: dto.memberId ?? null,
       },
       select: {
@@ -455,6 +755,11 @@ export class AuthService {
         email: true,
         role: true,
         ativo: true,
+        status: true,
+        activationExpiresAt: true,
+        activationCreatedAt: true,
+        activatedAt: true,
+        onboardingCompletedAt: true,
         createdAt: true,
       },
     });
@@ -470,7 +775,82 @@ export class AuthService {
       },
     });
 
-    return newUser;
+    return {
+      ...newUser,
+      activationLink: activation ? this.buildActivationLink(activation.token) : null,
+    };
+  }
+
+  async regenerateActivationLink(
+    id: string,
+    tenantId: string,
+    actorId: string,
+    ip?: string,
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, tenantId },
+      select: {
+        id: true,
+        status: true,
+        activationTokenHash: true,
+        activationExpiresAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuario nao encontrado.');
+    }
+
+    if (user.status !== UserStatus.PENDING) {
+      throw new BadRequestException('Apenas usuarios pendentes podem receber novo link de ativacao.');
+    }
+
+    const activation = this.createActivationToken();
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: {
+        activationTokenHash: activation.tokenHash,
+        activationExpiresAt: activation.expiresAt,
+        activationCreatedAt: activation.createdAt,
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        ativo: true,
+        status: true,
+        activationExpiresAt: true,
+        activationCreatedAt: true,
+        activatedAt: true,
+        onboardingCompletedAt: true,
+        createdAt: true,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId: actorId,
+        entidade: 'usuarios',
+        entidadeId: id,
+        acao: AcaoAuditoria.ATUALIZAR,
+        payloadBefore: {
+          status: user.status,
+          activationExpiresAt: user.activationExpiresAt?.toISOString() ?? null,
+        },
+        payloadAfter: {
+          status: updated.status,
+          activationExpiresAt: updated.activationExpiresAt?.toISOString() ?? null,
+        },
+        ipAddress: ip,
+      },
+    });
+
+    return {
+      ...updated,
+      activationLink: this.buildActivationLink(activation.token),
+    };
   }
 
   async updateUser(
@@ -482,6 +862,12 @@ export class AuthService {
   ) {
     const user = await this.prisma.user.findFirst({
       where: { id, tenantId },
+      include: {
+        authProviders: {
+          where: { ativo: true },
+          select: { id: true },
+        },
+      },
     });
     if (!user) {
       throw new NotFoundException('Usuário não encontrado.');
@@ -500,7 +886,28 @@ export class AuthService {
     if (dto.nome !== undefined) updateData.nome = dto.nome;
     if (dto.email !== undefined) updateData.email = dto.email;
     if (dto.role !== undefined) updateData.role = dto.role;
-    if (dto.ativo !== undefined) updateData.ativo = dto.ativo;
+    if (dto.ativo !== undefined) {
+      if (
+        dto.ativo &&
+        !dto.senha &&
+        !user.senhaHash &&
+        user.authProviders.length === 0
+      ) {
+        throw new BadRequestException(
+          'O usuario precisa ter senha ou provedor social ativo antes de ser ativado.',
+        );
+      }
+
+      updateData.ativo = dto.ativo;
+      updateData.status = dto.ativo ? UserStatus.ACTIVE : UserStatus.DISABLED;
+
+      if (dto.ativo && user.status === UserStatus.PENDING) {
+        updateData.activatedAt = user.activatedAt ?? new Date();
+        updateData.activationTokenHash = null;
+        updateData.activationExpiresAt = null;
+        updateData.activationCreatedAt = null;
+      }
+    }
     if (dto.senha) updateData.senhaHash = await bcrypt.hash(dto.senha, 10);
 
     // Tratar vínculo com membro
@@ -533,6 +940,11 @@ export class AuthService {
         email: true,
         role: true,
         ativo: true,
+        status: true,
+        activationExpiresAt: true,
+        activationCreatedAt: true,
+        activatedAt: true,
+        onboardingCompletedAt: true,
         createdAt: true,
       },
     });
@@ -570,7 +982,7 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id },
-      data: { ativo: false },
+      data: { ativo: false, status: UserStatus.DISABLED },
     });
 
     await this.prisma.auditLog.create({
@@ -601,7 +1013,7 @@ export class AuthService {
 
   async updateMyPhoto(userId: string, tenantId: string, file: any) {
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, ativo: true },
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
       select: { memberId: true },
     });
 
@@ -614,7 +1026,7 @@ export class AuthService {
 
   async removeMyPhoto(userId: string, tenantId: string) {
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, ativo: true },
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
       select: { memberId: true },
     });
 

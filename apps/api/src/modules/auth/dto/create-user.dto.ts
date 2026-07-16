@@ -4,41 +4,42 @@ import { Role } from '@prisma/client';
 
 export class CreateUserDto {
   @ApiProperty({
-    description: 'Nome completo do usuário',
-    example: 'João da Silva',
+    description: 'Nome completo do usuario',
+    example: 'Joao da Silva',
   })
   @IsString()
-  @IsNotEmpty({ message: 'Nome é obrigatório.' })
+  @IsNotEmpty({ message: 'Nome e obrigatorio.' })
   nome: string;
 
   @ApiProperty({
-    description: 'Endereço de e-mail do usuário',
+    description: 'Endereco de e-mail do usuario',
     example: 'joao@email.com',
   })
-  @IsEmail({}, { message: 'E-mail inválido.' })
-  @IsNotEmpty({ message: 'E-mail é obrigatório.' })
+  @IsEmail({}, { message: 'E-mail invalido.' })
+  @IsNotEmpty({ message: 'E-mail e obrigatorio.' })
   email: string;
 
   @ApiProperty({
-    description: 'Senha de acesso do usuário',
+    description: 'Senha de acesso do usuario. Quando omitida, o usuario fica pendente de ativacao.',
     example: '123456',
     minLength: 6,
+    required: false,
   })
   @IsString()
-  @IsNotEmpty({ message: 'Senha é obrigatória.' })
+  @IsOptional()
   @MinLength(6, { message: 'Senha deve ter pelo menos 6 caracteres.' })
-  senha: string;
+  senha?: string;
 
   @ApiProperty({
-    description: 'Perfil de permissão do usuário',
+    description: 'Perfil de permissao do usuario',
     enum: Role,
     example: Role.BASIC,
   })
-  @IsEnum(Role, { message: 'Perfil inválido.' })
+  @IsEnum(Role, { message: 'Perfil invalido.' })
   role: Role;
 
   @ApiProperty({
-    description: 'Status ativo do usuário',
+    description: 'Status ativo do usuario',
     example: true,
     required: false,
   })

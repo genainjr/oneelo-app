@@ -5,7 +5,7 @@ import { locales, defaultLocale, type Locale } from './i18n/config';
 const AUTH_COOKIE = 'access_token';
 const LOCALE_COOKIE = 'NEXT_LOCALE';
 
-const PUBLIC_PATHS = ['/', '/login', '/locale', '/admin/login'];
+const PUBLIC_PATHS = ['/', '/login', '/activate', '/locale', '/admin/login'];
 
 function detectLocale(request: NextRequest): Locale {
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;

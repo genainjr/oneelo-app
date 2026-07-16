@@ -109,7 +109,6 @@ function UsuarioModalContent({
     e.preventDefault();
     if (!nome.trim()) { setError('O nome e obrigatorio.'); return; }
     if (!email.trim()) { setError('O e-mail e obrigatorio.'); return; }
-    if (!isEditing && !senha.trim()) { setError('A senha e obrigatoria para novos usuarios.'); return; }
     if (senha && senha.length < 6) { setError('A senha deve ter pelo menos 6 caracteres.'); return; }
 
     setLoading(true);
@@ -204,11 +203,11 @@ function UsuarioModalContent({
 
           <PasswordField
             id="u-senha"
-            label={isEditing ? 'Nova senha (deixe em branco para manter)' : 'Senha'}
-            required={!isEditing}
+            label={isEditing ? 'Nova senha (deixe em branco para manter)' : 'Senha inicial (opcional)'}
+            required={false}
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
-            placeholder={isEditing ? '********' : 'Minimo 6 caracteres'}
+            placeholder={isEditing ? '********' : 'Deixe em branco para gerar link de ativacao'}
             autoComplete="new-password"
           />
 
@@ -238,6 +237,7 @@ function UsuarioModalContent({
 
           <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-xs text-indigo-700 leading-relaxed">
             <strong>Perfis:</strong> Administrador tem acesso total; Colaborador pode gerenciar membros e escalas; Basico tem acesso somente leitura.
+            {!isEditing && <span> Sem senha inicial, o usuario ficara pendente e recebera um link de ativacao.</span>}
           </div>
         </div>
       </form>

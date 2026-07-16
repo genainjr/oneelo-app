@@ -617,6 +617,27 @@ Resultados finais da entrega:
 - Tokens OAuth do Google nao sao persistidos nesta entrega.
 - Modelo `UserAuthProvider` fica preparado para Apple sem nova remodelagem estrutural.
 
+### Extensao: ativacao de usuario pendente com Google
+
+Status: concluida e validada em 2026-07-16
+
+O login social diario continua restrito a usuarios `ACTIVE`. A unica excecao para um usuario `PENDING` e o fluxo de ativacao iniciado por um link valido:
+
+1. O administrador cria o usuario sem senha e recebe o link de ativacao.
+2. A tela publica inicia `GET /api/auth/oauth/google/start?activationToken=...`.
+3. O backend valida o token antes de redirecionar ao Google e o inclui no `state` assinado.
+4. O callback exige e-mail Google verificado e igual ao e-mail do usuario pendente.
+5. A tela `/login/social-link` mantem a confirmacao explicita antes de criar ou reativar `UserAuthProvider`.
+6. A confirmacao ativa o usuario, limpa o token, cria a sessao e direciona para `/onboarding`.
+
+Regras adicionais:
+
+- Token expirado, substituido, reutilizado ou de usuario que nao seja mais `PENDING` e rejeitado.
+- Identidade externa vinculada a outro usuario e conflito de provedor continuam bloqueados.
+- Usuario ativado somente por Google pode criar sua primeira senha em Meu Perfil sem senha atual.
+- `PENDING` e `DISABLED` recebem bloqueios coerentes tanto no login por senha quanto no login Google diario.
+- Um usuario `ACTIVE` nunca pode ficar sem senha e sem ao menos um provedor social ativo.
+
 Pendencias futuras para Apple:
 
 - Criar credenciais no Apple Developer.

@@ -13,7 +13,7 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
-import { Role, AcaoAuditoria } from '@prisma/client';
+import { Role, AcaoAuditoria, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import type { Multer } from 'multer';
 
@@ -28,10 +28,18 @@ export class SuperAdminService {
 
   async login(dto: AdminLoginDto) {
     const user = await this.prisma.user.findFirst({
-      where: { email: dto.email, tenantId: null, role: Role.SUPER_ADMIN, ativo: true },
+      where: {
+        email: dto.email,
+        tenantId: null,
+        role: Role.SUPER_ADMIN,
+        ativo: true,
+        status: UserStatus.ACTIVE,
+      },
     });
 
     if (!user) throw new UnauthorizedException('Credenciais inválidas.');
+
+    if (!user.senhaHash) throw new UnauthorizedException('Credenciais invalidas.');
 
     const senhaValida = await bcrypt.compare(dto.senha, user.senhaHash);
     if (!senhaValida) throw new UnauthorizedException('Credenciais inválidas.');
@@ -101,6 +109,9 @@ export class SuperAdminService {
           email: dto.adminEmail,
           senhaHash,
           role: Role.ADMIN,
+          status: UserStatus.ACTIVE,
+          ativo: true,
+          activatedAt: new Date(),
         },
         select: { id: true, nome: true, email: true, role: true },
       });
@@ -196,6 +207,9 @@ export class SuperAdminService {
         email: dto.email,
         senhaHash,
         role: dto.role ?? Role.ADMIN,
+        status: UserStatus.ACTIVE,
+        ativo: true,
+        activatedAt: new Date(),
       },
       select: { id: true, nome: true, email: true, role: true, createdAt: true },
     });

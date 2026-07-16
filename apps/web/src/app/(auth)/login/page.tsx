@@ -32,7 +32,15 @@ function LoginForm() {
       window.location.href = target;
     } catch (err) {
       if (err instanceof HttpError) {
-        if (err.status === 401) {
+        if (err.status === 403 && err.data.code === 'ACCOUNT_PENDING_ACTIVATION') {
+          setError(typeof err.data.message === 'string'
+            ? err.data.message
+            : 'Sua conta ainda não foi ativada. Acesse o link de ativação enviado para você ou solicite um novo link ao administrador.');
+        } else if (err.status === 403 && err.data.code === 'ACCOUNT_DISABLED') {
+          setError(typeof err.data.message === 'string'
+            ? err.data.message
+            : 'Sua conta está desativada. Entre em contato com o administrador para solicitar a reativação.');
+        } else if (err.status === 401) {
           setError(t('errorInvalid'));
         } else if (err.status === 429) {
           setError(t('errorRateLimit'));

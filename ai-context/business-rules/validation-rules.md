@@ -105,10 +105,47 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 ### User
 
 - `email`: obrigatorio e unico no escopo correto.
-- `senha`: minimo definido pelo DTO; persistida como `senhaHash`.
+- `status`: `PENDING`, `ACTIVE` ou `DISABLED`; login diario so e permitido para `ACTIVE`.
+- `senha`: minimo definido pelo DTO quando informada; persistida como `senhaHash`.
+- `senhaHash`: pode ser nula enquanto a conta estiver pendente ou quando o acesso for exclusivamente social.
+- Criacao de usuario do tenant pode omitir senha; nesse caso a conta nasce `PENDING` e recebe link de ativacao.
+- Link de ativacao deve armazenar apenas hash do token, ter expiracao e ser de uso unico.
 - Alteracao da propria senha exige senha atual valida e nova senha com minimo definido pelo DTO.
+- Conta autenticada por provedor social e ainda sem `senhaHash` pode criar a primeira senha sem informar senha atual; o backend exige ao menos um provedor ativo nesse caso.
 - `role`: valor valido de `Role`.
 - `memberId`: opcional; quando usado por `BASIC`, viabiliza permissoes contextuais de ministerio.
+
+#### Ciclo de acesso e ativacao
+
+- `PENDING`: nao permite login diario por senha ou provedor social.
+- `ACTIVE`: permite login somente quando existe `senhaHash` ou ao menos um `UserAuthProvider` ativo.
+- `DISABLED`: bloqueia login por senha e social com orientacao para procurar o administrador.
+- O guard autenticado consulta o estado atual do usuario e do tenant; desativacoes bloqueiam tambem sessoes JWT ja emitidas.
+- O administrador nao pode mudar um usuario para `ACTIVE` sem senha e sem provedor social ativo.
+- A criacao sem senha gera token aleatorio, persiste somente seu hash e define expiracao de 72 horas.
+- Regenerar o link substitui o hash anterior; portanto, somente o link mais recente permanece valido.
+- Ativacao por senha ou Google preenche `activatedAt`, remove os dados do token e cria a sessao autenticada.
+- Um token expirado, reutilizado, substituido ou pertencente a usuario que deixou de ser `PENDING` deve ser rejeitado.
+
+#### Login e ativacao social
+
+- Login Google diario exige usuario `ACTIVE` e vinculo `UserAuthProvider` ativo.
+- O primeiro vinculo diario exige e-mail Google verificado, usuario interno preexistente com o mesmo e-mail e confirmacao explicita.
+- A ativacao Google de usuario `PENDING` so pode comecar pelo link de ativacao valido.
+- Na ativacao Google, o e-mail verificado deve ser igual ao e-mail do usuario pendente.
+- Identidade Google ja vinculada a outro usuario e conflito de provedor devem bloquear a ativacao.
+- O fluxo de login social nao cria usuarios internos automaticamente.
+- Um provedor nao pode ser removido se isso deixar um usuario `ACTIVE` sem senha e sem outro provedor ativo.
+
+#### Onboarding inicial
+
+- Quando `NEXT_PUBLIC_ONBOARDING_ENABLED=true`, todo usuario autenticado com `onboardingCompletedAt = null` deve ser direcionado para `/onboarding`.
+- Com a flag ausente ou igual a `false`, nenhuma verificacao de onboarding bloqueia login, ativacao ou navegacao autenticada.
+- A migration e o seed nao preenchem `onboardingCompletedAt`; usuarios existentes tambem passam pelo fluxo.
+- O campo e gravado somente ao concluir a ultima etapa e seguir para a revisao em Meu Perfil.
+- Fora do iOS, indisponibilidade de instalacao PWA ou notificacoes nao pode bloquear a conclusao.
+- No Safari do iOS, o usuario precisa adicionar o PWA e abri-lo pelo icone antes de avancar para notificacoes.
+- Permissao de notificacoes continua opcional em todas as plataformas.
 
 ### Ministerio
 

@@ -23,6 +23,7 @@ import { SocialAuthService, type GoogleCallbackResult } from './social-auth.serv
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ActivateAccountDto } from './dto/activate-account.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { AuditLogsQueryDto } from './dto/audit-logs-query.dto';
@@ -145,17 +146,47 @@ export class AuthController {
   }
 
   @Public()
+  @Get('activation/:token')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @ApiOperation({ summary: 'Valida um link de ativacao de conta' })
+  async validateActivation(@Param('token') token: string) {
+    return this.authService.validateActivationToken(token);
+  }
+
+  @Public()
+  @Post('activation/:token/password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Ativa uma conta pendente criando uma senha' })
+  async activateWithPassword(
+    @Param('token') token: string,
+    @Body() dto: ActivateAccountDto,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+  ) {
+    const { accessToken, user, expiresIn, expiresAt } =
+      await this.authService.activateWithPassword(token, dto, getClientIp(req));
+
+    this.setAccessTokenCookie(res, req, accessToken, expiresIn);
+
+    return { message: 'Conta ativada com sucesso.', user, expiresIn, expiresAt };
+  }
+
+  @Public()
   @Get('oauth/google/start')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @ApiOperation({ summary: 'Inicia o fluxo OAuth de login com Google' })
   async startGoogleLogin(
     @Query('redirect') redirect: string | undefined,
+    @Query('activationToken') activationToken: string | undefined,
     @Res() res: Response,
     @Req() req: Request,
   ) {
     const { authorizationUrl, stateToken, maxAgeMs } =
-      await this.socialAuthService.createGoogleAuthorizationUrl(redirect);
+      await this.socialAuthService.createGoogleAuthorizationUrl(redirect, activationToken);
 
     this.setTransientCookie(res, req, OAUTH_STATE_COOKIE, stateToken, maxAgeMs);
 
@@ -275,6 +306,17 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() user: JwtPayload) {
     return this.authService.me(user.sub, user.tenantId!);
+  }
+
+  @Patch('me/onboarding')
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Marca o onboarding inicial do usuario como concluido' })
+  async completeOnboarding(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.authService.completeOnboarding(user.sub, user.tenantId!, getClientIp(req));
   }
 
   @Patch('me/profile')
@@ -413,6 +455,25 @@ export class AuthController {
     @Req() req: Request,
   ) {
     return this.authService.createUser(dto, actor.tenantId!, actor.sub, getClientIp(req));
+  }
+
+  @Post('users/:id/activation-link')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Roles(Role.ADMIN)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Gera um novo link de ativacao para usuario pendente' })
+  async regenerateActivationLink(
+    @Param('id') id: string,
+    @CurrentUser() actor: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.authService.regenerateActivationLink(
+      id,
+      actor.tenantId!,
+      actor.sub,
+      getClientIp(req),
+    );
   }
 
   @Patch('users/:id')
