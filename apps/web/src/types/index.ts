@@ -6,6 +6,8 @@ export type Plano = 'GRATUITO' | 'BASICO' | 'PROFISSIONAL';
 
 export type AuthProvider = 'GOOGLE' | 'APPLE';
 
+export type UserStatus = 'PENDING' | 'ACTIVE' | 'DISABLED';
+
 // ─── Tenant (Super Admin) ─────────────────────────────────────────────────────
 
 export interface Tenant {
@@ -39,6 +41,9 @@ export interface AuthUser {
   nome: string;
   email: string;
   role: Role;
+  status?: UserStatus;
+  hasPassword?: boolean;
+  onboardingCompletedAt?: string | null;
   createdAt?: string;
   tenant?: {
     nome: string;
@@ -239,6 +244,12 @@ export interface User {
   email: string;
   role: Role;
   ativo: boolean;
+  status: UserStatus;
+  activationExpiresAt?: string | null;
+  activationCreatedAt?: string | null;
+  activatedAt?: string | null;
+  onboardingCompletedAt?: string | null;
+  activationLink?: string | null;
   memberId?: string | null;
   membro?: { id: string; nome: string } | null;
   createdAt: string;
@@ -292,5 +303,6 @@ export interface PaginatedItemsResponse<T> {
 export interface ApiError {
   statusCode: number;
   message: string | string[];
+  code?: string;
   error?: string;
 }

@@ -15,6 +15,16 @@ Este documento define o comportamento esperado de navegacao por perfil no fronte
 
 ## Rotas por Perfil
 
+### Primeiro acesso
+
+- `/activate/:token` e publico e oferece ativacao por senha ou Google.
+- `/login/social-link` e publico e concentra confirmacao de vinculo e mensagens de erro do OAuth.
+- Com `NEXT_PUBLIC_ONBOARDING_ENABLED=true`, qualquer usuario do tenant com `onboardingCompletedAt = null` deve ir para `/onboarding` depois da ativacao ou login e antes do destino do perfil.
+- Com a flag ausente ou igual a `false`, todos seguem diretamente para o destino normal do perfil e o acesso direto a `/onboarding` tambem redireciona para esse destino.
+- `/onboarding` e autenticado, isolado do layout do dashboard e nao exibe sidebar ou header global.
+- A conclusao grava `onboardingCompletedAt` e direciona obrigatoriamente para `/meu-perfil` para revisao cadastral.
+- Instalacao PWA e notificacoes sao opcionais fora do iOS. No Safari do iOS, a abertura pelo atalho instalado e obrigatoria para continuar.
+
 ### ADMIN
 
 Pode acessar a experiencia administrativa do tenant:
@@ -53,7 +63,8 @@ Nao deve acessar areas exclusivas de `ADMIN`, como configuracoes sensiveis quand
 
 Fluxo principal:
 
-- login deve cair em `/minhas-escalas`;
+- depois do onboarding, login deve cair em `/personal-panel`;
+- pode acessar `/personal-panel`;
 - pode acessar `/minhas-escalas`;
 - pode acessar `/agenda/visualizacao`;
 - pode acessar `/meu-perfil`;
@@ -105,6 +116,7 @@ Regras:
 Menu BASIC comum:
 
 ```txt
+Painel Pessoal
 Minhas Escalas
 Agenda
 Meu Perfil
@@ -113,6 +125,7 @@ Meu Perfil
 Menu BASIC lider/co-lider:
 
 ```txt
+Painel Pessoal
 Minhas Escalas
 Ministerios
   Gerenciar
@@ -156,6 +169,10 @@ Configuracoes (ADMIN)
 ## Middleware
 
 O middleware do Next.js deve aplicar bloqueios basicos por cookie/role para UX e reducao de exposicao visual.
+
+O redirecionamento por onboarding usa o usuario devolvido pelo login/ativacao e tambem uma consulta autenticada a `/api/auth/me` no layout autenticado, pois o cookie JWT nao carrega `onboardingCompletedAt`.
+
+`/onboarding` nao deve usar a sidebar nem aparecer no menu. A conclusao so deve gravar `onboardingCompletedAt` no ultimo passo do fluxo.
 
 Ele nao substitui:
 

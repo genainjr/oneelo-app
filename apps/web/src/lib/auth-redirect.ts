@@ -1,5 +1,9 @@
 import type { AuthUser } from '@/types';
 
+export function isOnboardingEnabled() {
+  return process.env.NEXT_PUBLIC_ONBOARDING_ENABLED === 'true';
+}
+
 export function isSafeAppRedirect(value: string | null | undefined) {
   if (!value) return false;
   if (!value.startsWith('/')) return false;
@@ -13,6 +17,7 @@ export function isSafeAppRedirect(value: string | null | undefined) {
     pathname === '/login' ||
     pathname === '/login/social-link' ||
     pathname === '/admin/login' ||
+    (pathname === '/onboarding' && !isOnboardingEnabled()) ||
     pathname === '/manifest.webmanifest' ||
     pathname === '/sw.js' ||
     pathname === '/offline.html' ||
@@ -24,7 +29,14 @@ export function isSafeAppRedirect(value: string | null | undefined) {
   return true;
 }
 
-export function getPostLoginTarget(user: Pick<AuthUser, 'role'>, redirect?: string | null) {
+export function getPostLoginTarget(
+  user: Pick<AuthUser, 'role' | 'onboardingCompletedAt'>,
+  redirect?: string | null,
+) {
+  if (isOnboardingEnabled() && !user.onboardingCompletedAt) {
+    return '/onboarding';
+  }
+
   const fallback = user.role === 'BASIC' ? '/personal-panel' : '/dashboard';
   const safeRedirect = isSafeAppRedirect(redirect) ? redirect : null;
 

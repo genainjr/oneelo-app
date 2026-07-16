@@ -1,4 +1,4 @@
-const CORE_CACHE = 'oneelo-core-v3';
+const CORE_CACHE = 'oneelo-core-v4';
 const CORE_ASSETS = [
   '/offline.html',
   '/favicon.ico',

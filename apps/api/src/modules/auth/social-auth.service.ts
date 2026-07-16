@@ -9,8 +9,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { AcaoAuditoria, AuthProvider, Prisma, Role } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { AcaoAuditoria, AuthProvider, Prisma, Role, UserStatus } from '@prisma/client';
+import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { getUserSessionExpiresIn, parseDurationToMilliseconds } from './auth-session';
@@ -20,6 +20,10 @@ import {
   OAUTH_STATE_EXPIRES_IN,
   OAUTH_TRANSIENT_COOKIE_MAX_AGE_MS,
 } from './social-auth.constants';
+import {
+  ACCOUNT_DISABLED_MESSAGE,
+  ACCOUNT_PENDING_ACTIVATION_MESSAGE,
+} from './auth-access.constants';
 
 type UserWithTenant = Prisma.UserGetPayload<{ include: { tenant: true } }>;
 
@@ -27,6 +31,7 @@ interface OAuthStatePayload {
   type: 'oauth_state';
   provider: AuthProvider;
   redirectPath: string;
+  activationToken?: string;
   nonce: string;
 }
 
@@ -42,6 +47,7 @@ interface PendingLinkPayload {
   userEmail: string;
   userName: string;
   redirectPath: string;
+  activationToken?: string;
   nonce: string;
 }
 
@@ -63,6 +69,14 @@ interface GoogleUserInfoResponse {
   picture?: string;
 }
 
+interface GoogleProfile {
+  providerUserId: string;
+  email: string;
+  emailVerified: boolean;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
 interface AuthSessionResult {
   accessToken: string;
   expiresIn: string;
@@ -73,6 +87,7 @@ interface AuthSessionResult {
     email: string;
     role: Role;
     tenantId: string | null;
+    onboardingCompletedAt: Date | null;
     tenantNome: string;
   };
 }
@@ -127,15 +142,24 @@ export class SocialAuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async createGoogleAuthorizationUrl(redirect?: string): Promise<GoogleAuthorizationStart> {
+  async createGoogleAuthorizationUrl(
+    redirect?: string,
+    activationToken?: string,
+  ): Promise<GoogleAuthorizationStart> {
     const config = this.getGoogleConfig();
     const redirectPath = this.normalizeRedirectPath(redirect);
+    const normalizedActivationToken = activationToken?.trim() || undefined;
+
+    if (normalizedActivationToken) {
+      await this.assertActivationTokenCanStartGoogleFlow(normalizedActivationToken);
+    }
 
     const stateToken = await this.jwtService.signAsync(
       {
         type: 'oauth_state',
         provider: AuthProvider.GOOGLE,
         redirectPath,
+        activationToken: normalizedActivationToken,
         nonce: randomUUID(),
       } satisfies OAuthStatePayload,
       {
@@ -172,6 +196,26 @@ export class SocialAuthService {
     const statePayload = await this.verifyOAuthState(state, stateCookie, AuthProvider.GOOGLE);
     const profile = await this.fetchGoogleProfile(code);
 
+    if (statePayload.activationToken) {
+      const pendingPayload = await this.createActivationPendingLinkPayload(
+        statePayload.activationToken,
+        profile,
+        statePayload.redirectPath,
+      );
+
+      const pendingToken = await this.jwtService.signAsync(pendingPayload, {
+        secret: this.getJwtSecret(),
+        expiresIn: OAUTH_PENDING_LINK_EXPIRES_IN,
+      });
+
+      return {
+        status: 'link_confirmation_required',
+        redirectPath: '/login/social-link',
+        pendingToken,
+        pending: this.toPendingResult(pendingPayload),
+      };
+    }
+
     const existingProvider = await this.prisma.userAuthProvider.findUnique({
       where: {
         provider_providerUserId: {
@@ -198,7 +242,7 @@ export class SocialAuthService {
 
       return {
         status: 'authenticated',
-        redirectPath: statePayload.redirectPath,
+        redirectPath: this.getPostAuthRedirect(existingProvider.user, statePayload.redirectPath),
         session: await this.createSessionForUser(user, AuthProvider.GOOGLE, ip),
       };
     }
@@ -267,6 +311,25 @@ export class SocialAuthService {
     ip?: string,
   ): Promise<AuthSessionResult & { redirectPath: string }> {
     const pending = await this.verifyPendingLink(pendingCookie);
+
+    if (pending.activationToken) {
+      const { session, redirectPath } = await this.activatePendingUserWithGoogle(
+        pending.activationToken,
+        {
+          providerUserId: pending.providerUserId,
+          email: pending.email,
+          emailVerified: pending.emailVerified,
+          displayName: pending.displayName,
+          avatarUrl: pending.avatarUrl,
+        },
+        ip,
+      );
+
+      return {
+        ...session,
+        redirectPath,
+      };
+    }
 
     const user = await this.prisma.user.findUnique({
       where: { id: pending.userId },
@@ -367,7 +430,7 @@ export class SocialAuthService {
 
     return {
       ...session,
-      redirectPath: pending.redirectPath,
+      redirectPath: this.getPostAuthRedirect(loginUser, pending.redirectPath),
     };
   }
 
@@ -376,7 +439,7 @@ export class SocialAuthService {
     tenantId: string,
   ): Promise<ConnectedAuthProviderResult[]> {
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, ativo: true },
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
       select: {
         id: true,
         senhaHash: true,
@@ -417,7 +480,7 @@ export class SocialAuthService {
     const provider = this.parseAuthProvider(providerParam);
 
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, ativo: true },
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
       select: {
         id: true,
         tenantId: true,
@@ -492,6 +555,287 @@ export class SocialAuthService {
     return { message: 'Provedor de login desvinculado com sucesso.' };
   }
 
+  private hashActivationToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async assertActivationTokenCanStartGoogleFlow(token: string) {
+    const tokenHash = this.hashActivationToken(token);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        activationTokenHash: tokenHash,
+        status: UserStatus.PENDING,
+      },
+      select: {
+        activationExpiresAt: true,
+        tenant: {
+          select: { ativo: true },
+        },
+      },
+    });
+
+    if (!user || !user.activationExpiresAt || user.activationExpiresAt <= new Date()) {
+      throw new BadRequestException('Link de ativacao expirado ou invalido.');
+    }
+
+    if (!user.tenant?.ativo) {
+      throw new ForbiddenException(
+        'Acesso suspenso. Entre em contato com o administrador.',
+      );
+    }
+  }
+
+  private async createActivationPendingLinkPayload(
+    activationToken: string,
+    profile: GoogleProfile,
+    redirectPath: string,
+  ): Promise<PendingLinkPayload> {
+    const provider = AuthProvider.GOOGLE;
+    const providerLabel = this.getProviderLabel(provider);
+    const tokenHash = this.hashActivationToken(activationToken);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        activationTokenHash: tokenHash,
+        status: UserStatus.PENDING,
+      },
+      include: { tenant: true },
+    });
+
+    if (!user || !user.activationExpiresAt || user.activationExpiresAt <= new Date()) {
+      throw new BadRequestException('Link de ativacao expirado ou invalido.');
+    }
+
+    if (!user.tenantId || !user.tenant?.ativo) {
+      throw new ForbiddenException(
+        'Acesso suspenso. Entre em contato com o administrador.',
+      );
+    }
+
+    if (!profile.emailVerified) {
+      throw new UnauthorizedException(`A conta ${providerLabel} precisa ter e-mail verificado.`);
+    }
+
+    if (profile.email.toLowerCase() !== user.email.toLowerCase()) {
+      throw new ConflictException(
+        `Use uma conta ${providerLabel} com o mesmo e-mail cadastrado no OneElo.`,
+      );
+    }
+
+    const providerLink = await this.prisma.userAuthProvider.findUnique({
+      where: {
+        provider_providerUserId: {
+          provider,
+          providerUserId: profile.providerUserId,
+        },
+      },
+    });
+
+    if (providerLink && providerLink.userId !== user.id) {
+      throw new ConflictException(`Esta conta ${providerLabel} ja esta vinculada a outro usuario.`);
+    }
+
+    const userProvider = await this.prisma.userAuthProvider.findUnique({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider,
+        },
+      },
+    });
+
+    if (userProvider && providerLink && userProvider.id !== providerLink.id) {
+      throw new ConflictException(`Este usuario ja possui outra conta ${providerLabel} vinculada.`);
+    }
+
+    if (
+      userProvider &&
+      !providerLink &&
+      (userProvider.ativo || userProvider.providerUserId !== profile.providerUserId)
+    ) {
+      throw new ConflictException(`Este usuario ja possui uma conta ${providerLabel} vinculada.`);
+    }
+
+    return {
+      type: 'oauth_pending_link',
+      provider,
+      providerUserId: profile.providerUserId,
+      email: profile.email,
+      emailVerified: true,
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl,
+      userId: user.id,
+      userEmail: user.email,
+      userName: user.nome,
+      redirectPath,
+      activationToken,
+      nonce: randomUUID(),
+    };
+  }
+
+  private async activatePendingUserWithGoogle(
+    activationToken: string,
+    profile: GoogleProfile,
+    ip?: string,
+  ): Promise<{ session: AuthSessionResult; redirectPath: string }> {
+    const provider = AuthProvider.GOOGLE;
+    const providerLabel = this.getProviderLabel(provider);
+    const tokenHash = this.hashActivationToken(activationToken);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        activationTokenHash: tokenHash,
+        status: UserStatus.PENDING,
+      },
+      include: { tenant: true },
+    });
+
+    if (!user || !user.activationExpiresAt || user.activationExpiresAt <= new Date()) {
+      throw new BadRequestException('Link de ativacao expirado ou invalido.');
+    }
+
+    if (!user.tenantId || !user.tenant?.ativo) {
+      throw new ForbiddenException(
+        'Acesso suspenso. Entre em contato com o administrador.',
+      );
+    }
+
+    if (!profile.emailVerified) {
+      throw new UnauthorizedException(`A conta ${providerLabel} precisa ter e-mail verificado.`);
+    }
+
+    if (profile.email.toLowerCase() !== user.email.toLowerCase()) {
+      throw new ConflictException(
+        `Use uma conta ${providerLabel} com o mesmo e-mail cadastrado no OneElo.`,
+      );
+    }
+
+    const providerLink = await this.prisma.userAuthProvider.findUnique({
+      where: {
+        provider_providerUserId: {
+          provider,
+          providerUserId: profile.providerUserId,
+        },
+      },
+    });
+
+    if (providerLink && providerLink.userId !== user.id) {
+      throw new ConflictException(`Esta conta ${providerLabel} ja esta vinculada a outro usuario.`);
+    }
+
+    const userProvider = await this.prisma.userAuthProvider.findUnique({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider,
+        },
+      },
+    });
+
+    if (userProvider && providerLink && userProvider.id !== providerLink.id) {
+      throw new ConflictException(`Este usuario ja possui outra conta ${providerLabel} vinculada.`);
+    }
+
+    if (
+      userProvider &&
+      !providerLink &&
+      (userProvider.ativo || userProvider.providerUserId !== profile.providerUserId)
+    ) {
+      throw new ConflictException(`Este usuario ja possui uma conta ${providerLabel} vinculada.`);
+    }
+
+    const now = new Date();
+    const activatedUser = await this.prisma.$transaction(async (tx) => {
+      if (providerLink) {
+        await tx.userAuthProvider.update({
+          where: { id: providerLink.id },
+          data: {
+            ativo: true,
+            revokedAt: null,
+            linkedAt: now,
+            lastLoginAt: now,
+            email: profile.email,
+            emailVerified: true,
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
+          },
+        });
+      } else if (userProvider) {
+        await tx.userAuthProvider.update({
+          where: { id: userProvider.id },
+          data: {
+            ativo: true,
+            revokedAt: null,
+            linkedAt: now,
+            lastLoginAt: now,
+            email: profile.email,
+            emailVerified: true,
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
+          },
+        });
+      } else {
+        await tx.userAuthProvider.create({
+          data: {
+            userId: user.id,
+            provider,
+            providerUserId: profile.providerUserId,
+            email: profile.email,
+            emailVerified: true,
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
+            lastLoginAt: now,
+          },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          entidade: 'user_auth_provider',
+          entidadeId: user.id,
+          acao: AcaoAuditoria.CRIAR,
+          payloadAfter: {
+            provider,
+            providerUserId: profile.providerUserId,
+            email: profile.email,
+          },
+          ipAddress: ip,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          entidade: 'usuarios',
+          entidadeId: user.id,
+          acao: AcaoAuditoria.ATUALIZAR,
+          payloadBefore: { status: UserStatus.PENDING },
+          payloadAfter: { status: UserStatus.ACTIVE, activatedAt: now.toISOString(), method: 'SOCIAL', provider },
+          ipAddress: ip,
+        },
+      });
+
+      return tx.user.update({
+        where: { id: user.id },
+        data: {
+          status: UserStatus.ACTIVE,
+          ativo: true,
+          activatedAt: now,
+          activationTokenHash: null,
+          activationExpiresAt: null,
+          activationCreatedAt: null,
+        },
+        include: { tenant: true },
+      });
+    });
+
+    return {
+      session: await this.createSessionForUser(activatedUser, provider, ip),
+      redirectPath: this.getPostAuthRedirect(activatedUser),
+    };
+  }
+
   private async verifyOAuthState(
     state: string | undefined,
     stateCookie: string | undefined,
@@ -540,13 +884,7 @@ export class SocialAuthService {
     }
   }
 
-  private async fetchGoogleProfile(code: string): Promise<{
-    providerUserId: string;
-    email: string;
-    emailVerified: boolean;
-    displayName?: string;
-    avatarUrl?: string;
-  }> {
+  private async fetchGoogleProfile(code: string): Promise<GoogleProfile> {
     const config = this.getGoogleConfig();
 
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -609,7 +947,6 @@ export class SocialAuthService {
     const users = await this.prisma.user.findMany({
       where: {
         email: { equals: email, mode: 'insensitive' },
-        ativo: true,
         NOT: { role: Role.SUPER_ADMIN },
       },
       include: { tenant: true },
@@ -626,8 +963,22 @@ export class SocialAuthService {
   }
 
   private assertUserCanLogin(user: UserWithTenant): UserWithTenant {
-    if (!user.ativo || user.role === Role.SUPER_ADMIN) {
+    if (user.role === Role.SUPER_ADMIN) {
       throw new UnauthorizedException('Usuario sem acesso ao login social.');
+    }
+
+    if (user.status === UserStatus.PENDING) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_PENDING_ACTIVATION',
+        message: ACCOUNT_PENDING_ACTIVATION_MESSAGE,
+      });
+    }
+
+    if (!user.ativo || user.status === UserStatus.DISABLED) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_DISABLED',
+        message: ACCOUNT_DISABLED_MESSAGE,
+      });
     }
 
     if (!user.tenantId || !user.tenant) {
@@ -688,9 +1039,22 @@ export class SocialAuthService {
         email: user.email,
         role: user.role,
         tenantId: user.tenantId,
+        onboardingCompletedAt: user.onboardingCompletedAt,
         tenantNome: user.tenant!.nome,
       },
     };
+  }
+
+  private getPostAuthRedirect(user: UserWithTenant, requestedPath?: string | null) {
+    if (!user.onboardingCompletedAt) {
+      return '/onboarding';
+    }
+
+    if (requestedPath && !(user.role === Role.BASIC && requestedPath === '/dashboard')) {
+      return requestedPath;
+    }
+
+    return user.role === Role.BASIC ? '/personal-panel' : '/dashboard';
   }
 
   private toPendingResult(payload: PendingLinkPayload): PendingLinkResult {

@@ -32,6 +32,9 @@ export default function ConfiguracoesPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [createdActivationLink, setCreatedActivationLink] = useState<string | null>(null);
+  const [activationLinksByUser, setActivationLinksByUser] = useState<Record<string, string>>({});
+  const [activationLinkLoadingId, setActivationLinkLoadingId] = useState<string | null>(null);
 
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -161,11 +164,13 @@ export default function ConfiguracoesPage() {
 
   function openCreate() {
     setEditingUser(null);
+    setCreatedActivationLink(null);
     setModalOpen(true);
   }
 
   function openEdit(user: User) {
     setEditingUser(user);
+    setCreatedActivationLink(null);
     setModalOpen(true);
   }
 
@@ -173,7 +178,14 @@ export default function ConfiguracoesPage() {
     if (editingUser) {
       await api.patch(`/api/auth/users/${editingUser.id}`, data);
     } else {
-      await api.post('/api/auth/users', data);
+      const created = await api.post<User>('/api/auth/users', data);
+      setCreatedActivationLink(created.activationLink ?? null);
+      if (created.activationLink) {
+        setActivationLinksByUser((current) => ({
+          ...current,
+          [created.id]: created.activationLink!,
+        }));
+      }
     }
     await loadUsers();
     if (auditPage === 1) {
@@ -347,12 +359,60 @@ export default function ConfiguracoesPage() {
   }
 
   function renderUserStatusBadge(user: User) {
+    if (user.status === 'PENDING') {
+      return (
+        <StatusBadge
+          label="Pendente"
+          className="border bg-amber-50 text-amber-700 border-amber-100"
+        />
+      );
+    }
+
+    const isActive = user.status ? user.status === 'ACTIVE' : user.ativo;
+
     return (
       <StatusBadge
-        label={user.ativo ? t('users.status.active') : t('users.status.inactive')}
-        className={`border ${user.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-250'}`}
+        label={isActive ? t('users.status.active') : t('users.status.inactive')}
+        className={`border ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-100 text-gray-500 border-gray-250'}`}
       />
     );
+  }
+
+  async function copyActivationLink(user: User) {
+    const link = activationLinksByUser[user.id] || user.activationLink;
+    if (!link) return;
+
+    try {
+      await navigator.clipboard?.writeText(link);
+    } catch {
+      setError('Nao foi possivel copiar o link de ativacao.');
+    }
+  }
+
+  async function regenerateActivationLink(user: User) {
+    setActivationLinkLoadingId(user.id);
+    setError(null);
+
+    try {
+      const updated = await api.post<User>(`/api/auth/users/${user.id}/activation-link`);
+      if (updated.activationLink) {
+        setActivationLinksByUser((current) => ({
+          ...current,
+          [user.id]: updated.activationLink!,
+        }));
+        setCreatedActivationLink(updated.activationLink);
+      }
+      await loadUsers();
+      if (auditPage === 1) {
+        await loadAuditLogs(1);
+      } else {
+        setAuditPage(1);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Nao foi possivel gerar novo link de ativacao.');
+    } finally {
+      setActivationLinkLoadingId(null);
+    }
   }
 
   function getAuditActionLabel(action: string) {
@@ -458,6 +518,25 @@ export default function ConfiguracoesPage() {
       header: t('users.columns.actions'),
       render: (u) => (
         <div className="flex items-center gap-2">
+          {u.status === 'PENDING' && (
+            <button
+              onClick={() => activationLinksByUser[u.id] ? copyActivationLink(u) : regenerateActivationLink(u)}
+              disabled={activationLinkLoadingId === u.id}
+              title={activationLinksByUser[u.id] ? 'Copiar link de ativacao' : 'Gerar link de ativacao'}
+              className="p-2 border border-amber-100 hover:bg-amber-50 rounded-xl text-amber-600 transition-all flex items-center justify-center disabled:opacity-60"
+            >
+              {activationLinkLoadingId === u.id ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H15a3 3 0 010 6h-1.5m-3 0H9a3 3 0 010-6h1.5m-3 6h9" />
+                </svg>
+              )}
+            </button>
+          )}
           <button
             onClick={() => openEdit(u)}
             title={t('users.editTooltip')}
@@ -610,6 +689,24 @@ export default function ConfiguracoesPage() {
         )}
       </div>
 
+      {activeTab === 'usuarios' && createdActivationLink && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-2xs">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-amber-900">Usuario criado aguardando ativacao</h3>
+              <p className="mt-1 text-sm text-amber-800 break-all">{createdActivationLink}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigator.clipboard?.writeText(createdActivationLink)}
+              className="inline-flex items-center justify-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+            >
+              Copiar link
+            </button>
+          </div>
+        </section>
+      )}
+
       {activeTab === 'audit' && (
         <section ref={auditLogsTopRef} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-2xs">
           <div className="grid gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-3">
@@ -709,6 +806,25 @@ export default function ConfiguracoesPage() {
               </div>
 
               <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-3">
+                {user.status === 'PENDING' && (
+                  <button
+                    onClick={() => activationLinksByUser[user.id] ? copyActivationLink(user) : regenerateActivationLink(user)}
+                    disabled={activationLinkLoadingId === user.id}
+                    title={activationLinksByUser[user.id] ? 'Copiar link de ativacao' : 'Gerar link de ativacao'}
+                    className="p-2 border border-amber-100 hover:bg-amber-50 rounded-xl text-amber-600 transition-all flex items-center justify-center disabled:opacity-60"
+                  >
+                    {activationLinkLoadingId === user.id ? (
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H15a3 3 0 010 6h-1.5m-3 0H9a3 3 0 010-6h1.5m-3 6h9" />
+                      </svg>
+                    )}
+                  </button>
+                )}
                 <button
                   onClick={() => openEdit(user)}
                   title={t('users.editTooltip')}

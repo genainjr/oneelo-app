@@ -13,6 +13,8 @@ Physical database identifiers follow English `snake_case`, `tb_`-prefixed singul
 | `Plan` | `plan` | `FREE`, `BASIC`, `PROFESSIONAL` | Tenant subscription plan level. |
 | `SubscriptionStatus` | `subscription_status` | `ACTIVE`, `TRIAL`, `SUSPENDED`, `CANCELLED` | Tenant billing/operational state. |
 | `Role` | `role` | `ADMIN`, `STAFF`, `BASIC`, `SUPER_ADMIN` | Global user access role. |
+| `AuthProvider` | `auth_provider` | `GOOGLE`, `APPLE` | External identity provider linked to a user. Only Google is functional today. |
+| `UserStatus` | `user_status` | `PENDING`, `ACTIVE`, `DISABLED` | User account activation/access lifecycle. |
 | `MinistryRole` | `ministry_role` | `LEADER`, `ASSISTANT_LEADER`, `MEMBER` | Contextual role inside a ministry. |
 | `MemberStatus` | `member_status` | `ACTIVE`, `INACTIVE`, `VISITOR`, `TRANSFERRED` | Member lifecycle state. |
 | `ScheduleStatus` | `schedule_status` | `DRAFT`, `PUBLISHED`, `CLOSED` | Schedule lifecycle state. |
@@ -55,11 +57,54 @@ Represents login credentials and global access permissions. It does not replace 
 - `email`
 - `passwordHash` / `password_hash`
 - `role`
+- `status`: `PENDING`, `ACTIVE`, or `DISABLED`
 - `active` / `is_active`
+- `activationTokenHash` / `activation_token_hash`
+- `activationExpiresAt` / `activation_expires_at`
+- `activationCreatedAt` / `activation_created_at`
+- `activatedAt` / `activated_at`
+- `onboardingCompletedAt` / `onboarding_completed_at`
 - `createdAt` / `created_at`
 - `updatedAt` / `updated_at`
 
-### 3. Member (`tb_member`)
+Rules:
+
+- `status` is the source of truth for account activation and daily login.
+- `active` remains during the transition for compatibility with existing screens and services.
+- `passwordHash` is nullable so a pending user can activate using Google without creating a password.
+- An `ACTIVE` tenant user must have a password or at least one active `UserAuthProvider`.
+- Activation links persist only a token hash; the raw token is returned only when creating/regenerating the link.
+- Activating a user clears all activation-token fields and fills `activatedAt`.
+- `onboardingCompletedAt` remains null until the user completes the final onboarding action. The migration and development seed do not backfill it.
+
+### 3. UserAuthProvider (`tb_user_auth_provider`)
+
+Represents an external identity linked to an existing internal user. It never creates an operational user by itself.
+
+- `id`
+- `userId` / `user_id`
+- `provider`: `GOOGLE` or `APPLE`
+- `providerUserId` / `provider_user_id`
+- `email`
+- `emailVerified` / `email_verified`
+- `displayName` / `display_name`
+- `avatarUrl` / `avatar_url`
+- `active` / `is_active`
+- `linkedAt` / `linked_at`
+- `lastLoginAt` / `last_login_at`
+- `revokedAt` / `revoked_at`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+
+Rules:
+
+- Unique external identity: `[provider, providerUserId]`.
+- At most one identity of each provider per user: `[userId, provider]`.
+- Daily social login requires both an active provider link and an `ACTIVE` user.
+- The last active provider cannot be unlinked when the user has no password.
+- Provider access tokens are not persisted by this model.
+
+### 4. Member (`tb_member`)
 
 Represents a person in a tenant. A member may exist without login credentials.
 
@@ -75,7 +120,7 @@ Represents a person in a tenant. A member may exist without login credentials.
 - `createdAt` / `created_at`
 - `updatedAt` / `updated_at`
 
-### 4. Label (`tb_label`)
+### 5. Label (`tb_label`)
 
 Custom segmentation label for members.
 
@@ -85,7 +130,7 @@ Custom segmentation label for members.
 - `colorHex` / `color_hex`
 - Unique per tenant: `[tenantId, name]`.
 
-### 5. MemberLabel (`tb_member_label`)
+### 6. MemberLabel (`tb_member_label`)
 
 Many-to-many relation between members and labels.
 
@@ -93,7 +138,7 @@ Many-to-many relation between members and labels.
 - `labelId` / `label_id`
 - Composite key: `[memberId, labelId]`.
 
-### 6. Ministry (`tb_ministry`)
+### 7. Ministry (`tb_ministry`)
 
 Represents an area of service in a tenant.
 
@@ -105,7 +150,7 @@ Represents an area of service in a tenant.
 - `createdAt` / `created_at`
 - `updatedAt` / `updated_at`
 
-### 7. MinistryMember (`tb_ministry_member`)
+### 8. MinistryMember (`tb_ministry_member`)
 
 Connects members to ministries and stores contextual leadership.
 
@@ -120,7 +165,7 @@ Rules:
 - Leadership is resolved through `MinistryMember.role`.
 - A `User` with `role = BASIC` gains contextual permissions when its linked `memberId` has `LEADER` or `ASSISTANT_LEADER` in the ministry.
 
-### 8. MinistryPosition (`tb_ministry_position`)
+### 9. MinistryPosition (`tb_ministry_position`)
 
 Defines service positions available inside a ministry.
 
@@ -132,7 +177,7 @@ Defines service positions available inside a ministry.
 - `order` / `display_order`
 - Unique per ministry: `[ministryId, name]`.
 
-### 9. MinistryMemberPosition (`tb_ministry_member_position`)
+### 10. MinistryMemberPosition (`tb_ministry_member_position`)
 
 Defines which positions a member can serve in a ministry.
 
@@ -140,7 +185,7 @@ Defines which positions a member can serve in a ministry.
 - `memberId` / `member_id`
 - `positionId` / `position_id`
 
-### 10. Schedule (`tb_schedule`)
+### 11. Schedule (`tb_schedule`)
 
 Monthly service schedule linked to a ministry.
 
@@ -155,7 +200,7 @@ Monthly service schedule linked to a ministry.
 - `updatedAt` / `updated_at`
 - Unique per ministry/month/year: `[ministryId, month, year]`.
 
-### 11. ScheduleDay (`tb_schedule_day`)
+### 12. ScheduleDay (`tb_schedule_day`)
 
 Individual day inside a schedule.
 
@@ -167,7 +212,7 @@ Individual day inside a schedule.
 - `notes`
 - `order` / `display_order`
 
-### 12. ScheduleDayPositionHidden (`tb_schedule_day_position_hidden`)
+### 13. ScheduleDayPositionHidden (`tb_schedule_day_position_hidden`)
 
 Defines positions hidden for a specific schedule day.
 
@@ -175,7 +220,7 @@ Defines positions hidden for a specific schedule day.
 - `positionId` / `position_id`
 - Composite key: `[dayId, positionId]`.
 
-### 13. ScheduleAssignment (`tb_schedule_assignment`)
+### 14. ScheduleAssignment (`tb_schedule_assignment`)
 
 Individual member assignment in a schedule day and ministry position.
 
@@ -187,7 +232,7 @@ Individual member assignment in a schedule day and ministry position.
 - `confirmationStatus` / `confirmation_status`
 - `notes`
 
-### 14. Event (`tb_event`)
+### 15. Event (`tb_event`)
 
 Calendar event.
 
@@ -203,7 +248,7 @@ Calendar event.
 - `createdAt` / `created_at`
 - `updatedAt` / `updated_at`
 
-### 15. EventMinistry (`tb_event_ministry`)
+### 16. EventMinistry (`tb_event_ministry`)
 
 Many-to-many relation between events and ministries.
 
@@ -218,7 +263,7 @@ Rules:
 - `INTERNAL_MEETING` events can be linked to none, one, or many ministries.
 - The frontend should render ministry names only when the relation exists.
 
-### 16. AuditLog (`tb_audit_log`)
+### 17. AuditLog (`tb_audit_log`)
 
 Historical record of sensitive mutations and events.
 
@@ -233,7 +278,7 @@ Historical record of sensitive mutations and events.
 - `ipAddress` / `ip_address`
 - `createdAt` / `created_at`
 
-### 17. Lead (`tb_lead`)
+### 18. Lead (`tb_lead`)
 
 Public acquisition/contact lead.
 
