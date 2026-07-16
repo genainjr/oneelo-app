@@ -63,6 +63,7 @@ export default function MeuPerfilPage() {
   const [authProviderSuccess, setAuthProviderSuccess] = useState('');
   const [unlinkingProvider, setUnlinkingProvider] = useState<ConnectedAuthProvider['provider'] | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const hasPassword = user?.hasPassword !== false;
 
   useEffect(() => {
     api.get<AuthUser>('/api/auth/me')
@@ -143,7 +144,7 @@ export default function MeuPerfilPage() {
     setPasswordError('');
     setPasswordSuccess('');
 
-    if (!senhaAtual.trim() || !novaSenha.trim() || !confirmarSenha.trim()) {
+    if ((hasPassword && !senhaAtual.trim()) || !novaSenha.trim() || !confirmarSenha.trim()) {
       setPasswordError('Preencha todos os campos de senha.');
       return;
     }
@@ -160,13 +161,18 @@ export default function MeuPerfilPage() {
 
     setPasswordLoading(true);
     try {
-      await api.patch('/api/auth/me/password', { senhaAtual, novaSenha });
+      const result = await api.patch<{ message: string; hasPassword: true }>(
+        '/api/auth/me/password',
+        hasPassword ? { senhaAtual, novaSenha } : { novaSenha },
+      );
       setSenhaAtual('');
       setNovaSenha('');
       setConfirmarSenha('');
-      setPasswordSuccess('Senha alterada com sucesso.');
+      setUser((current) => current ? { ...current, hasPassword: true } : current);
+      setLayoutUser((current) => current ? { ...current, hasPassword: true } : current);
+      setPasswordSuccess(result.message);
     } catch (err: any) {
-      setPasswordError(err?.message || 'Nao foi possivel alterar a senha.');
+      setPasswordError(err?.message || `Não foi possível ${hasPassword ? 'alterar' : 'criar'} a senha.`);
     } finally {
       setPasswordLoading(false);
     }
@@ -396,19 +402,25 @@ export default function MeuPerfilPage() {
 
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
             <div>
-              <h2 className="text-base font-bold text-gray-900">Seguranca</h2>
-              <p className="text-sm text-gray-500">Altere sua senha de acesso informando a senha atual.</p>
+              <h2 className="text-base font-bold text-gray-900">Segurança</h2>
+              <p className="text-sm text-gray-500">
+                {hasPassword
+                  ? 'Altere sua senha de acesso informando a senha atual.'
+                  : 'Crie uma senha para também entrar no One Elo usando e-mail e senha.'}
+              </p>
             </div>
 
             <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <PasswordField
-                  id="senha-atual"
-                  label="Senha atual"
-                  value={senhaAtual}
-                  autoComplete="current-password"
-                  onChange={(e) => setSenhaAtual(e.target.value)}
-                />
+              <div className={`grid gap-4 ${hasPassword ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                {hasPassword && (
+                  <PasswordField
+                    id="senha-atual"
+                    label="Senha atual"
+                    value={senhaAtual}
+                    autoComplete="current-password"
+                    onChange={(e) => setSenhaAtual(e.target.value)}
+                  />
+                )}
                 <PasswordField
                   id="nova-senha"
                   label="Nova senha"
@@ -442,7 +454,7 @@ export default function MeuPerfilPage() {
                   disabled={passwordLoading}
                   className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {passwordLoading ? 'Salvando...' : 'Alterar senha'}
+                  {passwordLoading ? 'Salvando...' : hasPassword ? 'Alterar senha' : 'Criar senha'}
                 </button>
               </div>
             </form>

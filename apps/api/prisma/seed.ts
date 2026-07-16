@@ -1,6 +1,6 @@
 // apps/api/prisma/seed.ts
 
-import { PrismaClient, Plano, StatusAssinatura, Role, MinistryRole, StatusMembro, StatusEscala, StatusConfirmacao, StatusEvento } from '@prisma/client';
+import { PrismaClient, Plano, StatusAssinatura, Role, MinistryRole, StatusMembro, StatusEscala, StatusConfirmacao, StatusEvento, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -45,6 +45,7 @@ async function main() {
   const salt = await bcrypt.genSalt(10);
   const senhaHashAdmin = await bcrypt.hash('admin123', salt);
   const senhaHashSuperAdmin = await bcrypt.hash('superadmin123', salt);
+  const seededUserActivatedAt = new Date();
 
   // 3. Criar Super Admin global (sem tenantId)
   console.log('Criando Super Admin...');
@@ -55,13 +56,25 @@ async function main() {
       email: 'superadmin@lookuplabs.com',
       senhaHash: senhaHashSuperAdmin,
       role: Role.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+      ativo: true,
+      activatedAt: seededUserActivatedAt,
     },
   });
 
   // 4. Criar Usuários do Tenant
   console.log('Criando Usuários...');
   const adminUser = await prisma.user.create({
-    data: { tenantId: tenant.id, nome: 'Admin Geral', email: 'admin@ccrv.com', senhaHash: senhaHashAdmin, role: Role.ADMIN },
+    data: {
+      tenantId: tenant.id,
+      nome: 'Admin Geral',
+      email: 'admin@ccrv.com',
+      senhaHash: senhaHashAdmin,
+      role: Role.ADMIN,
+      status: UserStatus.ACTIVE,
+      ativo: true,
+      activatedAt: seededUserActivatedAt,
+    },
   });
 
   // Carregar dados reais
