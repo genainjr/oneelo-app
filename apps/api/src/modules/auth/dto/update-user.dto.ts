@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsUUID } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsUUID, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 
@@ -20,6 +20,17 @@ export class UpdateUserDto {
   @IsEmail({}, { message: 'E-mail inválido.' })
   @IsOptional()
   email?: string;
+
+  @ApiProperty({
+    description: 'Telefone internacional usado como credencial de login, ou null para remover',
+    example: '+5511999999999',
+    required: false,
+    nullable: true,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(30, { message: 'Telefone deve ter no maximo 30 caracteres.' })
+  telefoneLogin?: string | null;
 
   @ApiProperty({
     description: 'Senha de acesso do usuário (opcional na atualização)',

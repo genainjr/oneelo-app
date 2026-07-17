@@ -69,6 +69,8 @@ export default function ConfiguracoesPage() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const { formatDateTime } = useDateFormatter();
+  const phoneLoginEnabled =
+    process.env.NEXT_PUBLIC_PHONE_PASSWORD_LOGIN_ENABLED === "true";
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [activeTab, setActiveTab] = useState<"usuarios" | "audit">("usuarios");
@@ -600,6 +602,18 @@ export default function ConfiguracoesPage() {
       hideOnMobile: true,
       render: (u) => <span className="text-gray-500">{u.email}</span>,
     },
+    ...(phoneLoginEnabled
+      ? [
+          {
+            key: "telefoneLogin" as keyof User,
+            header: t("users.columns.loginPhone"),
+            hideOnMobile: true,
+            render: (u: User) => (
+              <span className="text-gray-500">{u.telefoneLogin || "-"}</span>
+            ),
+          },
+        ]
+      : []),
     {
       key: "role",
       header: t("users.columns.role"),
@@ -1065,6 +1079,11 @@ export default function ConfiguracoesPage() {
                     {user.nome}
                   </h3>
                   <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                  {user.telefoneLogin && (
+                    <p className="text-xs text-gray-400 truncate">
+                      {t("users.columns.loginPhone")}: {user.telefoneLogin}
+                    </p>
+                  )}
                 </div>
                 <div className="shrink-0">{renderUserStatusBadge(user)}</div>
               </div>

@@ -19,6 +19,7 @@ Este documento define o comportamento esperado de navegacao por perfil no fronte
 
 - `/activate/:token` e publico e oferece ativacao por senha ou Google.
 - `/login/social-link` e publico e concentra confirmacao de vinculo e mensagens de erro do OAuth.
+- Com `NEXT_PUBLIC_PHONE_PASSWORD_LOGIN_ENABLED=true`, `/login` aceita e-mail ou telefone no mesmo campo e preserva o login Google; com a flag ausente ou `false`, mantem o campo exclusivo de e-mail.
 - Com `NEXT_PUBLIC_ONBOARDING_ENABLED=true`, qualquer usuario do tenant com `onboardingCompletedAt = null` deve ir para `/onboarding` depois da ativacao ou login e antes do destino do perfil.
 - Com a flag ausente ou igual a `false`, todos seguem diretamente para o destino normal do perfil e o acesso direto a `/onboarding` tambem redireciona para esse destino.
 - `/onboarding` e autenticado, isolado do layout do dashboard e nao exibe sidebar ou header global.

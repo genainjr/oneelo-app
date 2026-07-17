@@ -145,6 +145,7 @@ model User {
   memberId              String?    @unique @map("member_id")
   nome                  String     @map("name")
   email                 String     @unique
+  telefoneLogin         String?    @unique @map("login_phone")
   senhaHash             String?    @map("password_hash")
   role                  Role       @default(BASIC)
   status                UserStatus @default(ACTIVE)

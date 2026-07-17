@@ -16,6 +16,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ActivateAccountDto } from './dto/activate-account.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
+import { UpdateLoginPhoneDto } from './dto/update-login-phone.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { TenantMediaService } from '../../common/storage/tenant-media.service';
 import {
@@ -37,6 +38,7 @@ import {
   ACCOUNT_PENDING_ACTIVATION_MESSAGE,
 } from './auth-access.constants';
 import { buildActivationLink } from './activation-link';
+import { maskLoginPhone, normalizeLoginPhone } from './login-phone';
 
 @Injectable()
 export class AuthService {
@@ -49,6 +51,42 @@ export class AuthService {
     private readonly membrosService: MembrosService,
     private readonly tenantMediaService: TenantMediaService,
   ) {}
+
+  private isPhonePasswordLoginEnabled() {
+    return this.configService.get<string>('PHONE_PASSWORD_LOGIN_ENABLED') === 'true';
+  }
+
+  private assertPhonePasswordLoginEnabled() {
+    if (!this.isPhonePasswordLoginEnabled()) {
+      throw new BadRequestException('Login por telefone ainda nao esta habilitado.');
+    }
+  }
+
+  private normalizePhoneForWrite(value: string) {
+    const normalized = normalizeLoginPhone(value);
+
+    if (!normalized) {
+      throw new BadRequestException(
+        'Informe um telefone internacional valido, incluindo o DDI.',
+      );
+    }
+
+    return normalized;
+  }
+
+  private rethrowPhoneUniqueConflict(error: unknown): never {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const target = String(error.meta?.target ?? '');
+      if (target.includes('login_phone') || target.includes('telefoneLogin')) {
+        throw new ConflictException('Este telefone ja esta em uso por outro usuario.');
+      }
+    }
+
+    throw error;
+  }
 
   private hashActivationToken(token: string) {
     return createHash('sha256').update(token).digest('hex');
@@ -166,75 +204,52 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip?: string) {
-    // 1. Buscar usuário pelo email — sem filtro de tenantId pois o email é único globalmente
+    const identifier = dto.identificador?.trim();
+    const legacyEmail = dto.email?.trim();
+
+    if ((!identifier && !legacyEmail) || (identifier && legacyEmail)) {
+      throw new BadRequestException('Informe e-mail ou telefone para entrar.');
+    }
+
+    const loginIdentifier = identifier ?? legacyEmail!;
+    const isEmailLogin = Boolean(legacyEmail) || loginIdentifier.includes('@');
+    let where: Prisma.UserWhereInput;
+
+    if (isEmailLogin) {
+      where = { email: loginIdentifier };
+    } else {
+      if (!this.isPhonePasswordLoginEnabled()) {
+        throw new UnauthorizedException('Credenciais invalidas.');
+      }
+
+      const telefoneLogin = normalizeLoginPhone(loginIdentifier);
+      if (!telefoneLogin) {
+        throw new UnauthorizedException('Credenciais invalidas.');
+      }
+      where = { telefoneLogin };
+    }
+
     const user = await this.prisma.user.findFirst({
-      where: { email: dto.email },
+      where,
       include: { tenant: true },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Credenciais inválidas.');
+      throw new UnauthorizedException('Credenciais invalidas.');
     }
 
     this.assertTenantUserCanLogin(user);
 
     if (!user.senhaHash) {
-      throw new UnauthorizedException('Credenciais invÃ¡lidas.');
+      throw new UnauthorizedException('Credenciais invalidas.');
     }
 
-    // 2. Verificar senha
     const senhaValida = await bcrypt.compare(dto.senha, user.senhaHash);
     if (!senhaValida) {
-      throw new UnauthorizedException('Credenciais inválidas.');
+      throw new UnauthorizedException('Credenciais invalidas.');
     }
 
-    // 3. Montar payload do JWT
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      memberId: user.memberId ?? undefined,
-      tenantId: user.tenantId ?? undefined,
-    };
-
-    // 4. Gerar token
-    const expiresIn = getUserSessionExpiresIn(
-      this.configService.get<string>('JWT_EXPIRES_IN'),
-    );
-    const expiresAt = new Date(
-      Date.now() + parseDurationToMilliseconds(expiresIn),
-    ).toISOString();
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn,
-    });
-
-    // 5. Registrar audit log de login
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: user.tenantId,
-        userId: user.id,
-        entidade: 'usuarios',
-        entidadeId: user.id,
-        acao: AcaoAuditoria.LOGIN,
-        ipAddress: ip,
-      },
-    });
-
-    return {
-      accessToken,
-      expiresIn,
-      expiresAt,
-      user: {
-        id: user.id,
-        nome: user.nome,
-        email: user.email,
-        role: user.role,
-        onboardingCompletedAt: user.onboardingCompletedAt,
-        tenantId: user.tenantId,
-        tenantNome: user.tenant!.nome,
-      },
-    };
+    return this.createSessionForUser(user, ip);
   }
 
   async validateActivationToken(token: string) {
@@ -362,6 +377,7 @@ export class AuthService {
         id: true,
         nome: true,
         email: true,
+        telefoneLogin: true,
         role: true,
         status: true,
         senhaHash: true,
@@ -528,6 +544,83 @@ export class AuthService {
     };
   }
 
+  async updateMyLoginPhone(
+    userId: string,
+    tenantId: string,
+    dto: UpdateLoginPhoneDto,
+    ip?: string,
+  ) {
+    this.assertPhonePasswordLoginEnabled();
+
+    if (!Object.prototype.hasOwnProperty.call(dto, 'telefoneLogin')) {
+      throw new BadRequestException('Informe o telefone de login ou null para remover.');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
+      select: { id: true, senhaHash: true, telefoneLogin: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Sessao invalida.');
+    }
+
+    if (!user.senhaHash) {
+      throw new BadRequestException(
+        'Crie uma senha antes de cadastrar um telefone de login.',
+      );
+    }
+
+    const senhaAtualValida = await bcrypt.compare(dto.senhaAtual, user.senhaHash);
+    if (!senhaAtualValida) {
+      throw new UnauthorizedException('Senha atual invalida.');
+    }
+
+    const telefoneLogin =
+      typeof dto.telefoneLogin === 'string'
+        ? this.normalizePhoneForWrite(dto.telefoneLogin)
+        : null;
+
+    if (telefoneLogin) {
+      const conflict = await this.prisma.user.findFirst({
+        where: { telefoneLogin, NOT: { id: userId } },
+        select: { id: true },
+      });
+      if (conflict) {
+        throw new ConflictException('Este telefone ja esta em uso por outro usuario.');
+      }
+    }
+
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { telefoneLogin },
+      });
+    } catch (error) {
+      this.rethrowPhoneUniqueConflict(error);
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        entidade: 'usuarios',
+        entidadeId: userId,
+        acao: AcaoAuditoria.ATUALIZAR,
+        payloadBefore: { telefoneLogin: maskLoginPhone(user.telefoneLogin) },
+        payloadAfter: { telefoneLogin: maskLoginPhone(telefoneLogin) },
+        ipAddress: ip,
+      },
+    });
+
+    return {
+      message: telefoneLogin
+        ? 'Telefone de login atualizado com sucesso.'
+        : 'Telefone de login removido com sucesso.',
+      telefoneLogin,
+    };
+  }
+
   async updateMyProfile(
     userId: string,
     tenantId: string,
@@ -690,6 +783,7 @@ export class AuthService {
         id: true,
         nome: true,
         email: true,
+        telefoneLogin: true,
         role: true,
         ativo: true,
         status: true,
@@ -767,6 +861,19 @@ export class AuthService {
       throw new ConflictException('Já existe um usuário com este e-mail.');
     }
 
+    let telefoneLogin: string | null = null;
+    if (dto.telefoneLogin !== undefined) {
+      this.assertPhonePasswordLoginEnabled();
+      telefoneLogin = this.normalizePhoneForWrite(dto.telefoneLogin);
+      const phoneConflict = await this.prisma.user.findFirst({
+        where: { telefoneLogin },
+        select: { id: true },
+      });
+      if (phoneConflict) {
+        throw new ConflictException('Este telefone ja esta em uso por outro usuario.');
+      }
+    }
+
     const senhaHash = dto.senha ? await bcrypt.hash(dto.senha, 10) : null;
     const status =
       dto.ativo === false
@@ -793,11 +900,14 @@ export class AuthService {
       }
     }
 
-    const newUser = await this.prisma.user.create({
-      data: {
+    let newUser;
+    try {
+      newUser = await this.prisma.user.create({
+        data: {
         tenantId,
         nome: dto.nome,
         email: dto.email,
+        telefoneLogin,
         senhaHash,
         role: dto.role,
         status,
@@ -807,11 +917,12 @@ export class AuthService {
         activationCreatedAt: activation?.createdAt ?? null,
         activatedAt: status === UserStatus.ACTIVE ? new Date() : null,
         memberId: dto.memberId ?? null,
-      },
-      select: {
+        },
+        select: {
         id: true,
         nome: true,
         email: true,
+        telefoneLogin: true,
         role: true,
         ativo: true,
         status: true,
@@ -820,8 +931,11 @@ export class AuthService {
         activatedAt: true,
         onboardingCompletedAt: true,
         createdAt: true,
-      },
-    });
+        },
+      });
+    } catch (error) {
+      this.rethrowPhoneUniqueConflict(error);
+    }
 
     await this.prisma.auditLog.create({
       data: {
@@ -830,6 +944,7 @@ export class AuthService {
         entidade: 'usuarios',
         entidadeId: newUser.id,
         acao: AcaoAuditoria.CRIAR,
+        payloadAfter: { telefoneLogin: maskLoginPhone(telefoneLogin) },
         ipAddress: ip,
       },
     });
@@ -948,9 +1063,34 @@ export class AuthService {
       }
     }
 
+    const hasTelefoneLogin = Object.prototype.hasOwnProperty.call(
+      dto,
+      'telefoneLogin',
+    );
+    let telefoneLogin = user.telefoneLogin;
+
+    if (hasTelefoneLogin) {
+      this.assertPhonePasswordLoginEnabled();
+      telefoneLogin =
+        typeof dto.telefoneLogin === 'string'
+          ? this.normalizePhoneForWrite(dto.telefoneLogin)
+          : null;
+
+      if (telefoneLogin) {
+        const phoneConflict = await this.prisma.user.findFirst({
+          where: { telefoneLogin, NOT: { id } },
+          select: { id: true },
+        });
+        if (phoneConflict) {
+          throw new ConflictException('Este telefone ja esta em uso por outro usuario.');
+        }
+      }
+    }
+
     const updateData: any = {};
     if (dto.nome !== undefined) updateData.nome = dto.nome;
     if (dto.email !== undefined) updateData.email = dto.email;
+    if (hasTelefoneLogin) updateData.telefoneLogin = telefoneLogin;
     if (dto.role !== undefined) updateData.role = dto.role;
     if (dto.ativo !== undefined) {
       if (
@@ -999,13 +1139,16 @@ export class AuthService {
       }
     }
 
-    const updated = await this.prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
+    let updated;
+    try {
+      updated = await this.prisma.user.update({
+        where: { id },
+        data: updateData,
+        select: {
         id: true,
         nome: true,
         email: true,
+        telefoneLogin: true,
         role: true,
         ativo: true,
         status: true,
@@ -1014,8 +1157,11 @@ export class AuthService {
         activatedAt: true,
         onboardingCompletedAt: true,
         createdAt: true,
-      },
-    });
+        },
+      });
+    } catch (error) {
+      this.rethrowPhoneUniqueConflict(error);
+    }
 
     await this.prisma.auditLog.create({
       data: {
@@ -1024,6 +1170,12 @@ export class AuthService {
         entidade: 'usuarios',
         entidadeId: id,
         acao: AcaoAuditoria.ATUALIZAR,
+        payloadBefore: hasTelefoneLogin
+          ? { telefoneLogin: maskLoginPhone(user.telefoneLogin) }
+          : undefined,
+        payloadAfter: hasTelefoneLogin
+          ? { telefoneLogin: maskLoginPhone(telefoneLogin) }
+          : undefined,
         ipAddress: ip,
       },
     });

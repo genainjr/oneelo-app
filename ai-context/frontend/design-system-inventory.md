@@ -60,7 +60,7 @@ Observacao: este documento inventaria a implementacao atual. Ele nao propoe alte
 | Formulario | Arquivo | Responsabilidade | Modulo | Possiveis duplicacoes |
 |---|---|---|---|---|
 | Lead demo | `apps/web/src/app/page.tsx` | Enviar nome, e-mail, telefone e mensagem para `/api/leads`. | Publico | Padrao visual isolado da UI interna. |
-| Login tenant | `apps/web/src/app/(auth)/login/page.tsx` | Autenticacao por e-mail/senha. | Autenticacao | Duplica admin login. |
+| Login tenant | `apps/web/src/app/(auth)/login/page.tsx` | Autenticacao por e-mail/senha, telefone/senha sob flag e Google. | Autenticacao | Duplica admin login. |
 | Login Super Admin | `apps/web/src/app/(admin)/admin/login/page.tsx` | Autenticacao de plataforma. | Super Admin | Duplica login tenant. |
 | Criar tenant | `apps/web/src/app/(admin)/admin/page.tsx` | Dados da igreja, plano, idioma, contato e admin inicial. | Super Admin | Usa modal/form inline proprio. |
 | Editar tenant | `apps/web/src/app/(admin)/admin/page.tsx` | Nome, plano, idioma, contato e ativo/inativo. | Super Admin | Duplica campos do criar tenant. |

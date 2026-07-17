@@ -1,6 +1,6 @@
 # Plano - Login com telefone e senha
 
-Status geral: planejado - pronto para implementacao
+Status geral: implementacao tecnica concluida - validacao manual pendente
 Ultima atualizacao: 2026-07-17
 
 Backlog de origem: `ai-context/backlog/phone-password-login.md`
@@ -228,25 +228,25 @@ Valor entregue:
 
 ### Etapa 1 - Modelo de dados e normalizacao
 
-Status: pendente
+Status: concluida
 
 Tarefas:
 
-- [ ] Adicionar `telefoneLogin String? @unique @map("login_phone")` em `User`.
-- [ ] Criar migration com coluna nullable e indice unico.
-- [ ] Nao executar backfill de `Membro.whatsapp`.
-- [ ] Adicionar `libphonenumber-js` como dependencia direta da API, se escolhida para o helper.
-- [ ] Criar helper backend unico para limpar, validar e normalizar E.164.
-- [ ] Criar erro de validacao estavel para telefone invalido.
-- [ ] Atualizar seed apenas se um cenario explicito de login por telefone for necessario.
-- [ ] Atualizar `ai-context/database/models.md` com o novo campo e regras.
+- [x] Adicionar `telefoneLogin String? @unique @map("login_phone")` em `User`.
+- [x] Criar migration com coluna nullable e indice unico.
+- [x] Nao executar backfill de `Membro.whatsapp`.
+- [x] Adicionar `libphonenumber-js` como dependencia direta da API, se escolhida para o helper.
+- [x] Criar helper backend unico para limpar, validar e normalizar E.164.
+- [x] Criar erro de validacao estavel para telefone invalido.
+- [x] Atualizar seed apenas se um cenario explicito de login por telefone for necessario.
+- [x] Atualizar `ai-context/database/models.md` com o novo campo e regras.
 
 Validacao:
 
-- [ ] Testes unitarios do helper com Brasil, Portugal, Estados Unidos, caracteres de formatacao e entradas invalidas.
-- [ ] `npx.cmd prisma validate --schema apps/api/prisma/schema.prisma`.
-- [ ] `npx.cmd prisma generate --schema apps/api/prisma/schema.prisma`.
-- [ ] Verificar SQL da migration e indice unico.
+- [x] Testes unitarios do helper com Brasil, Portugal, Estados Unidos, caracteres de formatacao e entradas invalidas.
+- [x] `npx.cmd prisma validate --schema apps/api/prisma/schema.prisma`.
+- [x] `npx.cmd prisma generate --schema apps/api/prisma/schema.prisma`.
+- [x] Verificar SQL da migration e indice unico.
 
 Valor entregue:
 
@@ -254,31 +254,31 @@ Valor entregue:
 
 ### Etapa 2 - Backend de login por identificador
 
-Status: pendente
+Status: concluida
 
 Tarefas:
 
-- [ ] Evoluir `LoginDto` para aceitar `identificador` ou o alias legado `email`, alem de `senha`.
-- [ ] Rejeitar ausencia, duplicidade ou conflito entre os identificadores.
-- [ ] Manter busca por e-mail para payload legado e identificador com `@`.
-- [ ] Normalizar e buscar por `telefoneLogin` nos demais casos quando a flag estiver ativa.
-- [ ] Preservar codigos `ACCOUNT_PENDING_ACTIVATION` e `ACCOUNT_DISABLED`.
-- [ ] Preservar bloqueio de tenant inativo e `SUPER_ADMIN` no login tenant.
-- [ ] Retornar mensagem generica para usuario inexistente, telefone invalido ou senha incorreta.
-- [ ] Reutilizar `createSessionForUser()` depois da verificacao de senha para eliminar divergencia entre sessao/auditoria do login por e-mail e telefone.
-- [ ] Atualizar Swagger e exemplos do endpoint.
-- [ ] Adicionar `PHONE_PASSWORD_LOGIN_ENABLED` e documentar em `.env.example`.
+- [x] Evoluir `LoginDto` para aceitar `identificador` ou o alias legado `email`, alem de `senha`.
+- [x] Rejeitar ausencia, duplicidade ou conflito entre os identificadores.
+- [x] Manter busca por e-mail para payload legado e identificador com `@`.
+- [x] Normalizar e buscar por `telefoneLogin` nos demais casos quando a flag estiver ativa.
+- [x] Preservar codigos `ACCOUNT_PENDING_ACTIVATION` e `ACCOUNT_DISABLED`.
+- [x] Preservar bloqueio de tenant inativo e `SUPER_ADMIN` no login tenant.
+- [x] Retornar mensagem generica para usuario inexistente, telefone invalido ou senha incorreta.
+- [x] Reutilizar `createSessionForUser()` depois da verificacao de senha para eliminar divergencia entre sessao/auditoria do login por e-mail e telefone.
+- [x] Atualizar Swagger e exemplos do endpoint.
+- [x] Adicionar `PHONE_PASSWORD_LOGIN_ENABLED` e documentar em `.env.example`.
 
 Validacao:
 
-- [ ] Login por e-mail no payload novo.
-- [ ] Login por e-mail no payload legado.
-- [ ] Login por telefone formatado e em E.164.
+- [x] Login por e-mail no payload novo.
+- [x] Login por e-mail no payload legado.
+- [x] Login por telefone formatado e em E.164.
 - [ ] Senha incorreta nos dois identificadores.
 - [ ] Telefone invalido e telefone inexistente sem enumeracao de conta.
 - [ ] Bloqueios de `PENDING`, `DISABLED` e tenant inativo por telefone.
-- [ ] Login telefonico bloqueado com flag desabilitada sem regressao do e-mail.
-- [ ] Rate limit continua aplicado ao endpoint compartilhado.
+- [x] Login telefonico bloqueado com flag desabilitada sem regressao do e-mail.
+- [x] Rate limit continua aplicado ao endpoint compartilhado.
 
 Valor entregue:
 
@@ -286,21 +286,21 @@ Valor entregue:
 
 ### Etapa 3 - Escrita e gestao administrativa
 
-Status: pendente
+Status: concluida tecnicamente
 
 Tarefas:
 
-- [ ] Adicionar `telefoneLogin` opcional a `CreateUserDto` e `UpdateUserDto`.
-- [ ] Aceitar `null` na edicao para remover a credencial telefonica.
-- [ ] Normalizar antes de verificar conflito e persistir.
-- [ ] Retornar `409 Conflict` quando o telefone pertencer a outro `User`.
-- [ ] Incluir `telefoneLogin` nos selects/respostas administrativas necessarios.
-- [ ] Atualizar `User` em `apps/web/src/types/index.ts`.
-- [ ] Adicionar campo `Telefone de login` ao `UsuarioModal` com explicacao de que nao e o WhatsApp do membro.
-- [ ] Permitir preencher, editar e remover o telefone na tela de usuarios.
-- [ ] Exibir o telefone de forma responsiva na listagem/configuracao sem mistura-lo com `Membro.whatsapp`.
-- [ ] Registrar auditoria de inclusao, alteracao e remocao usando valor mascarado ou apenas ultimos digitos.
-- [ ] Respeitar a flag para impedir configuracao antes do rollout.
+- [x] Adicionar `telefoneLogin` opcional a `CreateUserDto` e `UpdateUserDto`.
+- [x] Aceitar `null` na edicao para remover a credencial telefonica.
+- [x] Normalizar antes de verificar conflito e persistir.
+- [x] Retornar `409 Conflict` quando o telefone pertencer a outro `User`.
+- [x] Incluir `telefoneLogin` nos selects/respostas administrativas necessarios.
+- [x] Atualizar `User` em `apps/web/src/types/index.ts`.
+- [x] Adicionar campo `Telefone de login` ao `UsuarioModal` com explicacao de que nao e o WhatsApp do membro.
+- [x] Permitir preencher, editar e remover o telefone na tela de usuarios.
+- [x] Exibir o telefone de forma responsiva na listagem/configuracao sem mistura-lo com `Membro.whatsapp`.
+- [x] Registrar auditoria de inclusao, alteracao e remocao usando valor mascarado ou apenas ultimos digitos.
+- [x] Respeitar a flag para impedir configuracao antes do rollout.
 
 Validacao:
 
@@ -317,26 +317,26 @@ Valor entregue:
 
 ### Etapa 4 - Autogestao em Meu Perfil
 
-Status: pendente
+Status: concluida tecnicamente
 
 Tarefas:
 
-- [ ] Criar DTO dedicado com `senhaAtual` e `telefoneLogin` nullable.
-- [ ] Criar endpoint autenticado, por exemplo `PATCH /auth/me/login-phone`.
-- [ ] Exigir `User.status = ACTIVE`, tenant ativo e `senhaHash` existente.
-- [ ] Validar a senha atual antes de incluir, trocar ou remover o telefone.
-- [ ] Orientar usuario exclusivamente social a criar sua primeira senha antes de gerir o telefone.
-- [ ] Aplicar normalizacao, unicidade e auditoria iguais ao fluxo administrativo.
-- [ ] Incluir secao `Telefone de login` em `Meu Perfil`, separada do WhatsApp de contato.
-- [ ] Exibir telefone atual com tratamento adequado de privacidade.
-- [ ] Atualizar contexto/tipos do usuario somente onde necessario.
+- [x] Criar DTO dedicado com `senhaAtual` e `telefoneLogin` nullable.
+- [x] Criar endpoint autenticado, por exemplo `PATCH /auth/me/login-phone`.
+- [x] Exigir `User.status = ACTIVE`, tenant ativo e `senhaHash` existente.
+- [x] Validar a senha atual antes de incluir, trocar ou remover o telefone.
+- [x] Orientar usuario exclusivamente social a criar sua primeira senha antes de gerir o telefone.
+- [x] Aplicar normalizacao, unicidade e auditoria iguais ao fluxo administrativo.
+- [x] Incluir secao `Telefone de login` em `Meu Perfil`, separada do WhatsApp de contato.
+- [x] Exibir telefone atual com tratamento adequado de privacidade.
+- [x] Atualizar contexto/tipos do usuario somente onde necessario.
 
 Validacao:
 
-- [ ] Usuario adiciona telefone com senha correta.
+- [x] Usuario adiciona telefone com senha correta.
 - [ ] Senha incorreta bloqueia inclusao, troca e remocao.
 - [ ] Usuario social sem senha recebe orientacao para criar senha.
-- [ ] Conflito com telefone de outro usuario retorna erro amigavel.
+- [x] Conflito com telefone de outro usuario retorna erro amigavel.
 - [ ] Alterar telefone de login nao altera WhatsApp e vice-versa.
 - [ ] Sessao atual continua valida conforme politica definida.
 
@@ -346,20 +346,20 @@ Valor entregue:
 
 ### Etapa 5 - Tela de login, tipos e traducoes
 
-Status: pendente
+Status: concluida tecnicamente
 
 Tarefas:
 
-- [ ] Substituir estado `email` por `identificador` na tela `/login` quando a flag estiver ativa.
-- [ ] Usar `type="text"` e `autoComplete="username"` para suportar e-mail e telefone.
-- [ ] Enviar `{ identificador, senha }` no novo frontend.
-- [ ] Manter o payload e rotulo atuais quando a flag estiver desabilitada.
-- [ ] Alterar rotulo para `E-mail ou telefone` e adicionar exemplo internacional.
-- [ ] Atualizar erro generico para nao enumerar e-mail ou telefone.
-- [ ] Preservar estados `403`, `401`, `429`, carregamento e erro de conexao.
-- [ ] Preservar botao Google e redirect seguro existente.
-- [ ] Atualizar `LoginDto` frontend.
-- [ ] Atualizar `pt-BR`, `pt-PT` e `en-US`.
+- [x] Substituir estado `email` por `identificador` na tela `/login` quando a flag estiver ativa.
+- [x] Usar `type="text"` e `autoComplete="username"` para suportar e-mail e telefone.
+- [x] Enviar `{ identificador, senha }` no novo frontend.
+- [x] Manter o payload e rotulo atuais quando a flag estiver desabilitada.
+- [x] Alterar rotulo para `E-mail ou telefone` e adicionar exemplo internacional.
+- [x] Atualizar erro generico para nao enumerar e-mail ou telefone.
+- [x] Preservar estados `403`, `401`, `429`, carregamento e erro de conexao.
+- [x] Preservar botao Google e redirect seguro existente.
+- [x] Atualizar `LoginDto` frontend.
+- [x] Atualizar `pt-BR`, `pt-PT` e `en-US`.
 
 Validacao:
 
@@ -376,17 +376,17 @@ Valor entregue:
 
 ### Etapa 6 - Integracao com ativacao, status e login social
 
-Status: pendente
+Status: concluida tecnicamente
 
 Tarefas:
 
-- [ ] Confirmar que `telefoneLogin` nao ativa conta `PENDING` sozinho.
-- [ ] Confirmar que usuario `ACTIVE` sem `senhaHash` nao consegue login telefonico.
-- [ ] Confirmar que criar a primeira senha habilita e-mail/telefone sem alterar provedores.
-- [ ] Confirmar que regras de desvinculacao social continuam baseadas em `senhaHash` ou outro provedor ativo.
-- [ ] Confirmar que alterar e-mail nao altera telefone e nao quebra `UserAuthProvider` existente.
-- [ ] Confirmar que o JWT e o guard continuam independentes do telefone.
-- [ ] Revisar respostas de `/auth/me`, ativacao e listagem para evitar exposicao desnecessaria.
+- [x] Confirmar que `telefoneLogin` nao ativa conta `PENDING` sozinho.
+- [x] Confirmar que usuario `ACTIVE` sem `senhaHash` nao consegue login telefonico.
+- [x] Confirmar que criar a primeira senha habilita e-mail/telefone sem alterar provedores.
+- [x] Confirmar que regras de desvinculacao social continuam baseadas em `senhaHash` ou outro provedor ativo.
+- [x] Confirmar que alterar e-mail nao altera telefone e nao quebra `UserAuthProvider` existente.
+- [x] Confirmar que o JWT e o guard continuam independentes do telefone.
+- [x] Revisar respostas de `/auth/me`, ativacao e listagem para evitar exposicao desnecessaria.
 
 Validacao:
 
@@ -402,29 +402,29 @@ Valor entregue:
 
 ### Etapa 7 - Documentacao, rollout e validacao final
 
-Status: pendente
+Status: validacao tecnica concluida - validacao manual pendente
 
 Tarefas:
 
-- [ ] Atualizar `ai-context/database/models.md`.
-- [ ] Atualizar `ai-context/business-rules/validation-rules.md`.
-- [ ] Atualizar `ai-context/frontend/navigation-rules.md` se houver impacto real de UX/navegacao.
-- [ ] Atualizar documentacao do login social somente se algum texto assumir e-mail como unico login local.
-- [ ] Atualizar `.env.example` da API e web.
-- [ ] Registrar comandos executados e resultados neste plano.
+- [x] Atualizar `ai-context/database/models.md`.
+- [x] Atualizar `ai-context/business-rules/validation-rules.md`.
+- [x] Atualizar `ai-context/frontend/navigation-rules.md` se houver impacto real de UX/navegacao.
+- [x] Atualizar documentacao do login social somente se algum texto assumir e-mail como unico login local.
+- [x] Atualizar `.env.example` da API e web.
+- [x] Registrar comandos executados e resultados neste plano.
 - [ ] Executar roteiro manual com e-mail, telefone e Google.
 - [ ] Validar rollout com flags desabilitadas antes da ativacao.
-- [ ] Revisar diff completo e atualizar status/checklists com o resultado real.
+- [x] Revisar diff completo e atualizar status/checklists com o resultado real.
 
 Validacao tecnica prevista:
 
-- [ ] `npx.cmd prisma validate --schema apps/api/prisma/schema.prisma`.
-- [ ] `npx.cmd prisma generate --schema apps/api/prisma/schema.prisma`.
-- [ ] testes unitarios direcionados da API.
-- [ ] `npm.cmd run build -w apps/api`.
-- [ ] typecheck/build relevante do frontend.
-- [ ] `npm.cmd run build -w apps/web`.
-- [ ] `git diff --check`.
+- [x] `npx.cmd prisma validate --schema apps/api/prisma/schema.prisma`.
+- [x] `npx.cmd prisma generate --schema apps/api/prisma/schema.prisma`.
+- [x] testes unitarios direcionados da API.
+- [x] `npm.cmd run build -w apps/api`.
+- [x] typecheck/build relevante do frontend.
+- [x] `npm.cmd run build -w apps/web`.
+- [x] `git diff --check`.
 
 Valor entregue:
 
@@ -451,6 +451,19 @@ Valor entregue:
 - `.env.example` da API e web
 - Swagger/DTOs de autenticacao e usuarios
 - tipos e traducoes do frontend
+
+## Status atual da implementacao
+
+- Modelo `User.telefoneLogin` e migration `20260717153000_add_user_login_phone` criados sem backfill.
+- Helper E.164 implementado com `libphonenumber-js` como dependencia direta da API.
+- Login aceita `identificador` por e-mail ou telefone e preserva o alias legado `email`.
+- Sessao, auditoria, status, tenant e RBAC reutilizam o fluxo existente.
+- Gestao administrativa e autogestao com senha atual implementadas sob flags de rollout.
+- Tela `/login`, `UsuarioModal`, `Meu Perfil`, tipos e traducoes atualizados.
+- Validacoes concluidas: Prisma validate/generate, 19 testes direcionados, typecheck API/web, build API/web e `git diff --check`.
+- Build web exigiu `NEXT_PUBLIC_API_URL=http://localhost:4001` e acesso ao Google Fonts; passou apos disponibilizar ambos.
+- Warnings nao bloqueantes: multiplos lockfiles na inferencia da raiz do Turbopack e convencao `middleware` depreciada pelo Next.js.
+- Pendentes: roteiro manual ponta a ponta e habilitacao controlada das flags em ambiente de validacao.
 
 ## Riscos e mitigacoes
 
