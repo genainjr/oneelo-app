@@ -356,7 +356,8 @@ Tarefas:
 Validacao:
 
 - [ ] Login por e-mail continua funcional na nova UI.
-- [ ] Login por telefone funciona com teclado/autocomplete adequados em mobile.
+- [x] Login por telefone funciona na nova UI.
+- [ ] Teclado e autocomplete do telefone estao adequados em mobile.
 - [ ] Pais inicial acompanha o idioma e pode ser alterado manualmente.
 - [ ] Numeros existentes abrem com pais e mascara nacional corretos para edicao.
 - [ ] Login Google permanece visivel e funcional.
@@ -449,6 +450,7 @@ Valor entregue:
 - Sessao, auditoria, status, tenant e RBAC reutilizam o fluxo existente.
 - Gestao administrativa e autogestao com senha atual implementadas sem feature flag.
 - Tela `/login`, `UsuarioModal` e `Meu Perfil` usam seletor de pais, mascara nacional e conversao transparente para E.164.
+- Fluxo manual de login por telefone validado em 2026-07-17.
 - Validacoes concluidas: Prisma validate/generate, 20 testes direcionados, build API, typecheck/build web e `git diff --check`.
 - Smoke da mascara confirmou `BR -> +5511999999999`, `PT -> +351912345678` e `US -> +12025550123`.
 - O lint direcionado da web nao executa porque o ESLint 9 do workspace nao encontra `eslint.config.*`; typecheck e build da web passaram.
