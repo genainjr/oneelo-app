@@ -5,6 +5,7 @@ import { LoaderCircle, UserRound } from "lucide-react";
 import { User, Role } from "@/types";
 import { api } from "@/lib/api";
 import { InputField, PasswordField, SelectField } from "./form-field";
+import { InternationalPhoneInput } from "./international-phone-input";
 import { MembroSearchCombobox, MembroOption } from "./membro-search-combobox";
 import { ModalError, ModalShell } from "./modal-shell";
 import { includesNormalizedText } from "@/lib/utils";
@@ -223,15 +224,13 @@ function UsuarioModalContent({
             placeholder="maria@igreja.com"
           />
 
-          <InputField
+          <InternationalPhoneInput
             id="u-telefone-login"
             label="Telefone de login"
             optionalLabel="Opcional"
-            type="tel"
+            countryLabel="País do telefone de login"
             value={telefoneLogin}
-            onChange={(e) => setTelefoneLogin(e.target.value)}
-            placeholder="+55 11 99999-9999"
-            autoComplete="tel"
+            onChange={setTelefoneLogin}
           />
 
           <PasswordField
@@ -290,7 +289,7 @@ function UsuarioModalContent({
             )}
             <span>
               {" "}
-              O telefone de login e uma credencial separada do WhatsApp do membro e deve incluir o DDI.
+              O telefone de login é uma credencial separada do WhatsApp do membro; selecione o país e informe o número local.
             </span>
           </div>
         </div>

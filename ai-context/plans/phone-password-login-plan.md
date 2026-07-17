@@ -23,7 +23,7 @@ Os tres caminhos devem preservar as regras atuais de tenant, `User.status`, RBAC
 - Telefone de login e `Membro.whatsapp` permanecem dados separados.
 - `POST /auth/login` aceita e-mail ou telefone com a mesma senha local.
 - Clientes antigos que ainda enviam `{ email, senha }` continuam funcionando durante a transicao.
-- A tela `/login` apresenta `E-mail ou telefone` e mantem o botao `Entrar com Google`.
+- A tela `/login` permite escolher e-mail ou telefone, aplica mascara nacional conforme o pais e mantem o botao `Entrar com Google`.
 - Administrador pode cadastrar, alterar e remover o telefone de login de usuarios do tenant.
 - Usuario autenticado pode gerir o proprio telefone de login mediante reautenticacao por senha.
 - Usuarios sem telefone continuam entrando por e-mail ou login social sem migracao obrigatoria.
@@ -72,12 +72,20 @@ O backend sera a fonte de verdade da normalizacao e validacao.
 Contrato:
 
 - persistir valores como `+5511999999999`;
-- exigir DDI no valor recebido pelos endpoints de escrita;
+- exigir DDI no valor recebido pelos endpoints de escrita, sem exigir que o usuario o digite manualmente;
 - remover espacos, parenteses e hifens antes da validacao;
 - rejeitar numero invalido ou que nao possa ser representado em E.164;
 - usar a mesma funcao de normalizacao na gravacao e no login.
 
-`libphonenumber-js` deve ser dependencia direta da API se for adotada na implementacao. A presenca transitiva no lockfile nao deve ser tratada como contrato de dependencia.
+Na interface:
+
+- `pt-BR`, `pt-PT` e `en-US` selecionam inicialmente `BR`, `PT` e `US`, respectivamente;
+- idioma define apenas o pais inicial e o usuario pode selecionar outro pais;
+- o usuario informa o numero nacional com mascara progressiva;
+- o frontend combina pais e numero e envia E.164 para a API;
+- valores E.164 existentes devem ser decompostos em pais e numero nacional ao editar.
+
+`libphonenumber-js` deve ser dependencia direta da API e da web. A presenca transitiva no lockfile nao deve ser tratada como contrato de dependencia.
 
 ### 3. Unicidade global
 
@@ -331,10 +339,13 @@ Status: concluida tecnicamente
 
 Tarefas:
 
-- [x] Substituir estado `email` por `identificador` na tela `/login`.
-- [x] Usar `type="text"` e `autoComplete="username"` para suportar e-mail e telefone.
+- [x] Separar e-mail e telefone em opcoes explicitas na tela `/login`.
+- [x] Usar `type="email"` para e-mail e `type="tel"`/`inputMode="tel"` para telefone.
 - [x] Enviar `{ identificador, senha }` no novo frontend.
-- [x] Alterar rotulo para `E-mail ou telefone` e adicionar exemplo internacional.
+- [x] Criar componente telefonico reutilizavel com seletor de pais e mascara nacional progressiva.
+- [x] Usar idioma atual apenas como pais inicial: `pt-BR -> BR`, `pt-PT -> PT`, `en-US -> US`.
+- [x] Aplicar o componente em `/login`, `UsuarioModal` e `Meu Perfil`.
+- [x] Converter o numero nacional para E.164 antes de enviar a API.
 - [x] Atualizar erro generico para nao enumerar e-mail ou telefone.
 - [x] Preservar estados `403`, `401`, `429`, carregamento e erro de conexao.
 - [x] Preservar botao Google e redirect seguro existente.
@@ -345,6 +356,8 @@ Validacao:
 
 - [ ] Login por e-mail continua funcional na nova UI.
 - [ ] Login por telefone funciona com teclado/autocomplete adequados em mobile.
+- [ ] Pais inicial acompanha o idioma e pode ser alterado manualmente.
+- [ ] Numeros existentes abrem com pais e mascara nacional corretos para edicao.
 - [ ] Login Google permanece visivel e funcional.
 - [ ] Redirect por role e onboarding permanece igual para os tres metodos.
 - [ ] Responsividade e acessibilidade basica do formulario.
@@ -430,12 +443,14 @@ Valor entregue:
 ## Status atual da implementacao
 
 - Modelo `User.telefoneLogin` e migration `20260717153000_add_user_login_phone` criados sem backfill.
-- Helper E.164 implementado com `libphonenumber-js` como dependencia direta da API.
+- Helper E.164 implementado com `libphonenumber-js` como dependencia direta da API e da web.
 - Login aceita `identificador` por e-mail ou telefone e preserva o alias legado `email`.
 - Sessao, auditoria, status, tenant e RBAC reutilizam o fluxo existente.
 - Gestao administrativa e autogestao com senha atual implementadas sem feature flag.
-- Tela `/login`, `UsuarioModal`, `Meu Perfil`, tipos e traducoes atualizados.
+- Tela `/login`, `UsuarioModal` e `Meu Perfil` usam seletor de pais, mascara nacional e conversao transparente para E.164.
 - Validacoes concluidas: Prisma validate/generate, 19 testes direcionados, build API, typecheck/build web e `git diff --check`.
+- Smoke da mascara confirmou `BR -> +5511999999999`, `PT -> +351912345678` e `US -> +12025550123`.
+- O lint direcionado da web nao executa porque o ESLint 9 do workspace nao encontra `eslint.config.*`; typecheck e build da web passaram.
 - O `tsc --noEmit` direto da API inclui suites E2E legadas e continua acusando erros preexistentes em escalas, membros e roles; o build da API passou.
 - Build web exigiu `NEXT_PUBLIC_API_URL=http://localhost:4001` e acesso ao Google Fonts; passou apos disponibilizar ambos.
 - Warnings nao bloqueantes: multiplos lockfiles na inferencia da raiz do Turbopack e convencao `middleware` depreciada pelo Next.js.

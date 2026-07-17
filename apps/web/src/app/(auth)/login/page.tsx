@@ -6,16 +6,20 @@ import { useTranslations } from 'next-intl';
 import { api, HttpError } from '@/lib/api';
 import { getPostLoginTarget, isSafeAppRedirect } from '@/lib/auth-redirect';
 import { AuthUser } from '@/types';
+import { InternationalPhoneInput } from '@/components/app/international-phone-input';
 
 interface LoginResponse {
   user: AuthUser;
 }
+
+type LoginMode = 'email' | 'phone';
 
 function LoginForm() {
   const t = useTranslations('auth.login');
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
 
+  const [loginMode, setLoginMode] = useState<LoginMode>('email');
   const [identificador, setIdentificador] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
@@ -63,6 +67,12 @@ function LoginForm() {
     window.location.href = `/api/auth/oauth/google/start?redirect=${encodeURIComponent(safeRedirect)}`;
   }
 
+  function handleLoginModeChange(mode: LoginMode) {
+    setLoginMode(mode);
+    setIdentificador('');
+    setError('');
+  }
+
   return (
     <div className="w-full max-w-md px-6">
       {/* Logo e título */}
@@ -81,23 +91,56 @@ function LoginForm() {
         <h2 className="text-xl font-semibold text-white mb-6">{t('heading')}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4" id="login-form">
-          {/* E-mail ou telefone */}
-          <div>
-            <label htmlFor="identificador" className="block text-sm font-medium text-indigo-200 mb-1.5">
-              {t('identifier')}
-            </label>
-            <input
-              id="identificador"
-              type="text"
-              autoComplete="username"
-              inputMode="text"
-              required
-              value={identificador}
-              onChange={(e) => setIdentificador(e.target.value)}
-              placeholder={t('identifierPlaceholder')}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-indigo-300/60 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
-            />
+          <div
+            role="group"
+            aria-label={t('loginMethod')}
+            className="grid grid-cols-2 rounded-xl border border-white/15 bg-white/5 p-1"
+          >
+            {(['email', 'phone'] as LoginMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={loginMode === mode}
+                onClick={() => handleLoginModeChange(mode)}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  loginMode === mode
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-indigo-200 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {t(mode)}
+              </button>
+            ))}
           </div>
+
+          {loginMode === 'email' ? (
+            <div>
+              <label htmlFor="identificador" className="block text-sm font-medium text-indigo-200 mb-1.5">
+                {t('email')}
+              </label>
+              <input
+                id="identificador"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                required
+                value={identificador}
+                onChange={(e) => setIdentificador(e.target.value)}
+                placeholder={t('emailPlaceholder')}
+                className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-indigo-300/60 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+              />
+            </div>
+          ) : (
+            <InternationalPhoneInput
+              id="identificador"
+              label={t('phone')}
+              countryLabel={t('country')}
+              value={identificador}
+              onChange={setIdentificador}
+              required
+              variant="auth"
+            />
+          )}
 
           {/* Senha */}
           <div>

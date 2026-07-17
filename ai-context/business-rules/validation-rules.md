@@ -143,6 +143,7 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 
 - O login tenant aceita e-mail ou `telefoneLogin` com a mesma `senhaHash`.
 - Telefone deve ser normalizado pelo backend antes da gravacao, verificacao de unicidade e consulta.
+- A web usa o idioma apenas para sugerir o pais inicial, permite troca de pais e converte o numero nacional para E.164 antes do envio.
 - O endpoint aceita temporariamente o payload legado `{ email, senha }` e usa `{ identificador, senha }` como contrato novo.
 - Telefone sozinho nao e forma valida de acesso: usuario precisa possuir `senhaHash`.
 - Autogestao do telefone exige usuario `ACTIVE`, tenant ativo e confirmacao da senha atual.

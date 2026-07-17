@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { InputField, PasswordField } from '@/components/app/form-field';
+import { InternationalPhoneInput } from '@/components/app/international-phone-input';
 import { InfoItem } from '@/components/app/info-item';
 import { StatusBadge } from '@/components/app/status-badge';
 import { ImageUploadPanel } from '@/components/app/image-upload-panel';
@@ -375,7 +376,7 @@ export default function MeuPerfilPage() {
               <div>
                 <h2 className="text-base font-bold text-gray-900">Telefone de login</h2>
                 <p className="text-sm text-gray-500">
-                  Use um numero internacional com DDI. Esta credencial e separada do WhatsApp do cadastro de membro.
+                  Selecione o país e informe o número local. Esta credencial é separada do WhatsApp do cadastro de membro.
                 </p>
               </div>
 
@@ -387,15 +388,13 @@ export default function MeuPerfilPage() {
 
               <form onSubmit={handleUpdateLoginPhone} className="mt-5 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <InputField
+                  <InternationalPhoneInput
                     id="login-phone"
                     label="Telefone de login"
                     optionalLabel="Deixe vazio para remover"
-                    type="tel"
+                    countryLabel="País do telefone de login"
                     value={loginPhone}
-                    onChange={(event) => setLoginPhone(event.target.value)}
-                    placeholder="+55 11 99999-9999"
-                    autoComplete="tel"
+                    onChange={setLoginPhone}
                     disabled={!hasPassword}
                   />
                   <PasswordField
