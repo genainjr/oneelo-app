@@ -405,10 +405,9 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
+    </div>
+  );
+}
   if (!isAdmin) {
     return (
       <div className="p-6 max-w-xl mx-auto mt-12 text-center bg-white border border-gray-150 shadow-sm rounded-2xl">
@@ -599,6 +598,14 @@ export default function ConfiguracoesPage() {
       header: t("users.columns.email"),
       hideOnMobile: true,
       render: (u) => <span className="text-gray-500">{u.email}</span>,
+    },
+    {
+      key: "telefoneLogin" as keyof User,
+      header: t("users.columns.loginPhone"),
+      hideOnMobile: true,
+      render: (u: User) => (
+        <span className="text-gray-500">{u.telefoneLogin || "-"}</span>
+      ),
     },
     {
       key: "role",
@@ -1065,6 +1072,11 @@ export default function ConfiguracoesPage() {
                     {user.nome}
                   </h3>
                   <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                  {user.telefoneLogin && (
+                    <p className="text-xs text-gray-400 truncate">
+                      {t("users.columns.loginPhone")}: {user.telefoneLogin}
+                    </p>
+                  )}
                 </div>
                 <div className="shrink-0">{renderUserStatusBadge(user)}</div>
               </div>

@@ -5,6 +5,7 @@ import { LoaderCircle, UserRound } from "lucide-react";
 import { User, Role } from "@/types";
 import { api } from "@/lib/api";
 import { InputField, PasswordField, SelectField } from "./form-field";
+import { InternationalPhoneInput } from "./international-phone-input";
 import { MembroSearchCombobox, MembroOption } from "./membro-search-combobox";
 import { ModalError, ModalShell } from "./modal-shell";
 import { includesNormalizedText } from "@/lib/utils";
@@ -40,6 +41,7 @@ function UsuarioModalContent({
 }: UsuarioModalProps) {
   const [nome, setNome] = useState(usuario?.nome || "");
   const [email, setEmail] = useState(usuario?.email || "");
+  const [telefoneLogin, setTelefoneLogin] = useState(usuario?.telefoneLogin || "");
   const [senha, setSenha] = useState("");
   const [role, setRole] = useState<Role>(usuario?.role || "BASIC");
   const [ativo, setAtivo] = useState(usuario?.ativo ?? true);
@@ -97,6 +99,7 @@ function UsuarioModalContent({
     setMembroSearch(m.nome);
     if (!nome.trim()) setNome(m.nome);
     if (!email.trim() && m.email) setEmail(m.email);
+    if (!telefoneLogin.trim() && m.whatsapp) setTelefoneLogin(m.whatsapp);
   }
 
   function clearMembro() {
@@ -142,6 +145,7 @@ function UsuarioModalContent({
             ? null
             : undefined,
       };
+      payload.telefoneLogin = telefoneLogin.trim() || (isEditing ? null : undefined);
       if (senha) payload.senha = senha;
 
       await onSave(payload);
@@ -221,6 +225,15 @@ function UsuarioModalContent({
             placeholder="maria@igreja.com"
           />
 
+          <InternationalPhoneInput
+            id="u-telefone-login"
+            label="Telefone de login"
+            optionalLabel="Opcional"
+            countryLabel="País do telefone de login"
+            value={telefoneLogin}
+            onChange={setTelefoneLogin}
+          />
+
           <PasswordField
             id="u-senha"
             label={
@@ -275,6 +288,10 @@ function UsuarioModalContent({
                 de ativacao.
               </span>
             )}
+            <span>
+              {" "}
+              O telefone de login é uma credencial separada do WhatsApp do membro; selecione o país e informe o número local.
+            </span>
           </div>
         </div>
       </form>

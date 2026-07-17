@@ -40,6 +40,7 @@ export interface AuthUser {
   memberId?: string | null;
   nome: string;
   email: string;
+  telefoneLogin?: string | null;
   role: Role;
   status?: UserStatus;
   hasPassword?: boolean;
@@ -71,7 +72,8 @@ export interface AuthUser {
 }
 
 export interface LoginDto {
-  email: string;
+  identificador?: string;
+  email?: string;
   senha: string;
 }
 
@@ -242,6 +244,7 @@ export interface User {
   tenantId: string;
   nome: string;
   email: string;
+  telefoneLogin?: string | null;
   role: Role;
   ativo: boolean;
   status: UserStatus;

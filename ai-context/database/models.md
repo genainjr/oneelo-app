@@ -55,6 +55,7 @@ Represents login credentials and global access permissions. It does not replace 
 - `memberId` / `member_id`, optional link to `Member`
 - `name`
 - `email`
+- `telefoneLogin` / `login_phone`, opcional e unico globalmente
 - `passwordHash` / `password_hash`
 - `role`
 - `status`: `PENDING`, `ACTIVE`, or `DISABLED`
@@ -76,6 +77,8 @@ Rules:
 - Activation links persist only a token hash; the raw token is returned only when creating/regenerating the link.
 - Activating a user clears all activation-token fields and fills `activatedAt`.
 - `onboardingCompletedAt` remains null until the user completes the final onboarding action. The migration and development seed do not backfill it.
+- `telefoneLogin` is an authentication credential stored in E.164 format. It is independent from `Member.mobilePhone` and is never backfilled or synchronized automatically.
+- Password login may resolve the same active user by `email` or `telefoneLogin`; social login continues to resolve `UserAuthProvider`.
 
 ### 3. UserAuthProvider (`tb_user_auth_provider`)
 

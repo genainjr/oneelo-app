@@ -7,6 +7,7 @@ export interface MembroOption {
   id: string;
   nome: string;
   email?: string | null;
+  whatsapp?: string | null;
 }
 
 interface MembroSearchComboboxProps {

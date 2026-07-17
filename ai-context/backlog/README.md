@@ -21,3 +21,4 @@ Cada item segue o formato:
 - **[improvements.md](improvements.md)** — Melhorias gerais e débito técnico
 - **[features-roadmap.md](features-roadmap.md)** — Features de produto pós-MVP (WhatsApp, Google Agenda, IA, módulos de ministério)
 - **[permissions-matrix.md](permissions-matrix.md)** — Matriz de permissões por role e recurso (referência para implementação)
+- **[phone-password-login.md](phone-password-login.md)** — Login por número de telefone e senha, preservando e-mail/senha e login social

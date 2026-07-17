@@ -105,6 +105,8 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 ### User
 
 - `email`: obrigatorio e unico no escopo correto.
+- `telefoneLogin`: opcional, unico globalmente e persistido em E.164 com DDI; pertence a `User` e nao a `Membro`.
+- `Membro.whatsapp` continua sendo contato e nunca deve ser sincronizado automaticamente com `User.telefoneLogin`; no cadastro de usuario, pode apenas preencher o campo vazio como sugestao editavel antes da confirmacao do administrador.
 - `status`: `PENDING`, `ACTIVE` ou `DISABLED`; login diario so e permitido para `ACTIVE`.
 - `senha`: minimo definido pelo DTO quando informada; persistida como `senhaHash`.
 - `senhaHash`: pode ser nula enquanto a conta estiver pendente ou quando o acesso for exclusivamente social.
@@ -136,6 +138,18 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 - Identidade Google ja vinculada a outro usuario e conflito de provedor devem bloquear a ativacao.
 - O fluxo de login social nao cria usuarios internos automaticamente.
 - Um provedor nao pode ser removido se isso deixar um usuario `ACTIVE` sem senha e sem outro provedor ativo.
+
+#### Login por telefone e senha
+
+- O login tenant aceita e-mail ou `telefoneLogin` com a mesma `senhaHash`.
+- Telefone deve ser normalizado pelo backend antes da gravacao, verificacao de unicidade e consulta.
+- A web usa o idioma apenas para sugerir o pais inicial, permite troca de pais e converte o numero nacional para E.164 antes do envio.
+- O endpoint aceita temporariamente o payload legado `{ email, senha }` e usa `{ identificador, senha }` como contrato novo.
+- Telefone sozinho nao e forma valida de acesso: usuario precisa possuir `senhaHash`.
+- Autogestao do telefone exige usuario `ACTIVE`, tenant ativo e confirmacao da senha atual.
+- Usuario exclusivamente social precisa criar sua primeira senha antes de cadastrar telefone de login.
+- Erros de credencial nao devem revelar se e-mail ou telefone esta cadastrado.
+- SMS, OTP e recuperacao por telefone permanecem fora desta entrega.
 
 #### Onboarding inicial
 

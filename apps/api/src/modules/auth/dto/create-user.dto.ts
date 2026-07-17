@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsUUID } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsBoolean, IsOptional, IsUUID, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 
@@ -18,6 +18,16 @@ export class CreateUserDto {
   @IsEmail({}, { message: 'E-mail invalido.' })
   @IsNotEmpty({ message: 'E-mail e obrigatorio.' })
   email: string;
+
+  @ApiProperty({
+    description: 'Telefone internacional usado como credencial de login',
+    example: '+5511999999999',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(30, { message: 'Telefone deve ter no maximo 30 caracteres.' })
+  telefoneLogin?: string;
 
   @ApiProperty({
     description: 'Senha de acesso do usuario. Quando omitida, o usuario fica pendente de ativacao.',
