@@ -7,6 +7,7 @@ import {
   StatusEscala,
   StatusEvento,
   StatusMembro,
+  UserStatus,
 } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import webPush from 'web-push';
@@ -40,7 +41,9 @@ export class NotificationsService {
   private configureWebPush() {
     const publicKey = this.configService.get<string>('WEB_PUSH_PUBLIC_KEY');
     const privateKey = this.configService.get<string>('WEB_PUSH_PRIVATE_KEY');
-    const subject = this.configService.get<string>('WEB_PUSH_SUBJECT') ?? 'mailto:suporte@lookuplabs.com.br';
+    const subject =
+      this.configService.get<string>('WEB_PUSH_SUBJECT') ??
+      'mailto:suporte@lookuplabs.com.br';
 
     if (!publicKey || !privateKey) return;
 
@@ -92,6 +95,7 @@ export class NotificationsService {
       where: {
         tenantId,
         ativo: true,
+        status: UserStatus.ACTIVE,
         membro: {
           is: {
             tenantId,
@@ -106,7 +110,27 @@ export class NotificationsService {
     return users.map((user) => user.id);
   }
 
-  private async getMinistryMemberUserIds(tenantId: string, ministerioIds: string[]) {
+  private isBirthdayOn(date: Date, referenceDate: Date) {
+    return (
+      date.getUTCMonth() === referenceDate.getUTCMonth() &&
+      date.getUTCDate() === referenceDate.getUTCDate()
+    );
+  }
+
+  private getFirstName(name: string) {
+    return name.trim().split(/\s+/)[0] || name;
+  }
+
+  private formatBirthdayNames(names: string[]) {
+    if (names.length <= 1) return names[0] ?? '';
+    if (names.length === 2) return `${names[0]} e ${names[1]}`;
+    return `${names.slice(0, -1).join(', ')} e ${names.at(-1)}`;
+  }
+
+  private async getMinistryMemberUserIds(
+    tenantId: string,
+    ministerioIds: string[],
+  ) {
     if (ministerioIds.length === 0) return [];
 
     const users = await this.prisma.user.findMany({
@@ -133,7 +157,8 @@ export class NotificationsService {
   }
 
   getPublicKey() {
-    const publicKey = this.configService.get<string>('WEB_PUSH_PUBLIC_KEY') ?? '';
+    const publicKey =
+      this.configService.get<string>('WEB_PUSH_PUBLIC_KEY') ?? '';
 
     return {
       publicKey,
@@ -340,6 +365,127 @@ export class NotificationsService {
     };
   }
 
+  @Cron('0 8 * * *', {
+    name: 'member-birthday-notifications',
+    timeZone: 'America/Sao_Paulo',
+  })
+  async runBirthdayNotificationJob(referenceDate = new Date()) {
+    const members = await this.prisma.membro.findMany({
+      where: {
+        deletedAt: null,
+        status: StatusMembro.ATIVO,
+        dataNascimento: { not: null },
+        tenant: { ativo: true },
+      },
+      select: {
+        tenantId: true,
+        nome: true,
+        nomeExibicao: true,
+        dataNascimento: true,
+        tenant: { select: { nome: true } },
+        user: {
+          select: {
+            id: true,
+            ativo: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    const birthdayMembers = members.filter(
+      (member) =>
+        member.dataNascimento &&
+        this.isBirthdayOn(member.dataNascimento, referenceDate),
+    );
+    const membersByTenant = new Map<string, typeof birthdayMembers>();
+
+    for (const member of birthdayMembers) {
+      const current = membersByTenant.get(member.tenantId) ?? [];
+      current.push(member);
+      membersByTenant.set(member.tenantId, current);
+    }
+
+    let sent = 0;
+    let failed = 0;
+    let totalSubscriptions = 0;
+    let personalNotifications = 0;
+    let communityNotifications = 0;
+
+    for (const [tenantId, celebrants] of membersByTenant) {
+      const tenantName = celebrants[0].tenant.nome;
+      const celebrantUserIds = celebrants
+        .filter(
+          (member) =>
+            member.user?.ativo && member.user.status === UserStatus.ACTIVE,
+        )
+        .map((member) => member.user!.id);
+
+      for (const celebrant of celebrants) {
+        if (
+          !celebrant.user?.ativo ||
+          celebrant.user.status !== UserStatus.ACTIVE
+        )
+          continue;
+
+        const displayName = celebrant.nomeExibicao || celebrant.nome;
+        const result = await this.sendToUsers(tenantId, [celebrant.user.id], {
+          title: `Hoje é o seu dia, ${this.getFirstName(displayName)}! \ud83c\udf82`,
+          body: `Feliz aniversário! Que este novo ciclo seja cheio de fé, alegria e boas histórias ao lado da família ${tenantName}.`,
+          url: '/personal-panel',
+        });
+
+        personalNotifications += 1;
+        sent += result.sent;
+        failed += result.failed;
+        totalSubscriptions += result.total;
+      }
+
+      const allUserIds = await this.getTenantMemberUserIds(tenantId);
+      const otherUserIds = allUserIds.filter(
+        (userId) => !celebrantUserIds.includes(userId),
+      );
+
+      if (otherUserIds.length > 0) {
+        const names = celebrants.map(
+          (member) => member.nomeExibicao || member.nome,
+        );
+        const multiple = names.length > 1;
+        const result = await this.sendToUsers(tenantId, otherUserIds, {
+          title: multiple
+            ? `Hoje temos aniversariantes na ${tenantName}! \ud83c\udf89`
+            : `Hoje tem aniversário na ${tenantName}! \ud83c\udf89`,
+          body: multiple
+            ? `Hoje é dia de celebrar ${this.formatBirthdayNames(names)}. Vamos tornar o dia deles ainda mais especial!`
+            : `${names[0]} está celebrando mais um ano de vida. Que tal enviar uma mensagem especial?`,
+          url: '/personal-panel',
+        });
+
+        communityNotifications += 1;
+        sent += result.sent;
+        failed += result.failed;
+        totalSubscriptions += result.total;
+      }
+    }
+
+    const result = {
+      date: referenceDate.toISOString(),
+      birthdayMembers: birthdayMembers.length,
+      tenants: membersByTenant.size,
+      personalNotifications,
+      communityNotifications,
+      sent,
+      failed,
+      totalSubscriptions,
+    };
+
+    this.logger.log(
+      `Notificacoes de aniversario processadas: ${JSON.stringify(result)}`,
+    );
+
+    return result;
+  }
+
   @Cron('0 8,13 * * *', {
     name: 'pending-confirmations-24h',
     timeZone: 'America/Sao_Paulo',
@@ -428,7 +574,9 @@ export class NotificationsService {
       totalSubscriptions,
     };
 
-    this.logger.log(`Lembrete 24h de confirmacao processado: ${JSON.stringify(result)}`);
+    this.logger.log(
+      `Lembrete 24h de confirmacao processado: ${JSON.stringify(result)}`,
+    );
 
     return result;
   }
@@ -499,7 +647,9 @@ export class NotificationsService {
       const userId = item.membro.user?.id;
       if (!userId) continue;
 
-      const horario = this.formatNotificationTime(item.escalaDia.evento?.dataInicio ?? item.escalaDia.data);
+      const horario = this.formatNotificationTime(
+        item.escalaDia.evento?.dataInicio ?? item.escalaDia.data,
+      );
 
       const result = await this.sendToUsers(
         item.escalaDia.escala.tenantId,
@@ -530,7 +680,9 @@ export class NotificationsService {
       totalSubscriptions,
     };
 
-    this.logger.log(`Lembrete do dia da escala processado: ${JSON.stringify(result)}`);
+    this.logger.log(
+      `Lembrete do dia da escala processado: ${JSON.stringify(result)}`,
+    );
 
     return result;
   }
@@ -574,10 +726,13 @@ export class NotificationsService {
     let withoutSubscription = 0;
 
     for (const evento of eventos) {
-      const ministerioIds = evento.ministerios.map((relacao) => relacao.ministerioId);
-      const userIds = evento.tipo === EventoTipo.GERAL
-        ? await this.getTenantMemberUserIds(evento.tenantId)
-        : await this.getMinistryMemberUserIds(evento.tenantId, ministerioIds);
+      const ministerioIds = evento.ministerios.map(
+        (relacao) => relacao.ministerioId,
+      );
+      const userIds =
+        evento.tipo === EventoTipo.GERAL
+          ? await this.getTenantMemberUserIds(evento.tenantId)
+          : await this.getMinistryMemberUserIds(evento.tenantId, ministerioIds);
 
       if (userIds.length === 0) {
         withoutRecipients += 1;
@@ -611,7 +766,9 @@ export class NotificationsService {
       totalSubscriptions,
     };
 
-    this.logger.log(`Lembrete 2h de eventos processado: ${JSON.stringify(result)}`);
+    this.logger.log(
+      `Lembrete 2h de eventos processado: ${JSON.stringify(result)}`,
+    );
 
     return result;
   }

@@ -147,6 +147,15 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 - No Safari do iOS, o usuario precisa adicionar o PWA e abri-lo pelo icone antes de avancar para notificacoes.
 - Permissao de notificacoes continua opcional em todas as plataformas.
 
+#### Notificacoes de aniversario
+
+- O backend executa o job diariamente as 08:00 no fuso `America/Sao_Paulo`.
+- Somente membros ativos, nao excluidos e com data de nascimento participam da selecao.
+- O aniversariante com usuario ativo recebe uma mensagem pessoal vinculada ao tenant.
+- Os demais membros com usuario ativo recebem uma unica mensagem por tenant, consolidada quando houver mais de um aniversariante.
+- O envio reutiliza `PushSubscription` e `NotificationsService.sendToUsers`; nao existe persistencia adicional de notificacoes.
+- Usuarios sem subscription push ativa nao recebem o push, sem bloquear o processamento dos demais.
+
 ### Ministerio
 
 - `nome`: obrigatorio.
