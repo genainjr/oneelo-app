@@ -99,6 +99,7 @@ function UsuarioModalContent({
     setMembroSearch(m.nome);
     if (!nome.trim()) setNome(m.nome);
     if (!email.trim() && m.email) setEmail(m.email);
+    if (!telefoneLogin.trim() && m.whatsapp) setTelefoneLogin(m.whatsapp);
   }
 
   function clearMembro() {

@@ -85,15 +85,19 @@ export function InternationalPhoneInput({
       return;
     }
 
-    const parsed = parsePhoneNumberFromString(value);
+    const parsed = parsePhoneNumberFromString(value, defaultCountry);
     if (parsed?.country) {
       setCountry(parsed.country);
       setNationalValue(parsed.formatNational());
+      if (value !== parsed.number) {
+        lastEmittedValue.current = parsed.number;
+        onChange(parsed.number);
+      }
       return;
     }
 
     setNationalValue(value);
-  }, [defaultCountry, value]);
+  }, [defaultCountry, onChange, value]);
 
   function emitPhoneValue(nextCountry: CountryCode, input: string) {
     const formatter = new AsYouType(nextCountry);

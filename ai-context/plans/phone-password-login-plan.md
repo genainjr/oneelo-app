@@ -63,7 +63,7 @@ Ainda nao existe:
 
 O campo Prisma sera `telefoneLogin`, mapeado para `login_phone` em `tb_user`.
 
-`Membro.whatsapp` continua sendo contato pastoral/operacional. Nenhuma criacao, migration ou edicao de membro deve copiar esse valor automaticamente para `User.telefoneLogin`.
+`Membro.whatsapp` continua sendo contato pastoral/operacional. Ao selecionar um membro no cadastro de usuario, a UI pode sugerir o WhatsApp no campo vazio de telefone de login, mas o valor permanece editavel e so vira credencial quando o administrador salva o usuario. Nenhuma migration, persistencia silenciosa ou edicao posterior de membro deve sincronizar esse valor automaticamente.
 
 ### 2. Formato canonico e E.164
 
@@ -192,7 +192,7 @@ Fora do escopo:
 - OTP, SMS, WhatsApp ou magic link;
 - recuperacao de conta por telefone;
 - tornar e-mail opcional;
-- usar ou sincronizar automaticamente `Membro.whatsapp`;
+- persistir ou sincronizar `Membro.whatsapp` como credencial sem confirmacao no formulario de usuario;
 - alterar o login de `SUPER_ADMIN`;
 - criar usuario automaticamente a partir de um telefone;
 - verificar posse do numero por canal externo;
@@ -287,6 +287,7 @@ Tarefas:
 - [x] Incluir `telefoneLogin` nos selects/respostas administrativas necessarios.
 - [x] Atualizar `User` em `apps/web/src/types/index.ts`.
 - [x] Adicionar campo `Telefone de login` ao `UsuarioModal` com explicacao de que nao e o WhatsApp do membro.
+- [x] Ao selecionar um membro, preencher o telefone de login vazio com o WhatsApp como sugestao editavel.
 - [x] Permitir preencher, editar e remover o telefone na tela de usuarios.
 - [x] Exibir o telefone de forma responsiva na listagem/configuracao sem mistura-lo com `Membro.whatsapp`.
 - [x] Registrar auditoria de inclusao, alteracao e remocao usando valor mascarado ou apenas ultimos digitos.
@@ -448,7 +449,7 @@ Valor entregue:
 - Sessao, auditoria, status, tenant e RBAC reutilizam o fluxo existente.
 - Gestao administrativa e autogestao com senha atual implementadas sem feature flag.
 - Tela `/login`, `UsuarioModal` e `Meu Perfil` usam seletor de pais, mascara nacional e conversao transparente para E.164.
-- Validacoes concluidas: Prisma validate/generate, 19 testes direcionados, build API, typecheck/build web e `git diff --check`.
+- Validacoes concluidas: Prisma validate/generate, 20 testes direcionados, build API, typecheck/build web e `git diff --check`.
 - Smoke da mascara confirmou `BR -> +5511999999999`, `PT -> +351912345678` e `US -> +12025550123`.
 - O lint direcionado da web nao executa porque o ESLint 9 do workspace nao encontra `eslint.config.*`; typecheck e build da web passaram.
 - O `tsc --noEmit` direto da API inclui suites E2E legadas e continua acusando erros preexistentes em escalas, membros e roles; o build da API passou.

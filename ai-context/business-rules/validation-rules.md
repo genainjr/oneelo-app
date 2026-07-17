@@ -106,7 +106,7 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 
 - `email`: obrigatorio e unico no escopo correto.
 - `telefoneLogin`: opcional, unico globalmente e persistido em E.164 com DDI; pertence a `User` e nao a `Membro`.
-- `Membro.whatsapp` continua sendo contato e nunca deve ser sincronizado automaticamente com `User.telefoneLogin`.
+- `Membro.whatsapp` continua sendo contato e nunca deve ser sincronizado automaticamente com `User.telefoneLogin`; no cadastro de usuario, pode apenas preencher o campo vazio como sugestao editavel antes da confirmacao do administrador.
 - `status`: `PENDING`, `ACTIVE` ou `DISABLED`; login diario so e permitido para `ACTIVE`.
 - `senha`: minimo definido pelo DTO quando informada; persistida como `senhaHash`.
 - `senhaHash`: pode ser nula enquanto a conta estiver pendente ou quando o acesso for exclusivamente social.

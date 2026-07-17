@@ -151,7 +151,7 @@ describe('AuthService phone password login', () => {
       user: { findFirst: jest.fn().mockResolvedValue(await activeUser()) },
       auditLog: { create: jest.fn().mockResolvedValue(undefined) },
     };
-    const service = createService(prisma, );
+    const service = createService(prisma);
 
     await service.login({ identificador: 'usuario@example.com', senha: '123456' });
 
@@ -198,7 +198,7 @@ describe('AuthService phone password login', () => {
       },
       auditLog: { create: jest.fn() },
     };
-    const service = createService(prisma, );
+    const service = createService(prisma);
 
     await expect(
       service.login({ identificador: '+5511999999999', senha: '123456' }),
@@ -221,7 +221,7 @@ describe('AuthService phone password login', () => {
       },
       auditLog: { create: jest.fn().mockResolvedValue(undefined) },
     };
-    const service = createService(prisma, );
+    const service = createService(prisma);
 
     const result = await service.updateMyLoginPhone(
       'user-1',
@@ -258,7 +258,7 @@ describe('AuthService phone password login', () => {
       },
       auditLog: { create: jest.fn() },
     };
-    const service = createService(prisma, );
+    const service = createService(prisma);
 
     await expect(
       service.updateMyLoginPhone(
@@ -268,5 +268,26 @@ describe('AuthService phone password login', () => {
       ),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService available members', () => {
+  it('inclui whatsapp para preencher a credencial telefonica no cadastro', async () => {
+    const prisma = {
+      membro: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = createService(prisma);
+
+    await service.findAvailableMembers('tenant-1');
+
+    expect(prisma.membro.findMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: 'tenant-1',
+        deletedAt: null,
+        user: null,
+      },
+      select: { id: true, nome: true, email: true, whatsapp: true },
+      orderBy: { nome: 'asc' },
+    });
   });
 });

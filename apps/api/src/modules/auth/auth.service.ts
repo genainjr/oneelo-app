@@ -1203,7 +1203,7 @@ export class AuthService {
         deletedAt: null,
         user: null, // apenas membros sem user vinculado
       },
-      select: { id: true, nome: true, email: true },
+      select: { id: true, nome: true, email: true, whatsapp: true },
       orderBy: { nome: 'asc' },
     });
   }
