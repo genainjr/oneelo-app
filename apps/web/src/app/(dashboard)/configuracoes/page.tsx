@@ -49,10 +49,10 @@ function buildActivationWelcomeMessage(
   const expiration = formatActivationExpiration(user.activationExpiresAt);
 
   return [
-    `Olá, ${user.nome}! Seja muito bem-vindo(a) à ${churchName} no OneElo. \ud83c\udf89`,
+    `Olá, ${user.nome}! Seja muito bem-vindo(a) à ${churchName} no One Elo. \ud83c\udf89`,
     "",
     "Seu acesso foi criado para aproximar você ainda mais da rotina da nossa igreja.",
-    "No OneElo, você poderá acompanhar suas escalas, consultar a agenda, manter seu perfil atualizado e receber notificações importantes.",
+    "No One Elo, você poderá acompanhar suas escalas, consultar a agenda, manter seu perfil atualizado e receber notificações importantes.",
     "",
     expiration
       ? `Ative sua conta pelo link abaixo. Ele expira em ${expiration} (horário de Brasília):`
