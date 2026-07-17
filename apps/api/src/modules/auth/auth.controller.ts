@@ -26,6 +26,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ActivateAccountDto } from './dto/activate-account.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
+import { UpdateLoginPhoneDto } from './dto/update-login-phone.dto';
 import { AuditLogsQueryDto } from './dto/audit-logs-query.dto';
 import type { Response, Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -329,6 +330,23 @@ export class AuthController {
     @Req() req: Request,
   ) {
     return this.authService.updateMyProfile(user.sub, user.tenantId!, dto, getClientIp(req));
+  }
+
+  @Patch('me/login-phone')
+  @UseGuards(JwtAuthGuard, ThrottlerGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Cadastra, altera ou remove o telefone de login do usuario atual' })
+  async updateMyLoginPhone(
+    @Body() dto: UpdateLoginPhoneDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.authService.updateMyLoginPhone(
+      user.sub,
+      user.tenantId!,
+      dto,
+      getClientIp(req),
+    );
   }
 
   @Get('me/auth-providers')

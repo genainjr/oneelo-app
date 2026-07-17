@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { InputField, PasswordField } from '@/components/app/form-field';
+import { InternationalPhoneInput } from '@/components/app/international-phone-input';
 import { InfoItem } from '@/components/app/info-item';
 import { StatusBadge } from '@/components/app/status-badge';
 import { ImageUploadPanel } from '@/components/app/image-upload-panel';
@@ -57,6 +58,11 @@ export default function MeuPerfilPage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [loginPhone, setLoginPhone] = useState('');
+  const [loginPhonePassword, setLoginPhonePassword] = useState('');
+  const [loginPhoneLoading, setLoginPhoneLoading] = useState(false);
+  const [loginPhoneError, setLoginPhoneError] = useState('');
+  const [loginPhoneSuccess, setLoginPhoneSuccess] = useState('');
   const [authProviders, setAuthProviders] = useState<ConnectedAuthProvider[]>([]);
   const [authProvidersLoading, setAuthProvidersLoading] = useState(false);
   const [authProviderError, setAuthProviderError] = useState('');
@@ -70,6 +76,7 @@ export default function MeuPerfilPage() {
       .then((data) => {
         setUser(data);
         setProfileForm(buildProfileForm(data));
+        setLoginPhone(data.telefoneLogin ?? '');
       })
       .catch(() => setError('Nao foi possivel carregar seu perfil.'))
       .finally(() => setLoading(false));
@@ -175,6 +182,45 @@ export default function MeuPerfilPage() {
       setPasswordError(err?.message || `Não foi possível ${hasPassword ? 'alterar' : 'criar'} a senha.`);
     } finally {
       setPasswordLoading(false);
+    }
+  }
+
+  async function handleUpdateLoginPhone(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoginPhoneError('');
+    setLoginPhoneSuccess('');
+
+    if (!hasPassword) {
+      setLoginPhoneError('Crie uma senha antes de cadastrar um telefone de login.');
+      return;
+    }
+    if (!loginPhonePassword.trim()) {
+      setLoginPhoneError('Informe sua senha atual para confirmar a alteracao.');
+      return;
+    }
+
+    setLoginPhoneLoading(true);
+    try {
+      const result = await api.patch<{ message: string; telefoneLogin: string | null }>(
+        '/api/auth/me/login-phone',
+        {
+          senhaAtual: loginPhonePassword,
+          telefoneLogin: loginPhone.trim() || null,
+        },
+      );
+      setLoginPhone(result.telefoneLogin ?? '');
+      setLoginPhonePassword('');
+      setUser((current) =>
+        current ? { ...current, telefoneLogin: result.telefoneLogin } : current,
+      );
+      setLayoutUser((current) =>
+        current ? { ...current, telefoneLogin: result.telefoneLogin } : current,
+      );
+      setLoginPhoneSuccess(result.message);
+    } catch (err: any) {
+      setLoginPhoneError(err?.message || 'Nao foi possivel atualizar o telefone de login.');
+    } finally {
+      setLoginPhoneLoading(false);
     }
   }
 
@@ -324,6 +370,64 @@ export default function MeuPerfilPage() {
               <InfoItem label="Plano" value={user.tenant?.plano || '-'} />
               <InfoItem label="Criado em" value={formatDate(user.createdAt, 'dd/MM/yyyy')} />
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Telefone de login</h2>
+                <p className="text-sm text-gray-500">
+                  Selecione o país e informe o número local. Esta credencial é separada do WhatsApp do cadastro de membro.
+                </p>
+              </div>
+
+              {!hasPassword && (
+                <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                  Crie uma senha na secao de seguranca antes de cadastrar um telefone de login.
+                </p>
+              )}
+
+              <form onSubmit={handleUpdateLoginPhone} className="mt-5 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <InternationalPhoneInput
+                    id="login-phone"
+                    label="Telefone de login"
+                    optionalLabel="Deixe vazio para remover"
+                    countryLabel="País do telefone de login"
+                    value={loginPhone}
+                    onChange={setLoginPhone}
+                    disabled={!hasPassword}
+                  />
+                  <PasswordField
+                    id="login-phone-password"
+                    label="Senha atual"
+                    value={loginPhonePassword}
+                    onChange={(event) => setLoginPhonePassword(event.target.value)}
+                    autoComplete="current-password"
+                    disabled={!hasPassword}
+                  />
+                </div>
+
+                {loginPhoneError && (
+                  <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                    {loginPhoneError}
+                  </p>
+                )}
+                {loginPhoneSuccess && (
+                  <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                    {loginPhoneSuccess}
+                  </p>
+                )}
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={!hasPassword || loginPhoneLoading}
+                    className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {loginPhoneLoading ? 'Salvando...' : 'Salvar telefone de login'}
+                  </button>
+                </div>
+              </form>
           </section>
 
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
@@ -591,4 +695,3 @@ export default function MeuPerfilPage() {
     </div>
   );
 }
-
