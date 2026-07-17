@@ -10,16 +10,13 @@ import * as bcrypt from 'bcryptjs';
 
 function createService(
   prisma: Record<string, unknown>,
-  options: { phoneEnabled?: boolean; signAsync?: jest.Mock } = {},
+  options: { signAsync?: jest.Mock } = {},
 ) {
   return new AuthService(
     prisma as never,
     { signAsync: options.signAsync ?? jest.fn().mockResolvedValue('jwt') } as never,
     {
       get: jest.fn((key: string) => {
-        if (key === 'PHONE_PASSWORD_LOGIN_ENABLED') {
-          return options.phoneEnabled ? 'true' : 'false';
-        }
         if (key === 'JWT_SECRET') return 'test-secret';
         if (key === 'JWT_EXPIRES_IN') return '1d';
         return undefined;
@@ -97,7 +94,6 @@ describe('AuthService user access invariants', () => {
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
 });
-
 describe('AuthService phone password login', () => {
   const activeUser = async () => ({
     id: 'user-1',
@@ -120,7 +116,7 @@ describe('AuthService phone password login', () => {
       auditLog: { create: jest.fn().mockResolvedValue(undefined) },
     };
     const signAsync = jest.fn().mockResolvedValue('jwt-phone');
-    const service = createService(prisma, { phoneEnabled: true, signAsync });
+    const service = createService(prisma, { signAsync });
 
     const result = await service.login({
       identificador: '+55 (11) 99999-9999',
@@ -135,7 +131,7 @@ describe('AuthService phone password login', () => {
     expect(prisma.auditLog.create).toHaveBeenCalled();
   });
 
-  it('preserva o payload legado de e-mail com a flag telefonica desabilitada', async () => {
+  it('preserva o payload legado de e-mail', async () => {
     const prisma = {
       user: { findFirst: jest.fn().mockResolvedValue(await activeUser()) },
       auditLog: { create: jest.fn().mockResolvedValue(undefined) },
@@ -155,7 +151,7 @@ describe('AuthService phone password login', () => {
       user: { findFirst: jest.fn().mockResolvedValue(await activeUser()) },
       auditLog: { create: jest.fn().mockResolvedValue(undefined) },
     };
-    const service = createService(prisma, { phoneEnabled: true });
+    const service = createService(prisma, );
 
     await service.login({ identificador: 'usuario@example.com', senha: '123456' });
 
@@ -165,7 +161,7 @@ describe('AuthService phone password login', () => {
     });
   });
 
-  it('bloqueia telefone quando a flag esta desabilitada sem consultar usuario', async () => {
+  it('rejeita telefone invalido sem consultar usuario', async () => {
     const prisma = {
       user: { findFirst: jest.fn() },
       auditLog: { create: jest.fn() },
@@ -173,7 +169,7 @@ describe('AuthService phone password login', () => {
     const service = createService(prisma);
 
     await expect(
-      service.login({ identificador: '+5511999999999', senha: '123456' }),
+      service.login({ identificador: 'telefone-invalido', senha: '123456' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.user.findFirst).not.toHaveBeenCalled();
   });
@@ -202,7 +198,7 @@ describe('AuthService phone password login', () => {
       },
       auditLog: { create: jest.fn() },
     };
-    const service = createService(prisma, { phoneEnabled: true });
+    const service = createService(prisma, );
 
     await expect(
       service.login({ identificador: '+5511999999999', senha: '123456' }),
@@ -225,7 +221,7 @@ describe('AuthService phone password login', () => {
       },
       auditLog: { create: jest.fn().mockResolvedValue(undefined) },
     };
-    const service = createService(prisma, { phoneEnabled: true });
+    const service = createService(prisma, );
 
     const result = await service.updateMyLoginPhone(
       'user-1',
@@ -262,7 +258,7 @@ describe('AuthService phone password login', () => {
       },
       auditLog: { create: jest.fn() },
     };
-    const service = createService(prisma, { phoneEnabled: true });
+    const service = createService(prisma, );
 
     await expect(
       service.updateMyLoginPhone(

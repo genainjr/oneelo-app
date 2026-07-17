@@ -52,16 +52,6 @@ export class AuthService {
     private readonly tenantMediaService: TenantMediaService,
   ) {}
 
-  private isPhonePasswordLoginEnabled() {
-    return this.configService.get<string>('PHONE_PASSWORD_LOGIN_ENABLED') === 'true';
-  }
-
-  private assertPhonePasswordLoginEnabled() {
-    if (!this.isPhonePasswordLoginEnabled()) {
-      throw new BadRequestException('Login por telefone ainda nao esta habilitado.');
-    }
-  }
-
   private normalizePhoneForWrite(value: string) {
     const normalized = normalizeLoginPhone(value);
 
@@ -218,10 +208,6 @@ export class AuthService {
     if (isEmailLogin) {
       where = { email: loginIdentifier };
     } else {
-      if (!this.isPhonePasswordLoginEnabled()) {
-        throw new UnauthorizedException('Credenciais invalidas.');
-      }
-
       const telefoneLogin = normalizeLoginPhone(loginIdentifier);
       if (!telefoneLogin) {
         throw new UnauthorizedException('Credenciais invalidas.');
@@ -550,8 +536,6 @@ export class AuthService {
     dto: UpdateLoginPhoneDto,
     ip?: string,
   ) {
-    this.assertPhonePasswordLoginEnabled();
-
     if (!Object.prototype.hasOwnProperty.call(dto, 'telefoneLogin')) {
       throw new BadRequestException('Informe o telefone de login ou null para remover.');
     }
@@ -863,7 +847,6 @@ export class AuthService {
 
     let telefoneLogin: string | null = null;
     if (dto.telefoneLogin !== undefined) {
-      this.assertPhonePasswordLoginEnabled();
       telefoneLogin = this.normalizePhoneForWrite(dto.telefoneLogin);
       const phoneConflict = await this.prisma.user.findFirst({
         where: { telefoneLogin },
@@ -1070,7 +1053,6 @@ export class AuthService {
     let telefoneLogin = user.telefoneLogin;
 
     if (hasTelefoneLogin) {
-      this.assertPhonePasswordLoginEnabled();
       telefoneLogin =
         typeof dto.telefoneLogin === 'string'
           ? this.normalizePhoneForWrite(dto.telefoneLogin)

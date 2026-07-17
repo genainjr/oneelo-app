@@ -35,8 +35,6 @@ function buildProfileForm(user: AuthUser): ProfileFormState {
 }
 
 export default function MeuPerfilPage() {
-  const phoneLoginEnabled =
-    process.env.NEXT_PUBLIC_PHONE_PASSWORD_LOGIN_ENABLED === 'true';
   const { setUser: setLayoutUser } = useAuthUser();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -373,8 +371,7 @@ export default function MeuPerfilPage() {
             </div>
           </section>
 
-          {phoneLoginEnabled && (
-            <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
               <div>
                 <h2 className="text-base font-bold text-gray-900">Telefone de login</h2>
                 <p className="text-sm text-gray-500">
@@ -432,8 +429,7 @@ export default function MeuPerfilPage() {
                   </button>
                 </div>
               </form>
-            </section>
-          )}
+          </section>
 
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
             <div>
@@ -700,4 +696,3 @@ export default function MeuPerfilPage() {
     </div>
   );
 }
-

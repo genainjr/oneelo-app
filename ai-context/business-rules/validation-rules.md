@@ -141,8 +141,7 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 
 #### Login por telefone e senha
 
-- Com `PHONE_PASSWORD_LOGIN_ENABLED=true`, o login tenant aceita e-mail ou `telefoneLogin` com a mesma `senhaHash`.
-- Com a flag ausente ou `false`, o backend continua aceitando somente e-mail/senha e login social.
+- O login tenant aceita e-mail ou `telefoneLogin` com a mesma `senhaHash`.
 - Telefone deve ser normalizado pelo backend antes da gravacao, verificacao de unicidade e consulta.
 - O endpoint aceita temporariamente o payload legado `{ email, senha }` e usa `{ identificador, senha }` como contrato novo.
 - Telefone sozinho nao e forma valida de acesso: usuario precisa possuir `senhaHash`.

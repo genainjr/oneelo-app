@@ -69,8 +69,6 @@ export default function ConfiguracoesPage() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const { formatDateTime } = useDateFormatter();
-  const phoneLoginEnabled =
-    process.env.NEXT_PUBLIC_PHONE_PASSWORD_LOGIN_ENABLED === "true";
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [activeTab, setActiveTab] = useState<"usuarios" | "audit">("usuarios");
@@ -407,10 +405,9 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
+    </div>
+  );
+}
   if (!isAdmin) {
     return (
       <div className="p-6 max-w-xl mx-auto mt-12 text-center bg-white border border-gray-150 shadow-sm rounded-2xl">
@@ -602,18 +599,14 @@ export default function ConfiguracoesPage() {
       hideOnMobile: true,
       render: (u) => <span className="text-gray-500">{u.email}</span>,
     },
-    ...(phoneLoginEnabled
-      ? [
-          {
-            key: "telefoneLogin" as keyof User,
-            header: t("users.columns.loginPhone"),
-            hideOnMobile: true,
-            render: (u: User) => (
-              <span className="text-gray-500">{u.telefoneLogin || "-"}</span>
-            ),
-          },
-        ]
-      : []),
+    {
+      key: "telefoneLogin" as keyof User,
+      header: t("users.columns.loginPhone"),
+      hideOnMobile: true,
+      render: (u: User) => (
+        <span className="text-gray-500">{u.telefoneLogin || "-"}</span>
+      ),
+    },
     {
       key: "role",
       header: t("users.columns.role"),

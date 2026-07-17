@@ -27,7 +27,7 @@ Os tres caminhos devem preservar as regras atuais de tenant, `User.status`, RBAC
 - Administrador pode cadastrar, alterar e remover o telefone de login de usuarios do tenant.
 - Usuario autenticado pode gerir o proprio telefone de login mediante reautenticacao por senha.
 - Usuarios sem telefone continuam entrando por e-mail ou login social sem migracao obrigatoria.
-- A funcionalidade pode ser implantada desabilitada e ativada por configuracao depois da validacao.
+- A funcionalidade fica disponivel normalmente depois da aplicacao da migration e do deploy da API e da web.
 
 ## Estado atual do codigo
 
@@ -56,7 +56,6 @@ Ainda nao existe:
 - campos administrativos para gerir a credencial telefonica;
 - endpoint protegido para o usuario gerir o proprio telefone de login;
 - testes de autenticacao por telefone;
-- flags especificas para rollout do login telefonico.
 
 ## Decisoes fechadas
 
@@ -153,31 +152,17 @@ Como SMS/OTP esta fora do escopo, a entrega nao comprova posse do numero por men
 - JWT continua carregando o e-mail atual; nenhuma permissao passa a depender do telefone.
 - `SUPER_ADMIN` e `/admin/login` ficam fora desta entrega.
 
-### 9. Rollout por flags
+### 9. Disponibilidade apos deploy
 
-Usar duas flags com padrao desabilitado:
+Login por telefone nao usa feature flag. A flag do onboarding e uma excecao operacional criada depois da entrega daquele fluxo e nao estabelece um padrao para novas funcionalidades.
 
-- API: `PHONE_PASSWORD_LOGIN_ENABLED=false`;
-- web: `NEXT_PUBLIC_PHONE_PASSWORD_LOGIN_ENABLED=false`.
+Ordem de publicacao:
 
-Com a flag da API desabilitada:
-
-- login por telefone e rejeitado sem afetar e-mail/senha;
-- escrita de `telefoneLogin` pode permanecer bloqueada ate o inicio do rollout.
-
-Com a flag web desabilitada:
-
-- `/login` continua apresentando o rotulo atual de e-mail;
-- controles de telefone de login ficam ocultos.
-
-Ordem de ativacao:
-
-1. aplicar migration e publicar API com flag desabilitada;
-2. publicar web com flag desabilitada;
-3. validar escrita e login em ambiente controlado;
-4. habilitar API;
-5. habilitar web e gerar novo build;
-6. acompanhar erros `401`, `409`, `429` e falhas de normalizacao.
+1. aplicar a migration;
+2. publicar a API;
+3. publicar a web;
+4. executar o roteiro de verificacao com e-mail, telefone e Google;
+5. acompanhar erros `401`, `409`, `429` e falhas de normalizacao.
 
 ## Escopo
 
@@ -190,7 +175,6 @@ Incluido:
 - cadastro/edicao administrativa do telefone;
 - autogestao com confirmacao de senha atual;
 - atualizacao de tipos, UI e i18n;
-- flags de rollout;
 - auditoria sem expor telefone completo;
 - testes automatizados e roteiro manual dos tres metodos de login;
 - atualizacao da documentacao de modelos, validacoes e navegacao quando aplicavel.
@@ -220,7 +204,7 @@ Tarefas:
 - [x] Confirmar que telefone e senha, nao SMS/OTP, e o objetivo.
 - [x] Fechar separacao entre `User.telefoneLogin` e `Membro.whatsapp`.
 - [x] Fechar formato E.164, unicidade global e compatibilidade do DTO.
-- [x] Fechar gestao administrativa, autogestao e estrategia de rollout.
+- [x] Fechar gestao administrativa, autogestao e estrategia de publicacao.
 
 Valor entregue:
 
@@ -261,13 +245,12 @@ Tarefas:
 - [x] Evoluir `LoginDto` para aceitar `identificador` ou o alias legado `email`, alem de `senha`.
 - [x] Rejeitar ausencia, duplicidade ou conflito entre os identificadores.
 - [x] Manter busca por e-mail para payload legado e identificador com `@`.
-- [x] Normalizar e buscar por `telefoneLogin` nos demais casos quando a flag estiver ativa.
+- [x] Normalizar e buscar por `telefoneLogin` nos demais casos.
 - [x] Preservar codigos `ACCOUNT_PENDING_ACTIVATION` e `ACCOUNT_DISABLED`.
 - [x] Preservar bloqueio de tenant inativo e `SUPER_ADMIN` no login tenant.
 - [x] Retornar mensagem generica para usuario inexistente, telefone invalido ou senha incorreta.
 - [x] Reutilizar `createSessionForUser()` depois da verificacao de senha para eliminar divergencia entre sessao/auditoria do login por e-mail e telefone.
 - [x] Atualizar Swagger e exemplos do endpoint.
-- [x] Adicionar `PHONE_PASSWORD_LOGIN_ENABLED` e documentar em `.env.example`.
 
 Validacao:
 
@@ -277,7 +260,6 @@ Validacao:
 - [ ] Senha incorreta nos dois identificadores.
 - [ ] Telefone invalido e telefone inexistente sem enumeracao de conta.
 - [ ] Bloqueios de `PENDING`, `DISABLED` e tenant inativo por telefone.
-- [x] Login telefonico bloqueado com flag desabilitada sem regressao do e-mail.
 - [x] Rate limit continua aplicado ao endpoint compartilhado.
 
 Valor entregue:
@@ -300,7 +282,6 @@ Tarefas:
 - [x] Permitir preencher, editar e remover o telefone na tela de usuarios.
 - [x] Exibir o telefone de forma responsiva na listagem/configuracao sem mistura-lo com `Membro.whatsapp`.
 - [x] Registrar auditoria de inclusao, alteracao e remocao usando valor mascarado ou apenas ultimos digitos.
-- [x] Respeitar a flag para impedir configuracao antes do rollout.
 
 Validacao:
 
@@ -350,10 +331,9 @@ Status: concluida tecnicamente
 
 Tarefas:
 
-- [x] Substituir estado `email` por `identificador` na tela `/login` quando a flag estiver ativa.
+- [x] Substituir estado `email` por `identificador` na tela `/login`.
 - [x] Usar `type="text"` e `autoComplete="username"` para suportar e-mail e telefone.
 - [x] Enviar `{ identificador, senha }` no novo frontend.
-- [x] Manter o payload e rotulo atuais quando a flag estiver desabilitada.
 - [x] Alterar rotulo para `E-mail ou telefone` e adicionar exemplo internacional.
 - [x] Atualizar erro generico para nao enumerar e-mail ou telefone.
 - [x] Preservar estados `403`, `401`, `429`, carregamento e erro de conexao.
@@ -367,7 +347,6 @@ Validacao:
 - [ ] Login por telefone funciona com teclado/autocomplete adequados em mobile.
 - [ ] Login Google permanece visivel e funcional.
 - [ ] Redirect por role e onboarding permanece igual para os tres metodos.
-- [ ] Flag desabilitada preserva a experiencia atual.
 - [ ] Responsividade e acessibilidade basica do formulario.
 
 Valor entregue:
@@ -400,7 +379,7 @@ Valor entregue:
 
 - nova credencial integrada sem enfraquecer os invariantes atuais de acesso.
 
-### Etapa 7 - Documentacao, rollout e validacao final
+### Etapa 7 - Documentacao, publicacao e validacao final
 
 Status: validacao tecnica concluida - validacao manual pendente
 
@@ -410,10 +389,8 @@ Tarefas:
 - [x] Atualizar `ai-context/business-rules/validation-rules.md`.
 - [x] Atualizar `ai-context/frontend/navigation-rules.md` se houver impacto real de UX/navegacao.
 - [x] Atualizar documentacao do login social somente se algum texto assumir e-mail como unico login local.
-- [x] Atualizar `.env.example` da API e web.
 - [x] Registrar comandos executados e resultados neste plano.
 - [ ] Executar roteiro manual com e-mail, telefone e Google.
-- [ ] Validar rollout com flags desabilitadas antes da ativacao.
 - [x] Revisar diff completo e atualizar status/checklists com o resultado real.
 
 Validacao tecnica prevista:
@@ -440,7 +417,6 @@ Valor entregue:
 | `PENDING` | bloqueia com codigo especifico | bloqueia com codigo especifico | somente ativacao por link valido |
 | `DISABLED` | bloqueia com codigo especifico | bloqueia com codigo especifico | bloqueia com codigo especifico |
 | tenant inativo | bloqueia | bloqueia | bloqueia |
-| flag telefonica desabilitada | permite | bloqueia | permite |
 
 ## Documentacao a atualizar durante a implementacao
 
@@ -448,7 +424,6 @@ Valor entregue:
 - `ai-context/business-rules/validation-rules.md`
 - `ai-context/frontend/navigation-rules.md`, se aplicavel
 - `ai-context/plans/phone-password-login-plan.md`
-- `.env.example` da API e web
 - Swagger/DTOs de autenticacao e usuarios
 - tipos e traducoes do frontend
 
@@ -458,12 +433,13 @@ Valor entregue:
 - Helper E.164 implementado com `libphonenumber-js` como dependencia direta da API.
 - Login aceita `identificador` por e-mail ou telefone e preserva o alias legado `email`.
 - Sessao, auditoria, status, tenant e RBAC reutilizam o fluxo existente.
-- Gestao administrativa e autogestao com senha atual implementadas sob flags de rollout.
+- Gestao administrativa e autogestao com senha atual implementadas sem feature flag.
 - Tela `/login`, `UsuarioModal`, `Meu Perfil`, tipos e traducoes atualizados.
-- Validacoes concluidas: Prisma validate/generate, 19 testes direcionados, typecheck API/web, build API/web e `git diff --check`.
+- Validacoes concluidas: Prisma validate/generate, 19 testes direcionados, build API, typecheck/build web e `git diff --check`.
+- O `tsc --noEmit` direto da API inclui suites E2E legadas e continua acusando erros preexistentes em escalas, membros e roles; o build da API passou.
 - Build web exigiu `NEXT_PUBLIC_API_URL=http://localhost:4001` e acesso ao Google Fonts; passou apos disponibilizar ambos.
 - Warnings nao bloqueantes: multiplos lockfiles na inferencia da raiz do Turbopack e convencao `middleware` depreciada pelo Next.js.
-- Pendentes: roteiro manual ponta a ponta e habilitacao controlada das flags em ambiente de validacao.
+- Pendentes: roteiro manual ponta a ponta e aplicacao da migration no ambiente de destino.
 
 ## Riscos e mitigacoes
 
@@ -501,7 +477,7 @@ Mitigacao: campos, labels, DTOs e endpoints separados; nenhum backfill ou sincro
 
 Risco: cada metodo aplicar regras diferentes de status, tenant, sessao ou redirect.
 
-Mitigacao: reutilizar validacoes e criacao de sessao existentes e validar a matriz completa antes do rollout.
+Mitigacao: reutilizar validacoes e criacao de sessao existentes e validar a matriz completa antes da publicacao.
 
 ## Evolucoes futuras
 

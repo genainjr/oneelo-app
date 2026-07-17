@@ -58,8 +58,6 @@ function UsuarioModalContent({
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = !!usuario;
-  const phoneLoginEnabled =
-    process.env.NEXT_PUBLIC_PHONE_PASSWORD_LOGIN_ENABLED === "true";
 
   useEffect(() => {
     let active = true;
@@ -145,9 +143,7 @@ function UsuarioModalContent({
             ? null
             : undefined,
       };
-      if (phoneLoginEnabled) {
-        payload.telefoneLogin = telefoneLogin.trim() || (isEditing ? null : undefined);
-      }
+      payload.telefoneLogin = telefoneLogin.trim() || (isEditing ? null : undefined);
       if (senha) payload.senha = senha;
 
       await onSave(payload);
@@ -227,18 +223,16 @@ function UsuarioModalContent({
             placeholder="maria@igreja.com"
           />
 
-          {phoneLoginEnabled && (
-            <InputField
-              id="u-telefone-login"
-              label="Telefone de login"
-              optionalLabel="Opcional"
-              type="tel"
-              value={telefoneLogin}
-              onChange={(e) => setTelefoneLogin(e.target.value)}
-              placeholder="+55 11 99999-9999"
-              autoComplete="tel"
-            />
-          )}
+          <InputField
+            id="u-telefone-login"
+            label="Telefone de login"
+            optionalLabel="Opcional"
+            type="tel"
+            value={telefoneLogin}
+            onChange={(e) => setTelefoneLogin(e.target.value)}
+            placeholder="+55 11 99999-9999"
+            autoComplete="tel"
+          />
 
           <PasswordField
             id="u-senha"
@@ -294,12 +288,10 @@ function UsuarioModalContent({
                 de ativacao.
               </span>
             )}
-            {phoneLoginEnabled && (
-              <span>
-                {" "}
-                O telefone de login e uma credencial separada do WhatsApp do membro e deve incluir o DDI.
-              </span>
-            )}
+            <span>
+              {" "}
+              O telefone de login e uma credencial separada do WhatsApp do membro e deve incluir o DDI.
+            </span>
           </div>
         </div>
       </form>

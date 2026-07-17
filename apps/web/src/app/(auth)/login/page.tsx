@@ -16,8 +16,6 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
 
-  const phoneLoginEnabled =
-    process.env.NEXT_PUBLIC_PHONE_PASSWORD_LOGIN_ENABLED === 'true';
   const [identificador, setIdentificador] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
@@ -29,10 +27,10 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const credentials = phoneLoginEnabled
-        ? { identificador, senha }
-        : { email: identificador, senha };
-      const response = await api.post<LoginResponse>('/api/auth/login', credentials);
+      const response = await api.post<LoginResponse>('/api/auth/login', {
+        identificador,
+        senha,
+      });
       const target = getPostLoginTarget(response.user, redirect);
       window.location.href = target;
     } catch (err) {
@@ -86,17 +84,17 @@ function LoginForm() {
           {/* E-mail ou telefone */}
           <div>
             <label htmlFor="identificador" className="block text-sm font-medium text-indigo-200 mb-1.5">
-              {phoneLoginEnabled ? t('identifier') : t('email')}
+              {t('identifier')}
             </label>
             <input
               id="identificador"
-              type={phoneLoginEnabled ? 'text' : 'email'}
-              autoComplete={phoneLoginEnabled ? 'username' : 'email'}
-              inputMode={phoneLoginEnabled ? 'text' : 'email'}
+              type="text"
+              autoComplete="username"
+              inputMode="text"
               required
               value={identificador}
               onChange={(e) => setIdentificador(e.target.value)}
-              placeholder={phoneLoginEnabled ? t('identifierPlaceholder') : t('emailPlaceholder')}
+              placeholder={t('identifierPlaceholder')}
               className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-indigo-300/60 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
             />
           </div>
