@@ -124,3 +124,7 @@ Definir onde administradores e usuarios autorizados podem cadastrar ou alterar o
 - `apps/web/src/app/(dashboard)/meu-perfil/page.tsx`
 - componentes e traducoes relacionados a autenticacao e usuarios
 - testes de autenticacao backend e frontend
+
+## Plano de desenvolvimento
+
+- `ai-context/plans/phone-password-login-plan.md`
