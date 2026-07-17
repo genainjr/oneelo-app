@@ -13,7 +13,11 @@ import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { MinistryRole, Role } from '@prisma/client';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import type { Multer } from 'multer';
-import { getMemberPhotoPath, validateImageUpload } from '../../common/storage/image-upload';
+import {
+  getMemberPhotoPath,
+  validateImageUpload,
+} from '../../common/storage/image-upload';
+import { includesNormalizedText } from '../../common/utils/search-text';
 
 const memberListInclude = {
   tags: {
@@ -133,7 +137,9 @@ export class MembrosService {
         select: { ministerioId: true },
       });
 
-      const ministerioIds = liderancas.map((lideranca) => lideranca.ministerioId);
+      const ministerioIds = liderancas.map(
+        (lideranca) => lideranca.ministerioId,
+      );
       if (ministerioIds.length === 0) return false;
 
       if (query.ministerioId && !ministerioIds.includes(query.ministerioId)) {
@@ -188,9 +194,6 @@ export class MembrosService {
     const where: any = { tenantId };
 
     // Filtros de busca textual
-    if (nome) {
-      where.nome = { contains: nome, mode: 'insensitive' };
-    }
     if (status) {
       where.status = status;
     }
@@ -229,13 +232,17 @@ export class MembrosService {
       }
     }
 
-    return this.prisma.client.membro.findMany({
+    const membros = await this.prisma.client.membro.findMany({
       where,
       include: memberListInclude,
       orderBy: {
         nome: 'asc',
       },
     });
+
+    return membros.filter((membro) =>
+      includesNormalizedText(membro.nome, nome),
+    );
   }
 
   async findOne(tenantId: string, id: string) {
@@ -268,9 +275,6 @@ export class MembrosService {
     const where: any = { tenantId };
     const ordenacao = query.ordenacao ?? 'nome';
 
-    if (nome) {
-      where.nome = { contains: nome, mode: 'insensitive' };
-    }
     if (status) {
       where.status = status;
     }
@@ -281,10 +285,7 @@ export class MembrosService {
       where.AND = [
         ...(where.AND ?? []),
         {
-          OR: [
-            { whatsapp: null },
-            { whatsapp: '' },
-          ],
+          OR: [{ whatsapp: null }, { whatsapp: '' }],
         },
       ];
     }
@@ -294,34 +295,36 @@ export class MembrosService {
     const hasAccess = await this.applyVisualizacaoScope(where, user, query);
     if (!hasAccess) return [];
 
-    const membros = await this.prisma.client.membro.findMany({
-      where,
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-        ministerios: {
-          where: {
-            ministerio: { ativo: true },
-          },
-          include: {
-            ministerio: { select: { id: true, nome: true } },
-            funcoesDisponiveis: {
-              include: { funcao: { select: { id: true, nome: true } } },
+    const membros = (
+      await this.prisma.client.membro.findMany({
+        where,
+        include: {
+          tags: {
+            include: {
+              tag: true,
             },
           },
-          orderBy: {
-            ministerio: { nome: 'asc' },
+          ministerios: {
+            where: {
+              ministerio: { ativo: true },
+            },
+            include: {
+              ministerio: { select: { id: true, nome: true } },
+              funcoesDisponiveis: {
+                include: { funcao: { select: { id: true, nome: true } } },
+              },
+            },
+            orderBy: {
+              ministerio: { nome: 'asc' },
+            },
+          },
+          _count: {
+            select: { escalas: true },
           },
         },
-        _count: {
-          select: { escalas: true },
-        },
-      },
-      orderBy: { nome: 'asc' },
-    });
+        orderBy: { nome: 'asc' },
+      })
+    ).filter((membro) => includesNormalizedText(membro.nome, nome));
 
     const mes = Number.parseInt(aniversarioMes ?? '', 10);
     if (!Number.isInteger(mes) || mes < 1 || mes > 12) {
@@ -366,7 +369,11 @@ export class MembrosService {
     });
   }
 
-  async uploadMemberPhoto(tenantId: string, memberId: string, file: Multer.File) {
+  async uploadMemberPhoto(
+    tenantId: string,
+    memberId: string,
+    file: Multer.File,
+  ) {
     validateImageUpload(file, 'foto');
 
     const member = await this.prisma.client.membro.findFirst({
@@ -396,7 +403,9 @@ export class MembrosService {
     });
 
     if (member.fotoKey && member.fotoKey !== path) {
-      await this.storageService.deleteObject(this.memberPhotoBucket, member.fotoKey).catch(() => undefined);
+      await this.storageService
+        .deleteObject(this.memberPhotoBucket, member.fotoKey)
+        .catch(() => undefined);
     }
 
     return updated;
@@ -421,7 +430,10 @@ export class MembrosService {
       include: memberListInclude,
     });
 
-    await this.storageService.deleteObject(this.memberPhotoBucket, member.fotoKey);
+    await this.storageService.deleteObject(
+      this.memberPhotoBucket,
+      member.fotoKey,
+    );
 
     return updated;
   }
@@ -436,7 +448,10 @@ export class MembrosService {
       throw new NotFoundException('Membro nao encontrado.');
     }
 
-    await this.storageService.deleteObject(this.memberPhotoBucket, member.fotoKey);
+    await this.storageService.deleteObject(
+      this.memberPhotoBucket,
+      member.fotoKey,
+    );
 
     const deletedAt = new Date();
 
