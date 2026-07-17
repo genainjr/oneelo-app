@@ -18,15 +18,25 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { TenantMediaService } from '../../common/storage/tenant-media.service';
-import { AcaoAuditoria, Prisma, Role, StatusMembro, UserStatus } from '@prisma/client';
+import {
+  AcaoAuditoria,
+  Prisma,
+  Role,
+  StatusMembro,
+  UserStatus,
+} from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import type { Multer } from 'multer';
-import { getUserSessionExpiresIn, parseDurationToMilliseconds } from './auth-session';
+import {
+  getUserSessionExpiresIn,
+  parseDurationToMilliseconds,
+} from './auth-session';
 import {
   ACCOUNT_DISABLED_MESSAGE,
   ACCOUNT_PENDING_ACTIVATION_MESSAGE,
 } from './auth-access.constants';
+import { buildActivationLink } from './activation-link';
 
 @Injectable()
 export class AuthService {
@@ -57,12 +67,11 @@ export class AuthService {
   }
 
   private buildActivationLink(token: string) {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL')?.trim() ||
-      this.configService.get<string>('APP_URL')?.trim() ||
-      'http://localhost:3001';
-
-    return `${frontendUrl.replace(/\/$/, '')}/activate/${token}`;
+    return buildActivationLink(
+      token,
+      this.configService.get<string>('CORS_ORIGIN'),
+      this.configService.get<string>('NODE_ENV'),
+    );
   }
 
   private assertTenantUserCanLogin(user: {
@@ -118,8 +127,12 @@ export class AuthService {
       tenantId: user.tenantId ?? undefined,
     };
 
-    const expiresIn = getUserSessionExpiresIn(this.configService.get<string>('JWT_EXPIRES_IN'));
-    const expiresAt = new Date(Date.now() + parseDurationToMilliseconds(expiresIn)).toISOString();
+    const expiresIn = getUserSessionExpiresIn(
+      this.configService.get<string>('JWT_EXPIRES_IN'),
+    );
+    const expiresAt = new Date(
+      Date.now() + parseDurationToMilliseconds(expiresIn),
+    ).toISOString();
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn,
@@ -185,8 +198,12 @@ export class AuthService {
     };
 
     // 4. Gerar token
-    const expiresIn = getUserSessionExpiresIn(this.configService.get<string>('JWT_EXPIRES_IN'));
-    const expiresAt = new Date(Date.now() + parseDurationToMilliseconds(expiresIn)).toISOString();
+    const expiresIn = getUserSessionExpiresIn(
+      this.configService.get<string>('JWT_EXPIRES_IN'),
+    );
+    const expiresAt = new Date(
+      Date.now() + parseDurationToMilliseconds(expiresIn),
+    ).toISOString();
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn,
@@ -238,7 +255,11 @@ export class AuthService {
       },
     });
 
-    if (!user || !user.activationExpiresAt || user.activationExpiresAt <= new Date()) {
+    if (
+      !user ||
+      !user.activationExpiresAt ||
+      user.activationExpiresAt <= new Date()
+    ) {
       throw new BadRequestException('Link de ativacao expirado ou invalido.');
     }
 
@@ -271,7 +292,11 @@ export class AuthService {
       include: { tenant: true },
     });
 
-    if (!user || !user.activationExpiresAt || user.activationExpiresAt <= new Date()) {
+    if (
+      !user ||
+      !user.activationExpiresAt ||
+      user.activationExpiresAt <= new Date()
+    ) {
       throw new BadRequestException('Link de ativacao expirado ou invalido.');
     }
 
@@ -305,7 +330,10 @@ export class AuthService {
         entidadeId: activatedUser.id,
         acao: AcaoAuditoria.ATUALIZAR,
         payloadBefore: { status: UserStatus.PENDING },
-        payloadAfter: { status: UserStatus.ACTIVE, activatedAt: now.toISOString() },
+        payloadAfter: {
+          status: UserStatus.ACTIVE,
+          activatedAt: now.toISOString(),
+        },
         ipAddress: ip,
       },
     });
@@ -370,7 +398,14 @@ export class AuthService {
           },
         },
         tenant: {
-          select: { nome: true, slug: true, plano: true, limiteMembros: true, logoUrl: true, logoKey: true },
+          select: {
+            nome: true,
+            slug: true,
+            plano: true,
+            limiteMembros: true,
+            logoUrl: true,
+            logoKey: true,
+          },
         },
       },
     });
@@ -449,14 +484,19 @@ export class AuthService {
 
     if (isCreatingFirstPassword) {
       if (user.authProviders.length === 0) {
-        throw new BadRequestException('Esta conta nao possui uma forma valida de acesso para criar a primeira senha.');
+        throw new BadRequestException(
+          'Esta conta nao possui uma forma valida de acesso para criar a primeira senha.',
+        );
       }
     } else {
       if (!dto.senhaAtual?.trim()) {
         throw new BadRequestException('Senha atual e obrigatoria.');
       }
 
-      const senhaAtualValida = await bcrypt.compare(dto.senhaAtual, user.senhaHash!);
+      const senhaAtualValida = await bcrypt.compare(
+        dto.senhaAtual,
+        user.senhaHash!,
+      );
       if (!senhaAtualValida) {
         throw new UnauthorizedException('Senha atual invalida.');
       }
@@ -495,11 +535,16 @@ export class AuthService {
     ip?: string,
   ) {
     const hasNome = Object.prototype.hasOwnProperty.call(dto, 'nome');
-    const hasNomeExibicao = Object.prototype.hasOwnProperty.call(dto, 'nomeExibicao');
+    const hasNomeExibicao = Object.prototype.hasOwnProperty.call(
+      dto,
+      'nomeExibicao',
+    );
     const hasWhatsapp = Object.prototype.hasOwnProperty.call(dto, 'whatsapp');
 
     if (!hasNome && !hasNomeExibicao && !hasWhatsapp) {
-      throw new BadRequestException('Informe ao menos um campo para atualizar.');
+      throw new BadRequestException(
+        'Informe ao menos um campo para atualizar.',
+      );
     }
 
     const user = await this.prisma.user.findFirst({
@@ -532,21 +577,27 @@ export class AuthService {
         })
       : null;
 
-    const trimmedNome = hasNome && typeof dto.nome === 'string' ? dto.nome.trim() : undefined;
-    const trimmedNomeExibicao = hasNomeExibicao && typeof dto.nomeExibicao === 'string'
-      ? dto.nomeExibicao.trim()
-      : dto.nomeExibicao;
-    const trimmedWhatsapp = hasWhatsapp && typeof dto.whatsapp === 'string'
-      ? dto.whatsapp.trim()
-      : dto.whatsapp;
+    const trimmedNome =
+      hasNome && typeof dto.nome === 'string' ? dto.nome.trim() : undefined;
+    const trimmedNomeExibicao =
+      hasNomeExibicao && typeof dto.nomeExibicao === 'string'
+        ? dto.nomeExibicao.trim()
+        : dto.nomeExibicao;
+    const trimmedWhatsapp =
+      hasWhatsapp && typeof dto.whatsapp === 'string'
+        ? dto.whatsapp.trim()
+        : dto.whatsapp;
 
     if (hasNome && !trimmedNome) {
       throw new BadRequestException('Nome completo e obrigatorio.');
     }
 
-    const hasMemberFieldValue = (value: string | null | undefined) => value !== undefined && value !== null && value !== '';
-    const hasNomeExibicaoValue = hasNomeExibicao && hasMemberFieldValue(trimmedNomeExibicao);
-    const hasWhatsappValue = hasWhatsapp && hasMemberFieldValue(trimmedWhatsapp);
+    const hasMemberFieldValue = (value: string | null | undefined) =>
+      value !== undefined && value !== null && value !== '';
+    const hasNomeExibicaoValue =
+      hasNomeExibicao && hasMemberFieldValue(trimmedNomeExibicao);
+    const hasWhatsappValue =
+      hasWhatsapp && hasMemberFieldValue(trimmedWhatsapp);
 
     if (!member && (hasNomeExibicaoValue || hasWhatsappValue)) {
       throw new ForbiddenException(
@@ -555,7 +606,9 @@ export class AuthService {
     }
 
     if (!member && !hasNome) {
-      throw new BadRequestException('Informe ao menos um campo para atualizar.');
+      throw new BadRequestException(
+        'Informe ao menos um campo para atualizar.',
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -613,8 +666,12 @@ export class AuthService {
               ? {
                   id: member.id,
                   nome: hasNome ? trimmedNome : member.nome,
-                  nomeExibicao: hasNomeExibicao ? (trimmedNomeExibicao || null) : member.nomeExibicao,
-                  whatsapp: hasWhatsapp ? (trimmedWhatsapp || null) : member.whatsapp,
+                  nomeExibicao: hasNomeExibicao
+                    ? trimmedNomeExibicao || null
+                    : member.nomeExibicao,
+                  whatsapp: hasWhatsapp
+                    ? trimmedWhatsapp || null
+                    : member.whatsapp,
                 }
               : null,
           },
@@ -711,14 +768,14 @@ export class AuthService {
     }
 
     const senhaHash = dto.senha ? await bcrypt.hash(dto.senha, 10) : null;
-    const status = dto.ativo === false
-      ? UserStatus.DISABLED
-      : senhaHash
-        ? UserStatus.ACTIVE
-        : UserStatus.PENDING;
-    const activation = status === UserStatus.PENDING
-      ? this.createActivationToken()
-      : null;
+    const status =
+      dto.ativo === false
+        ? UserStatus.DISABLED
+        : senhaHash
+          ? UserStatus.ACTIVE
+          : UserStatus.PENDING;
+    const activation =
+      status === UserStatus.PENDING ? this.createActivationToken() : null;
 
     // Validar memberId se fornecido
     if (dto.memberId) {
@@ -730,7 +787,9 @@ export class AuthService {
         throw new NotFoundException('Membro não encontrado.');
       }
       if (membro.user) {
-        throw new ConflictException('Este membro já possui um usuário vinculado.');
+        throw new ConflictException(
+          'Este membro já possui um usuário vinculado.',
+        );
       }
     }
 
@@ -777,7 +836,9 @@ export class AuthService {
 
     return {
       ...newUser,
-      activationLink: activation ? this.buildActivationLink(activation.token) : null,
+      activationLink: activation
+        ? this.buildActivationLink(activation.token)
+        : null,
     };
   }
 
@@ -802,7 +863,9 @@ export class AuthService {
     }
 
     if (user.status !== UserStatus.PENDING) {
-      throw new BadRequestException('Apenas usuarios pendentes podem receber novo link de ativacao.');
+      throw new BadRequestException(
+        'Apenas usuarios pendentes podem receber novo link de ativacao.',
+      );
     }
 
     const activation = this.createActivationToken();
@@ -841,7 +904,8 @@ export class AuthService {
         },
         payloadAfter: {
           status: updated.status,
-          activationExpiresAt: updated.activationExpiresAt?.toISOString() ?? null,
+          activationExpiresAt:
+            updated.activationExpiresAt?.toISOString() ?? null,
         },
         ipAddress: ip,
       },
@@ -878,7 +942,9 @@ export class AuthService {
         where: { email: dto.email, NOT: { id } },
       });
       if (conflict) {
-        throw new ConflictException('Este e-mail já está em uso por outro usuário.');
+        throw new ConflictException(
+          'Este e-mail já está em uso por outro usuário.',
+        );
       }
     }
 
@@ -925,7 +991,9 @@ export class AuthService {
           throw new NotFoundException('Membro não encontrado.');
         }
         if (membro.user && membro.user.id !== id) {
-          throw new ConflictException('Este membro já possui um usuário vinculado.');
+          throw new ConflictException(
+            'Este membro já possui um usuário vinculado.',
+          );
         }
         updateData.memberId = dto.memberId;
       }
@@ -963,12 +1031,7 @@ export class AuthService {
     return updated;
   }
 
-  async deleteUser(
-    id: string,
-    tenantId: string,
-    actorId: string,
-    ip?: string,
-  ) {
+  async deleteUser(id: string, tenantId: string, actorId: string, ip?: string) {
     if (id === actorId) {
       throw new ForbiddenException('Você não pode remover sua própria conta.');
     }
@@ -1043,7 +1106,12 @@ export class AuthService {
     actorId: string,
     ip?: string,
   ) {
-    return this.tenantMediaService.uploadTenantLogo(tenantId, file, actorId, ip);
+    return this.tenantMediaService.uploadTenantLogo(
+      tenantId,
+      file,
+      actorId,
+      ip,
+    );
   }
 
   async removeTenantLogo(tenantId: string, actorId: string, ip?: string) {

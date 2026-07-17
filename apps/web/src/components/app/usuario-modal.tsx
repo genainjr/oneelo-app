@@ -1,36 +1,34 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { LoaderCircle, UserRound } from 'lucide-react';
-import { User, Role } from '@/types';
-import { api } from '@/lib/api';
-import { InputField, PasswordField, SelectField } from './form-field';
-import { MembroSearchCombobox, MembroOption } from './membro-search-combobox';
-import { ModalError, ModalShell } from './modal-shell';
+import { useEffect, useState } from "react";
+import { LoaderCircle, UserRound } from "lucide-react";
+import { User, Role } from "@/types";
+import { api } from "@/lib/api";
+import { InputField, PasswordField, SelectField } from "./form-field";
+import { MembroSearchCombobox, MembroOption } from "./membro-search-combobox";
+import { ModalError, ModalShell } from "./modal-shell";
+import { includesNormalizedText } from "@/lib/utils";
 
 interface UsuarioModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Partial<User> & { senha?: string; memberId?: string | null }) => Promise<void>;
+  onSave: (
+    data: Partial<User> & { senha?: string; memberId?: string | null },
+  ) => Promise<void>;
   usuario?: User | null;
   currentUserId?: string;
 }
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: 'ADMIN', label: 'Administrador' },
-  { value: 'STAFF', label: 'Colaborador' },
-  { value: 'BASIC', label: 'Basico' },
+  { value: "ADMIN", label: "Administrador" },
+  { value: "STAFF", label: "Colaborador" },
+  { value: "BASIC", label: "Basico" },
 ];
 
 export function UsuarioModal(props: UsuarioModalProps) {
   if (!props.isOpen) return null;
 
-  return (
-    <UsuarioModalContent
-      key={props.usuario?.id ?? 'new'}
-      {...props}
-    />
-  );
+  return <UsuarioModalContent key={props.usuario?.id ?? "new"} {...props} />;
 }
 
 function UsuarioModalContent({
@@ -40,18 +38,20 @@ function UsuarioModalContent({
   usuario,
   currentUserId,
 }: UsuarioModalProps) {
-  const [nome, setNome] = useState(usuario?.nome || '');
-  const [email, setEmail] = useState(usuario?.email || '');
-  const [senha, setSenha] = useState('');
-  const [role, setRole] = useState<Role>(usuario?.role || 'BASIC');
+  const [nome, setNome] = useState(usuario?.nome || "");
+  const [email, setEmail] = useState(usuario?.email || "");
+  const [senha, setSenha] = useState("");
+  const [role, setRole] = useState<Role>(usuario?.role || "BASIC");
   const [ativo, setAtivo] = useState(usuario?.ativo ?? true);
 
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(true);
   const [selectedMembro, setSelectedMembro] = useState<MembroOption | null>(
-    usuario?.membro ? { id: usuario.membro.id, nome: usuario.membro.nome } : null,
+    usuario?.membro
+      ? { id: usuario.membro.id, nome: usuario.membro.nome }
+      : null,
   );
-  const [membroSearch, setMembroSearch] = useState(usuario?.membro?.nome || '');
+  const [membroSearch, setMembroSearch] = useState(usuario?.membro?.nome || "");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,8 @@ function UsuarioModalContent({
   useEffect(() => {
     let active = true;
 
-    api.get<MembroOption[]>('/api/auth/members-available')
+    api
+      .get<MembroOption[]>("/api/auth/members-available")
       .then((data) => {
         if (active) setMembros(Array.isArray(data) ? data : []);
       })
@@ -79,12 +80,15 @@ function UsuarioModalContent({
 
   const membrosDisponiveis = (() => {
     const disponiveis = [...membros];
-    if (usuario?.membro && !disponiveis.find((m) => m.id === usuario.membro!.id)) {
+    if (
+      usuario?.membro &&
+      !disponiveis.find((m) => m.id === usuario.membro!.id)
+    ) {
       disponiveis.unshift({ id: usuario.membro.id, nome: usuario.membro.nome });
     }
     if (!membroSearch.trim()) return disponiveis;
     return disponiveis.filter((m) =>
-      m.nome.toLowerCase().includes(membroSearch.toLowerCase()),
+      includesNormalizedText(m.nome, membroSearch),
     );
   })();
 
@@ -97,7 +101,7 @@ function UsuarioModalContent({
 
   function clearMembro() {
     setSelectedMembro(null);
-    setMembroSearch('');
+    setMembroSearch("");
   }
 
   function handleMembroSearchChange(value: string) {
@@ -107,27 +111,43 @@ function UsuarioModalContent({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!nome.trim()) { setError('O nome e obrigatorio.'); return; }
-    if (!email.trim()) { setError('O e-mail e obrigatorio.'); return; }
-    if (senha && senha.length < 6) { setError('A senha deve ter pelo menos 6 caracteres.'); return; }
+    if (!nome.trim()) {
+      setError("O nome e obrigatorio.");
+      return;
+    }
+    if (!email.trim()) {
+      setError("O e-mail e obrigatorio.");
+      return;
+    }
+    if (senha && senha.length < 6) {
+      setError("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      const payload: Partial<User> & { senha?: string; memberId?: string | null } = {
+      const payload: Partial<User> & {
+        senha?: string;
+        memberId?: string | null;
+      } = {
         nome: nome.trim(),
         email: email.trim(),
         role,
         ativo,
-        memberId: selectedMembro ? selectedMembro.id : (isEditing ? null : undefined),
+        memberId: selectedMembro
+          ? selectedMembro.id
+          : isEditing
+            ? null
+            : undefined,
       };
       if (senha) payload.senha = senha;
 
       await onSave(payload);
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar usuario.');
+      setError(err instanceof Error ? err.message : "Erro ao salvar usuario.");
     } finally {
       setLoading(false);
     }
@@ -136,7 +156,7 @@ function UsuarioModalContent({
   return (
     <ModalShell
       isOpen={isOpen}
-      title={isEditing ? 'Editar Usuario' : 'Novo Usuario'}
+      title={isEditing ? "Editar Usuario" : "Novo Usuario"}
       icon={<UserRound className="h-5 w-5" />}
       onClose={onClose}
       bodyClassName="p-6"
@@ -157,7 +177,7 @@ function UsuarioModalContent({
             className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60 flex items-center gap-2"
           >
             {loading && <LoaderCircle className="h-4 w-4 animate-spin" />}
-            {loading ? 'Salvando...' : 'Salvar'}
+            {loading ? "Salvando..." : "Salvar"}
           </button>
         </>
       }
@@ -203,11 +223,19 @@ function UsuarioModalContent({
 
           <PasswordField
             id="u-senha"
-            label={isEditing ? 'Nova senha (deixe em branco para manter)' : 'Senha inicial (opcional)'}
+            label={
+              isEditing
+                ? "Nova senha (deixe em branco para manter)"
+                : "Senha inicial (opcional)"
+            }
             required={false}
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
-            placeholder={isEditing ? '********' : 'Deixe em branco para gerar link de ativacao'}
+            placeholder={
+              isEditing
+                ? "********"
+                : "Deixe em branco para gerar link de ativacao"
+            }
             autoComplete="new-password"
           />
 
@@ -219,15 +247,17 @@ function UsuarioModalContent({
               onChange={(e) => setRole(e.target.value as Role)}
             >
               {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </SelectField>
 
             <SelectField
               id="u-ativo"
               label="Status"
-              value={ativo ? 'true' : 'false'}
-              onChange={(e) => setAtivo(e.target.value === 'true')}
+              value={ativo ? "true" : "false"}
+              onChange={(e) => setAtivo(e.target.value === "true")}
               disabled={isEditing && usuario?.id === currentUserId}
             >
               <option value="true">Ativo</option>
@@ -236,8 +266,15 @@ function UsuarioModalContent({
           </div>
 
           <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-xs text-indigo-700 leading-relaxed">
-            <strong>Perfis:</strong> Administrador tem acesso total; Colaborador pode gerenciar membros e escalas; Basico tem acesso somente leitura.
-            {!isEditing && <span> Sem senha inicial, o usuario ficara pendente e recebera um link de ativacao.</span>}
+            <strong>Perfis:</strong> Administrador tem acesso total; Colaborador
+            pode gerenciar membros e escalas; Basico tem acesso somente leitura.
+            {!isEditing && (
+              <span>
+                {" "}
+                Sem senha inicial, o usuario ficara pendente e recebera um link
+                de ativacao.
+              </span>
+            )}
           </div>
         </div>
       </form>

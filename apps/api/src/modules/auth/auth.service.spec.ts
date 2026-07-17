@@ -74,12 +74,7 @@ describe('AuthService user access invariants', () => {
     const service = createService(prisma);
 
     await expect(
-      service.updateUser(
-        'user-1',
-        { ativo: true },
-        'tenant-1',
-        'admin-1',
-      ),
+      service.updateUser('user-1', { ativo: true }, 'tenant-1', 'admin-1'),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
