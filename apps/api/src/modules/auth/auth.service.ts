@@ -71,7 +71,7 @@ export class AuthService {
     ) {
       const target = String(error.meta?.target ?? '');
       if (target.includes('login_phone') || target.includes('telefoneLogin')) {
-        throw new ConflictException('Este telefone ja esta em uso por outro usuario.');
+        throw new ConflictException('Este telefone já está em uso por outro usuário.');
       }
     }
 
@@ -571,7 +571,7 @@ export class AuthService {
         select: { id: true },
       });
       if (conflict) {
-        throw new ConflictException('Este telefone ja esta em uso por outro usuario.');
+        throw new ConflictException('Este telefone já está em uso por outro usuário.');
       }
     }
 
@@ -853,7 +853,7 @@ export class AuthService {
         select: { id: true },
       });
       if (phoneConflict) {
-        throw new ConflictException('Este telefone ja esta em uso por outro usuario.');
+        throw new ConflictException('Este telefone já está em uso por outro usuário.');
       }
     }
 
@@ -1064,7 +1064,7 @@ export class AuthService {
           select: { id: true },
         });
         if (phoneConflict) {
-          throw new ConflictException('Este telefone ja esta em uso por outro usuario.');
+          throw new ConflictException('Este telefone já está em uso por outro usuário.');
         }
       }
     }
