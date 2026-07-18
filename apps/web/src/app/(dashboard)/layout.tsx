@@ -1,61 +1,32 @@
-'use client';
+import type { Metadata } from 'next';
+import { DashboardShell } from '@/components/app/dashboard-shell';
+import { getServerAuthUser } from '@/lib/server-auth';
+import { TENANT_MANIFEST_REVISION } from '@/lib/pwa-branding';
 
-import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/app/sidebar';
-import { Header } from '@/components/app/header';
-import { ChatbotButton } from '@/components/app/chatbot-button';
-import { InstallAppPrompt } from '@/components/app/install-app-prompt';
-import { api } from '@/lib/api';
-import { AuthUser } from '@/types';
-import { AuthUserProvider } from '@/contexts/auth-user-context';
-import { isOnboardingEnabled } from '@/lib/auth-redirect';
+export const dynamic = 'force-dynamic';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    api.get<AuthUser>('/api/auth/me', { cache: 'no-store' })
-      .then(setUser)
-      .catch(() => setUser(null));
-  }, []);
-
-  useEffect(() => {
-    if (!isOnboardingEnabled() || !user || pathname === '/onboarding') return;
-    if (!user.onboardingCompletedAt) {
-      router.replace('/onboarding');
-    }
-  }, [pathname, router, user]);
-
-  return (
-    <AuthUserProvider value={{ user, setUser }}>
-      <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* Sidebar */}
-      <Sidebar
-        user={user}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      {/* Conteúdo principal */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
-
-        <main data-dashboard-scroll-container className="flex-1 overflow-y-auto p-4 md:p-6">
-          <InstallAppPrompt />
-          {children}
-        </main>
-      </div>
-
-      <ChatbotButton />
-      </div>
-    </AuthUserProvider>
+export async function generateMetadata(): Promise<Metadata> {
+  const user = await getServerAuthUser();
+  const tenant = user?.tenant;
+  const hasCustomPwa = Boolean(
+    tenant?.pwaShortName && tenant.pwaIconUrl && tenant.pwaIconKey && tenant.pwaUpdatedAt,
   );
+  if (!tenant || !hasCustomPwa) return {};
+
+  const version = encodeURIComponent(`${tenant.pwaUpdatedAt!}:${TENANT_MANIFEST_REVISION}`);
+  const manifest = `/api/pwa/${encodeURIComponent(tenant.slug)}/manifest.webmanifest?v=${version}`;
+  const appleIcon = tenant.pwaIconUrl!.replace(/icon-512\.png$/, 'icon-180.png');
+
+  return {
+    applicationName: tenant.pwaShortName!,
+    title: { default: tenant.nome, template: `%s | ${tenant.nome}` },
+    manifest,
+    appleWebApp: { capable: true, title: tenant.pwaShortName!, statusBarStyle: 'default' },
+    icons: { apple: [{ url: appleIcon, sizes: '180x180', type: 'image/png' }] },
+  };
+}
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const user = await getServerAuthUser();
+  return <DashboardShell initialUser={user}>{children}</DashboardShell>;
 }

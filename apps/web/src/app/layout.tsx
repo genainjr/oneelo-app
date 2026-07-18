@@ -12,6 +12,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   applicationName: 'One Elo',
+  manifest: '/manifest.webmanifest',
   title: {
     default: 'One Elo',
     template: '%s | One Elo',

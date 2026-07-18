@@ -61,10 +61,10 @@ enum MinistryRole {
 }
 
 enum StatusMembro {
-  ATIVO        @map("ACTIVE")
-  INATIVO      @map("INACTIVE")
-  VISITANTE    @map("VISITOR")
-  TRANSFERIDO  @map("TRANSFERRED")
+  ATIVO       @map("ACTIVE")
+  INATIVO     @map("INACTIVE")
+  VISITANTE   @map("VISITOR")
+  TRANSFERIDO @map("TRANSFERRED")
 
   @@map("member_status")
 }
@@ -124,16 +124,20 @@ model Tenant {
   idioma           String?          @map("language")
   logoUrl          String?          @map("logo_url")
   logoKey          String?          @map("logo_key")
+  pwaShortName     String?          @map("pwa_short_name")
+  pwaIconUrl       String?          @map("pwa_icon_url")
+  pwaIconKey       String?          @map("pwa_icon_key")
+  pwaUpdatedAt     DateTime?        @map("pwa_updated_at")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
-  users       User[]
-  membros     Membro[]
-  tags        Tag[]
-  ministerios Ministerio[]
-  escalas     Escala[]
-  eventos     Evento[]
-  auditLogs   AuditLog[]
+  users             User[]
+  membros           Membro[]
+  tags              Tag[]
+  ministerios       Ministerio[]
+  escalas           Escala[]
+  eventos           Evento[]
+  auditLogs         AuditLog[]
   pushSubscriptions PushSubscription[]
 
   @@map("tb_tenant")
@@ -158,12 +162,12 @@ model User {
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime   @updatedAt @map("updated_at")
 
-  tenant       Tenant?      @relation(fields: [tenantId], references: [id])
-  membro       Membro?      @relation(fields: [memberId], references: [id])
-  escalasItens EscalaItem[]
-  auditLogs    AuditLog[]
+  tenant            Tenant?            @relation(fields: [tenantId], references: [id])
+  membro            Membro?            @relation(fields: [memberId], references: [id])
+  escalasItens      EscalaItem[]
+  auditLogs         AuditLog[]
   pushSubscriptions PushSubscription[]
-  authProviders UserAuthProvider[]
+  authProviders     UserAuthProvider[]
 
   @@index([tenantId])
   @@index([status])
@@ -212,7 +216,7 @@ model Membro {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  tenant      Tenant              @relation(fields: [tenantId], references: [id])
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
   tags        MembroTag[]
   ministerios MinisterioMembro[]
   escalas     EscalaItem[]
@@ -257,7 +261,7 @@ model Ministerio {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant  Tenant              @relation(fields: [tenantId], references: [id])
+  tenant  Tenant             @relation(fields: [tenantId], references: [id])
   membros MinisterioMembro[]
   escalas Escala[]
   funcoes MinisterioFuncao[]
@@ -289,8 +293,8 @@ model MinisterioMembro {
   membroId     String       @map("member_id")
   role         MinistryRole @default(MEMBER)
 
-  ministerio         Ministerio                @relation(fields: [ministerioId], references: [id])
-  membro             Membro                    @relation(fields: [membroId], references: [id])
+  ministerio         Ministerio               @relation(fields: [ministerioId], references: [id])
+  membro             Membro                   @relation(fields: [membroId], references: [id])
   funcoesDisponiveis MinisterioMembroFuncao[]
 
   @@id([ministerioId, membroId])
@@ -320,12 +324,12 @@ model Escala {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  tenant     Tenant     @relation(fields: [tenantId], references: [id])
-  ministerio Ministerio @relation(fields: [ministerioId], references: [id])
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  ministerio Ministerio  @relation(fields: [ministerioId], references: [id])
   dias       EscalaDia[]
 
-  @@index([tenantId])
   @@unique([ministerioId, mes, ano])
+  @@index([tenantId])
   @@map("tb_schedule")
 }
 
@@ -338,8 +342,8 @@ model EscalaDia {
   observacoes String?  @map("notes")
   ordem       Int      @default(0) @map("display_order")
 
-  escala         Escala                 @relation(fields: [escalaId], references: [id], onDelete: Cascade)
-  evento         Evento?                @relation(fields: [eventoId], references: [id], onDelete: SetNull)
+  escala         Escala                  @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+  evento         Evento?                 @relation(fields: [eventoId], references: [id], onDelete: SetNull)
   itens          EscalaItem[]
   funcoesOcultas EscalaDiaFuncaoOculta[]
 
@@ -366,10 +370,10 @@ model EscalaItem {
   statusConfirmacao  StatusConfirmacao @default(PENDENTE) @map("confirmation_status")
   observacoes        String?           @map("notes")
 
-  escalaDia EscalaDia         @relation(fields: [escalaDiaId], references: [id], onDelete: Cascade)
-  membro    Membro            @relation(fields: [membroId], references: [id])
-  user      User?             @relation(fields: [userId], references: [id])
-  funcao    MinisterioFuncao  @relation(fields: [ministerioFuncaoId], references: [id])
+  escalaDia EscalaDia        @relation(fields: [escalaDiaId], references: [id], onDelete: Cascade)
+  membro    Membro           @relation(fields: [membroId], references: [id])
+  user      User?            @relation(fields: [userId], references: [id])
+  funcao    MinisterioFuncao @relation(fields: [ministerioFuncaoId], references: [id])
 
   @@unique([escalaDiaId, membroId])
   @@unique([escalaDiaId, membroId, ministerioFuncaoId])
@@ -389,7 +393,7 @@ model Evento {
   createdAt  DateTime     @default(now()) @map("created_at")
   updatedAt  DateTime     @updatedAt @map("updated_at")
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
   escalasDias EscalaDia[]
   ministerios EventoMinisterio[]
 

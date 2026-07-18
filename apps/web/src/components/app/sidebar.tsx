@@ -174,6 +174,8 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const [basicHasLeadership, setBasicHasLeadership] = useState(false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
+  const tenantName = user?.tenant?.pwaShortName || user?.tenant?.nome || 'One Elo';
+  const tenantIcon = user?.tenant?.logoUrl || user?.tenant?.pwaIconUrl || '/logo.jpg';
 
   useEffect(() => {
     setCurrentLocale(readLocaleCookie());
@@ -384,16 +386,16 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         )}>
           {!collapsed && (
             <>
-              <img src="/logo.jpg" alt="One Elo" className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
+              <img src={tenantIcon} alt={tenantName} className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-base leading-tight">One Elo</p>
-                <p className="text-indigo-400 text-xs">Lookup Labs</p>
+                <p className="truncate text-base font-bold leading-tight text-white">{tenantName}</p>
+                <p className="text-xs text-indigo-400">por One Elo</p>
               </div>
             </>
           )}
 
           {collapsed && (
-            <img src="/logo.jpg" alt="One Elo" className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
+            <img src={tenantIcon} alt={tenantName} className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
           )}
 
           {!collapsed && (
