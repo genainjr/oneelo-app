@@ -27,6 +27,7 @@ import { ActivateAccountDto } from './dto/activate-account.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UpdateLoginPhoneDto } from './dto/update-login-phone.dto';
+import { UpdateTenantPwaSettingsDto } from './dto/update-tenant-pwa-settings.dto';
 import { AuditLogsQueryDto } from './dto/audit-logs-query.dto';
 import type { Response, Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -38,6 +39,7 @@ import { getClientIp } from '../../common/utils/request-ip';
 import { Role } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import type { Multer } from 'multer';
 import { MAX_IMAGE_SIZE } from '../../common/storage/image-upload';
 import { parseDurationToMilliseconds } from './auth-session';
 import {
@@ -435,6 +437,44 @@ export class AuthController {
     @Req() req: Request,
   ) {
     return this.authService.removeTenantLogo(user.tenantId!, user.sub, getClientIp(req));
+  }
+
+  @Patch('tenant/pwa-settings')
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.ADMIN)
+  async updateTenantPwaSettings(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateTenantPwaSettingsDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.updateTenantPwaSettings(user.tenantId!, dto, user.sub, getClientIp(req));
+  }
+
+  @Post('tenant/pwa-icon')
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_IMAGE_SIZE },
+    }),
+  )
+  async updateTenantPwaIcon(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() file: Multer.File,
+    @Req() req: Request,
+  ) {
+    return this.authService.updateTenantPwaIcon(user.tenantId!, file, user.sub, getClientIp(req));
+  }
+
+  @Delete('tenant/pwa-icon')
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.ADMIN)
+  async removeTenantPwaIcon(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.authService.removeTenantPwaIcon(user.tenantId!, user.sub, getClientIp(req));
   }
 
   @Get('users')

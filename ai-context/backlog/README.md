@@ -22,3 +22,5 @@ Cada item segue o formato:
 - **[features-roadmap.md](features-roadmap.md)** — Features de produto pós-MVP (WhatsApp, Google Agenda, IA, módulos de ministério)
 - **[permissions-matrix.md](permissions-matrix.md)** — Matriz de permissões por role e recurso (referência para implementação)
 - **[phone-password-login.md](phone-password-login.md)** — Login por número de telefone e senha, preservando e-mail/senha e login social
+- **[notification-center.md](notification-center.md)** — Central robusta de notificações, processamento confiável, histórico e comunicados gerais/ministeriais
+- **[tenant-branded-experience.md](tenant-branded-experience.md)** — Identidade, conteúdo, PWA e experiência personalizada da igreja por tenant

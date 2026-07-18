@@ -2,30 +2,58 @@
 
 import { usePathname } from 'next/navigation';
 import { PushNotificationButton } from './push-notification-button';
+import { useAuthUser } from '@/contexts/auth-user-context';
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
+  '/personal-panel': 'Painel pessoal',
   '/membros': 'Membros',
+  '/membros/exportacao': 'Exportação de membros',
+  '/membros/visualizacao': 'Visualização de membros',
   '/ministerios': 'Ministérios',
   '/ministerios/visualizacao': 'Visualização de Ministérios',
+  '/ministerios/exportacao': 'Exportação de ministérios',
+  '/ministerios/infantil': 'Ministério infantil',
+  '/ministerios/louvor': 'Ministério de louvor',
+  '/ministerios/midia': 'Ministério de mídia',
   '/escalas': 'Escalas',
+  '/escalas/exportacao': 'Exportação de escalas',
+  '/escalas/visualizacao': 'Visualização de escalas',
+  '/minhas-escalas': 'Minhas escalas',
   '/agenda': 'Agenda',
+  '/agenda/exportacao': 'Exportação da agenda',
   '/agenda/visualizacao': 'Visualização de Agenda',
+  '/financeiro': 'Financeiro',
+  '/grupos': 'Grupos',
+  '/integracoes': 'Integrações',
   '/configuracoes': 'Configurações',
+  '/meu-perfil': 'Meu perfil',
+  '/onboarding': 'Primeiros passos',
 };
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
+function fallbackPageTitle(pathname: string) {
+  const segment = pathname.split('/').filter(Boolean).at(-1);
+  if (!segment) return 'Dashboard';
+
+  return decodeURIComponent(segment)
+    .replace(/[-_]+/g, ' ')
+    .replace(/^./u, (character) => character.toLocaleUpperCase('pt-BR'));
+}
+
 export function Header({ onMenuClick }: HeaderProps) {
   const pathname = usePathname();
+  const { user } = useAuthUser();
 
   const title =
     Object.entries(PAGE_TITLES)
       .sort((a, b) => b[0].length - a[0].length)
       .find(([path]) => pathname === path || pathname.startsWith(path + '/'))?.[1] ??
-    'One Elo';
+    fallbackPageTitle(pathname);
 
   return (
     <header className="sticky top-0 z-10 flex items-center gap-4 h-14 px-4 md:px-6 bg-white border-b border-gray-200">
@@ -42,7 +70,12 @@ export function Header({ onMenuClick }: HeaderProps) {
       </button>
 
       {/* Título */}
-      <h1 className="min-w-0 flex-1 truncate text-lg font-semibold text-gray-900">{title}</h1>
+      <div className="min-w-0 flex-1">
+        <h1 className="truncate text-lg font-semibold leading-tight text-gray-900">{title}</h1>
+        {user?.tenant?.nome && (
+          <p className="truncate text-[11px] text-gray-500 lg:hidden">{user.tenant.nome}</p>
+        )}
+      </div>
 
       <PushNotificationButton />
     </header>

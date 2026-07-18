@@ -17,6 +17,7 @@ import { ActivateAccountDto } from './dto/activate-account.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UpdateLoginPhoneDto } from './dto/update-login-phone.dto';
+import { UpdateTenantPwaSettingsDto } from './dto/update-tenant-pwa-settings.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { TenantMediaService } from '../../common/storage/tenant-media.service';
 import {
@@ -407,6 +408,10 @@ export class AuthService {
             limiteMembros: true,
             logoUrl: true,
             logoKey: true,
+            pwaShortName: true,
+            pwaIconUrl: true,
+            pwaIconKey: true,
+            pwaUpdatedAt: true,
           },
         },
       },
@@ -1250,5 +1255,56 @@ export class AuthService {
 
   async removeTenantLogo(tenantId: string, actorId: string, ip?: string) {
     return this.tenantMediaService.removeTenantLogo(tenantId, actorId, ip);
+  }
+
+  async updateTenantPwaSettings(
+    tenantId: string,
+    dto: UpdateTenantPwaSettingsDto,
+    actorId: string,
+    ip?: string,
+  ) {
+    const shortName = dto.shortName.trim();
+    if (!shortName) throw new BadRequestException('Nome curto do aplicativo e obrigatorio.');
+
+    const previous = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, pwaShortName: true },
+    });
+    if (!previous) throw new NotFoundException('Tenant nao encontrado.');
+
+    const updated = await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { pwaShortName: shortName, pwaUpdatedAt: new Date() },
+      select: {
+        nome: true,
+        slug: true,
+        logoUrl: true,
+        pwaShortName: true,
+        pwaIconUrl: true,
+        pwaIconKey: true,
+        pwaUpdatedAt: true,
+      },
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId: actorId,
+        entidade: 'Tenant',
+        entidadeId: tenantId,
+        acao: AcaoAuditoria.ATUALIZAR,
+        ipAddress: ip ?? null,
+        payloadBefore: { pwaShortName: previous.pwaShortName },
+        payloadAfter: { pwaShortName: shortName },
+      },
+    });
+    return updated;
+  }
+
+  async updateTenantPwaIcon(tenantId: string, file: Multer.File, actorId: string, ip?: string) {
+    return this.tenantMediaService.uploadTenantPwaIcon(tenantId, file, actorId, ip);
+  }
+
+  async removeTenantPwaIcon(tenantId: string, actorId: string, ip?: string) {
+    return this.tenantMediaService.removeTenantPwaIcon(tenantId, actorId, ip);
   }
 }

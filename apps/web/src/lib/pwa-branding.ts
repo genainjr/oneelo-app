@@ -1,0 +1,1 @@
+export const TENANT_MANIFEST_REVISION = '3';
