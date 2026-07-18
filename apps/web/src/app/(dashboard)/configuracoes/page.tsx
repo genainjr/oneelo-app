@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/app/page-header";
 import { Skeleton } from "@/components/app/skeleton";
 import { DataTable, Column, SortState } from "@/components/app/data-table";
 import { StatusBadge } from "@/components/app/status-badge";
 import { UsuarioModal } from "@/components/app/usuario-modal";
 import { ImageUploadPanel } from "@/components/app/image-upload-panel";
+import { TenantPwaSettings } from "@/components/app/tenant-pwa-settings";
+import { useAuthUser } from "@/contexts/auth-user-context";
 import { api, buildQuery } from "@/lib/api";
 import {
   buildImageFormData,
@@ -68,7 +71,9 @@ function buildActivationWelcomeMessage(
 export default function ConfiguracoesPage() {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
+  const router = useRouter();
   const { formatDateTime } = useDateFormatter();
+  const { setUser: setShellUser } = useAuthUser();
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [activeTab, setActiveTab] = useState<"usuarios" | "audit">("usuarios");
@@ -308,6 +313,8 @@ export default function ConfiguracoesPage() {
           }
         : current,
     );
+    setShellUser((current) => current ? { ...current, tenant: { ...current.tenant!, ...tenant } } : current);
+    router.refresh();
   }
 
   async function handleLogoSelected(file: File | undefined) {
@@ -862,6 +869,8 @@ export default function ConfiguracoesPage() {
           </p>
         )}
       </section>
+
+      <TenantPwaSettings tenant={currentUser.tenant!} onUpdated={updateTenantLogoState} />
 
       {/* Tabs */}
       <div className="flex flex-col gap-3 border border-gray-100 bg-white rounded-t-2xl px-4 py-3 shadow-2xs sm:flex-row sm:items-center sm:px-5 sm:py-0">

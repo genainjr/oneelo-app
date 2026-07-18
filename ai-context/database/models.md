@@ -43,8 +43,20 @@ Represents an organization using the platform.
 - `email`
 - `phone`
 - `language`
+- `logoUrl` / `logo_url`
+- `logoKey` / `logo_key`
+- `pwaShortName` / `pwa_short_name`
+- `pwaIconUrl` / `pwa_icon_url`, URL publica da variante 512x512
+- `pwaIconKey` / `pwa_icon_key`, chave da variante principal no storage
+- `pwaUpdatedAt` / `pwa_updated_at`, versao da identidade publicada do aplicativo
 - `createdAt` / `created_at`
 - `updatedAt` / `updated_at`
+
+Rules:
+
+- A identidade personalizada do PWA so fica completa quando `pwaShortName`, `pwaIconUrl`, `pwaIconKey` e `pwaUpdatedAt` estao preenchidos.
+- Os campos sao opcionais; tenants sem configuracao completa usam integralmente a identidade OneElo.
+- O icone do PWA e independente da logo institucional.
 
 ### 2. User (`tb_user`)
 

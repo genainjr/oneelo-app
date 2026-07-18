@@ -22,6 +22,10 @@ export interface Tenant {
   idioma?: string;
   logoUrl?: string | null;
   logoKey?: string | null;
+  pwaShortName?: string | null;
+  pwaIconUrl?: string | null;
+  pwaIconKey?: string | null;
+  pwaUpdatedAt?: string | null;
   createdAt: string;
   _count?: { users: number };
 }
@@ -53,6 +57,10 @@ export interface AuthUser {
     limiteMembros: number;
     logoUrl?: string | null;
     logoKey?: string | null;
+    pwaShortName?: string | null;
+    pwaIconUrl?: string | null;
+    pwaIconKey?: string | null;
+    pwaUpdatedAt?: string | null;
   };
   membro?: {
     id: string;

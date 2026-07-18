@@ -1,6 +1,6 @@
 # Plano - PWA com nome e ícone da igreja
 
-Status geral: planejamento concluído - pronto para implementação
+Status geral: implementação em andamento na branch `feature/tenant-pwa-identity`
 Última atualização: 2026-07-18
 
 Branch de planejamento: `docs/tenant-branded-experience-backlog`
@@ -155,6 +155,7 @@ O backend deve:
 - rejeitar proporção que não possa ser tratada como quadrada sem perda inesperada;
 - remover metadados não necessários;
 - gerar PNGs 180×180, 192×192 e 512×512;
+- preservar uma variante quadrada 512×512 para a pré-visualização administrativa;
 - gerar variante 512×512 preparada para `maskable`;
 - não distorcer a imagem;
 - manter o conteúdo principal dentro da área segura;
@@ -174,6 +175,7 @@ Usar o bucket `tenant-logos` com caminho separado:
 tenants/{tenantId}/pwa/{versao}/icon-180.png
 tenants/{tenantId}/pwa/{versao}/icon-192.png
 tenants/{tenantId}/pwa/{versao}/icon-512.png
+tenants/{tenantId}/pwa/{versao}/icon-square-512.png
 tenants/{tenantId}/pwa/{versao}/icon-maskable-512.png
 ```
 
@@ -419,15 +421,29 @@ Regras:
 
 ### Etapa 0 - Prova técnica do manifesto por tenant
 
-Status: pendente
+Status: validação automatizada, iPhone e desktop concluída - Android pendente
 
-- [ ] Criar experimento mínimo com manifesto diferente no segmento autenticado.
-- [ ] Confirmar HTML inicial com apenas um manifesto efetivo.
-- [ ] Confirmar que a rota por slug funciona via rewrite da web para a API.
-- [ ] Confirmar `beforeinstallprompt` no Chrome com manifesto personalizado.
-- [ ] Confirmar nome e Apple Touch Icon no Safari/iPhone.
+- [x] Criar experimento mínimo com manifesto diferente no segmento autenticado.
+- [x] Confirmar HTML inicial com apenas um manifesto efetivo.
+- [x] Confirmar que a rota por slug funciona via rewrite da web para a API.
+- [x] Confirmar `beforeinstallprompt` no Chrome com manifesto personalizado.
+- [x] Confirmar nome e Apple Touch Icon no Safari/iPhone.
 - [ ] Confirmar que `id` e `start_url` não criam instalação duplicada inesperada.
-- [ ] Registrar o resultado no plano antes de avançar.
+- [x] Registrar o resultado no plano antes de avançar.
+
+Resultado parcial em 2026-07-18:
+
+- o layout autenticado foi separado em wrapper server-side e `DashboardShell` client-side;
+- a API simulada recebeu `/api/auth/me` com o cookie encaminhado corretamente;
+- a build do Next.js 16.2.6 compilou com o segmento autenticado marcado como `force-dynamic`;
+- a causa do manifesto global foi a precedência do arquivo especial `app/manifest.ts` sobre `generateMetadata`, conforme a documentação oficial do Next.js;
+- o manifesto global passou a ser uma rota comum explicitamente referenciada pelo layout raiz, permitindo sobrescrita pelo layout autenticado;
+- `htmlLimitedBots: /.*/` desabilita streaming de metadata para que manifesto, título e Apple Touch Icon estejam no HTML inicial;
+- a build de produção retornou exatamente um manifesto, apontando para `/api/pwa/igreja-spike/manifest.webmanifest`;
+- título, Apple Touch Icon e identidade do tenant também foram confirmados no HTML inicial;
+- fallback global e rewrite do manifesto por slug responderam com `application/manifest+json`;
+- o teste inicial com `Invoke-WebRequest` não encaminhou o cookie como esperado; a prova final foi repetida com `curl` e API local instrumentada;
+- o fallback OneElo permaneceu seguro durante todas as tentativas.
 
 Critério de saída:
 
@@ -435,14 +451,14 @@ Critério de saída:
 
 ### Etapa 1 - Modelo e migration
 
-Status: pendente
+Status: concluída - migration aplicada e validada localmente; produção pendente de rollout
 
-- [ ] Adicionar campos opcionais ao `Tenant`.
-- [ ] Criar migration somente aditiva.
-- [ ] Atualizar selects e contratos necessários.
-- [ ] Atualizar documentação do modelo.
-- [ ] Executar `prisma format`, `prisma validate` e `prisma generate`.
-- [ ] Confirmar que a migration não executa seed.
+- [x] Adicionar campos opcionais ao `Tenant`.
+- [x] Criar migration somente aditiva.
+- [x] Atualizar selects e contratos necessários.
+- [x] Atualizar documentação do modelo.
+- [x] Executar `prisma format`, `prisma validate` e `prisma generate`.
+- [x] Confirmar que a migration não executa seed.
 
 Critério de saída:
 
@@ -450,16 +466,16 @@ Critério de saída:
 
 ### Etapa 2 - Processamento e armazenamento do ícone
 
-Status: pendente
+Status: concluída em código
 
-- [ ] Adicionar `sharp` como dependência direta da API.
-- [ ] Implementar validação de dimensão, proporção e formato.
-- [ ] Gerar as quatro variantes previstas.
-- [ ] Implementar paths versionados no bucket existente.
-- [ ] Garantir publicação atômica e limpeza em falha.
-- [ ] Garantir remoção segura das variantes antigas.
-- [ ] Registrar auditoria sem salvar o binário ou conteúdo sensível.
-- [ ] Cobrir helpers e service com testes unitários.
+- [x] Adicionar `sharp` como dependência direta da API.
+- [x] Implementar validação de dimensão, proporção e formato.
+- [x] Gerar as quatro variantes previstas.
+- [x] Implementar paths versionados no bucket existente.
+- [x] Garantir publicação atômica e limpeza em falha.
+- [x] Garantir remoção segura das variantes antigas.
+- [x] Registrar auditoria sem salvar o binário ou conteúdo sensível.
+- [x] Cobrir helpers de imagem com testes unitários.
 
 Critério de saída:
 
@@ -467,17 +483,17 @@ Critério de saída:
 
 ### Etapa 3 - Configuração administrativa e manifesto público
 
-Status: pendente
+Status: concluída em código
 
-- [ ] Criar DTO e endpoint de nome curto.
-- [ ] Criar endpoints de upload e remoção do ícone.
-- [ ] Restringir mutações a `ADMIN` do próprio tenant.
-- [ ] Criar `PwaModule` e endpoint público por slug.
-- [ ] Retornar `application/manifest+json`.
-- [ ] Implementar fallback OneElo.
-- [ ] Garantir `id` estável e `start_url` correto.
-- [ ] Atualizar `/api/auth/me` e tipos.
-- [ ] Cobrir autorização, isolamento e manifesto com testes.
+- [x] Criar DTO e endpoint de nome curto.
+- [x] Criar endpoints de upload e remoção do ícone.
+- [x] Restringir mutações a `ADMIN` do próprio tenant.
+- [x] Criar `PwaModule` e endpoint público por slug.
+- [x] Retornar `application/manifest+json`.
+- [x] Implementar fallback OneElo.
+- [x] Garantir `id` estável e `start_url` correto.
+- [x] Atualizar `/api/auth/me` e tipos.
+- [x] Cobrir autorização, isolamento e manifesto com testes direcionados.
 
 Critério de saída:
 
@@ -485,16 +501,16 @@ Critério de saída:
 
 ### Etapa 4 - Metadata autenticada e app shell
 
-Status: pendente
+Status: concluída em código - validação manual por perfil pendente
 
-- [ ] Separar server layout e client shell se confirmado pelo spike.
-- [ ] Criar carregamento server-side autenticado com cookie encaminhado à API.
-- [ ] Evitar busca duplicada de `/api/auth/me` quando possível.
-- [ ] Gerar manifesto e metadata Apple por tenant.
-- [ ] Preservar metadata OneElo em páginas públicas.
-- [ ] Atualizar sidebar com nome e logo da igreja.
-- [ ] Atualizar header mobile sem perder o título da página.
-- [ ] Manter co-branding discreto.
+- [x] Separar server layout e client shell para o spike.
+- [x] Criar carregamento server-side autenticado com cookie encaminhado à API.
+- [x] Evitar busca duplicada de `/api/auth/me` por render usando `cache()` do React.
+- [x] Implementar manifesto e metadata Apple por tenant e validar no HTML autenticado.
+- [x] Preservar metadata OneElo em páginas públicas.
+- [x] Atualizar sidebar com nome e logo da igreja.
+- [x] Atualizar header mobile sem perder o título da página.
+- [x] Manter co-branding discreto.
 - [ ] Validar logout, sessão expirada, `ADMIN`, `STAFF` e `BASIC`.
 
 Critério de saída:
@@ -503,17 +519,17 @@ Critério de saída:
 
 ### Etapa 5 - Configuração e pré-visualização na web
 
-Status: pendente
+Status: concluída em código
 
-- [ ] Adicionar seção `Aplicativo da igreja` em `/configuracoes`.
-- [ ] Exibir nome atual, nome curto e ícone corrente.
-- [ ] Implementar prévia quadrada, circular e arredondada.
-- [ ] Validar tamanho, formato e mensagens antes do upload.
-- [ ] Permitir trocar e remover ícone.
-- [ ] Explicar que a logo institucional e o ícone do app são diferentes.
-- [ ] Atualizar estado do usuário após salvar sem exigir logout.
-- [ ] Adicionar traduções nos três idiomas suportados.
-- [ ] Preservar a seção atual de logo do tenant.
+- [x] Adicionar seção `Aplicativo da igreja` em `/configuracoes`.
+- [x] Exibir nome atual, nome curto e ícone corrente.
+- [x] Implementar prévia quadrada, circular e arredondada.
+- [x] Validar tamanho, formato e mensagens antes do upload.
+- [x] Permitir trocar e remover ícone.
+- [x] Explicar que a logo institucional e o ícone do app são diferentes.
+- [x] Atualizar estado do usuário após salvar sem exigir logout.
+- [x] Adicionar traduções nos três idiomas suportados.
+- [x] Preservar a seção atual de logo do tenant.
 
 Critério de saída:
 
@@ -521,16 +537,16 @@ Critério de saída:
 
 ### Etapa 6 - Instalação contextualizada
 
-Status: pendente
+Status: concluída em código - iPhone e desktop validados, Android pendente
 
-- [ ] Atualizar prompt para `Instalar app {Nome da igreja}`.
-- [ ] Mostrar o ícone configurado no prompt e nas instruções do iPhone.
-- [ ] Tornar a chave de dismiss/versionamento específica do tenant.
-- [ ] Garantir destino por perfil ao abrir.
-- [ ] Não exibir prompt quando já estiver em standalone.
-- [ ] Implementar orientação para instalação antiga.
-- [ ] Não prometer atualização automática de metadata.
-- [ ] Preservar ativação de push e service worker existentes.
+- [x] Atualizar prompt para `Instalar app {Nome da igreja}`.
+- [x] Mostrar o ícone configurado no prompt e nas instruções do iPhone.
+- [x] Tornar a chave de dismiss/versionamento específica do tenant.
+- [x] Preservar destino por perfil ao abrir.
+- [x] Não exibir prompt quando já estiver em standalone.
+- [x] Detectar identidade instalada desatualizada e orientar a reinstalação dentro do app no Android, iPhone e desktop.
+- [x] Não prometer atualização automática de metadata.
+- [x] Preservar ativação de push e service worker existentes.
 
 Critério de saída:
 
@@ -538,20 +554,30 @@ Critério de saída:
 
 ### Etapa 7 - Testes, documentação e rollout
 
-Status: pendente
+Status: em andamento
 
-- [ ] Executar testes direcionados da API.
-- [ ] Executar build da API.
-- [ ] Executar typecheck/build da web.
-- [ ] Executar `git diff --check`.
-- [ ] Validar migration em banco local sem seed automático.
-- [ ] Testar fallback de tenant sem configuração.
-- [ ] Testar configuração completa e remoção.
+- [x] Executar testes direcionados da API (5 suítes e 26 testes aprovados).
+- [x] Executar build da API.
+- [x] Executar typecheck/build da web.
+- [x] Executar lint direcionado dos componentes novos da web.
+- [x] Executar `git diff --check`.
+- [x] Validar migration em banco local sem seed automático.
+- [x] Testar fallback de tenant sem configuração por teste automatizado e build de produção.
+- [x] Testar configuração completa e remoção por testes automatizados de serviço e controller.
 - [ ] Testar Android/Chrome em dispositivo real.
-- [ ] Testar iPhone/Safari em dispositivo real.
+- [x] Testar iPhone/Safari em dispositivo real.
 - [ ] Testar `BASIC`, liderança, `STAFF` e `ADMIN`.
 - [ ] Testar instalação existente e orientação de reinstalação.
-- [ ] Atualizar checklist e registrar resultados neste plano.
+- [x] Atualizar checklist e registrar resultados neste plano.
+
+Resultados registrados em 2026-07-18:
+
+- API: 5 suítes e 26 testes direcionados aprovados; build aprovado.
+- Web: lint direcionado, typecheck e build de produção aprovados.
+- Prisma: schema validado automaticamente e migration local confirmada pelo usuário; nenhum seed faz parte da migration.
+- iPhone/Safari: nome e ícone personalizados confirmados em instalação real.
+- Chrome/Edge no Windows: identidade personalizada confirmada; o atalho `.lnk` pode manter o ícone no cache do Windows Shell, sem afetar o manifesto ou o app instalado.
+- Android, matriz manual de perfis e reabertura do aviso de reinstalação continuam pendentes.
 
 Critério de saída:
 
@@ -683,7 +709,7 @@ Mitigação: select mínimo, DTO de saída fechado e testes que comprovem ausên
 
 - `ADMIN` configura nome curto e ícone do PWA no próprio tenant.
 - Arquivo inválido é rejeitado com mensagem clara.
-- Variantes 180, 192, 512 e maskable são geradas e acessíveis.
+- Variantes 180, 192, 512, quadrada de pré-visualização e maskable são geradas e acessíveis.
 - A logo institucional permanece independente.
 - Manifesto personalizado usa tenant correto e `id` estável.
 - Tenant sem configuração continua instalando OneElo sem regressão.
@@ -714,7 +740,7 @@ Executar com o tenant piloto:
 
 - confirmar o limite final de 12 caracteres para nome curto;
 - confirmar se o upload exige imagem exatamente quadrada ou aceita recorte assistido;
-- definir o tratamento visual do fundo transparente no ícone maskable;
+- tratamento visual definido: cantos transparentes arredondados nas variantes regulares e fundo branco opaco no `maskable`;
 - confirmar se o primeiro tenant piloto já possui arte quadrada adequada;
 - validar no spike a estratégia de metadata aninhada do Next.js 16;
 - definir o texto final da orientação de reinstalação para Android e iPhone.

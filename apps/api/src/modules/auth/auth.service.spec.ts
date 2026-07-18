@@ -28,6 +28,32 @@ function createService(
 }
 
 describe('AuthService user access invariants', () => {
+  it('atualiza o nome curto somente no tenant recebido da sessao', async () => {
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'tenant-a', pwaShortName: null }),
+        update: jest.fn().mockResolvedValue({ pwaShortName: 'CCRV' }),
+      },
+      auditLog: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const service = createService(prisma);
+
+    await service.updateTenantPwaSettings(
+      'tenant-a',
+      { shortName: '  CCRV  ' },
+      'admin-a',
+      '127.0.0.1',
+    );
+
+    expect(prisma.tenant.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'tenant-a' },
+      data: { pwaShortName: 'CCRV', pwaUpdatedAt: expect.any(Date) },
+    }));
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ tenantId: 'tenant-a', userId: 'admin-a' }),
+    }));
+  });
+
   it('nao gera link para usuario criado como desativado', async () => {
     const prisma = {
       user: {

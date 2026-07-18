@@ -10,6 +10,9 @@ const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS ?? '')
   .filter(Boolean);
 
 const nextConfig: NextConfig = {
+  // PWA metadata must be present in the initial <head>; browsers may inspect it
+  // before streamed metadata is appended to the document body.
+  htmlLimitedBots: /.*/,
   ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
   async rewrites() {
     return [

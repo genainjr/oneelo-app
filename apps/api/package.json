@@ -44,6 +44,7 @@
     "libphonenumber-js": "^1.13.9",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.34.5",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
