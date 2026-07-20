@@ -5,9 +5,12 @@ import {
   IsEnum,
   IsDateString,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { EventoTipo } from '@prisma/client';
 import { StatusEvento } from './create-evento.dto';
+import { EventoMinisterioInputDto } from './evento-ministerio-input.dto';
 
 export class UpdateEventoDto {
   @IsString()
@@ -38,6 +41,12 @@ export class UpdateEventoDto {
   @IsUUID('4', { each: true })
   @IsOptional()
   ministerioIds?: string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EventoMinisterioInputDto)
+  @IsOptional()
+  ministerios?: EventoMinisterioInputDto[];
 
   @IsEnum(StatusEvento)
   @IsOptional()

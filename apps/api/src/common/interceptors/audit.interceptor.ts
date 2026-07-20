@@ -13,7 +13,13 @@ import { Request } from 'express';
 import { getClientIp } from '../utils/request-ip';
 
 // Entidades que serão auditadas automaticamente
-const AUDITED_PATHS = ['membros', 'escalas', 'ministerios', 'usuarios'];
+const AUDITED_PATHS = [
+  'membros',
+  'escalas',
+  'eventos',
+  'ministerios',
+  'usuarios',
+];
 
 // Mapa de método HTTP para ação de auditoria
 const METHOD_ACTION_MAP: Record<string, AcaoAuditoria> = {
@@ -56,7 +62,8 @@ export class AuditInterceptor implements NestInterceptor {
             AUDITED_PATHS.includes(part),
           );
           const entidade = urlParts[entityIndex] ?? 'desconhecido';
-          const entidadeId = urlParts[entityIndex + 1] ?? responseData?.id ?? 'novo';
+          const entidadeId =
+            urlParts[entityIndex + 1] ?? responseData?.id ?? 'novo';
 
           if (user?.tenantId) {
             await this.prisma.auditLog.create({

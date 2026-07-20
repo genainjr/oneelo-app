@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, buildQuery, HttpError } from '@/lib/api';
-import { Escala, EscalaItem } from '@/types';
+import { Escala, EscalaDia, EscalaItem, EventoElegivelEscala, ModoCriacaoEscala } from '@/types';
 
 export interface FilterEscalas {
   ministerioId?: string;
@@ -23,7 +23,9 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<Escala[]>(`/api/escalas${buildQuery(f as any)}`);
+      const data = await api.get<Escala[]>(
+        `/api/escalas${buildQuery(f as Record<string, string | undefined>)}`,
+      );
       setEscalas(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Erro ao carregar escalas.');
@@ -33,14 +35,40 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
   }, [filter]);
 
   useEffect(() => {
+    // A carga inicial sincroniza o hook com a API ao montar a tela.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchEscalas(initialFilter);
+    // O filtro inicial deve ser aplicado somente uma vez; mudanças usam applyFilter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function createEscala(data: { mes: number; ano: number; ministerioId: string; observacoes?: string; diasSemana?: number[] }) {
+  async function createEscala(data: {
+    mes: number;
+    ano: number;
+    ministerioId: string;
+    observacoes?: string;
+    modoCriacao?: ModoCriacaoEscala;
+    diasSemana?: number[];
+    eventoIds?: string[];
+  }) {
     const created = await api.post<Escala>('/api/escalas', data);
     setEscalas((prev) => [created, ...prev]);
     return created;
   }
+
+  const getEventosElegiveis = useCallback(async (params: {
+    ministerioId: string;
+    mes: number;
+    ano: number;
+  }) => {
+    return api.get<EventoElegivelEscala[]>(
+      `/api/escalas/eventos-elegiveis${buildQuery({
+        ministerioId: params.ministerioId,
+        mes: String(params.mes),
+        ano: String(params.ano),
+      })}`,
+    );
+  }, []);
 
   async function updateEscala(id: string, data: Partial<Escala>) {
     const updated = await api.patch<Escala>(`/api/escalas/${id}`, data);
@@ -53,10 +81,18 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     setEscalas((prev) => prev.filter((e) => e.id !== id));
   }
 
-  async function addDia(escalaId: string, data: string, titulo?: string) {
-    const res = await api.post<any>(`/api/escalas/${escalaId}/dias`, { data, titulo });
+  async function addDia(escalaId: string, data: string, titulo?: string, eventoId?: string) {
+    const res = await api.post<EscalaDia>(`/api/escalas/${escalaId}/dias`, {
+      data,
+      titulo,
+      eventoId,
+    });
     await fetchEscalas(filter);
     return res;
+  }
+
+  async function updateDiaEvento(diaId: string, eventoId: string | null) {
+    return api.patch(`/api/escalas/dias/${diaId}/evento`, { eventoId });
   }
 
   async function removeDia(diaId: string) {
@@ -77,7 +113,10 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
   }
 
   async function confirmarPresenca(itemId: string, statusConfirmacao: 'CONFIRMADO' | 'RECUSADO', observacoes?: string) {
-    const res = await api.patch<any>(`/api/escalas/itens/${itemId}/confirmar`, { statusConfirmacao, observacoes });
+    const res = await api.patch<EscalaItem>(`/api/escalas/itens/${itemId}/confirmar`, {
+      statusConfirmacao,
+      observacoes,
+    });
     await fetchEscalas(filter);
     return res;
   }
@@ -105,9 +144,11 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     applyFilter,
     refetch: () => fetchEscalas(filter),
     createEscala,
+    getEventosElegiveis,
     updateEscala,
     deleteEscala,
     addDia,
+    updateDiaEvento,
     removeDia,
     reorderDias,
     confirmarPresenca,

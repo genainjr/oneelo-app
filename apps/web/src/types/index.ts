@@ -191,11 +191,21 @@ export interface EscalaDia {
   data: string;
   titulo?: string;
   eventoId?: string;
-  evento?: Pick<Evento, 'id' | 'titulo'> | null;
+  evento?:
+    | (Pick<Evento, 'id' | 'titulo'> &
+        Partial<Pick<Evento, 'dataInicio' | 'dataFim' | 'local' | 'status' | 'tipo'>>)
+    | null;
   observacoes?: string;
   itens?: EscalaItem[];
   funcoesOcultas?: { funcaoId: string }[];
 }
+
+export type ModoCriacaoEscala = 'DIAS_SEMANA' | 'EVENTOS' | 'VAZIA';
+
+export type EventoElegivelEscala = Pick<
+  Evento,
+  'id' | 'titulo' | 'tipo' | 'dataInicio' | 'dataFim' | 'local' | 'status'
+> & { ministerioId: string };
 
 export interface Escala {
   id: string;
@@ -227,7 +237,13 @@ export type EventoTipo = 'GERAL' | 'MINISTERIO' | 'REUNIAO_INTERNA';
 export interface EventoMinisterio {
   eventoId: string;
   ministerioId: string;
+  requerEscala: boolean;
   ministerio?: Pick<Ministerio, 'id' | 'nome'>;
+}
+
+export interface EventoMinisterioInput {
+  ministerioId: string;
+  requerEscala: boolean;
 }
 
 export interface Evento {

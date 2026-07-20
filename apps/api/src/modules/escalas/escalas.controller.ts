@@ -18,6 +18,9 @@ import { ManageEscalaItemDto } from './dto/manage-escala-item.dto';
 import { ConfirmarEscalaItemDto } from './dto/confirmar-escala-item.dto';
 import { ReorderDiasDto } from './dto/reorder-dias.dto';
 import { ToggleDiaFuncaoOcultaDto } from './dto/toggle-dia-funcao-oculta.dto';
+import { EventosElegiveisDto } from './dto/eventos-elegiveis.dto';
+import { AddEscalaDiaDto } from './dto/add-escala-dia.dto';
+import { UpdateEscalaDiaEventoDto } from './dto/update-escala-dia-evento.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
@@ -45,7 +48,10 @@ export class EscalasController {
 
   @Get('visualizacao')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
-  findVisualizacao(@Query() query: FilterEscalaVisualizacaoDto, @Req() req: Request) {
+  findVisualizacao(
+    @Query() query: FilterEscalaVisualizacaoDto,
+    @Req() req: Request,
+  ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
     return this.escalasService.findVisualizacao(tenantId, query, user);
@@ -64,6 +70,17 @@ export class EscalasController {
   countPendencias(@Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.escalasService.countPendencias(tenantId);
+  }
+
+  @Get('eventos-elegiveis')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  findEventosElegiveis(
+    @Query() query: EventosElegiveisDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.escalasService.findEventosElegiveis(tenantId, query, user);
   }
 
   @Get(':id')
@@ -112,20 +129,29 @@ export class EscalasController {
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   addDia(
     @Param('id') id: string,
-    @Body() body: { data: string; titulo?: string },
+    @Body() dto: AddEscalaDiaDto,
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.escalasService.addDia(tenantId, id, body, user);
+    return this.escalasService.addDia(tenantId, id, dto, user);
+  }
+
+  @Patch('dias/:diaId/evento')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  updateDiaEvento(
+    @Param('diaId') diaId: string,
+    @Body() dto: UpdateEscalaDiaEventoDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.escalasService.updateDiaEvento(tenantId, diaId, dto, user);
   }
 
   @Delete('dias/:diaId')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
-  removeDia(
-    @Param('diaId') diaId: string,
-    @Req() req: Request,
-  ) {
+  removeDia(@Param('diaId') diaId: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
     return this.escalasService.removeDia(tenantId, diaId, user);
@@ -143,15 +169,17 @@ export class EscalasController {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
     manageEscalaItemDto.escalaDiaId = diaId;
-    return this.escalasService.addMembro(tenantId, diaId, manageEscalaItemDto, user);
+    return this.escalasService.addMembro(
+      tenantId,
+      diaId,
+      manageEscalaItemDto,
+      user,
+    );
   }
 
   @Delete('itens/:itemId')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
-  removeMembro(
-    @Param('itemId') itemId: string,
-    @Req() req: Request,
-  ) {
+  removeMembro(@Param('itemId') itemId: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
     return this.escalasService.removeMembro(tenantId, itemId, user);
@@ -168,7 +196,12 @@ export class EscalasController {
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.escalasService.toggleDiaFuncaoOculta(tenantId, diaId, dto, user);
+    return this.escalasService.toggleDiaFuncaoOculta(
+      tenantId,
+      diaId,
+      dto,
+      user,
+    );
   }
 
   // ─── Confirmação de Presença pelo Membro ─────────────────────
@@ -182,7 +215,12 @@ export class EscalasController {
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.escalasService.confirmar(tenantId, itemId, confirmarEscalaItemDto, user);
+    return this.escalasService.confirmar(
+      tenantId,
+      itemId,
+      confirmarEscalaItemDto,
+      user,
+    );
   }
 
   // ─── Alteração Direta do Status pelo Administrador/Líder ───
