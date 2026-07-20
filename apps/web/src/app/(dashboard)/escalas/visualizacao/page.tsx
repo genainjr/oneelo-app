@@ -39,6 +39,9 @@ export default function EscalasVisualizacaoPage() {
   const [tenantName, setTenantName] = useState('OneElo');
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState(() => new Date());
+  const [escalasMinimizadas, setEscalasMinimizadas] = useState<Set<string>>(
+    () => new Set(),
+  );
   const { escalas, loading, error, applyFilter, refetch } = useEscalasVisualizacao({
     mes: String(now.getMonth() + 1),
     ano: String(now.getFullYear()),
@@ -104,6 +107,18 @@ export default function EscalasVisualizacaoPage() {
   function handlePrint() {
     setPrintedAt(new Date());
     window.setTimeout(() => window.print(), 0);
+  }
+
+  function toggleEscalaMinimizada(escalaId: string) {
+    setEscalasMinimizadas((current) => {
+      const next = new Set(current);
+      if (next.has(escalaId)) {
+        next.delete(escalaId);
+      } else {
+        next.add(escalaId);
+      }
+      return next;
+    });
   }
 
   return (
@@ -202,6 +217,7 @@ export default function EscalasVisualizacaoPage() {
         <div className="space-y-6">
           {escalas.map((escala) => {
             const participacoes = (escala.dias || []).reduce((acc, dia) => acc + (dia.itens?.length || 0), 0);
+            const minimizada = escalasMinimizadas.has(escala.id);
             return (
               <section key={escala.id} className="space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -213,6 +229,14 @@ export default function EscalasVisualizacaoPage() {
                     {escala.observacoes && <p className="mt-1 text-sm text-gray-500">{escala.observacoes}</p>}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleEscalaMinimizada(escala.id)}
+                      aria-expanded={!minimizada}
+                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
+                    >
+                      {minimizada ? 'Mostrar escala' : 'Minimizar escala'}
+                    </button>
                     <StatusBadge
                       label={STATUS_ESCALA_LABEL[escala.status]}
                       className={`px-2.5 py-1 font-bold ${STATUS_ESCALA_COLOR[escala.status]}`}
@@ -222,7 +246,7 @@ export default function EscalasVisualizacaoPage() {
                     </span>
                   </div>
                 </div>
-                <EscalaReadonlyGrid escala={escala} />
+                {!minimizada && <EscalaReadonlyGrid escala={escala} />}
               </section>
             );
           })}

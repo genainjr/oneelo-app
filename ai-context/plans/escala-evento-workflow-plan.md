@@ -1,6 +1,6 @@
 # Plano - Criação de Escalas com Base em Eventos
 
-Status geral: planejado - aguardando início da implementação
+Status geral: implementação e validação funcional concluídas
 
 Última atualização: 2026-07-19
 
@@ -417,121 +417,267 @@ As regras de visibilidade do evento continuam sendo aplicadas independentemente 
 
 ### Etapa 0 - Preparação e invariantes
 
-Status: pendente
+Status: concluída em 2026-07-19, com dívida de baseline registrada
 
-- [ ] Confirmar branch criada a partir de `development` atualizada.
-- [ ] Registrar baseline dos testes de eventos e escalas.
-- [ ] Auditar duplicidades atuais de `EscalaDia` por escala e evento.
-- [ ] Confirmar comportamento de índice único com `eventoId` nulo no PostgreSQL alvo.
-- [ ] Registrar regra de bloqueio para evento vinculado movido para outro mês.
+- [x] Confirmar branch criada a partir de `development` atualizada.
+- [x] Registrar baseline dos testes de eventos e escalas.
+- [x] Auditar duplicidades atuais de `EscalaDia` por escala e evento.
+- [x] Confirmar comportamento de índice único com `eventoId` nulo no PostgreSQL alvo.
+- [x] Registrar regra de bloqueio para evento vinculado movido para outro mês.
 
 Critério de saída:
 
-- invariantes de dados e comportamento de mudança de mês estão comprovados antes da migration.
+- invariantes de dados estão comprovados e a regra de mudança de mês está especificada antes da migration.
+
+#### Resultados da Etapa 0
+
+Base da implementação:
+
+- branch `feature/escala-evento-workflow` criada a partir da `development` no commit `6c9ef0a`;
+- árvore de trabalho estava limpa antes do início;
+- o commit-base contém o merge do plano pelo PR `#161`.
+
+Auditoria de dados no PostgreSQL local `localhost:5433/oneelo_saas`:
+
+- 2 registros em `tb_schedule_day`;
+- 0 registros com `event_id` preenchido;
+- 0 grupos duplicados por `schedule_id` e `event_id`;
+- nenhuma correção ou remoção de dados foi necessária.
+
+Validação do índice único:
+
+- uma tabela temporária com `UNIQUE (schedule_id, event_id)` aceitou duas linhas com o mesmo `schedule_id` e `event_id = NULL`;
+- o comportamento confirma que dias manuais continuam podendo coexistir na mesma escala;
+- a tabela temporária foi descartada ao final da transação e nenhuma estrutura persistente foi criada.
+
+Baseline automatizada:
+
+- `npm.cmd run build` em `apps/api`: passou;
+- não existem testes automatizados dedicados ao módulo de Eventos;
+- o arquivo `test/escalas.e2e-spec.ts` foi descoberto pelo Jest, mas está incompatível com o modelo atual de escalas mensais;
+- o E2E ainda usa campos removidos como `Escala.titulo`, `Escala.data`, relação direta de itens com escala e o enum legado `Role.ADMIN_GERAL`;
+- a execução não concluiu em 2 minutos e foi interrompida; o `tsc --noEmit` confirmou os erros legados do arquivo;
+- os testes desta feature devem criar uma nova baseline compatível, sem considerar o E2E legado como evidência de regressão válida.
+
+Regra registrada para mudança de mês:
+
+- ao atualizar `Evento.dataInicio`, consultar os `EscalaDia` vinculados e suas escalas;
+- interpretar mês e ano no fuso operacional `America/Sao_Paulo`;
+- se a nova data pertencer ao mesmo mês e ano da escala, sincronizar `EscalaDia.data` na mesma transação;
+- se a nova data pertencer a outro mês ou ano, retornar HTTP `409 Conflict` sem alterar evento ou dias;
+- mensagem prevista: `O evento está vinculado a uma escala mensal. Desvincule-o da escala antes de alterar a data para outro mês.`;
+- não mover o dia para outra escala e não criar escala no mês de destino automaticamente.
 
 ### Etapa 1 - Modelo e contratos compatíveis
 
-Status: pendente
+Status: concluída em 2026-07-19
 
-- [ ] Adicionar `EventoMinisterio.requerEscala` e índices.
-- [ ] Adicionar unicidade de escala e evento após auditoria.
-- [ ] Criar migration aditiva sem seed.
-- [ ] Atualizar documentação de modelos.
-- [ ] Criar DTO de configuração ministerial.
-- [ ] Preservar `ministerioIds` como contrato legado temporário.
-- [ ] Atualizar respostas com `requerEscala`.
-- [ ] Validar Prisma e gerar client.
+- [x] Adicionar `EventoMinisterio.requerEscala` e índices.
+- [x] Adicionar unicidade de escala e evento após auditoria.
+- [x] Criar migration aditiva sem seed.
+- [x] Atualizar documentação de modelos.
+- [x] Criar DTO de configuração ministerial.
+- [x] Preservar `ministerioIds` como contrato legado temporário.
+- [x] Atualizar respostas com `requerEscala`.
+- [x] Validar Prisma e gerar client.
 
 Critério de saída:
 
 - API aceita clientes atuais e passa a representar necessidade de escala por ministério.
 
+#### Resultados da Etapa 1
+
+- `EventoMinisterio.requerEscala` criado com `default(false)` e mapeamento físico `requires_schedule`.
+- Índice de elegibilidade criado por `[ministerioId, requerEscala]` sem remover o índice ministerial existente.
+- Unicidade `[escalaId, eventoId]` adicionada; dias manuais com evento nulo continuam permitidos.
+- Migration aditiva criada sem seed, sem backfill e envolvida explicitamente em `BEGIN/COMMIT`.
+- A migration executa uma pré-validação de duplicidades antes de alterar a estrutura e aborta sem remover dados quando encontra conflito.
+- Contrato novo `ministerios` aceita `ministerioId` e `requerEscala` por relação.
+- Contrato legado `ministerioIds` continua aceito e sempre normaliza relações com `requerEscala = false`.
+- Quando os dois contratos são enviados, `ministerios` é a fonte de verdade.
+- Relações duplicadas no contrato novo são rejeitadas.
+- Create, update e respostas de evento passam a preservar o indicador.
+- Nesta etapa, a regra existente que proíbe ministérios em eventos gerais foi mantida; sua alteração pertence à Etapa 2.
+- Migration aplicada e reaplicada com sucesso somente no PostgreSQL local; o banco remoto não foi acessado.
+- Após a migration local, os 2 dias de escala anteriores continuaram preservados.
+- `prisma validate`, `prisma generate`, `prisma migrate deploy`, `prisma migrate status`, comparação sem drift, lint direcionado, teste direcionado e build da API passaram.
+
+Gate obrigatório antes de produção:
+
+- [x] Executar a consulta de duplicidades de `tb_schedule_day` em modo somente leitura.
+- [x] Confirmar que não existe mais de um registro para o mesmo `schedule_id` e `event_id` não nulo.
+- [x] Avaliar o volume atual das tabelas afetadas para estimar o risco de lock.
+- [ ] Confirmar backup e janela operacional antes de executar a migration em produção.
+- [ ] Aplicar primeiro a migration e depois a API compatível, antes de disponibilizar a configuração na interface.
+
+Auditoria somente leitura em produção em 2026-07-19:
+
+- PostgreSQL `17.6`, banco `oneelo_saas`, schema `public`;
+- 36 registros em `tb_schedule_day`;
+- 0 dias com `event_id` preenchido;
+- 0 grupos duplicados por `schedule_id` e `event_id`;
+- 23 relações existentes em `tb_event_ministry`;
+- `requires_schedule` ainda não existe em produção, conforme esperado antes da migration;
+- `tb_schedule_day` ocupa aproximadamente 64 KiB com índices;
+- `tb_event_ministry` ocupa aproximadamente 48 KiB com índices;
+- nenhuma escrita, migration ou correção foi executada durante a auditoria;
+- o volume e a ausência de duplicidades liberam tecnicamente a migration, restando o gate operacional de backup e janela de deploy.
+
 ### Etapa 2 - Configuração no evento
 
-Status: pendente
+Status: concluída em 2026-07-19
 
-- [ ] Permitir ministérios em evento geral.
-- [ ] Persistir configuração por ministério no create e update.
-- [ ] Preservar RBAC e visibilidade atuais.
-- [ ] Atualizar modal da Agenda.
-- [ ] Adicionar opção **Precisa de escala** por ministério.
-- [ ] Atualizar hooks, tipos e traduções.
-- [ ] Garantir que salvar evento não crie escala.
+- [x] Permitir ministérios em evento geral.
+- [x] Persistir configuração por ministério no create e update.
+- [x] Preservar RBAC e visibilidade atuais.
+- [x] Atualizar modal da Agenda.
+- [x] Adicionar opção **Precisa de escala** por ministério.
+- [x] Atualizar hooks, tipos e traduções.
+- [x] Garantir que salvar evento não crie escala.
 
 Critério de saída:
 
 - evento declara corretamente quais ministérios podem encontrá-lo na criação da escala.
 
+#### Resultados da Etapa 2
+
+- Eventos `GERAL` agora aceitam relações ministeriais sem alterar sua visibilidade geral.
+- `ADMIN` e `STAFF` continuam sendo os únicos perfis que criam ou transformam eventos gerais.
+- `BASIC` continua sem permissão para gerenciar evento geral e mantém o escopo atual de liderança nos demais tipos.
+- Create e update persistem `requerEscala` por ministério, inclusive em eventos gerais.
+- Quando a configuração ministerial não é enviada no update, as relações e seus indicadores são preservados.
+- O modal da Agenda exibe ministérios para todos os tipos de evento.
+- Selecionar um ministério inicia `requerEscala = false`.
+- A opção **Precisa de escala** aparece apenas para ministérios selecionados.
+- A interface explica que a opção somente disponibiliza o evento ao criar uma escala e não cria escala automaticamente.
+- Em evento geral, a interface informa que os ministérios não restringem a visibilidade.
+- Tipos, hook e traduções `pt-BR`, `pt-PT` e `en-US` foram atualizados.
+- Não foi adicionada ação de criação de escala na Agenda nem chamada ao módulo de Escalas.
+- 6 testes direcionados do serviço de Eventos passaram, incluindo evento geral, contrato legado, contrato novo, update e preservação de RBAC.
+- Lint direcionado da API e da web, build da API, build de produção da web e `git diff --check` passaram.
+
 ### Etapa 3 - Elegibilidade e criação transacional
 
-Status: pendente
+Status: concluída em 2026-07-19
 
-- [ ] Criar endpoint de eventos elegíveis.
-- [ ] Aplicar tenant, RBAC, período, status, ministério e `requerEscala`.
-- [ ] Evoluir `CreateEscalaDto` com modo e eventos.
-- [ ] Refatorar criação para transação.
-- [ ] Criar snapshots de data e título.
-- [ ] Impedir duplicidades.
-- [ ] Cobrir rollback quando qualquer evento for inválido.
+- [x] Criar endpoint de eventos elegíveis.
+- [x] Aplicar tenant, RBAC, período, status, ministério e `requerEscala`.
+- [x] Evoluir `CreateEscalaDto` com modo e eventos.
+- [x] Refatorar criação para transação.
+- [x] Criar snapshots de data e título.
+- [x] Impedir duplicidades.
+- [x] Cobrir rollback quando qualquer evento for inválido.
 
 Critério de saída:
 
 - API cria escala baseada em eventos de forma atômica e isolada por tenant.
 
+#### Resultados da Etapa 3
+
+- Criado `GET /api/escalas/eventos-elegiveis` com período no fuso operacional `America/Sao_Paulo`.
+- A consulta exige ministério ativo do tenant, liderança para BASIC, status `AGENDADO` e `requerEscala = true`.
+- Eventos já vinculados à escala mensal do mesmo ministério não são novamente oferecidos.
+- O contrato aceita os modos `DIAS_SEMANA`, `EVENTOS` e `VAZIA`, preservando clientes legados sem `modoCriacao`.
+- A criação passou a usar transação serializável e valida todos os eventos antes de persistir escala e dias.
+- Dias baseados em eventos armazenam vínculo, data, título e ordem como snapshot.
+- Duplicidades são bloqueadas pelo contrato, pelo serviço e pelo índice único do banco.
+- Testes cobrem fluxo semanal legado, escala vazia, criação por eventos, evento inválido e escala mensal duplicada.
+
 ### Etapa 4 - Experiência de criação da escala
 
-Status: pendente
+Status: concluída em 2026-07-19
 
-- [ ] Adicionar seletor dos três modos de criação.
-- [ ] Preservar o fluxo atual de dias da semana.
-- [ ] Implementar carregamento dos eventos elegíveis.
-- [ ] Implementar seleção múltipla e estados loading, erro e vazio.
-- [ ] Limpar seleção ao mudar período ou ministério.
-- [ ] Exibir resumo antes de criar.
-- [ ] Atualizar traduções nos três idiomas.
+- [x] Adicionar seletor dos três modos de criação.
+- [x] Preservar o fluxo atual de dias da semana.
+- [x] Implementar carregamento dos eventos elegíveis.
+- [x] Implementar seleção múltipla e estados loading, erro e vazio.
+- [x] Limpar seleção ao mudar período ou ministério.
+- [x] Exibir resumo antes de criar.
+- [x] Atualizar traduções nos três idiomas.
 
 Critério de saída:
 
 - líder cria uma escala mensal selecionando somente eventos relevantes ao seu ministério.
 
+#### Resultados da Etapa 4
+
+- O modal apresenta os modos por dias da semana, com base nos eventos e começar sem dias.
+- A busca de candidatos só ocorre após mês, ano e ministério estarem definidos no modo de eventos.
+- A interface possui skeleton, erro inline com nova tentativa, estado vazio e seleção múltipla explícita.
+- Cada candidato mostra data, horário, título, tipo e local.
+- A seleção é limpa ao trocar modo, mês, ano ou ministério.
+- O botão de criação exige os dados correspondentes ao modo e o resumo informa a seleção atual.
+- Tipos, hook e traduções `pt-BR`, `pt-PT` e `en-US` foram atualizados.
+
 ### Etapa 5 - Exibição e manutenção do vínculo
 
-Status: pendente
+Status: concluída em 2026-07-19
 
-- [ ] Ampliar dados de evento retornados na escala.
-- [ ] Mostrar título, horário, local, tipo e status.
-- [ ] Sinalizar cancelamento.
-- [ ] Criar DTO validado para adicionar dia.
-- [ ] Permitir vincular, trocar e remover evento em escala aberta.
-- [ ] Bloquear manutenção em escala encerrada.
-- [ ] Sincronizar título e mudança de data no mesmo mês.
-- [ ] Bloquear mudança de evento vinculado para outro mês.
+- [x] Ampliar dados de evento retornados na escala.
+- [x] Mostrar título, horário, local, tipo e status.
+- [x] Sinalizar cancelamento.
+- [x] Criar DTO validado para adicionar dia.
+- [x] Permitir vincular, trocar e remover evento em escala aberta.
+- [x] Bloquear manutenção em escala encerrada.
+- [x] Sincronizar título e mudança de data no mesmo mês.
+- [x] Bloquear mudança de evento vinculado para outro mês.
 
 Critério de saída:
 
 - vínculo permanece compreensível e consistente durante o ciclo de vida do evento e da escala.
 
+#### Resultados da Etapa 5
+
+- O detalhe da escala retorna título, início, fim, local, tipo e status do evento.
+- A grade diferencia dia manual e evento vinculado, exibe contexto operacional e destaca cancelamento ou realização.
+- Criados DTOs validados para adicionar dia e atualizar o vínculo do evento.
+- `PATCH /api/escalas/dias/:diaId/evento` permite vincular, trocar ou remover o vínculo em escala aberta.
+- Ao remover o vínculo, data e título permanecem como snapshot do dia.
+- Escalas encerradas rejeitam qualquer alteração do vínculo.
+- Alterações de título e data do evento no mesmo mês sincronizam todos os dias vinculados na mesma transação.
+- Mudança para outro mês retorna conflito antes de alterar evento ou escala.
+- Cancelamento preserva o vínculo e exclusão do evento usa `onDelete: SetNull`, mantendo os snapshots.
+- Mutações de eventos passaram a integrar a auditoria automática já usada pelas escalas.
+
 ### Etapa 6 - Testes, documentação e rollout
 
-Status: pendente
+Status: validações técnica e manual concluídas em 2026-07-19
 
-- [ ] Executar testes direcionados de eventos e escalas.
-- [ ] Executar build da API.
-- [ ] Executar lint e typecheck direcionados da web.
-- [ ] Executar build de produção da web.
-- [ ] Executar `git diff --check`.
-- [ ] Validar migration local sem seed.
-- [ ] Validar matriz manual de perfis.
-- [ ] Validar dois tenants sem vazamento de eventos.
-- [ ] Validar evento geral com múltiplos ministérios.
-- [ ] Validar evento relacionado sem necessidade de escala.
-- [ ] Validar criação vazia, por semana e por eventos.
-- [ ] Validar cancelamento, remoção e mudança de data.
-- [ ] Atualizar checklist com resultados reais.
+- [x] Executar testes direcionados de eventos e escalas.
+- [x] Executar build da API.
+- [x] Executar lint e typecheck direcionados da web.
+- [x] Executar build de produção da web.
+- [x] Executar `git diff --check`.
+- [x] Validar migration local sem seed.
+- [x] Validar matriz manual de perfis.
+- [x] Validar dois tenants sem vazamento de eventos.
+- [x] Validar evento geral com múltiplos ministérios.
+- [x] Validar evento relacionado sem necessidade de escala.
+- [x] Validar criação vazia, por semana e por eventos.
+- [x] Validar cancelamento, remoção e mudança de data.
+- [x] Atualizar checklist com resultados reais.
 
 Critério de saída:
 
 - testes automatizados e roteiro manual comprovam isolamento, permissões e consistência do vínculo.
+
+#### Resultados técnicos da Etapa 6
+
+- 21 testes direcionados de Eventos e Escalas passaram em 2 suítes.
+- A suíte unitária completa da API também passou: 67 testes em 13 suítes.
+- Lint direcionado dos arquivos alterados da API e da web passou.
+- Build da API passou.
+- Build de produção da web passou, incluindo typecheck do Next.js.
+- Os três arquivos de tradução são JSON válido.
+- `prisma validate` passou e `prisma migrate status` confirmou 10 migrations aplicadas no PostgreSQL local.
+- `prisma migrate diff` não encontrou drift entre o banco local e o schema.
+- A migration permanece aditiva, sem seed, `INSERT`, `UPDATE` ou `DELETE`.
+- `git diff --check` passou; restaram apenas avisos de normalização LF/CRLF do ambiente Windows.
+- O build da web ainda exibe dois avisos legados: múltiplos lockfiles e convenção `middleware` descontinuada.
+- Validação manual aprovada: eventos gerais e ministeriais aceitaram múltiplos ministérios; somente relações marcadas com **Precisa de escala** apareceram como candidatas no módulo de Escalas.
+- Os três modos de criação, o filtro de candidatos por dia, o compartilhamento do evento entre ministérios e a manutenção posterior dos vínculos foram aprovados.
+- Alteração, cancelamento e remoção de evento vinculado preservaram a consistência esperada; eventos cancelados permaneceram identificados na escala e deixaram de ser novos candidatos.
+- Escalas encerradas bloquearam alteração de vínculo, usuários `BASIC` permaneceram limitados aos ministérios que lideram e o tenant de teste não recebeu eventos de outro tenant.
 
 ## Estratégia de testes
 

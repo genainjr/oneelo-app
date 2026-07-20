@@ -227,6 +227,11 @@ Individual day inside a schedule.
 - `notes`
 - `order` / `display_order`
 
+Rules:
+
+- An event can appear at most once in the same schedule: unique `[scheduleId, eventId]` when `eventId` is filled.
+- Multiple manual days with `eventId = null` remain valid in the same schedule.
+
 ### 13. ScheduleDayPositionHidden (`tb_schedule_day_position_hidden`)
 
 Defines positions hidden for a specific schedule day.
@@ -269,13 +274,16 @@ Many-to-many relation between events and ministries.
 
 - `eventId` / `event_id`
 - `ministryId` / `ministry_id`
+- `requerEscala` / `requires_schedule`, defaults to `false`
 - Composite key: `[eventId, ministryId]`.
 
 Rules:
 
-- `GENERAL` events can exist without ministries linked.
+- `GENERAL` events can exist with or without ministries linked; these relations are operational metadata and do not restrict general visibility.
 - `MINISTRY` events use ministries as organization/filter metadata.
 - `INTERNAL_MEETING` events can be linked to none, one, or many ministries.
+- `requerEscala` distinguishes a ministry involved in the event from one that must prepare a schedule.
+- Existing relations and legacy API payloads default to `requerEscala = false`; there is no automatic backfill to `true`.
 - The frontend should render ministry names only when the relation exists.
 
 ### 17. AuditLog (`tb_audit_log`)

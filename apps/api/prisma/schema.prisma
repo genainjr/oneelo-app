@@ -347,6 +347,7 @@ model EscalaDia {
   itens          EscalaItem[]
   funcoesOcultas EscalaDiaFuncaoOculta[]
 
+  @@unique([escalaId, eventoId])
   @@map("tb_schedule_day")
 }
 
@@ -404,14 +405,16 @@ model Evento {
 }
 
 model EventoMinisterio {
-  eventoId     String @map("event_id")
-  ministerioId String @map("ministry_id")
+  eventoId     String  @map("event_id")
+  ministerioId String  @map("ministry_id")
+  requerEscala Boolean @default(false) @map("requires_schedule")
 
   evento     Evento     @relation(fields: [eventoId], references: [id], onDelete: Cascade)
   ministerio Ministerio @relation(fields: [ministerioId], references: [id], onDelete: Cascade)
 
   @@id([eventoId, ministerioId])
   @@index([ministerioId])
+  @@index([ministerioId, requerEscala])
   @@map("tb_event_ministry")
 }
 

@@ -1,11 +1,46 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { InputField, SelectField } from '@/components/app/form-field';
-import { Escala, MinisterioMembro } from '@/types';
+import { Escala, EscalaDia, EventoElegivelEscala, MinisterioMembro } from '@/types';
 import { getDiaDisplayTitle, getDias, getFuncoes, getItens, isFuncaoOculta, MemberChip } from './escala-shared';
-import { getDatePartsWithWeekday, STATUS_CONFIRMACAO_COLOR } from '@/lib/utils';
+import { getCivilDateKey, getDatePartsWithWeekday, STATUS_CONFIRMACAO_COLOR } from '@/lib/utils';
+
+const OPERATIONAL_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function getOperationalDateKey(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const parts = Object.fromEntries(
+    OPERATIONAL_DATE_FORMATTER
+      .formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  );
+
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function getEscalaDiaDateKey(dia: EscalaDia) {
+  const date = new Date(dia.data);
+  const isLegacyCivilMidnight =
+    !dia.eventoId &&
+    !Number.isNaN(date.getTime()) &&
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0;
+
+  return isLegacyCivilMidnight
+    ? getCivilDateKey(dia.data)
+    : getOperationalDateKey(dia.data);
+}
 
 interface EscalaGridProps {
   escala: Escala;
@@ -14,10 +49,92 @@ interface EscalaGridProps {
   onAddMembro: (diaId: string, membroId: string, funcaoId: string) => Promise<void>;
   onRemoveMembro: (itemId: string) => Promise<void>;
   onAddDia: (data: string, titulo?: string) => Promise<void>;
+  onUpdateDiaEvento: (diaId: string, eventoId: string | null) => Promise<void>;
+  getEventosElegiveis: (params: {
+    ministerioId: string;
+    mes: number;
+    ano: number;
+  }) => Promise<EventoElegivelEscala[]>;
   onRemoveDia: (diaId: string) => Promise<void>;
   onReorderDias: (diaIds: string[]) => Promise<void>;
   onToggleCelula: (diaId: string, funcaoId: string, ocultar: boolean) => void;
   tGrid: ReturnType<typeof useTranslations>;
+}
+
+interface DayEventContextProps {
+  dia: EscalaDia;
+  eventos: EventoElegivelEscala[];
+  canManage: boolean;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+  onChange: (diaId: string, eventoId: string | null) => Promise<void>;
+  tGrid: ReturnType<typeof useTranslations>;
+}
+
+function DayEventContext({
+  dia,
+  eventos,
+  canManage,
+  loading,
+  error,
+  onRetry,
+  onChange,
+  tGrid,
+}: DayEventContextProps) {
+  const [saving, setSaving] = useState(false);
+  const diaDateKey = getEscalaDiaDateKey(dia);
+  const eventosDoDia = eventos.filter(
+    (evento) => getOperationalDateKey(evento.dataInicio) === diaDateKey,
+  );
+  const options = dia.evento
+    ? [
+        dia.evento,
+        ...eventosDoDia.filter((evento) => evento.id !== dia.evento?.id),
+      ]
+    : eventosDoDia;
+
+  async function handleChange(eventoId: string) {
+    setSaving(true);
+    try {
+      await onChange(dia.id, eventoId || null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!canManage) return null;
+
+  return (
+    <div className="mt-2 w-full max-w-[13rem] min-w-0">
+        <div>
+          <select
+            aria-label={tGrid('eventLink')}
+            value={dia.eventoId ?? ''}
+            disabled={saving || loading || error}
+            onChange={(event) => void handleChange(event.target.value)}
+            className="h-8 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-2 text-[11px] text-gray-600 disabled:bg-gray-50"
+          >
+            <option value="">{tGrid('noLinkedEvent')}</option>
+            {options.map((evento) => (
+              <option key={evento.id} value={evento.id}>
+                {evento.titulo}
+              </option>
+            ))}
+          </select>
+          {saving && <p className="mt-1 text-[10px] text-indigo-600">{tGrid('savingEventLink')}</p>}
+          {error && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-1 text-[10px] font-semibold text-red-600 underline"
+            >
+              {tGrid('retryEvents')}
+            </button>
+          )}
+        </div>
+    </div>
+  );
 }
 
 export function EscalaGrid({
@@ -27,6 +144,8 @@ export function EscalaGrid({
   onAddMembro,
   onRemoveMembro,
   onAddDia,
+  onUpdateDiaEvento,
+  getEventosElegiveis,
   onRemoveDia,
   onReorderDias,
   onToggleCelula,
@@ -40,6 +159,10 @@ export function EscalaGrid({
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const dragIdRef = useRef<string | null>(null);
   const [orderedDiaIds, setOrderedDiaIds] = useState<string[] | null>(null);
+  const [eventosElegiveis, setEventosElegiveis] = useState<EventoElegivelEscala[]>([]);
+  const [loadingEventos, setLoadingEventos] = useState(false);
+  const [eventosError, setEventosError] = useState(false);
+  const [eventosRetry, setEventosRetry] = useState(0);
   const baseDias = useMemo(() => getDias(escala), [escala]);
   const dias = useMemo(() => {
     if (!orderedDiaIds) return baseDias;
@@ -50,6 +173,38 @@ export function EscalaGrid({
     if (!sameSet) return baseDias;
     return baseDias.slice().sort((a, b) => orderedDiaIds.indexOf(a.id) - orderedDiaIds.indexOf(b.id));
   }, [baseDias, orderedDiaIds]);
+
+  useEffect(() => {
+    if (!canManage || escala.status === 'ENCERRADA') {
+      return;
+    }
+
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) {
+        setLoadingEventos(true);
+        setEventosError(false);
+      }
+    });
+    getEventosElegiveis({
+      ministerioId: escala.ministerioId,
+      mes: escala.mes,
+      ano: escala.ano,
+    })
+      .then((eventos) => {
+        if (active) setEventosElegiveis(Array.isArray(eventos) ? eventos : []);
+      })
+      .catch(() => {
+        if (active) setEventosError(true);
+      })
+      .finally(() => {
+        if (active) setLoadingEventos(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canManage, escala.ano, escala.mes, escala.ministerioId, escala.status, eventosRetry, getEventosElegiveis]);
 
   if (funcoes.length === 0) {
     return (
@@ -85,6 +240,11 @@ export function EscalaGrid({
     await onReorderDias(nextOrder);
   }
 
+  async function handleUpdateDiaEvento(diaId: string, eventoId: string | null) {
+    await onUpdateDiaEvento(diaId, eventoId);
+    setEventosRetry((value) => value + 1);
+  }
+
   return (
     <>
     <div className="space-y-3 md:hidden">
@@ -104,10 +264,27 @@ export function EscalaGrid({
                   <p className="text-xs font-bold uppercase text-indigo-600">{weekday}</p>
                   <p className="text-sm font-bold text-gray-900">{date}</p>
                   {diaTitle && (
-                    <p className="mt-1 max-w-full whitespace-normal break-words text-xs leading-snug text-gray-500">
-                      {diaTitle}
-                    </p>
+                    <div className="mt-1 flex max-w-full flex-wrap items-center gap-1.5">
+                      <p className="whitespace-normal break-words text-xs leading-snug text-gray-500">
+                        {diaTitle}
+                      </p>
+                      {dia.evento?.status === 'CANCELADO' && (
+                        <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                          {tGrid('eventStatus.CANCELADO')}
+                        </span>
+                      )}
+                    </div>
                   )}
+                  <DayEventContext
+                    dia={dia}
+                    eventos={eventosElegiveis}
+                    canManage={canManage && escala.status !== 'ENCERRADA'}
+                    loading={loadingEventos}
+                    error={eventosError}
+                    onRetry={() => setEventosRetry((value) => value + 1)}
+                    onChange={handleUpdateDiaEvento}
+                    tGrid={tGrid}
+                  />
                 </div>
                 {canManage && (
                   <div className="flex items-center gap-1">
@@ -248,7 +425,7 @@ export function EscalaGrid({
       <table className="min-w-full text-sm">
         <thead>
           <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-28 border-r border-gray-200">
+            <th className="sticky left-0 z-10 w-56 min-w-56 bg-gray-50 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 border-r border-gray-200">
               {tGrid('date')}
             </th>
             {funcoes.map((funcao) => (
@@ -293,7 +470,7 @@ export function EscalaGrid({
                   } : undefined}
                   className={`hover:bg-gray-50/60 transition-colors group ${isDragOver ? 'border-t-2 border-indigo-400' : ''}`}
                 >
-                  <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50/60 px-4 py-3 border-r border-gray-100">
+                  <td className="sticky left-0 z-10 w-56 min-w-56 bg-white group-hover:bg-gray-50/60 px-4 py-3 border-r border-gray-100">
                     <div className="flex items-start justify-between gap-1">
                       <div className="flex items-start gap-1.5">
                         {canDrag && (
@@ -309,10 +486,27 @@ export function EscalaGrid({
                           <div className="text-xs font-bold uppercase text-indigo-600">{weekday}</div>
                           <div className="text-sm font-bold text-gray-900">{date}</div>
                           {diaTitle && (
-                            <div className="mt-1 max-w-[7.5rem] whitespace-normal break-words text-xs leading-snug text-gray-500">
-                              {diaTitle}
+                            <div className="mt-1 flex max-w-[7.5rem] flex-wrap items-center gap-1.5">
+                              <span className="whitespace-normal break-words text-xs leading-snug text-gray-500">
+                                {diaTitle}
+                              </span>
+                              {dia.evento?.status === 'CANCELADO' && (
+                                <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                                  {tGrid('eventStatus.CANCELADO')}
+                                </span>
+                              )}
                             </div>
                           )}
+                          <DayEventContext
+                            dia={dia}
+                            eventos={eventosElegiveis}
+                            canManage={canManage && escala.status !== 'ENCERRADA'}
+                            loading={loadingEventos}
+                            error={eventosError}
+                            onRetry={() => setEventosRetry((value) => value + 1)}
+                            onChange={handleUpdateDiaEvento}
+                            tGrid={tGrid}
+                          />
                         </div>
                       </div>
                       {canManage && (

@@ -161,12 +161,12 @@
       "stats": {
         "ministries": "Leadership ministries",
         "ministriesDesc": "Under your leadership or assistance",
-      "members": "Led members",
-      "membersDesc": "Members in the teams you lead",
-      "birthdays": "Birthdays",
-      "birthdaysDesc": "In your ministries",
-      "nextMonthPending": "Next month schedules",
-      "nextMonthPendingDesc": "Ministries not published yet"
+        "members": "Led members",
+        "membersDesc": "Members in the teams you lead",
+        "birthdays": "Birthdays",
+        "birthdaysDesc": "In your ministries",
+        "nextMonthPending": "Next month schedules",
+        "nextMonthPendingDesc": "Ministries not published yet"
       }
     },
     "noMinistry": {
@@ -427,10 +427,42 @@
       "year": "Year",
       "ministry": "Ministry",
       "ministryPlaceholder": "Select a ministry",
+      "creationMode": "How do you want to start the schedule?",
+      "modes": {
+        "DIAS_SEMANA": {
+          "title": "By weekdays",
+          "description": "Generates recurring days in the month."
+        },
+        "EVENTOS": {
+          "title": "Based on events",
+          "description": "Creates one day for each selected event."
+        },
+        "VAZIA": {
+          "title": "Start without days",
+          "description": "Creates an empty schedule to fill later."
+        }
+      },
       "weekdays": "Weekdays (optional)",
       "weekdaysDesc": "Select the recurring days of the week to generate them automatically.",
       "daysGenerated": "{count} days will be generated automatically",
       "dayGenerated": "{count} day will be generated automatically",
+      "events": "Available events",
+      "eventsDesc": "Only scheduled events marked as requiring a schedule for this ministry are shown.",
+      "selectMinistryFirst": "Select a ministry to load events.",
+      "eventsError": "Unable to load eligible events.",
+      "tryAgain": "Try again",
+      "noEvents": "No events available",
+      "noEventsDesc": "There are no eligible events for this ministry and period.",
+      "eventsSelected": "{count} event(s) selected",
+      "summary": "Summary",
+      "summaryWeekdays": "{count} weekday(s) selected",
+      "summaryEvents": "{count} event(s) will be included",
+      "summaryEmpty": "the schedule will be created without days",
+      "eventTypes": {
+        "GERAL": "General",
+        "MINISTERIO": "Ministry",
+        "REUNIAO_INTERNA": "Internal meeting"
+      },
       "notes": "Notes",
       "notesPlaceholder": "General notes for this schedule...",
       "create": "Create Schedule",
@@ -455,7 +487,25 @@
       "addMember": "+ member",
       "removeDay": "Remove day",
       "removeDayConfirm": "Remove this day and all its assignments?",
-      "dragHandle": "Drag to reorder"
+      "dragHandle": "Drag to reorder",
+      "linkedEvent": "Linked event",
+      "manualDay": "Manual day",
+      "eventLink": "Event linked to the day",
+      "noLinkedEvent": "No linked event",
+      "savingEventLink": "Saving link...",
+      "retryEvents": "Try loading events again",
+      "eventLinkUpdated": "Event link updated.",
+      "eventLinkError": "Unable to update the event link.",
+      "eventTypes": {
+        "GERAL": "General",
+        "MINISTERIO": "Ministry",
+        "REUNIAO_INTERNA": "Internal meeting"
+      },
+      "eventStatus": {
+        "AGENDADO": "Scheduled",
+        "REALIZADO": "Completed",
+        "CANCELADO": "Cancelled"
+      }
     },
     "ai": {
       "title": "AI-Powered Auto Schedule",
@@ -550,6 +600,11 @@
       "statusLabel": "Event Status",
       "typeLabel": "Event Type",
       "ministeriosLabel": "Linked ministries",
+      "ministeriosHelp": "Select the ministries involved in the event.",
+      "generalVisibilityHelp": "For general events, this selection does not change who can view the event.",
+      "ministeriosLoading": "Loading ministries...",
+      "noMinisterios": "No active ministries available.",
+        "requiresScheduleLabel": "Schedule required",
       "descriptionLabel": "Description / Agenda",
       "descriptionPlaceholder": "Additional info or event schedule...",
       "editTooltip": "Edit event",
