@@ -40,6 +40,7 @@ Represents an organization using the platform.
 - `subscriptionStatus` / `subscription_status`
 - `memberLimit` / `member_limit`
 - `active` / `is_active`
+- `usaEscalas` / `uses_schedules`, defaults to `true`
 - `email`
 - `phone`
 - `language`
@@ -172,6 +173,7 @@ Connects members to ministries and stores contextual leadership.
 - `ministryId` / `ministry_id`
 - `memberId` / `member_id`
 - `role`: `LEADER`, `ASSISTANT_LEADER`, or `MEMBER`
+- `podeSerEscalado` / `can_be_scheduled`, defaults to `true`
 - Composite key: `[ministryId, memberId]`.
 
 Rules:
@@ -179,6 +181,8 @@ Rules:
 - There is no separate `MinistryLeader` entity as source of truth.
 - Leadership is resolved through `MinistryMember.role`.
 - A `User` with `role = BASIC` gains contextual permissions when its linked `memberId` has `LEADER` or `ASSISTANT_LEADER` in the ministry.
+- Schedule eligibility belongs to the ministry membership, not to the global member.
+- Existing ministries and memberships default to schedule-enabled for backward compatibility.
 
 ### 9. MinistryPosition (`tb_ministry_position`)
 
@@ -199,6 +203,11 @@ Defines which positions a member can serve in a ministry.
 - `ministryId` / `ministry_id`
 - `memberId` / `member_id`
 - `positionId` / `position_id`
+
+Rules:
+
+- An empty position list means an eligible member can serve in every ministry position.
+- Position records remain preserved while `can_be_scheduled = false`, but are ignored by schedule assignment.
 
 ### 11. Schedule (`tb_schedule`)
 
@@ -284,6 +293,7 @@ Rules:
 - `INTERNAL_MEETING` events can be linked to none, one, or many ministries.
 - `requerEscala` distinguishes a ministry involved in the event from one that must prepare a schedule.
 - Existing relations and legacy API payloads default to `requerEscala = false`; there is no automatic backfill to `true`.
+- `requerEscala = true` is valid only when the linked ministry has `uses_schedules = true`.
 - The frontend should render ministry names only when the relation exists.
 
 ### 17. AuditLog (`tb_audit_log`)

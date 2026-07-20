@@ -258,6 +258,7 @@ model Ministerio {
   nome      String   @map("name")
   descricao String?  @map("description")
   ativo     Boolean  @default(true) @map("is_active")
+  usaEscalas Boolean @default(true) @map("uses_schedules")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -268,6 +269,7 @@ model Ministerio {
   eventos EventoMinisterio[]
 
   @@index([tenantId])
+  @@index([tenantId, ativo, usaEscalas])
   @@map("tb_ministry")
 }
 
@@ -292,12 +294,14 @@ model MinisterioMembro {
   ministerioId String       @map("ministry_id")
   membroId     String       @map("member_id")
   role         MinistryRole @default(MEMBER)
+  podeSerEscalado Boolean   @default(true) @map("can_be_scheduled")
 
   ministerio         Ministerio               @relation(fields: [ministerioId], references: [id])
   membro             Membro                   @relation(fields: [membroId], references: [id])
   funcoesDisponiveis MinisterioMembroFuncao[]
 
   @@id([ministerioId, membroId])
+  @@index([ministerioId, podeSerEscalado])
   @@map("tb_ministry_member")
 }
 

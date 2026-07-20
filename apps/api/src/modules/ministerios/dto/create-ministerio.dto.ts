@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsNotEmpty, IsBoolean } from 'class-validator';
 
 export class CreateMinisterioDto {
   @IsString()
@@ -13,4 +13,8 @@ export class CreateMinisterioDto {
   @IsString({ each: true })
   @IsOptional()
   funcoes?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  usaEscalas?: boolean;
 }

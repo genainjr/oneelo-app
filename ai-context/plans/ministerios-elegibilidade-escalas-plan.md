@@ -1,12 +1,23 @@
 # Plano - Elegibilidade de Ministérios e Membros para Escalas
 
-Status geral: planejado
+Status geral: implementação e auditoria de produção validadas; aguardando rollout
 
 Criação: 2026-07-19
 
 Branch de planejamento: `docs/event-batch-and-schedule-eligibility-plans`
 
 Branch sugerida para implementação: `feature/ministerios-elegibilidade-escalas`
+
+Execução em 2026-07-20:
+
+- branch criada a partir de `development` atualizada;
+- etapas 1 a 6 implementadas;
+- migration aditiva aplicada e validada no banco local;
+- API validada com 77 testes e build;
+- web validada com build de produção;
+- roteiro manual aprovado pelo usuário em 2026-07-20;
+- auditoria de produção concluída em modo somente leitura;
+- migration `20260720002000_add_schedule_eligibility` aplicada e validada em produção.
 
 Origem: necessidade identificada no Ministério Infantil e em ministérios que não utilizam escalas.
 
@@ -272,7 +283,7 @@ type UpdateMembroMinisterioInput = {
 
 Decisão para o MVP:
 
-- bloquear a desativação enquanto existir evento futuro agendado com `requerEscala = true`;
+- bloquear a desativação enquanto existir evento agendado, do dia atual em diante no fuso `America/Sao_Paulo`, com `requerEscala = true`;
 - informar os eventos conflitantes e orientar a desmarcação;
 - não alterar relações automaticamente.
 
@@ -338,11 +349,30 @@ Decisão para o MVP:
 
 ### Etapa 0 - Auditoria e baseline
 
-- [ ] Confirmar `development` atualizada e criar branch de implementação.
-- [ ] Registrar baseline de testes e builds.
-- [ ] Auditar quantidade de ministérios, vínculos e funções em produção somente leitura.
-- [ ] Auditar eventos futuros com `requerEscala = true`.
-- [ ] Confirmar que os defaults `true` preservam o comportamento atual.
+- [x] Confirmar `development` atualizada e criar branch de implementação.
+- [x] Registrar baseline de testes e builds.
+- [x] Auditar quantidade de ministérios, vínculos e funções em produção somente leitura.
+- [x] Auditar eventos agendados do dia atual em diante com `requerEscala = true`.
+- [x] Confirmar no banco local que os defaults `true` preservam o comportamento atual.
+
+Auditoria somente leitura em produção em 2026-07-20:
+
+- 19 ministérios, todos ativos;
+- 227 vínculos ministeriais;
+- 16 funções e 39 vínculos com funções específicas;
+- 4 escalas existentes, distribuídas em 3 ministérios;
+- nenhum evento agendado do dia atual em diante com `requerEscala = true`;
+- as colunas `uses_schedules` e `can_be_scheduled` ainda não existem em produção;
+- naquele momento, a migration aditiva estava pendente e projetaria os 19 ministérios e 227 vínculos atuais como habilitados, por causa dos defaults `true`;
+- nenhuma escrita, migration ou correção foi executada durante a auditoria.
+
+Validação pós-migration em produção em 2026-07-20:
+
+- Prisma confirmou as 11 migrations aplicadas e o schema atualizado;
+- os 19 ministérios existentes permaneceram com `uses_schedules = true`;
+- os 227 vínculos existentes permaneceram com `can_be_scheduled = true`;
+- as 4 escalas existentes foram preservadas;
+- nenhum relacionamento futuro inválido entre evento e ministério sem escalas foi encontrado.
 
 Critério de saída:
 
@@ -350,12 +380,12 @@ Critério de saída:
 
 ### Etapa 1 - Schema, migration e contratos
 
-- [ ] Adicionar os dois campos e índices no Prisma.
-- [ ] Criar migration aditiva sem backfill manual.
-- [ ] Atualizar DTOs de ministério e vínculo ministerial.
-- [ ] Atualizar selects, includes, tipos e respostas.
-- [ ] Preservar contrato quando campos novos estiverem ausentes.
-- [ ] Validar Prisma e migration local.
+- [x] Adicionar os dois campos e índices no Prisma.
+- [x] Criar migration aditiva sem backfill manual.
+- [x] Atualizar DTOs de ministério e vínculo ministerial.
+- [x] Atualizar selects, includes, tipos e respostas.
+- [x] Preservar contrato quando campos novos estiverem ausentes.
+- [x] Validar Prisma e migration local.
 
 Critério de saída:
 
@@ -363,12 +393,12 @@ Critério de saída:
 
 ### Etapa 2 - Regras do ministério
 
-- [ ] Persistir `usaEscalas` em create e update.
-- [ ] Bloquear desativação com eventos futuros que ainda exigem escala.
-- [ ] Filtrar ministérios na criação de novas escalas.
-- [ ] Rejeitar criação direta de escala para ministério desabilitado.
-- [ ] Rejeitar `requerEscala = true` em ministério desabilitado.
-- [ ] Preservar leitura e manutenção das escalas existentes.
+- [x] Persistir `usaEscalas` em create e update.
+- [x] Bloquear desativação com eventos agendados do dia atual em diante que ainda exigem escala.
+- [x] Filtrar ministérios na criação de novas escalas.
+- [x] Rejeitar criação direta de escala para ministério que não utiliza escalas.
+- [x] Rejeitar `requerEscala = true` em ministério que não utiliza escalas.
+- [x] Preservar leitura e manutenção das escalas existentes.
 
 Critério de saída:
 
@@ -376,14 +406,14 @@ Critério de saída:
 
 ### Etapa 3 - Elegibilidade do membro
 
-- [ ] Persistir `podeSerEscalado` ao adicionar e atualizar membro.
-- [ ] Permitir gestão por `ADMIN`, `STAFF` e liderança contextual autorizada.
-- [ ] Filtrar candidatos na web.
-- [ ] Validar tenant do dia e da escala na API.
-- [ ] Validar vínculo com o ministério, membro ativo e elegibilidade.
-- [ ] Validar pertencimento da função ao ministério.
-- [ ] Aplicar regra de funções específicas ou todas quando vazias.
-- [ ] Cobrir chamadas diretas que tentem burlar a web.
+- [x] Persistir `podeSerEscalado` ao adicionar e atualizar membro.
+- [x] Permitir gestão por `ADMIN`, `STAFF` e liderança contextual autorizada.
+- [x] Filtrar candidatos na web.
+- [x] Validar tenant do dia e da escala na API.
+- [x] Validar vínculo com o ministério, membro ativo e elegibilidade.
+- [x] Validar pertencimento da função ao ministério.
+- [x] Aplicar regra de funções específicas ou todas quando vazias.
+- [x] Cobrir chamadas diretas que tentem burlar a web.
 
 Critério de saída:
 
@@ -391,13 +421,13 @@ Critério de saída:
 
 ### Etapa 4 - Gestão de ministério na web
 
-- [ ] Adicionar controle do ministério na aba **Informações**.
-- [ ] Adicionar controle do membro no fluxo de inclusão.
-- [ ] Adicionar controle no detalhe expandido do membro.
-- [ ] Ocultar contexto de escala quando o ministério não usa escalas.
-- [ ] Preservar funções ao desmarcar elegibilidade.
-- [ ] Implementar avisos de conflitos sem exclusão automática.
-- [ ] Ajustar estados mobile, loading, erro e sucesso.
+- [x] Adicionar controle do ministério na aba **Informações**.
+- [x] Adicionar controle do membro no fluxo de inclusão.
+- [x] Adicionar controle no detalhe expandido do membro.
+- [x] Ocultar contexto de escala quando o ministério não usa escalas.
+- [x] Preservar funções ao desmarcar elegibilidade.
+- [x] Implementar avisos de conflitos sem exclusão automática.
+- [x] Validar manualmente os estados mobile, loading, erro e sucesso.
 
 Critério de saída:
 
@@ -405,12 +435,12 @@ Critério de saída:
 
 ### Etapa 5 - Integração com Agenda e Escalas
 
-- [ ] Expor `usaEscalas` nos ministérios usados pelo formulário de evento.
-- [ ] Impedir **Precisa de escala** para ministério desabilitado.
-- [ ] Limpar `requerEscala` no estado do formulário quando necessário.
-- [ ] Filtrar seletor de ministério na criação da escala.
-- [ ] Manter escalas existentes acessíveis.
-- [ ] Adicionar mensagens específicas para bloqueios da API.
+- [x] Expor `usaEscalas` nos ministérios usados pelo formulário de evento.
+- [x] Impedir **Precisa de escala** para ministério que não utiliza escalas.
+- [x] Limpar `requerEscala` no payload do formulário quando necessário.
+- [x] Filtrar seletor de ministério na criação da escala.
+- [x] Manter escalas existentes acessíveis.
+- [x] Adicionar mensagens específicas para bloqueios da API.
 
 Critério de saída:
 
@@ -418,13 +448,13 @@ Critério de saída:
 
 ### Etapa 6 - Visualização da relação de membros
 
-- [ ] Adicionar **Ver membros** nos cards da visualização.
-- [ ] Carregar `GET /api/ministerios/:id` sob demanda e cachear resultado.
-- [ ] Separar liderança, equipe de escala e demais membros.
-- [ ] Adaptar os grupos quando o ministério não utiliza escalas.
-- [ ] Exibir papel e funções sem controles de edição.
-- [ ] Implementar loading, erro, retry e estado vazio por card.
-- [ ] Validar desktop e mobile com ministério de muitos membros.
+- [x] Adicionar **Ver membros** nos cards da visualização.
+- [x] Carregar `GET /api/ministerios/:id` sob demanda e cachear resultado.
+- [x] Separar liderança, equipe de escala e demais membros.
+- [x] Adaptar os grupos quando o ministério não utiliza escalas.
+- [x] Exibir papel e funções sem controles de edição.
+- [x] Implementar loading, erro, retry e estado vazio por card.
+- [x] Validar manualmente desktop e mobile com ministério de muitos membros.
 
 Critério de saída:
 
@@ -432,15 +462,15 @@ Critério de saída:
 
 ### Etapa 7 - Testes, documentação e rollout
 
-- [ ] Testar defaults e migration sem perda de dados.
-- [ ] Testar ministério com e sem escala.
-- [ ] Testar membro escalável, não escalável, todas as funções e funções específicas.
-- [ ] Testar `ADMIN`, `STAFF`, líder `BASIC` e `BASIC` comum.
-- [ ] Testar isolamento entre tenants e tentativa por IDs externos.
-- [ ] Testar conflito de evento futuro ao desativar escala do ministério.
-- [ ] Testar escalas históricas depois da desativação.
-- [ ] Executar testes, builds, Prisma e `git diff --check`.
-- [ ] Atualizar modelos, regras e checklist com resultados reais.
+- [x] Testar defaults e migration sem perda de dados no banco local.
+- [x] Testar ministério com e sem escala.
+- [x] Testar membro escalável, não escalável, todas as funções e funções específicas.
+- [x] Validar manualmente `ADMIN`, `STAFF`, líder `BASIC` e `BASIC` comum.
+- [x] Testar isolamento entre tenants e tentativa por IDs externos na inclusão da escala.
+- [x] Testar conflito de evento agendado do dia atual em diante ao desativar escala do ministério.
+- [x] Validar manualmente escalas históricas depois de desmarcar **Este ministério utiliza escalas**.
+- [x] Executar testes, builds, Prisma e `git diff --check`.
+- [x] Atualizar modelos, regras e checklist com resultados reais.
 
 Critério de saída:
 
@@ -463,7 +493,7 @@ Critério de saída:
 4. Restringir um professor a uma função e testar outra coluna.
 5. Confirmar bloqueio equivalente por chamada direta à API.
 6. Desativar escalas em um ministério sem histórico e conferir Agenda e Escalas.
-7. Tentar desativar um ministério com evento futuro que exige escala.
+7. Tentar desativar um ministério com evento agendado no dia atual ou futuro que exige escala.
 8. Confirmar que escalas antigas continuam visíveis.
 9. Reativar o ministério e conferir configurações preservadas.
 10. Abrir a visualização e conferir os grupos e contagens.
@@ -500,7 +530,7 @@ Mitigação: validar vínculo, campo e função no `EscalasService`.
 
 ### Desativar ministério com demandas futuras
 
-Mitigação: bloquear enquanto houver evento futuro agendado com `requerEscala = true` e não alterar relações silenciosamente.
+Mitigação: bloquear enquanto houver evento agendado do dia atual em diante com `requerEscala = true` e não alterar relações silenciosamente.
 
 ### Payload excessivo na visualização
 

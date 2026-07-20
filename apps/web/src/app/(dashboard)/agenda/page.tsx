@@ -125,6 +125,9 @@ export default function AgendaPage() {
   }
 
   function toggleRequerEscala(ministerioId: string) {
+    const ministerio = ministeriosAtivos.find((item) => item.id === ministerioId);
+    if (!ministerio?.usaEscalas) return;
+
     setMinisteriosConfig((current) =>
       current.map((config) => (config.ministerioId === ministerioId ? { ...config, requerEscala: !config.requerEscala } : config)),
     );
@@ -143,7 +146,10 @@ export default function AgendaPage() {
         dataFim: dataFim ? new Date(dataFim).toISOString() : undefined,
         local: local.trim() || undefined,
         status,
-        ministerios: ministeriosConfig,
+        ministerios: ministeriosConfig.map((config) => ({
+          ...config,
+          requerEscala: config.requerEscala && Boolean(ministeriosAtivos.find((ministerio) => ministerio.id === config.ministerioId)?.usaEscalas),
+        })),
       };
 
       if (selectedEvento) {
@@ -570,7 +576,7 @@ export default function AgendaPage() {
                               <span className="min-w-0 flex-1 text-sm font-medium leading-5">{ministerio.nome}</span>
                             </label>
 
-                            {checked && (
+                            {checked && ministerio.usaEscalas && (
                               <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-indigo-800">
                                 <input
                                   type="checkbox"
@@ -600,6 +606,9 @@ export default function AgendaPage() {
                                 </span>
                                 <span className="block font-semibold">{t('modal.requiresScheduleLabel')}</span>
                               </label>
+                            )}
+                            {checked && !ministerio.usaEscalas && (
+                              <span className="shrink-0 text-[11px] font-semibold text-gray-500">{t('modal.scheduleNotUsedLabel')}</span>
                             )}
                           </div>
                         );

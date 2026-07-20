@@ -17,4 +17,8 @@ export class UpdateMinisterioDto {
   @IsString({ each: true })
   @IsOptional()
   funcoes?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  usaEscalas?: boolean;
 }

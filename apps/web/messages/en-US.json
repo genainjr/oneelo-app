@@ -282,6 +282,14 @@
     "title": "Ministries",
     "description": "Manage service teams, church departments, leaders and participants.",
     "reload": "Reload",
+    "scheduleEligibility": {
+      "ministryLabel": "This ministry uses schedules",
+      "ministryHelp": "When disabled, the ministry is excluded from new schedules and cannot request a schedule in events.",
+      "memberLabel": "Can be scheduled in this ministry",
+      "memberShortLabel": "Can be scheduled",
+      "memberHelp": "Controls whether this member appears when assigning this ministry's schedules.",
+      "historyWarning": "The {count} existing schedule(s) will be preserved and remain accessible."
+    },
     "view": {
       "pageTitle": "Ministries View",
       "pageDescription": "Review ministries in a read-only view, with leaders, roles and operational summary.",
@@ -309,8 +317,19 @@
       },
       "sections": {
         "leaders": "Leadership",
-        "functions": "Roles"
+        "functions": "Roles",
+        "scheduleTeam": "Service team",
+        "otherMembers": "Members",
+        "members": "Members"
       },
+      "showMembers": "Show members",
+      "hideMembers": "Minimize members",
+      "loadingMembers": "Loading members...",
+      "membersLoadError": "Members could not be loaded.",
+      "retryMembers": "Try again",
+      "noMembersInGroup": "No members in this group.",
+      "allFunctions": "Can serve in all roles",
+      "doesNotUseSchedules": "Does not use schedules",
       "noDescription": "No description registered.",
       "noFunctions": "No roles registered.",
       "functionsSingular": "role",
@@ -605,6 +624,7 @@
       "ministeriosLoading": "Loading ministries...",
       "noMinisterios": "No active ministries available.",
         "requiresScheduleLabel": "Schedule required",
+        "scheduleNotUsedLabel": "No schedule",
       "descriptionLabel": "Description / Agenda",
       "descriptionPlaceholder": "Additional info or event schedule...",
       "editTooltip": "Edit event",

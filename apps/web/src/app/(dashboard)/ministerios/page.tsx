@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { TabsShell, TabPanel } from '@/components/app/tabs-shell';
 import { InputField, TextareaField } from '@/components/app/form-field';
+import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
 import { Ministerio, Membro, AuthUser, MinistryRole } from '@/types';
 
@@ -55,6 +56,7 @@ export default function MinisteriosPage() {
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [usaEscalas, setUsaEscalas] = useState(true);
   const [modalTab, setModalTab] = useState<'info' | 'membros' | 'funcoes'>('info');
 
   const [funcoes, setFuncoes] = useState<string[]>([]);
@@ -66,12 +68,14 @@ export default function MinisteriosPage() {
 
   const [expandedMembro, setExpandedMembro] = useState<string | null>(null);
   const [funcoesPorMembro, setFuncoesPorMembro] = useState<Record<string, string[]>>({});
+  const [elegibilidadePorMembro, setElegibilidadePorMembro] = useState<Record<string, boolean>>({});
   const [savingFuncoesMembro, setSavingFuncoesMembro] = useState<string | null>(null);
 
   const [allMembros, setAllMembros] = useState<Membro[]>([]);
   const [selectedMembroToAdd, setSelectedMembroToAdd] = useState('');
   const [membroSearchToAdd, setMembroSearchToAdd] = useState('');
   const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<MinistryRole>('MEMBER');
+  const [podeSerEscaladoToAdd, setPodeSerEscaladoToAdd] = useState(true);
 
   async function fetchDetails(id: string) {
     setLoadingDetails(true);
@@ -112,11 +116,13 @@ export default function MinisteriosPage() {
       if (selectedMinisterio) {
         setNome(selectedMinisterio.nome);
         setDescricao(selectedMinisterio.descricao || '');
+        setUsaEscalas(selectedMinisterio.usaEscalas);
         setModalTab('info');
         fetchDetails(selectedMinisterio.id);
       } else {
         setNome('');
         setDescricao('');
+        setUsaEscalas(true);
         setFuncoes([]);
         setModalTab('info');
         setDetailedInfo(null);
@@ -130,10 +136,13 @@ export default function MinisteriosPage() {
     }
     if (detailedInfo?.membros) {
       const map: Record<string, string[]> = {};
+      const eligibilityMap: Record<string, boolean> = {};
       for (const m of detailedInfo.membros) {
         map[m.membroId] = (m.funcoesDisponiveis ?? []).map((fd: any) => fd.funcaoId);
+        eligibilityMap[m.membroId] = m.podeSerEscalado;
       }
       setFuncoesPorMembro(map);
+      setElegibilidadePorMembro(eligibilityMap);
     }
   }, [detailedInfo]);
 
@@ -143,9 +152,9 @@ export default function MinisteriosPage() {
     setFeedback(null);
     try {
       if (selectedMinisterio) {
-        await updateMinisterio(selectedMinisterio.id, { nome, descricao });
+        await updateMinisterio(selectedMinisterio.id, { nome, descricao, usaEscalas });
       } else {
-        await createMinisterio({ nome, descricao, funcoes: funcoes.filter(Boolean) });
+        await createMinisterio({ nome, descricao, funcoes: funcoes.filter(Boolean), usaEscalas });
       }
       setIsModalOpen(false);
       setSelectedMinisterio(null);
@@ -210,10 +219,12 @@ export default function MinisteriosPage() {
         selectedMinisterio.id,
         selectedMembroToAdd,
         roleToAdd,
+        detailedInfo?.usaEscalas ? podeSerEscaladoToAdd : true,
       );
       setSelectedMembroToAdd('');
       setMembroSearchToAdd('');
       setSelectedRoleToAdd('MEMBER');
+      setPodeSerEscaladoToAdd(true);
       await fetchDetails(selectedMinisterio.id);
       await loadOptions(selectedMinisterio.id);
     } catch (err: any) {
@@ -248,7 +259,13 @@ export default function MinisteriosPage() {
     setSavingFuncoesMembro(membroId);
     setFeedback(null);
     try {
-      await updateMembroRole(selectedMinisterio.id, membroId, undefined, funcoesPorMembro[membroId] ?? []);
+      await updateMembroRole(
+        selectedMinisterio.id,
+        membroId,
+        undefined,
+        funcoesPorMembro[membroId] ?? [],
+        elegibilidadePorMembro[membroId],
+      );
       await fetchDetails(selectedMinisterio.id);
       setExpandedMembro(null);
     } catch (err: any) {
@@ -318,7 +335,7 @@ export default function MinisteriosPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <EntityCard key={i} loading />
           ))}
@@ -326,14 +343,14 @@ export default function MinisteriosPage() {
       ) : ministerios.length === 0 ? (
         <EmptyState title={t('noMinistries')} description={t('noMinistriesDesc')} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {ministerios.map((m) => {
             const numMembros = m._count?.membros ?? 0;
             const isAtivo = m.ativo;
             const cardLeaders = (m.membros ?? [])
               .filter((mm) => mm.role === 'LEADER' || mm.role === 'ASSISTANT_LEADER')
               .map((mm) => ({
-                nome: mm.membro?.nome,
+                nome: getMemberDisplayName(mm.membro),
                 role: mm.role,
               }))
               .filter((item): item is { nome: string; role: MinistryRole } => Boolean(item.nome))
@@ -353,36 +370,35 @@ export default function MinisteriosPage() {
                     {isAtivo ? t('status.active') : t('status.archived')}
                   </span>
                   <span className="inline-flex items-center rounded-lg border border-gray-100 bg-gray-50 px-2 py-1 text-[11px] font-semibold text-gray-600">
-                    {numMembros === 1 ? t('card.members', { count: numMembros }) : t('card.members_plural', { count: numMembros })}
+                    {numMembros} {numMembros === 1 ? t('view.membersSingular') : t('view.membersPlural')}
                   </span>
                 </div>
                 <div className="space-y-2 pr-28">
                   <h3 className="text-base font-bold text-gray-800 tracking-tight">{m.nome}</h3>
-                  <p className="text-sm text-gray-500 line-clamp-2 h-10">{m.descricao || 'Sem descrição cadastrada.'}</p>
+                  <p className="text-sm text-gray-500 line-clamp-2 h-10">{m.descricao || t('view.noDescription')}</p>
                 </div>
                 <div className="border-t border-gray-100 my-4 pt-3 text-xs text-gray-500 font-medium">
-                  <div>
-                    <p className="mb-1.5 text-xs font-semibold text-gray-600">{t('card.leadership')}</p>
-                    {cardLeaders.length > 0 ? (
-                      <div className="space-y-1">
-                        {cardLeaders.map((leader) => (
-                          <div
-                            key={`${leader.role}-${leader.nome}`}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1"
-                            title={`${leader.nome} - ${t(`members.roles.${leader.role}` as any)}`}
-                          >
-                            <span className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-indigo-800">
-                              {leader.nome}
-                            </span>
-                            <span className="shrink-0 rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600">
-                              {t(`members.roles.${leader.role}` as any)}
-                            </span>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <p className="mb-1.5 text-xs font-semibold text-gray-600">{t('view.sections.leaders')}</p>
+                      <div className="mt-2 space-y-1">
+                        {cardLeaders.length > 0 ? cardLeaders.map((leader) => (
+                          <div key={`${leader.role}-${leader.nome}`} className="flex items-start justify-between gap-2">
+                            <span className="min-w-0 flex-1 whitespace-normal break-words text-sm font-semibold leading-snug text-gray-800">{leader.nome}</span>
+                            <span className="shrink-0 pt-0.5 text-[11px] font-semibold text-indigo-600">{t(`members.roles.${leader.role}` as any)}</span>
                           </div>
-                        ))}
+                        )) : <p className="text-sm text-gray-400">{t('card.noLeader')}</p>}
                       </div>
-                    ) : (
-                      <span className="text-gray-400">{t('card.noLeader')}</span>
-                    )}
+                    </div>
+
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <p className="mb-1.5 text-xs font-semibold text-gray-600">{t('view.sections.functions')}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(m.funcoes || []).length > 0 ? m.funcoes!.map((funcao) => (
+                          <span key={funcao.id} className="inline-flex items-center rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{funcao.nome}</span>
+                        )) : <p className="text-sm text-gray-400">{t('view.noFunctions')}</p>}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
@@ -420,7 +436,7 @@ export default function MinisteriosPage() {
             tabs={[
               { id: 'info', label: t('modal.tabs.info') },
               { id: 'membros', label: t('modal.tabs.members') },
-              { id: 'funcoes', label: t('modal.tabs.functions') },
+              ...(usaEscalas ? [{ id: 'funcoes', label: t('modal.tabs.functions') }] : []),
             ]}
             activeTab={modalTab}
             onTabChange={(id) => setModalTab(id as 'info' | 'membros' | 'funcoes')}
@@ -445,6 +461,20 @@ export default function MinisteriosPage() {
                   placeholder={t('modal.fields.descriptionPlaceholder')}
                   rows={3}
                 />
+                {canManage && (
+                  <>
+                    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <input type="checkbox" checked={usaEscalas} onChange={(event) => setUsaEscalas(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                      <span>
+                        <span className="block text-sm font-semibold text-gray-800">{t('scheduleEligibility.ministryLabel')}</span>
+                        <span className="mt-0.5 block text-xs leading-5 text-gray-500">{t('scheduleEligibility.ministryHelp')}</span>
+                      </span>
+                    </label>
+                    {!usaEscalas && (detailedInfo?._count?.escalas ?? 0) > 0 && (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium leading-5 text-amber-800">{t('scheduleEligibility.historyWarning', { count: detailedInfo?._count?.escalas ?? 0 })}</p>
+                    )}
+                  </>
+                )}
               </form>
             </TabPanel>
 
@@ -482,6 +512,12 @@ export default function MinisteriosPage() {
                           {canManage && <option value="LEADER">{t('members.roles.LEADER')}</option>}
                         </select>
                       </div>
+                      {detailedInfo?.usaEscalas && (
+                        <label className="flex min-h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600">
+                          <input type="checkbox" checked={podeSerEscaladoToAdd} onChange={(event) => setPodeSerEscaladoToAdd(event.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                          {t('scheduleEligibility.memberShortLabel')}
+                        </label>
+                      )}
                       <button
                         type="button"
                         onClick={handleAddMembro}
@@ -530,7 +566,7 @@ export default function MinisteriosPage() {
                                   {canManage && <option value="LEADER">{t('members.roles.LEADER')}</option>}
                                 </select>
                               )}
-                              {ministerioFuncoes.length > 0 && (
+                              {detailedInfo?.usaEscalas && (
                                 <button
                                   onClick={() => setExpandedMembro(isExpanded ? null : item.membroId)}
                                   className={`p-1 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
@@ -555,6 +591,21 @@ export default function MinisteriosPage() {
                           </div>
                           {isExpanded && (
                             <div className="px-4 py-3 bg-indigo-50/40">
+                              {detailedInfo?.usaEscalas && (
+                                <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-indigo-100 bg-white p-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={elegibilidadePorMembro[item.membroId] ?? true}
+                                    onChange={(event) => setElegibilidadePorMembro((current) => ({ ...current, [item.membroId]: event.target.checked }))}
+                                    disabled={!canManageSelectedMinisterio}
+                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600"
+                                  />
+                                  <span>
+                                    <span className="block text-xs font-bold text-gray-700">{t('scheduleEligibility.memberLabel')}</span>
+                                    <span className="mt-0.5 block text-xs leading-5 text-gray-500">{t('scheduleEligibility.memberHelp')}</span>
+                                  </span>
+                                </label>
+                              )}
                               <p className="text-xs font-bold text-gray-500 uppercase mb-2">{t('members.availableFunctions')}</p>
                               <div className="flex flex-wrap gap-2 mb-3">
                                 {ministerioFuncoes.map((f: any) => {
@@ -660,6 +711,13 @@ export default function MinisteriosPage() {
                 placeholder={t('modal.fields.descriptionPlaceholder')}
                 rows={3}
               />
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <input type="checkbox" checked={usaEscalas} onChange={(event) => setUsaEscalas(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                <span>
+                  <span className="block text-sm font-semibold text-gray-800">{t('scheduleEligibility.ministryLabel')}</span>
+                  <span className="mt-0.5 block text-xs leading-5 text-gray-500">{t('scheduleEligibility.ministryHelp')}</span>
+                </span>
+              </label>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-500 uppercase">{t('functions.newFunction')}</label>
                 <p className="text-xs text-gray-400">{t('functions.description')}</p>
