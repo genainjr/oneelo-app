@@ -439,6 +439,7 @@ Critério de saída:
 - [x] Impedir **Precisa de escala** para ministério que não utiliza escalas.
 - [x] Limpar `requerEscala` no payload do formulário quando necessário.
 - [x] Filtrar seletor de ministério na criação da escala.
+- [x] Considerar somente ministérios que utilizam escalas no indicador de pendências do próximo mês e ocultá-lo para lideranças sem ministério escalável.
 - [x] Manter escalas existentes acessíveis.
 - [x] Adicionar mensagens específicas para bloqueios da API.
 
