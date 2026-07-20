@@ -282,6 +282,14 @@
     "title": "Ministérios",
     "description": "Gira as equipas de serviço, departamentos da igreja, líderes e participantes.",
     "reload": "Recarregar",
+    "scheduleEligibility": {
+      "ministryLabel": "Este ministério utiliza escalas",
+      "ministryHelp": "Quando desmarcado, o ministério não aparece na criação de novas escalas nem pode solicitar escala em eventos.",
+      "memberLabel": "Pode ser escalado neste ministério",
+      "memberShortLabel": "Pode ser escalado",
+      "memberHelp": "Define se este membro aparece na seleção das escalas deste ministério.",
+      "historyWarning": "As {count} escala(s) já criadas serão preservadas e continuarão acessíveis."
+    },
     "view": {
       "pageTitle": "Visualização de Ministérios",
       "pageDescription": "Consulte os ministérios em leitura rápida, com líderes, funções e resumo operacional.",
@@ -309,8 +317,19 @@
       },
       "sections": {
         "leaders": "Lideranças",
-        "functions": "Funções"
+        "functions": "Funções",
+        "scheduleTeam": "Equipa de serviço",
+        "otherMembers": "Membros",
+        "members": "Membros"
       },
+      "showMembers": "Mostrar membros",
+      "hideMembers": "Minimizar membros",
+      "loadingMembers": "A carregar membros...",
+      "membersLoadError": "Não foi possível carregar os membros.",
+      "retryMembers": "Tentar novamente",
+      "noMembersInGroup": "Nenhum membro neste grupo.",
+      "allFunctions": "Pode atuar em todas as funções",
+      "doesNotUseSchedules": "Não utiliza escalas",
       "noDescription": "Sem descrição registada.",
       "noFunctions": "Nenhuma função registada.",
       "functionsSingular": "função",
@@ -605,6 +624,7 @@
       "ministeriosLoading": "A carregar ministérios...",
       "noMinisterios": "Nenhum ministério ativo disponível.",
         "requiresScheduleLabel": "Precisa de escala",
+        "scheduleNotUsedLabel": "Não utiliza escala",
       "descriptionLabel": "Descrição / Pontos de Pauta",
       "descriptionPlaceholder": "Informações adicionais ou cronograma do evento...",
       "editTooltip": "Editar evento",

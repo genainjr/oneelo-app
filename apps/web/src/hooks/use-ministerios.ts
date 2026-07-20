@@ -8,6 +8,7 @@ export interface CreateMinisterioDto {
   nome: string;
   descricao?: string;
   funcoes?: string[];
+  usaEscalas?: boolean;
 }
 
 export interface UpdateMinisterioDto {
@@ -15,6 +16,7 @@ export interface UpdateMinisterioDto {
   descricao?: string;
   ativo?: boolean;
   funcoes?: string[];
+  usaEscalas?: boolean;
 }
 
 export function useMinisterios() {
@@ -56,8 +58,8 @@ export function useMinisterios() {
     await fetch();
   }
 
-  async function addMembro(ministerioId: string, membroId: string, role?: MinistryRole) {
-    await api.post(`/api/ministerios/${ministerioId}/membros`, { membroId, role });
+  async function addMembro(ministerioId: string, membroId: string, role?: MinistryRole, podeSerEscalado?: boolean) {
+    await api.post(`/api/ministerios/${ministerioId}/membros`, { membroId, role, podeSerEscalado });
     await fetch();
   }
 
@@ -66,8 +68,8 @@ export function useMinisterios() {
     await fetch();
   }
 
-  async function updateMembroRole(ministerioId: string, membroId: string, role?: MinistryRole, funcaoIds?: string[]) {
-    await api.patch(`/api/ministerios/${ministerioId}/membros/${membroId}`, { role, funcaoIds });
+  async function updateMembroRole(ministerioId: string, membroId: string, role?: MinistryRole, funcaoIds?: string[], podeSerEscalado?: boolean) {
+    await api.patch(`/api/ministerios/${ministerioId}/membros/${membroId}`, { role, funcaoIds, podeSerEscalado });
     await fetch();
   }
 

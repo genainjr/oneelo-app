@@ -43,7 +43,7 @@ describe('EventosService', () => {
     };
     const prisma = {
       ministerio: {
-        findMany: jest.fn().mockResolvedValue([{ id: ministerioId }]),
+        findMany: jest.fn().mockResolvedValue([{ id: ministerioId, usaEscalas: true }]),
       },
       evento: {
         create: createEvento,
@@ -136,6 +136,27 @@ describe('EventosService', () => {
         user,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita pedido de escala para ministerio que nao utiliza escalas', async () => {
+    const { service, prisma } = createService();
+    prisma.ministerio.findMany.mockResolvedValue([{ id: ministerioId, usaEscalas: false }]);
+
+    await expect(service.create(tenantId, {
+      titulo: 'Encontro infantil', dataInicio: '2026-07-26T12:00:00.000Z', tipo: EventoTipo.MINISTERIO,
+      ministerios: [{ ministerioId, requerEscala: true }],
+    }, user)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('permite relacionar sem escala um ministerio que nao utiliza escalas', async () => {
+    const { service, prisma, getCreateArgs } = createService();
+    prisma.ministerio.findMany.mockResolvedValue([{ id: ministerioId, usaEscalas: false }]);
+
+    await service.create(tenantId, {
+      titulo: 'Encontro infantil', dataInicio: '2026-07-26T12:00:00.000Z', tipo: EventoTipo.MINISTERIO,
+      ministerios: [{ ministerioId, requerEscala: false }],
+    }, user);
+    expect(getCreateArgs()?.data).toMatchObject({ ministerios: { create: [{ ministerioId, requerEscala: false }] } });
   });
 
   it('permite configurar ministérios em evento geral sem criar escala', async () => {

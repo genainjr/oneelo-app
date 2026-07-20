@@ -62,11 +62,13 @@ Padroes:
 - remover participantes, exceto `LEADER`;
 - alterar papel entre `MEMBER` e `ASSISTANT_LEADER`, exceto em outro `LEADER` e em si mesmo;
 - definir funcoes disponiveis por membro;
+- definir se um membro pode ser escalado no proprio ministerio;
 - gerir escalas do ministerio.
 
 Nao pode:
 
 - criar, editar ou arquivar ministerios;
+- alterar se o ministerio utiliza escalas;
 - listar membros globais;
 - definir `LEADER`;
 - alterar/remover outro `LEADER`;

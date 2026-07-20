@@ -175,17 +175,22 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 - `nome`: obrigatorio.
 - `tenantId`: sempre derivado da sessao no backend.
 - `ativo`: usado para arquivamento logico.
+- `usaEscalas`: controla novas escalas e novas necessidades de escala; default `true`.
+- Ao desativar `usaEscalas`, bloquear se houver evento `AGENDADO`, do dia atual em diante no fuso `America/Sao_Paulo`, com `requerEscala = true`.
+- Escalas existentes permanecem visiveis e gerenciaveis mesmo depois da desativacao.
 
 ### MinisterioMembro
 
 - `ministerioId`: ministerio do mesmo tenant.
 - `membroId`: membro do mesmo tenant.
 - `role`: `LEADER`, `ASSISTANT_LEADER` ou `MEMBER`.
+- `podeSerEscalado`: elegibilidade contextual para escalas; default `true`.
+- Sem funcoes configuradas, um vinculo elegivel pode atuar em todas as funcoes; com funcoes, somente nas selecionadas.
 - Alteracoes de papel devem obedecer a matriz RBAC.
 
 ### Escala
 
-- `ministerioId`: ministerio ativo e do mesmo tenant.
+- `ministerioId`: ministerio ativo, do mesmo tenant e com `usaEscalas = true` para novas escalas.
 - `data`: data valida.
 - Mutacoes devem validar permissao sobre o ministerio da escala.
 - Visualizacoes administrativas de escala devem respeitar o mesmo escopo de
@@ -196,6 +201,8 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 ### EscalaItem
 
 - `membroId`: membro ativo do mesmo tenant.
+- O membro deve pertencer ao ministerio da escala e ter `podeSerEscalado = true`.
+- A funcao deve pertencer ao ministerio e respeitar as funcoes configuradas no vinculo.
 - `funcao`: obrigatoria quando a escala usa funcao textual.
 - Confirmacao/recusa deve ser limitada ao proprio membro escalado, exceto quando a regra do modulo permitir administracao por gestor.
 

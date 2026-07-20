@@ -766,7 +766,7 @@ export default function EscalasPage() {
               }}
             >
               <option value="">{t('modal.ministryPlaceholder')}</option>
-              {ministerios.filter(m => m.ativo).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+              {ministerios.filter(m => m.ativo && m.usaEscalas).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </SelectField>
 
             <fieldset className="space-y-2">

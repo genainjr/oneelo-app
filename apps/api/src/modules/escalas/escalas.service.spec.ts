@@ -151,6 +151,27 @@ describe('EscalasService - criação baseada em eventos', () => {
     return { service, prisma, escala };
   };
 
+  const createAssignmentContext = (podeSerEscalado: boolean, funcaoIds: string[] = []) => {
+    const escalaDiaId = '99999999-9999-4999-8999-999999999999';
+    const membroId = '77777777-7777-4777-8777-777777777777';
+    const funcaoId = '88888888-8888-4888-8888-888888888888';
+    const prisma = {
+      escalaDia: { findUnique: jest.fn().mockResolvedValue({
+        id: escalaDiaId, data: new Date('2026-07-12T12:00:00.000Z'),
+        escala: { id: '66666666-6666-4666-8666-666666666666', tenantId, ministerioId, status: StatusEscala.RASCUNHO },
+      }) },
+      ministerioFuncao: { findFirst: jest.fn().mockResolvedValue({ id: funcaoId }) },
+      ministerioMembro: { findUnique: jest.fn().mockResolvedValue({
+        ministerioId, membroId, podeSerEscalado,
+        membro: { tenantId, status: 'ATIVO', deletedAt: null },
+        funcoesDisponiveis: funcaoIds.map((id) => ({ funcaoId: id })),
+      }) },
+      escalaItem: { findFirst: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({ id: 'item-1' }) },
+    };
+    const service = new EscalasService(prisma as unknown as PrismaService, { sendToUsers: jest.fn() } as unknown as NotificationsService);
+    return { service, prisma, escalaDiaId, membroId, funcaoId };
+  };
+
   it('lista somente candidatos com tenant, período, ministério e requerEscala', async () => {
     const { service, setEligibleEvents, getRootEventFindManyArgs } =
       createContext();
@@ -222,6 +243,13 @@ describe('EscalasService - criação baseada em eventos', () => {
     await service.create(tenantId, { ministerioId, mes: 7, ano: 2026 }, admin);
 
     expect(getEscalaCreateArgs()?.data.dias).toBeUndefined();
+  });
+
+  it('nao cria escala para ministerio que nao utiliza escalas', async () => {
+    const { service, prisma, tx } = createContext();
+    prisma.ministerio.findFirst.mockResolvedValue(null);
+    await expect(service.create(tenantId, { ministerioId, mes: 7, ano: 2026 }, admin)).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.escala.create).not.toHaveBeenCalled();
   });
 
   it('cria dias vinculados com data, título e ordem dos eventos', async () => {
@@ -431,5 +459,33 @@ describe('EscalasService - criação baseada em eventos', () => {
       service.updateDiaEvento(tenantId, 'dia-1', { eventoId: null }, admin),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.escalaDia.update).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia membro marcado como nao elegivel para escalas', async () => {
+    const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(false);
+    await expect(service.addMembro(tenantId, escalaDiaId, { escalaDiaId, membroId, ministerioFuncaoId: funcaoId }, admin)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.escalaItem.upsert).not.toHaveBeenCalled();
+  });
+
+  it('nao aceita dia de escala pertencente a outro tenant', async () => {
+    const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true);
+    prisma.escalaDia.findUnique.mockResolvedValue({
+      id: escalaDiaId, data: new Date('2026-07-12T12:00:00.000Z'),
+      escala: { id: '66666666-6666-4666-8666-666666666666', tenantId: 'outro-tenant', ministerioId, status: StatusEscala.RASCUNHO },
+    });
+    await expect(service.addMembro(tenantId, escalaDiaId, { escalaDiaId, membroId, ministerioFuncaoId: funcaoId }, admin)).rejects.toMatchObject({ status: 404 });
+    expect(prisma.escalaItem.upsert).not.toHaveBeenCalled();
+  });
+
+  it('mantem lista de funcoes vazia como permissao para todas as funcoes', async () => {
+    const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true);
+    await service.addMembro(tenantId, escalaDiaId, { escalaDiaId, membroId, ministerioFuncaoId: funcaoId }, admin);
+    expect(prisma.escalaItem.upsert).toHaveBeenCalled();
+  });
+
+  it('bloqueia funcao fora da lista configurada para o membro', async () => {
+    const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true, ['outra-funcao']);
+    await expect(service.addMembro(tenantId, escalaDiaId, { escalaDiaId, membroId, ministerioFuncaoId: funcaoId }, admin)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.escalaItem.upsert).not.toHaveBeenCalled();
   });
 });
