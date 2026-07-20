@@ -664,7 +664,8 @@
       "reinstallNoticeAndroid": "Remova a aplicação do ecrã principal. Depois, abra o One Elo no Chrome e instale novamente.",
       "reinstallNoticeIos": "Remova o atalho do ecrã principal. Depois, abra o One Elo no Safari e utilize Partilhar > Adicionar ao ecrã principal.",
       "reinstallNoticeDesktop": "Desinstale a aplicação através do navegador e instale-a novamente ao abrir o One Elo.",
-      "reinstallNoticeAcknowledged": "Compreendi",
+      "reinstallNoticeLater": "Lembrar mais tarde",
+      "reinstallNoticeAcknowledged": "Já reinstalei",
       "preview": "Pré-visualização",
       "previewAlt": "Pré-visualização do ícone",
       "squarePreview": "Quadrado",
@@ -704,6 +705,18 @@
       "new": "Novo Utilizador",
       "noUsers": "Nenhum utilizador registado",
       "noUsersDesc": "Os utilizadores têm login e password para gerir o sistema.",
+      "noResults": "Nenhum utilizador encontrado",
+      "noResultsDesc": "Ajuste ou limpe os filtros para localizar outros utilizadores.",
+      "filters": {
+        "searchLabel": "Pesquisar",
+        "searchPlaceholder": "Nome, e-mail, telefone ou membro",
+        "roleLabel": "Perfil",
+        "statusLabel": "Estado",
+        "allRoles": "Todos os perfis",
+        "allStatuses": "Todos os estados",
+        "apply": "Filtrar",
+        "clear": "Limpar"
+      },
       "columns": {
         "name": "Nome",
         "email": "E-mail",
@@ -717,6 +730,7 @@
       "editTooltip": "Editar utilizador",
       "deactivateTooltip": "Desativar utilizador",
       "status": {
+        "pending": "Pendente",
         "active": "Ativo",
         "inactive": "Inativo"
       }

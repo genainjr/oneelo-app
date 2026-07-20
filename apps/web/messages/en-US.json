@@ -664,7 +664,8 @@
       "reinstallNoticeAndroid": "Remove the app from the home screen. Then open One Elo in Chrome and install it again.",
       "reinstallNoticeIos": "Remove the Home Screen shortcut. Then open One Elo in Safari and use Share > Add to Home Screen.",
       "reinstallNoticeDesktop": "Uninstall the app through your browser, then install it again when you open One Elo.",
-      "reinstallNoticeAcknowledged": "Got it",
+      "reinstallNoticeLater": "Remind me later",
+      "reinstallNoticeAcknowledged": "I've reinstalled it",
       "preview": "Preview",
       "previewAlt": "Icon preview",
       "squarePreview": "Square",
@@ -704,6 +705,18 @@
       "new": "New User",
       "noUsers": "No users registered",
       "noUsersDesc": "Users have login credentials to manage the system.",
+      "noResults": "No users found",
+      "noResultsDesc": "Adjust or clear the filters to find other users.",
+      "filters": {
+        "searchLabel": "Search",
+        "searchPlaceholder": "Name, email, phone, or member",
+        "roleLabel": "Role",
+        "statusLabel": "Status",
+        "allRoles": "All roles",
+        "allStatuses": "All statuses",
+        "apply": "Filter",
+        "clear": "Clear"
+      },
       "columns": {
         "name": "Name",
         "email": "Email",
@@ -717,6 +730,7 @@
       "editTooltip": "Edit user",
       "deactivateTooltip": "Deactivate user",
       "status": {
+        "pending": "Pending",
         "active": "Active",
         "inactive": "Inactive"
       }
