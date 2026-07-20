@@ -394,6 +394,7 @@ export class AuthService {
                   select: {
                     id: true,
                     nome: true,
+                    usaEscalas: true,
                   },
                 },
               },

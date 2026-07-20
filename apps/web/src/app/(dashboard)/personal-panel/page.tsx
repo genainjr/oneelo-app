@@ -195,9 +195,14 @@ export default function PersonalPanelPage() {
   }, [user]);
 
   const hasLeadership = leadershipMinisterios.length > 0;
+  const leadershipScheduleMinistries = useMemo(
+    () => leadershipMinisterios.filter((ministerio) => ministerio.usaEscalas),
+    [leadershipMinisterios],
+  );
+  const hasScheduleLeadership = leadershipScheduleMinistries.length > 0;
   const hasEscalas = minhasEscalas.length > 0;
   const nextMonthPendingCount = useMemo(() => {
-    if (!hasLeadership) return 0;
+    if (!hasScheduleLeadership) return 0;
 
     const publishedIds = new Set(
       escalasProximoMes
@@ -205,8 +210,8 @@ export default function PersonalPanelPage() {
         .map((escala) => escala.ministerioId),
     );
 
-    return leadershipMinisterios.filter((ministerio) => !publishedIds.has(ministerio.id)).length;
-  }, [escalasProximoMes, hasLeadership, leadershipMinisterios]);
+    return leadershipScheduleMinistries.filter((ministerio) => !publishedIds.has(ministerio.id)).length;
+  }, [escalasProximoMes, hasScheduleLeadership, leadershipScheduleMinistries]);
   const leadershipTopCards = hasLeadership ? [
     {
       key: 'leadershipMinistries',
@@ -235,7 +240,7 @@ export default function PersonalPanelPage() {
       color: 'amber' as const,
       icon: <BirthdayIcon />,
     },
-    {
+    ...(hasScheduleLeadership ? [{
       key: 'leadershipPendingSchedules',
       title: t('leader.stats.nextMonthPending'),
       value: nextMonthPendingCount,
@@ -243,7 +248,7 @@ export default function PersonalPanelPage() {
       href: '/escalas',
       color: 'rose' as const,
       icon: <CalendarIcon />,
-    },
+    }] : []),
   ] : [];
 
   const cards = hasLeadership ? [
