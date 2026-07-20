@@ -74,7 +74,7 @@ export interface AuthUser {
     status: StatusMembro;
     ministerios?: {
       role: MinistryRole;
-      ministerio: { id: string; nome: string };
+      ministerio: { id: string; nome: string; usaEscalas: boolean };
     }[];
   } | null;
 }
