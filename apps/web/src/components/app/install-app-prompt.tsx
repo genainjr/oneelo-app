@@ -95,7 +95,14 @@ export function InstallAppPrompt() {
     };
   }, [brandingVersion, dismissedKey, hasCustomBranding, installedBrandingKey, isIOSManualFlow]);
 
-  function acknowledgeReinstallNotice() {
+  function postponeReinstallNotice() {
+    setNeedsReinstall(false);
+  }
+
+  function confirmReinstall() {
+    if (brandingVersion) {
+      localStorage.setItem(installedBrandingKey, brandingVersion);
+    }
     setNeedsReinstall(false);
   }
 
@@ -114,9 +121,14 @@ export function InstallAppPrompt() {
             <p className="mt-1 text-sm text-amber-900">{t('reinstallNoticeDescription', { name: tenantName })}</p>
             <p className="mt-2 text-sm font-medium text-amber-950">{instructions}</p>
           </div>
-          <button type="button" onClick={acknowledgeReinstallNotice} className="shrink-0 self-end rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-900 transition hover:bg-amber-100 sm:self-auto">
-            {t('reinstallNoticeAcknowledged')}
-          </button>
+          <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+            <button type="button" onClick={postponeReinstallNotice} className="rounded-lg px-3 py-2 text-xs font-bold text-amber-800 transition hover:bg-amber-100">
+              {t('reinstallNoticeLater')}
+            </button>
+            <button type="button" onClick={confirmReinstall} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-900 transition hover:bg-amber-100">
+              {t('reinstallNoticeAcknowledged')}
+            </button>
+          </div>
         </div>
       </section>
     );

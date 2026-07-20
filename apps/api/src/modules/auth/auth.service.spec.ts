@@ -28,6 +28,42 @@ function createService(
 }
 
 describe('AuthService user access invariants', () => {
+  it('retorna a identidade do tenant para a previa do link de ativacao', async () => {
+    const expiresAt = new Date(Date.now() + 60_000);
+    const prisma = {
+      user: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          nome: 'Novo usuario',
+          email: 'novo@example.com',
+          activationExpiresAt: expiresAt,
+          tenant: {
+            nome: 'Igreja Exemplo',
+            slug: 'igreja-exemplo',
+            logoUrl: 'https://cdn.example.com/logo.png',
+            pwaIconUrl: 'https://cdn.example.com/app-icon.png',
+          },
+        }),
+      },
+    };
+    const service = createService(prisma);
+
+    const result = await service.validateActivationToken('token-valido');
+
+    expect(result.tenant).toEqual(expect.objectContaining({
+      nome: 'Igreja Exemplo',
+      logoUrl: 'https://cdn.example.com/logo.png',
+      pwaIconUrl: 'https://cdn.example.com/app-icon.png',
+    }));
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({
+        tenant: {
+          select: { nome: true, slug: true, logoUrl: true, pwaIconUrl: true },
+        },
+      }),
+    }));
+  });
+
   it('atualiza o nome curto somente no tenant recebido da sessao', async () => {
     const prisma = {
       tenant: {

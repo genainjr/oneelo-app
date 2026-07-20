@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/app/page-header";
 import { Skeleton } from "@/components/app/skeleton";
 import { DataTable, Column, SortState } from "@/components/app/data-table";
+import { FilterActions, FilterShell } from "@/components/app/filter-shell";
+import { FilterInput, FilterSelect } from "@/components/app/filter-field";
 import { StatusBadge } from "@/components/app/status-badge";
 import { UsuarioModal } from "@/components/app/usuario-modal";
 import { ImageUploadPanel } from "@/components/app/image-upload-panel";
@@ -19,8 +21,21 @@ import {
 } from "@/lib/image-upload";
 import { User, AuditLog, AuthUser, PaginatedItemsResponse } from "@/types";
 import { useDateFormatter } from "@/hooks/use-date-formatter";
+import { includesNormalizedText } from "@/lib/utils";
 
 type TenantLogoPayload = NonNullable<AuthUser["tenant"]>;
+
+type UserFilterState = {
+  search: string;
+  role: "" | User["role"];
+  status: "" | User["status"];
+};
+
+const EMPTY_USER_FILTERS: UserFilterState = {
+  search: "",
+  role: "",
+  status: "",
+};
 
 function formatActivationExpiration(expiresAt?: string | null) {
   if (!expiresAt) return null;
@@ -109,6 +124,8 @@ export default function ConfiguracoesPage() {
   const auditLogsTopRef = useRef<HTMLElement | null>(null);
 
   const [userPage, setUserPage] = useState(1);
+  const [userFilterDraft, setUserFilterDraft] = useState<UserFilterState>(EMPTY_USER_FILTERS);
+  const [userFilters, setUserFilters] = useState<UserFilterState>(EMPTY_USER_FILTERS);
   const [auditPage, setAuditPage] = useState(1);
   const [auditActionFilter, setAuditActionFilter] = useState("");
   const [auditResourceFilter, setAuditResourceFilter] = useState("");
@@ -119,8 +136,18 @@ export default function ConfiguracoesPage() {
   });
   const itemsPerPage = 10;
 
+  const filteredUsers = useMemo(() => users.filter((user) => {
+    const matchesSearch = includesNormalizedText(
+      [user.nome, user.email, user.telefoneLogin, user.membro?.nome].filter(Boolean).join(" "),
+      userFilters.search,
+    );
+    const matchesRole = !userFilters.role || user.role === userFilters.role;
+    const matchesStatus = !userFilters.status || user.status === userFilters.status;
+    return matchesSearch && matchesRole && matchesStatus;
+  }), [userFilters, users]);
+
   const sortedUsers = useMemo(() => {
-    const arr = [...users];
+    const arr = [...filteredUsers];
     arr.sort((a, b) => {
       let cmp = 0;
       if (userSort.key === "createdAt") {
@@ -131,7 +158,7 @@ export default function ConfiguracoesPage() {
       return userSort.direction === "asc" ? cmp : -cmp;
     });
     return arr;
-  }, [users, userSort]);
+  }, [filteredUsers, userSort]);
 
   const pagedUsers = useMemo(
     () =>
@@ -175,8 +202,22 @@ export default function ConfiguracoesPage() {
   const auditOperatorOptions = [
     { value: "", label: t("audit.filters.allOperators") },
     { value: "platform", label: t("audit.platformOperator") },
-    ...sortedUsers.map((user) => ({ value: user.id, label: user.nome })),
+    ...[...users]
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+      .map((user) => ({ value: user.id, label: user.nome })),
   ];
+
+  function applyUserFilters(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setUserFilters({ ...userFilterDraft });
+    setUserPage(1);
+  }
+
+  function clearUserFilters() {
+    setUserFilterDraft({ ...EMPTY_USER_FILTERS });
+    setUserFilters({ ...EMPTY_USER_FILTERS });
+    setUserPage(1);
+  }
 
   const loadUsers = useCallback(async () => {
     if (!isAdmin) return;
@@ -468,7 +509,7 @@ export default function ConfiguracoesPage() {
     if (user.status === "PENDING") {
       return (
         <StatusBadge
-          label="Pendente"
+          label={t("users.status.pending")}
           className="border bg-amber-50 text-amber-700 border-amber-100"
         />
       );
@@ -1057,6 +1098,53 @@ export default function ConfiguracoesPage() {
         </section>
       )}
 
+      {activeTab === "usuarios" && (
+        <FilterShell
+          onSubmit={applyUserFilters}
+          actions={
+            <FilterActions
+              submitLabel={t("users.filters.apply")}
+              clearLabel={t("users.filters.clear")}
+              onClear={clearUserFilters}
+              loading={usersLoading}
+            />
+          }
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <FilterInput
+              id="user-search"
+              type="search"
+              label={t("users.filters.searchLabel")}
+              value={userFilterDraft.search}
+              onChange={(event) => setUserFilterDraft((current) => ({ ...current, search: event.target.value }))}
+              placeholder={t("users.filters.searchPlaceholder")}
+            />
+            <FilterSelect
+              id="user-role"
+              label={t("users.filters.roleLabel")}
+              value={userFilterDraft.role}
+              onChange={(event) => setUserFilterDraft((current) => ({ ...current, role: event.target.value as UserFilterState["role"] }))}
+            >
+              <option value="">{t("users.filters.allRoles")}</option>
+              <option value="ADMIN">{tCommon("roles.ADMIN")}</option>
+              <option value="STAFF">{tCommon("roles.STAFF")}</option>
+              <option value="BASIC">{tCommon("roles.BASIC")}</option>
+            </FilterSelect>
+            <FilterSelect
+              id="user-status"
+              label={t("users.filters.statusLabel")}
+              value={userFilterDraft.status}
+              onChange={(event) => setUserFilterDraft((current) => ({ ...current, status: event.target.value as UserFilterState["status"] }))}
+            >
+              <option value="">{t("users.filters.allStatuses")}</option>
+              <option value="PENDING">{t("users.status.pending")}</option>
+              <option value="ACTIVE">{t("users.status.active")}</option>
+              <option value="DISABLED">{t("users.status.inactive")}</option>
+            </FilterSelect>
+          </div>
+        </FilterShell>
+      )}
+
       {activeTab === "usuarios" ? (
         <DataTable
           columns={userColumns}
@@ -1068,11 +1156,11 @@ export default function ConfiguracoesPage() {
             setUserPage(1);
           }}
           currentPage={userPage}
-          totalItems={users.length}
+          totalItems={filteredUsers.length}
           itemsPerPage={itemsPerPage}
           onPageChange={setUserPage}
-          emptyTitle={t("users.noUsers")}
-          emptyDescription={t("users.noUsersDesc")}
+          emptyTitle={Object.values(userFilters).some(Boolean) ? t("users.noResults") : t("users.noUsers")}
+          emptyDescription={Object.values(userFilters).some(Boolean) ? t("users.noResultsDesc") : t("users.noUsersDesc")}
           renderMobileCard={(user) => (
             <div className="p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">

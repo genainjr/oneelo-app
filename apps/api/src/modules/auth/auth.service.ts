@@ -252,7 +252,7 @@ export class AuthService {
         email: true,
         activationExpiresAt: true,
         tenant: {
-          select: { nome: true, slug: true, logoUrl: true },
+          select: { nome: true, slug: true, logoUrl: true, pwaIconUrl: true },
         },
       },
     });
