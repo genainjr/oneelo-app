@@ -708,6 +708,7 @@ function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd, ad
   const options = membros
     .filter((ministerioMembro) => {
       if (alreadyAssigned.includes(ministerioMembro.membroId)) return false;
+      if (!ministerioMembro.podeSerEscalado) return false;
       if (!ministerioMembro.funcoesDisponiveis?.length) return true;
       return ministerioMembro.funcoesDisponiveis.some((funcao) => funcao.funcaoId === funcaoId);
     })

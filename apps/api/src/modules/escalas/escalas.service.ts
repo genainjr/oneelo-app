@@ -125,12 +125,12 @@ export class EscalasService {
     user: JwtPayload,
   ) {
     const ministerio = await this.prisma.ministerio.findFirst({
-      where: { id: ministerioId, tenantId, ativo: true },
+      where: { id: ministerioId, tenantId, ativo: true, usaEscalas: true },
       select: { id: true },
     });
 
     if (!ministerio) {
-      throw new NotFoundException('Ministério não encontrado.');
+      throw new BadRequestException('Ministério não encontrado ou não utiliza escalas.');
     }
 
     if (user.role === Role.BASIC) {
@@ -1171,18 +1171,47 @@ export class EscalasService {
 
     const escala = dia.escala;
 
+    if (escala.tenantId !== tenantId) {
+      throw new NotFoundException('Dia não encontrado.');
+    }
+
     if (user.role === Role.BASIC) {
       await this.checkMinistryAccess(escala.ministerioId, user.memberId);
     }
 
     this.assertEscalaAbertaParaEdicao(escala.status);
 
-    const membro = await this.prisma.client.membro.findFirst({
-      where: { id: dto.membroId, tenantId },
-    });
+    const [funcao, vinculoMinisterial] = await Promise.all([
+      this.prisma.ministerioFuncao.findFirst({
+        where: { id: dto.ministerioFuncaoId, ministerioId: escala.ministerioId },
+        select: { id: true },
+      }),
+      this.prisma.ministerioMembro.findUnique({
+        where: { ministerioId_membroId: { ministerioId: escala.ministerioId, membroId: dto.membroId } },
+        include: {
+          membro: { select: { tenantId: true, status: true, deletedAt: true } },
+          funcoesDisponiveis: { select: { funcaoId: true } },
+        },
+      }),
+    ]);
 
-    if (!membro) {
-      throw new NotFoundException('Membro não encontrado neste tenant.');
+    if (!funcao) throw new BadRequestException('A função selecionada não pertence ao ministério da escala.');
+    if (
+      !vinculoMinisterial ||
+      vinculoMinisterial.membro.tenantId !== tenantId ||
+      vinculoMinisterial.membro.status !== StatusMembro.ATIVO ||
+      vinculoMinisterial.membro.deletedAt !== null
+    ) {
+      throw new BadRequestException('O membro selecionado não participa deste ministério.');
+    }
+    if (!vinculoMinisterial.podeSerEscalado) {
+      throw new BadRequestException('O membro selecionado não está disponível para escalas neste ministério.');
+    }
+    if (
+      vinculoMinisterial.funcoesDisponiveis.length > 0 &&
+      !vinculoMinisterial.funcoesDisponiveis.some((item) => item.funcaoId === dto.ministerioFuncaoId)
+    ) {
+      throw new BadRequestException('O membro selecionado não está disponível para esta função.');
     }
 
     const { start, end } = this.getDateRangeForScheduleDay(dia.data);

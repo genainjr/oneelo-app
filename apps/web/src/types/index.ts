@@ -155,6 +155,7 @@ export interface MinisterioMembro {
   ministerioId: string;
   membroId: string;
   role: MinistryRole;
+  podeSerEscalado: boolean;
   membro?: Pick<Membro, 'id' | 'nome' | 'nomeExibicao' | 'email' | 'whatsapp' | 'status'>;
   funcoesDisponiveis?: MinisterioMembroFuncao[];
 }
@@ -165,6 +166,7 @@ export interface Ministerio {
   nome: string;
   descricao?: string;
   ativo: boolean;
+  usaEscalas: boolean;
   createdAt: string;
   updatedAt: string;
   membros?: MinisterioMembro[];

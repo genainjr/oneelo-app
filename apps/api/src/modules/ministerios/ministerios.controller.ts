@@ -96,6 +96,7 @@ export class MinisteriosController {
       dto.membroId,
       dto.role,
       dto.funcaoIds,
+      dto.podeSerEscalado,
       user,
     );
   }
@@ -110,7 +111,7 @@ export class MinisteriosController {
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.ministeriosService.updateMembroRole(tenantId, ministerioId, membroId, dto.role, dto.funcaoIds, user);
+    return this.ministeriosService.updateMembroRole(tenantId, ministerioId, membroId, dto.role, dto.funcaoIds, dto.podeSerEscalado, user);
   }
 
   @Delete(':id/membros/:membroId')

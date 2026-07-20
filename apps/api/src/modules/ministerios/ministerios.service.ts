@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   ForbiddenException,
@@ -6,7 +8,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateMinisterioDto } from './dto/create-ministerio.dto';
 import { UpdateMinisterioDto } from './dto/update-ministerio.dto';
-import { Role, MinistryRole, StatusMembro } from '@prisma/client';
+import { Role, MinistryRole, StatusEvento, StatusMembro } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { AuthorizationService } from '../../common/authorization/authorization.service';
 
@@ -16,6 +18,22 @@ export class MinisteriosService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
   ) {}
+
+  private getStartOfTodayInSaoPaulo(now = new Date()) {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })
+        .formatToParts(now)
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, part.value]),
+    );
+
+    return new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00-03:00`);
+  }
 
   private buildVisibleWhere(tenantId: string, user: JwtPayload) {
     const where: any = { tenantId, ativo: true };
@@ -249,7 +267,24 @@ export class MinisteriosService {
   }
 
   async update(tenantId: string, id: string, dto: UpdateMinisterioDto, user: JwtPayload) {
-    await this.findOne(tenantId, id, user);
+    const ministerioAtual = await this.findOne(tenantId, id, user);
+
+    if (dto.usaEscalas === false && ministerioAtual.usaEscalas) {
+      const eventosFuturos = await this.prisma.evento.count({
+        where: {
+          tenantId,
+          status: StatusEvento.AGENDADO,
+          dataInicio: { gte: this.getStartOfTodayInSaoPaulo() },
+          ministerios: { some: { ministerioId: id, requerEscala: true } },
+        },
+      });
+
+      if (eventosFuturos > 0) {
+        throw new ConflictException(
+          `Este ministério possui ${eventosFuturos} evento(s) agendado(s), de hoje em diante, que ainda precisam de escala. Desmarque essa necessidade nos eventos antes de desativar as escalas do ministério.`,
+        );
+      }
+    }
 
     const { funcoes, ...ministerioData } = dto;
 
@@ -298,6 +333,7 @@ export class MinisteriosService {
     membroId: string,
     role: MinistryRole = MinistryRole.MEMBER,
     funcaoIds: string[] | undefined,
+    podeSerEscalado: boolean | undefined,
     user: JwtPayload,
   ) {
     const ministerio = await this.prisma.ministerio.findFirst({
@@ -316,12 +352,14 @@ export class MinisteriosService {
     });
     if (!membro) throw new NotFoundException('Membro não encontrado.');
 
+    if (funcaoIds !== undefined) await this.validateFuncoesDisponiveis(ministerioId, funcaoIds);
+
     await this.prisma.ministerioMembro.upsert({
       where: {
         ministerioId_membroId: { ministerioId, membroId },
       },
-      create: { ministerioId, membroId, role },
-      update: { role },
+      create: { ministerioId, membroId, role, podeSerEscalado: podeSerEscalado ?? true },
+      update: { role, podeSerEscalado },
     });
 
     if (funcaoIds !== undefined) {
@@ -332,14 +370,28 @@ export class MinisteriosService {
   }
 
   private async syncFuncoesDisponiveis(ministerioId: string, membroId: string, funcaoIds: string[]) {
+    const uniqueFuncaoIds = [...new Set(funcaoIds)];
+    await this.validateFuncoesDisponiveis(ministerioId, uniqueFuncaoIds);
     await this.prisma.ministerioMembroFuncao.deleteMany({
-      where: { ministerioId, membroId, funcaoId: { notIn: funcaoIds } },
+      where: { ministerioId, membroId, funcaoId: { notIn: uniqueFuncaoIds } },
     });
-    if (funcaoIds.length > 0) {
+    if (uniqueFuncaoIds.length > 0) {
       await this.prisma.ministerioMembroFuncao.createMany({
-        data: funcaoIds.map((funcaoId) => ({ ministerioId, membroId, funcaoId })),
+        data: uniqueFuncaoIds.map((funcaoId) => ({ ministerioId, membroId, funcaoId })),
         skipDuplicates: true,
       });
+    }
+  }
+
+  private async validateFuncoesDisponiveis(ministerioId: string, funcaoIds: string[]) {
+    const uniqueFuncaoIds = [...new Set(funcaoIds)];
+    if (uniqueFuncaoIds.length === 0) return;
+
+    const funcoesDoMinisterio = await this.prisma.ministerioFuncao.count({
+      where: { ministerioId, id: { in: uniqueFuncaoIds } },
+    });
+    if (funcoesDoMinisterio !== uniqueFuncaoIds.length) {
+      throw new BadRequestException('Uma ou mais funções não pertencem a este ministério.');
     }
   }
 
@@ -368,7 +420,7 @@ export class MinisteriosService {
     return { message: 'Membro removido do ministério com sucesso.' };
   }
 
-  async updateMembroRole(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole | undefined, funcaoIds: string[] | undefined, user: JwtPayload) {
+  async updateMembroRole(tenantId: string, ministerioId: string, membroId: string, role: MinistryRole | undefined, funcaoIds: string[] | undefined, podeSerEscalado: boolean | undefined, user: JwtPayload) {
     const ministerio = await this.prisma.ministerio.findFirst({
       where: { id: ministerioId, tenantId },
     });
@@ -380,6 +432,7 @@ export class MinisteriosService {
       where: { ministerioId_membroId: { ministerioId, membroId } },
     });
     if (!membership) throw new NotFoundException('Membro não participa deste ministério.');
+    if (funcaoIds !== undefined) await this.validateFuncoesDisponiveis(ministerioId, funcaoIds);
 
     if (role !== undefined) {
       if (
@@ -406,6 +459,13 @@ export class MinisteriosService {
 
     if (funcaoIds !== undefined) {
       await this.syncFuncoesDisponiveis(ministerioId, membroId, funcaoIds);
+    }
+
+    if (podeSerEscalado !== undefined) {
+      await this.prisma.ministerioMembro.update({
+        where: { ministerioId_membroId: { ministerioId, membroId } },
+        data: { podeSerEscalado },
+      });
     }
 
     return { message: 'Membro atualizado com sucesso.' };

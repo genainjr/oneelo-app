@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsArray } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsArray, IsBoolean } from 'class-validator';
 import { MinistryRole } from '@prisma/client';
 
 export class AddMembroMinisterioDto {
@@ -13,6 +13,10 @@ export class AddMembroMinisterioDto {
   @IsArray()
   @IsString({ each: true })
   funcaoIds?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  podeSerEscalado?: boolean;
 }
 
 export class UpdateMembroRoleDto {
@@ -24,4 +28,8 @@ export class UpdateMembroRoleDto {
   @IsArray()
   @IsString({ each: true })
   funcaoIds?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  podeSerEscalado?: boolean;
 }

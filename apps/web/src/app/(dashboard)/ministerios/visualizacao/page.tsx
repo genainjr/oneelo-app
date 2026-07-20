@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Building2, Users, ListChecks, Sparkles } from "lucide-react";
+import { Building2, ListChecks, LoaderCircle, Sparkles, Users } from "lucide-react";
 import { useMinisterios } from "@/hooks/use-ministerios";
 import { useFilterState } from "@/hooks/use-filter-state";
 import { PageHeader } from "@/components/app/page-header";
@@ -11,11 +11,10 @@ import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
 import { FilterShell, FilterActions } from "@/components/app/filter-shell";
 import { FilterInput, FilterSelect } from "@/components/app/filter-field";
-import { StatusBadge } from "@/components/app/status-badge";
 import { getMemberDisplayName } from "@/components/app/escala-shared";
 import { api } from "@/lib/api";
-import { formatDate, includesNormalizedText } from "@/lib/utils";
-import type { MinistryRole } from "@/types";
+import { includesNormalizedText } from "@/lib/utils";
+import type { Ministerio, MinisterioMembro, MinistryRole } from "@/types";
 
 type MinisterioResumo = {
   membros: number;
@@ -29,6 +28,33 @@ export default function MinisteriosVisualizacaoPage() {
     estrutura: "",
   });
   const [resumo, setResumo] = useState<MinisterioResumo | null>(null);
+  const [expandedMinisterioId, setExpandedMinisterioId] = useState<string | null>(null);
+  const [detailsById, setDetailsById] = useState<Record<string, Ministerio>>({});
+  const [loadingDetailsId, setLoadingDetailsId] = useState<string | null>(null);
+  const [detailsErrorId, setDetailsErrorId] = useState<string | null>(null);
+
+  const loadMembers = useCallback(async (ministerioId: string) => {
+    setDetailsErrorId(null);
+    setLoadingDetailsId(ministerioId);
+    try {
+      const detail = await api.get<Ministerio>(`/api/ministerios/${ministerioId}`);
+      setDetailsById((current) => ({ ...current, [ministerioId]: detail }));
+    } catch {
+      setDetailsErrorId(ministerioId);
+    } finally {
+      setLoadingDetailsId(null);
+    }
+  }, []);
+
+  const toggleMembers = useCallback(async (ministerioId: string) => {
+    if (expandedMinisterioId === ministerioId) {
+      setExpandedMinisterioId(null);
+      return;
+    }
+    setExpandedMinisterioId(ministerioId);
+    setDetailsErrorId(null);
+    if (!detailsById[ministerioId]) await loadMembers(ministerioId);
+  }, [detailsById, expandedMinisterioId, loadMembers]);
 
   const fetchResumo = useCallback(async () => {
     try {
@@ -82,7 +108,7 @@ export default function MinisteriosVisualizacaoPage() {
       ),
     ).size;
     return { total, membros, funcoes, lideres };
-  }, [ministerios]);
+  }, [ministerios, resumo]);
 
   const ministriesSorted = useMemo(() => {
     return [...ministerios].sort((a, b) =>
@@ -238,6 +264,44 @@ export default function MinisteriosVisualizacaoPage() {
                 );
               });
 
+            const isExpanded = expandedMinisterioId === ministerio.id;
+            const detail = detailsById[ministerio.id];
+            const detailedMembers = detail?.membros ?? [];
+            const sortByName = (a: MinisterioMembro, b: MinisterioMembro) =>
+              getMemberDisplayName(a.membro).localeCompare(getMemberDisplayName(b.membro), "pt-BR");
+            const leadership = detailedMembers
+              .filter((item) => item.role === "LEADER" || item.role === "ASSISTANT_LEADER")
+              .sort((a, b) => {
+                const roleOrder = { LEADER: 0, ASSISTANT_LEADER: 1, MEMBER: 2 };
+                return roleOrder[a.role] - roleOrder[b.role] || sortByName(a, b);
+              });
+            const regularMembers = detailedMembers.filter((item) => item.role === "MEMBER").sort(sortByName);
+            const scheduleTeam = regularMembers.filter((item) => item.podeSerEscalado);
+            const otherMembers = regularMembers.filter((item) => !item.podeSerEscalado);
+
+            const renderMemberGroup = (title: string, members: MinisterioMembro[], showRole = false) => (
+              <div className="rounded-xl border border-gray-100 bg-white p-3">
+                <p className="text-xs font-semibold text-gray-600">{title}</p>
+                <div className="mt-2 space-y-2">
+                  {members.length > 0 ? members.map((item) => (
+                    <div key={`${ministerio.id}-${item.membroId}`} className="rounded-lg bg-gray-50 px-2.5 py-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-800">{getMemberDisplayName(item.membro)}</p>
+                        {showRole && <span className="text-[11px] font-semibold text-indigo-600">{t(`members.roles.${item.role}` as any)}</span>}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {item.funcoesDisponiveis?.length ? item.funcoesDisponiveis.map(({ funcao }) => (
+                          <span key={funcao.id} className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700">{funcao.nome}</span>
+                        )) : ministerio.usaEscalas && item.podeSerEscalado ? (
+                          <span className="text-[11px] text-gray-500">{t("view.allFunctions")}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  )) : <p className="text-sm text-gray-400">{t("view.noMembersInGroup")}</p>}
+                </div>
+              </div>
+            );
+
             return (
               <EntityCard
                 key={ministerio.id}
@@ -320,6 +384,39 @@ export default function MinisteriosVisualizacaoPage() {
                     </div>
                   </div>
                 </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void toggleMembers(ministerio.id)}
+                    aria-expanded={isExpanded}
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
+                  >
+                    {isExpanded ? t("view.hideMembers") : t("view.showMembers")}
+                  </button>
+                </div>
+
+                {isExpanded && (
+                  <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                    {!ministerio.usaEscalas && <p className="rounded-lg bg-gray-100 px-2.5 py-2 text-xs font-semibold text-gray-600">{t("view.doesNotUseSchedules")}</p>}
+                    {loadingDetailsId === ministerio.id ? (
+                      <div className="flex items-center gap-2 py-3 text-sm text-gray-500"><LoaderCircle className="h-4 w-4 animate-spin" />{t("view.loadingMembers")}</div>
+                    ) : detailsErrorId === ministerio.id ? (
+                      <div className="flex items-center justify-between gap-3 py-2 text-sm text-red-600">
+                        <span>{t("view.membersLoadError")}</span>
+                        <button type="button" onClick={() => void loadMembers(ministerio.id)} className="font-semibold underline">{t("view.retryMembers")}</button>
+                      </div>
+                    ) : detail ? (
+                      <>
+                        {renderMemberGroup(t("view.sections.leaders"), leadership, true)}
+                        {ministerio.usaEscalas ? <>
+                          {renderMemberGroup(t("view.sections.scheduleTeam"), scheduleTeam)}
+                          {renderMemberGroup(t("view.sections.otherMembers"), otherMembers)}
+                        </> : renderMemberGroup(t("view.sections.members"), regularMembers)}
+                      </>
+                    ) : null}
+                  </div>
+                )}
               </EntityCard>
             );
           })}

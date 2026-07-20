@@ -166,10 +166,11 @@ export class EventosService {
 
   private async validateMinisterios(
     tenantId: string,
-    ministerioIds: string[],
+    ministeriosConfig: EventoMinisterioConfig[],
     user: JwtPayload,
     tipo: EventoTipo,
   ) {
+    const ministerioIds = ministeriosConfig.map((ministerio) => ministerio.ministerioId);
     if (ministerioIds.length === 0) {
       return [];
     }
@@ -180,13 +181,20 @@ export class EventosService {
         tenantId,
         ativo: true,
       },
-      select: { id: true },
+      select: { id: true, usaEscalas: true },
     });
 
     if (ministerios.length !== ministerioIds.length) {
       throw new NotFoundException(
         'Um ou mais ministérios não foram encontrados.',
       );
+    }
+
+    const ministeriosSemEscala = ministeriosConfig.filter(
+      (config) => config.requerEscala && !ministerios.find((ministerio) => ministerio.id === config.ministerioId)?.usaEscalas,
+    );
+    if (ministeriosSemEscala.length > 0) {
+      throw new BadRequestException('Um ou mais ministérios selecionados não utilizam escalas.');
     }
 
     if (this.authorization.canManageTenant(user)) {
@@ -413,7 +421,7 @@ export class EventosService {
 
     const ministeriosValidos = await this.validateMinisterios(
       tenantId,
-      ministerioIds,
+      ministeriosConfig,
       user,
       tipo,
     );
@@ -509,7 +517,7 @@ export class EventosService {
 
     const ministeriosValidos = await this.validateMinisterios(
       tenantId,
-      ministerioIdsInput,
+      ministeriosConfig,
       user,
       tipo,
     );
