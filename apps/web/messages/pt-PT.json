@@ -161,12 +161,12 @@
       "stats": {
         "ministries": "Ministérios na liderança",
         "ministriesDesc": "Sob a sua liderança ou assistência",
-      "members": "Liderados",
-      "membersDesc": "Membros nas equipas que lidera",
-      "birthdays": "Aniversariantes",
-      "birthdaysDesc": "Nos seus ministérios",
-      "nextMonthPending": "Escalas do próximo mês",
-      "nextMonthPendingDesc": "Ministérios ainda sem publicação"
+        "members": "Liderados",
+        "membersDesc": "Membros nas equipas que lidera",
+        "birthdays": "Aniversariantes",
+        "birthdaysDesc": "Nos seus ministérios",
+        "nextMonthPending": "Escalas do próximo mês",
+        "nextMonthPendingDesc": "Ministérios ainda sem publicação"
       }
     },
     "noMinistry": {
@@ -427,10 +427,42 @@
       "year": "Ano",
       "ministry": "Ministério",
       "ministryPlaceholder": "Selecione um ministério",
+      "creationMode": "Como pretende iniciar a escala?",
+      "modes": {
+        "DIAS_SEMANA": {
+          "title": "Por dias da semana",
+          "description": "Gera os dias recorrentes do mês."
+        },
+        "EVENTOS": {
+          "title": "Com base nos eventos",
+          "description": "Cria um dia para cada evento selecionado."
+        },
+        "VAZIA": {
+          "title": "Começar sem dias",
+          "description": "Cria a escala vazia para preencher depois."
+        }
+      },
       "weekdays": "Dias da semana (opcional)",
       "weekdaysDesc": "Selecione os dias que se repetem no mês para gerar automaticamente.",
       "daysGenerated": "{count} dias serão gerados automaticamente",
       "dayGenerated": "{count} dia será gerado automaticamente",
+      "events": "Eventos disponíveis",
+      "eventsDesc": "São apresentados apenas eventos agendados marcados como necessários para este ministério.",
+      "selectMinistryFirst": "Selecione um ministério para carregar os eventos.",
+      "eventsError": "Não foi possível carregar os eventos elegíveis.",
+      "tryAgain": "Tentar novamente",
+      "noEvents": "Nenhum evento disponível",
+      "noEventsDesc": "Não existem eventos elegíveis para este ministério e período.",
+      "eventsSelected": "{count} evento(s) selecionado(s)",
+      "summary": "Resumo",
+      "summaryWeekdays": "{count} dia(s) da semana selecionado(s)",
+      "summaryEvents": "{count} evento(s) será(ão) incluído(s)",
+      "summaryEmpty": "a escala será criada sem dias",
+      "eventTypes": {
+        "GERAL": "Geral",
+        "MINISTERIO": "Ministério",
+        "REUNIAO_INTERNA": "Reunião interna"
+      },
       "notes": "Observações",
       "notesPlaceholder": "Notas gerais para esta escala...",
       "create": "Criar Escala",
@@ -455,7 +487,25 @@
       "addMember": "+ membro",
       "removeDay": "Remover dia",
       "removeDayConfirm": "Remover este dia e todas as alocações?",
-      "dragHandle": "Arrastar para reordenar"
+      "dragHandle": "Arrastar para reordenar",
+      "linkedEvent": "Evento associado",
+      "manualDay": "Dia manual",
+      "eventLink": "Evento associado ao dia",
+      "noLinkedEvent": "Sem evento associado",
+      "savingEventLink": "A guardar associação...",
+      "retryEvents": "Tentar carregar eventos novamente",
+      "eventLinkUpdated": "Associação do evento atualizada.",
+      "eventLinkError": "Erro ao atualizar a associação do evento.",
+      "eventTypes": {
+        "GERAL": "Geral",
+        "MINISTERIO": "Ministério",
+        "REUNIAO_INTERNA": "Reunião interna"
+      },
+      "eventStatus": {
+        "AGENDADO": "Agendado",
+        "REALIZADO": "Realizado",
+        "CANCELADO": "Cancelado"
+      }
     },
     "ai": {
       "title": "Escala Automática com IA",
@@ -550,6 +600,11 @@
       "statusLabel": "Estado do Evento",
       "typeLabel": "Tipo do Evento",
       "ministeriosLabel": "Ministérios associados",
+      "ministeriosHelp": "Selecione os ministérios envolvidos no evento.",
+      "generalVisibilityHelp": "Em eventos gerais, esta seleção não altera quem pode visualizar o evento.",
+      "ministeriosLoading": "A carregar ministérios...",
+      "noMinisterios": "Nenhum ministério ativo disponível.",
+        "requiresScheduleLabel": "Precisa de escala",
       "descriptionLabel": "Descrição / Pontos de Pauta",
       "descriptionPlaceholder": "Informações adicionais ou cronograma do evento...",
       "editTooltip": "Editar evento",

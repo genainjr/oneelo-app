@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, buildQuery, HttpError } from '@/lib/api';
-import { Evento } from '@/types';
+import { Evento, EventoMinisterioInput } from '@/types';
 
 export interface FilterEventos {
   dataInicio?: string;
@@ -16,7 +16,8 @@ export interface UseEventosOptions {
   scope?: 'PUBLIC' | 'MANAGE';
 }
 
-export type EventoInput = Partial<Evento> & {
+export type EventoInput = Partial<Omit<Evento, 'ministerios'>> & {
+  ministerios?: EventoMinisterioInput[];
   ministerioIds?: string[];
 };
 
@@ -31,7 +32,7 @@ export function useEventos(initialFilter: FilterEventos = {}, options: UseEvento
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<Evento[]>(`/api/eventos${buildQuery({ ...f, scope } as any)}`);
+      const data = await api.get<Evento[]>(`/api/eventos${buildQuery({ ...f, scope })}`);
       setEventos(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Erro ao carregar eventos.');
@@ -41,7 +42,10 @@ export function useEventos(initialFilter: FilterEventos = {}, options: UseEvento
   }, [filter, scope]);
 
   useEffect(() => {
-    fetchEventos(initialFilter);
+    // The initial request intentionally runs once; subsequent requests use applyFilter.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchEventos(initialFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function createEvento(data: EventoInput) {

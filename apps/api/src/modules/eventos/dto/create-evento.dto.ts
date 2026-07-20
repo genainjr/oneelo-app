@@ -6,14 +6,13 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
-import { EventoTipo } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { EventoTipo, StatusEvento } from '@prisma/client';
+import { EventoMinisterioInputDto } from './evento-ministerio-input.dto';
 
-export enum StatusEvento {
-  AGENDADO = 'AGENDADO',
-  REALIZADO = 'REALIZADO',
-  CANCELADO = 'CANCELADO',
-}
+export { StatusEvento };
 
 export class CreateEventoDto {
   @IsString()
@@ -43,6 +42,12 @@ export class CreateEventoDto {
   @IsUUID('4', { each: true })
   @IsOptional()
   ministerioIds?: string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EventoMinisterioInputDto)
+  @IsOptional()
+  ministerios?: EventoMinisterioInputDto[];
 
   @IsEnum(StatusEvento)
   @IsOptional()

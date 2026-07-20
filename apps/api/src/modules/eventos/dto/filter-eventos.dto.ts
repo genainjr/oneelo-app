@@ -1,5 +1,11 @@
-import { IsDateString, IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
-import { EventoTipo } from '@prisma/client';
+import {
+  IsDateString,
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
+import { EventoTipo, StatusEvento } from '@prisma/client';
 
 export class FilterEventosDto {
   @IsIn(['PUBLIC', 'MANAGE'])
@@ -14,9 +20,9 @@ export class FilterEventosDto {
   @IsOptional()
   dataFim?: string;
 
-  @IsString()
+  @IsEnum(StatusEvento)
   @IsOptional()
-  status?: string;
+  status?: StatusEvento;
 
   @IsEnum(EventoTipo)
   @IsOptional()

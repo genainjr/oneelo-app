@@ -13,7 +13,16 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalFooter, ModalError } from '@/components/app/modal-shell';
 import { SelectField, TextareaField } from '@/components/app/form-field';
 import { api } from '@/lib/api';
-import { Escala, EscalaItem, Ministerio, MinisterioMembro, AuthUser, StatusEscala } from '@/types';
+import {
+  Escala,
+  EscalaItem,
+  EventoElegivelEscala,
+  Ministerio,
+  MinisterioMembro,
+  ModoCriacaoEscala,
+  AuthUser,
+  StatusEscala,
+} from '@/types';
 import { MONTH_KEYS, WEEKDAY_KEYS } from '@/components/app/escala-shared';
 import { StatusBadge } from '@/components/app/status-badge';
 import { EscalaGrid } from '@/components/app/escala-grid';
@@ -46,9 +55,11 @@ export default function EscalasPage() {
     refetch,
     applyFilter,
     createEscala,
+    getEventosElegiveis,
     updateEscala,
     deleteEscala,
     addDia,
+    updateDiaEvento,
     removeDia,
     reorderDias,
     addMembroItem,
@@ -91,7 +102,13 @@ export default function EscalasPage() {
   const [newAno, setNewAno] = useState(hoje.getFullYear());
   const [newMinId, setNewMinId] = useState('');
   const [newObs, setNewObs] = useState('');
+  const [newModoCriacao, setNewModoCriacao] = useState<ModoCriacaoEscala>('DIAS_SEMANA');
   const [newDiasSemana, setNewDiasSemana] = useState<number[]>([]);
+  const [eventosElegiveis, setEventosElegiveis] = useState<EventoElegivelEscala[]>([]);
+  const [selectedEventoIds, setSelectedEventoIds] = useState<string[]>([]);
+  const [loadingEventos, setLoadingEventos] = useState(false);
+  const [eventosError, setEventosError] = useState('');
+  const [eventosRetry, setEventosRetry] = useState(0);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
@@ -134,6 +151,31 @@ export default function EscalasPage() {
     api.get<Ministerio[]>('/api/ministerios').then(d => setMinisterios(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!isCreateOpen || newModoCriacao !== 'EVENTOS' || !newMinId) {
+      return;
+    }
+
+    let active = true;
+    getEventosElegiveis({ ministerioId: newMinId, mes: newMes, ano: newAno })
+      .then((eventos) => {
+        if (active) setEventosElegiveis(Array.isArray(eventos) ? eventos : []);
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setEventosElegiveis([]);
+          setEventosError(getErrorMessage(err, t('modal.eventsError')));
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingEventos(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [eventosRetry, getEventosElegiveis, isCreateOpen, newAno, newMes, newMinId, newModoCriacao, t]);
+
   async function fetchDetail(escala: Escala) {
     setLoadingDetail(true);
     setDetailedEscala(null);
@@ -174,12 +216,17 @@ export default function EscalasPage() {
         ano: newAno,
         ministerioId: newMinId,
         observacoes: newObs || undefined,
-        diasSemana: newDiasSemana.length ? newDiasSemana : undefined,
+        modoCriacao: newModoCriacao,
+        diasSemana: newModoCriacao === 'DIAS_SEMANA' ? newDiasSemana : undefined,
+        eventoIds: newModoCriacao === 'EVENTOS' ? selectedEventoIds : undefined,
       });
       setIsCreateOpen(false);
       setNewMinId('');
       setNewObs('');
       setNewDiasSemana([]);
+      setNewModoCriacao('DIAS_SEMANA');
+      setSelectedEventoIds([]);
+      setEventosElegiveis([]);
       setCreateError('');
       showToast('Escala mensal criada com sucesso!');
       fetchDetail(created);
@@ -633,6 +680,17 @@ export default function EscalasPage() {
                   await addDia(detailedEscala.id, data, titulo);
                   await refreshDetail();
                 }}
+                onUpdateDiaEvento={async (diaId, eventoId) => {
+                  try {
+                    await updateDiaEvento(diaId, eventoId);
+                    await refreshDetail();
+                    showToast(tGrid('eventLinkUpdated'));
+                  } catch (err: unknown) {
+                    showToast(getErrorMessage(err, tGrid('eventLinkError')), 'error');
+                    throw err;
+                  }
+                }}
+                getEventosElegiveis={getEventosElegiveis}
                 onRemoveDia={async (diaId) => {
                   setPendingConfirmAction({
                     type: 'removeDia',
@@ -667,7 +725,13 @@ export default function EscalasPage() {
                 id="create-mes"
                 label={`${t('modal.month')} *`}
                 value={newMes}
-                onChange={(e) => setNewMes(parseInt(e.target.value))}
+                onChange={(e) => {
+                  setNewMes(parseInt(e.target.value));
+                  setSelectedEventoIds([]);
+                  setEventosElegiveis([]);
+                  setEventosError('');
+                  if (newModoCriacao === 'EVENTOS' && newMinId) setLoadingEventos(true);
+                }}
               >
                 {MONTH_KEYS.map((m) => <option key={m} value={m}>{t(`months.${m}`)}</option>)}
               </SelectField>
@@ -675,7 +739,13 @@ export default function EscalasPage() {
                 id="create-ano"
                 label={`${t('modal.year')} *`}
                 value={newAno}
-                onChange={(e) => setNewAno(parseInt(e.target.value))}
+                onChange={(e) => {
+                  setNewAno(parseInt(e.target.value));
+                  setSelectedEventoIds([]);
+                  setEventosElegiveis([]);
+                  setEventosError('');
+                  if (newModoCriacao === 'EVENTOS' && newMinId) setLoadingEventos(true);
+                }}
               >
                 {anos.map(a => <option key={a} value={a}>{a}</option>)}
               </SelectField>
@@ -686,13 +756,56 @@ export default function EscalasPage() {
               label={`${t('modal.ministry')} *`}
               value={newMinId}
               required
-              onChange={(e) => setNewMinId(e.target.value)}
+              onChange={(e) => {
+                const ministerioId = e.target.value;
+                setNewMinId(ministerioId);
+                setSelectedEventoIds([]);
+                setEventosElegiveis([]);
+                setEventosError('');
+                setLoadingEventos(newModoCriacao === 'EVENTOS' && Boolean(ministerioId));
+              }}
             >
               <option value="">{t('modal.ministryPlaceholder')}</option>
               {ministerios.filter(m => m.ativo).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </SelectField>
 
-            <div className="space-y-2">
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-bold uppercase text-gray-500">{t('modal.creationMode')}</legend>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {(['DIAS_SEMANA', 'EVENTOS', 'VAZIA'] as ModoCriacaoEscala[]).map((modo) => (
+                  <label
+                    key={modo}
+                    className={`cursor-pointer rounded-xl border p-3 transition-colors ${
+                      newModoCriacao === modo
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200'
+                    }`}
+                  >
+                    <input
+                      className="sr-only"
+                      type="radio"
+                      name="modoCriacao"
+                      value={modo}
+                      checked={newModoCriacao === modo}
+                      onChange={() => {
+                        setNewModoCriacao(modo);
+                        setNewDiasSemana([]);
+                        setSelectedEventoIds([]);
+                        setEventosElegiveis([]);
+                        setEventosError('');
+                        setLoadingEventos(modo === 'EVENTOS' && Boolean(newMinId));
+                      }}
+                    />
+                    <span className="block text-sm font-semibold">{t(`modal.modes.${modo}.title`)}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-gray-500">
+                      {t(`modal.modes.${modo}.description`)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            {newModoCriacao === 'DIAS_SEMANA' && <div className="space-y-2">
               <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.weekdays')}</label>
               <p className="text-xs text-gray-400">{t('modal.weekdaysDesc')}</p>
               <div className="flex gap-1.5 flex-wrap">
@@ -728,6 +841,91 @@ export default function EscalasPage() {
                   </p>
                 );
               })()}
+            </div>}
+
+            {newModoCriacao === 'EVENTOS' && (
+              <div className="space-y-3" aria-live="polite">
+                <div>
+                  <p className="text-xs font-bold uppercase text-gray-500">{t('modal.events')}</p>
+                  <p className="mt-1 text-xs text-gray-400">{t('modal.eventsDesc')}</p>
+                </div>
+
+                {!newMinId ? (
+                  <p className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">
+                    {t('modal.selectMinistryFirst')}
+                  </p>
+                ) : loadingEventos ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <Skeleton key={index} className="h-20 rounded-xl" />
+                    ))}
+                  </div>
+                ) : eventosError ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    <p>{eventosError}</p>
+                    <button
+                      type="button"
+                      className="mt-2 font-semibold underline"
+                      onClick={() => {
+                        setLoadingEventos(true);
+                        setEventosError('');
+                        setEventosRetry((value) => value + 1);
+                      }}
+                    >
+                      {t('modal.tryAgain')}
+                    </button>
+                  </div>
+                ) : eventosElegiveis.length === 0 ? (
+                  <EmptyState title={t('modal.noEvents')} description={t('modal.noEventsDesc')} />
+                ) : (
+                  <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                    {eventosElegiveis.map((evento) => {
+                      const selected = selectedEventoIds.includes(evento.id);
+                      const start = new Date(evento.dataInicio);
+                      return (
+                        <label
+                          key={evento.id}
+                          className={`flex cursor-pointer gap-3 rounded-xl border p-3 transition-colors ${
+                            selected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 hover:border-indigo-200'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() =>
+                              setSelectedEventoIds((current) =>
+                                selected
+                                  ? current.filter((id) => id !== evento.id)
+                                  : [...current, evento.id],
+                              )
+                            }
+                            className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-semibold text-gray-800">{evento.titulo}</span>
+                            <span className="mt-1 block text-xs text-gray-500">
+                              {start.toLocaleDateString()} · {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {' · '}{t(`modal.eventTypes.${evento.tipo}`)}
+                              {evento.local ? ` · ${evento.local}` : ''}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-xs font-semibold text-indigo-700">
+                  {t('modal.eventsSelected', { count: selectedEventoIds.length })}
+                </p>
+              </div>
+            )}
+
+            <div className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+              <span className="font-semibold">{t('modal.summary')}:</span>{' '}
+              {newModoCriacao === 'DIAS_SEMANA' && t('modal.summaryWeekdays', { count: newDiasSemana.length })}
+              {newModoCriacao === 'EVENTOS' && t('modal.summaryEvents', { count: selectedEventoIds.length })}
+              {newModoCriacao === 'VAZIA' && t('modal.summaryEmpty')}
             </div>
 
             <TextareaField
@@ -747,7 +945,11 @@ export default function EscalasPage() {
               setCreateError('');
             }}
             loading={creating}
-            disabled={!newMinId}
+            disabled={
+              !newMinId ||
+              (newModoCriacao === 'DIAS_SEMANA' && newDiasSemana.length === 0) ||
+              (newModoCriacao === 'EVENTOS' && selectedEventoIds.length === 0)
+            }
           />
         </form>
       </ModalShell>

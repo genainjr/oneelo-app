@@ -1,5 +1,6 @@
 ﻿import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,8 +10,14 @@ import { AuthorizationService } from '../../common/authorization/authorization.s
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { CreateEventoDto } from './dto/create-evento.dto';
+import { EventoMinisterioInputDto } from './dto/evento-ministerio-input.dto';
 import { FilterEventosDto } from './dto/filter-eventos.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
+
+type EventoMinisterioConfig = Pick<
+  EventoMinisterioInputDto,
+  'ministerioId' | 'requerEscala'
+>;
 
 const eventoInclude: Prisma.EventoInclude = {
   ministerios: {
@@ -36,6 +43,49 @@ export class EventosService {
     return [...new Set((ids ?? []).map((id) => id.trim()).filter(Boolean))];
   }
 
+  private getOperationalMonthYear(date: Date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+    }).formatToParts(date);
+
+    return {
+      ano: Number(parts.find((part) => part.type === 'year')?.value),
+      mes: Number(parts.find((part) => part.type === 'month')?.value),
+    };
+  }
+
+  private normalizeMinisterios(input: {
+    ministerios?: EventoMinisterioInputDto[];
+    ministerioIds?: string[];
+  }): EventoMinisterioConfig[] {
+    if (input.ministerios === undefined) {
+      return this.uniqueIds(input.ministerioIds).map((ministerioId) => ({
+        ministerioId,
+        requerEscala: false,
+      }));
+    }
+
+    const configs = input.ministerios.map((ministerio) => ({
+      ministerioId: ministerio.ministerioId.trim(),
+      requerEscala: ministerio.requerEscala,
+    }));
+    const ids = configs.map((ministerio) => ministerio.ministerioId);
+
+    if (ids.some((id) => !id)) {
+      throw new BadRequestException(
+        'Ministério inválido na configuração do evento.',
+      );
+    }
+
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException('Não repita o mesmo ministério no evento.');
+    }
+
+    return configs;
+  }
+
   private buildDataFimFilter(dataFim: string): Prisma.DateTimeFilter {
     const dateOnlyMatch = dataFim.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
@@ -44,7 +94,9 @@ export class EventosService {
     }
 
     const [, year, month, day] = dateOnlyMatch;
-    const nextDay = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day) + 1));
+    const nextDay = new Date(
+      Date.UTC(Number(year), Number(month) - 1, Number(day) + 1),
+    );
 
     return { lt: nextDay };
   }
@@ -71,7 +123,11 @@ export class EventosService {
     return [...new Set(liderancas.map((lideranca) => lideranca.ministerioId))];
   }
 
-  private async canManageEvent(tenantId: string, eventoId: string, user: JwtPayload) {
+  private async canManageEvent(
+    tenantId: string,
+    eventoId: string,
+    user: JwtPayload,
+  ) {
     if (this.authorization.canManageTenant(user)) {
       return true;
     }
@@ -93,7 +149,9 @@ export class EventosService {
               membros: {
                 some: {
                   membroId: user.memberId,
-                  role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+                  role: {
+                    in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER],
+                  },
                 },
               },
             },
@@ -126,7 +184,9 @@ export class EventosService {
     });
 
     if (ministerios.length !== ministerioIds.length) {
-      throw new NotFoundException('Um ou mais ministérios não foram encontrados.');
+      throw new NotFoundException(
+        'Um ou mais ministérios não foram encontrados.',
+      );
     }
 
     if (this.authorization.canManageTenant(user)) {
@@ -139,30 +199,42 @@ export class EventosService {
 
     const permitidos = await this.getMinisterioIdsDoUsuario(tenantId, user);
     if (permitidos.length === 0) {
-      throw new ForbiddenException('Você não lidera ou auxilia ministérios elegíveis.');
+      throw new ForbiddenException(
+        'Você não lidera ou auxilia ministérios elegíveis.',
+      );
     }
 
     const invalidos = ministerioIds.filter((id) => !permitidos.includes(id));
     if (invalidos.length > 0) {
-      throw new ForbiddenException('Você só pode usar ministérios que lidera ou auxilia.');
+      throw new ForbiddenException(
+        'Você só pode usar ministérios que lidera ou auxilia.',
+      );
     }
 
     if (tipo === EventoTipo.MINISTERIO && ministerioIds.length === 0) {
-      throw new BadRequestException('Evento do tipo ministério exige pelo menos 1 ministério vinculado.');
+      throw new BadRequestException(
+        'Evento do tipo ministério exige pelo menos 1 ministério vinculado.',
+      );
     }
 
     if (tipo === EventoTipo.REUNIAO_INTERNA && ministerioIds.length === 0) {
-      throw new BadRequestException('Reunião interna exige ao menos 1 ministério para BASIC.');
+      throw new BadRequestException(
+        'Reunião interna exige ao menos 1 ministério para BASIC.',
+      );
     }
 
     return ministerioIds;
   }
 
-  private async buildVisibilityWhere(tenantId: string, query: FilterEventosDto, user: JwtPayload) {
+  private async buildVisibilityWhere(
+    tenantId: string,
+    query: FilterEventosDto,
+    user: JwtPayload,
+  ) {
     const where: Prisma.EventoWhereInput = { tenantId };
 
     if (query.status) {
-      where.status = query.status as any;
+      where.status = query.status;
     }
 
     if (query.tipo) {
@@ -194,7 +266,10 @@ export class EventosService {
     }
 
     if (user.role === Role.BASIC) {
-      const ministerioIds = await this.getMinisterioIdsDoUsuario(tenantId, user);
+      const ministerioIds = await this.getMinisterioIdsDoUsuario(
+        tenantId,
+        user,
+      );
 
       if (query.scope === 'MANAGE') {
         if (ministerioIds.length === 0) {
@@ -262,7 +337,7 @@ export class EventosService {
   }
 
   private async getEventoPorId(tenantId: string, id: string, user: JwtPayload) {
-    const where = await this.buildVisibilityWhere(tenantId, { } as FilterEventosDto, user);
+    const where = await this.buildVisibilityWhere(tenantId, {}, user);
     const evento = await this.prisma.evento.findFirst({
       where: {
         ...where,
@@ -280,45 +355,68 @@ export class EventosService {
 
   async create(tenantId: string, dto: CreateEventoDto, user: JwtPayload) {
     const tipo = dto.tipo ?? EventoTipo.GERAL;
-    const ministerioIds = this.uniqueIds(dto.ministerioIds);
+    const ministeriosConfig = this.normalizeMinisterios(dto);
+    const ministerioIds = ministeriosConfig.map(
+      (ministerio) => ministerio.ministerioId,
+    );
 
     if (dto.dataFim && new Date(dto.dataFim) < new Date(dto.dataInicio)) {
-      throw new BadRequestException('Data final não pode ser anterior à data inicial.');
-    }
-
-    if (tipo === EventoTipo.GERAL && ministerioIds.length > 0) {
-      throw new BadRequestException('Eventos gerais não devem possuir ministérios vinculados.');
+      throw new BadRequestException(
+        'Data final não pode ser anterior à data inicial.',
+      );
     }
 
     if (tipo === EventoTipo.MINISTERIO && ministerioIds.length === 0) {
-      throw new BadRequestException('Evento do tipo ministério exige pelo menos 1 ministério vinculado.');
+      throw new BadRequestException(
+        'Evento do tipo ministério exige pelo menos 1 ministério vinculado.',
+      );
     }
 
     if (user.role === Role.BASIC) {
       if (tipo === EventoTipo.GERAL) {
-        throw new ForbiddenException('Usuários BASIC não podem criar eventos gerais.');
+        throw new ForbiddenException(
+          'Usuários BASIC não podem criar eventos gerais.',
+        );
       }
 
       if (!user.memberId) {
-        throw new ForbiddenException('Usuário BASIC sem membro vinculado não pode criar eventos.');
+        throw new ForbiddenException(
+          'Usuário BASIC sem membro vinculado não pode criar eventos.',
+        );
       }
 
-      const ministeriosPermitidos = await this.getMinisterioIdsDoUsuario(tenantId, user);
+      const ministeriosPermitidos = await this.getMinisterioIdsDoUsuario(
+        tenantId,
+        user,
+      );
       if (ministeriosPermitidos.length === 0) {
-        throw new ForbiddenException('Você não lidera ou auxilia ministérios elegíveis.');
+        throw new ForbiddenException(
+          'Você não lidera ou auxilia ministérios elegíveis.',
+        );
       }
 
       if (tipo === EventoTipo.REUNIAO_INTERNA && ministerioIds.length === 0) {
-        throw new BadRequestException('Reunião interna exige ao menos um ministério.');
+        throw new BadRequestException(
+          'Reunião interna exige ao menos um ministério.',
+        );
       }
 
-      const invalidos = ministerioIds.filter((id) => !ministeriosPermitidos.includes(id));
+      const invalidos = ministerioIds.filter(
+        (id) => !ministeriosPermitidos.includes(id),
+      );
       if (invalidos.length > 0) {
-        throw new ForbiddenException('Você só pode criar eventos para ministérios que lidera ou auxilia.');
+        throw new ForbiddenException(
+          'Você só pode criar eventos para ministérios que lidera ou auxilia.',
+        );
       }
     }
 
-    const ministeriosValidos = await this.validateMinisterios(tenantId, ministerioIds, user, tipo);
+    const ministeriosValidos = await this.validateMinisterios(
+      tenantId,
+      ministerioIds,
+      user,
+      tipo,
+    );
 
     return this.prisma.evento.create({
       data: {
@@ -332,9 +430,16 @@ export class EventosService {
         tenantId,
         ministerios: ministeriosValidos.length
           ? {
-              create: ministeriosValidos.map((ministerioId) => ({
-                ministerioId,
-              })),
+              create: ministeriosValidos.map((ministerioId) => {
+                const config = ministeriosConfig.find(
+                  (ministerio) => ministerio.ministerioId === ministerioId,
+                );
+
+                return {
+                  ministerioId,
+                  requerEscala: config?.requerEscala ?? false,
+                };
+              }),
             }
           : undefined,
       },
@@ -356,34 +461,50 @@ export class EventosService {
     return this.getEventoPorId(tenantId, id, user);
   }
 
-  async update(tenantId: string, id: string, dto: UpdateEventoDto, user: JwtPayload) {
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateEventoDto,
+    user: JwtPayload,
+  ) {
     if (!(await this.canManageEvent(tenantId, id, user))) {
       throw new ForbiddenException('Acesso negado para manipular este evento.');
     }
 
     const eventoAtual = await this.getEventoPorId(tenantId, id, user);
     const tipo = dto.tipo ?? eventoAtual.tipo;
-    const ministerioIdsInput =
-      dto.ministerioIds !== undefined
-        ? this.uniqueIds(dto.ministerioIds)
-        : tipo === EventoTipo.GERAL
-          ? []
-          : eventoAtual.ministerios.map((relacao) => relacao.ministerioId);
+    const ministeriosFornecidos =
+      dto.ministerios !== undefined || dto.ministerioIds !== undefined;
+    const ministeriosConfig = ministeriosFornecidos
+      ? this.normalizeMinisterios(dto)
+      : eventoAtual.ministerios.map((relacao) => ({
+          ministerioId: relacao.ministerioId,
+          requerEscala: relacao.requerEscala,
+        }));
+    const ministerioIdsInput = ministeriosConfig.map(
+      (ministerio) => ministerio.ministerioId,
+    );
 
-    if (dto.dataInicio && dto.dataFim && new Date(dto.dataFim) < new Date(dto.dataInicio)) {
-      throw new BadRequestException('Data final não pode ser anterior à data inicial.');
-    }
-
-    if (tipo === EventoTipo.GERAL && ministerioIdsInput.length > 0) {
-      throw new BadRequestException('Eventos gerais não devem possuir ministérios vinculados.');
+    if (
+      dto.dataInicio &&
+      dto.dataFim &&
+      new Date(dto.dataFim) < new Date(dto.dataInicio)
+    ) {
+      throw new BadRequestException(
+        'Data final não pode ser anterior à data inicial.',
+      );
     }
 
     if (user.role === Role.BASIC && tipo === EventoTipo.GERAL) {
-      throw new ForbiddenException('Usuários BASIC não podem transformar eventos em gerais.');
+      throw new ForbiddenException(
+        'Usuários BASIC não podem transformar eventos em gerais.',
+      );
     }
 
     if (tipo === EventoTipo.MINISTERIO && ministerioIdsInput.length === 0) {
-      throw new BadRequestException('Evento de ministério exige ao menos um ministério.');
+      throw new BadRequestException(
+        'Evento de ministério exige ao menos um ministério.',
+      );
     }
 
     const ministeriosValidos = await this.validateMinisterios(
@@ -394,6 +515,36 @@ export class EventosService {
     );
 
     return this.prisma.$transaction(async (tx) => {
+      const diasVinculados =
+        dto.titulo !== undefined || dto.dataInicio !== undefined
+          ? await tx.escalaDia.findMany({
+              where: { eventoId: id, escala: { tenantId } },
+              select: {
+                id: true,
+                escala: { select: { mes: true, ano: true } },
+              },
+            })
+          : [];
+
+      const novaDataInicio = dto.dataInicio
+        ? new Date(dto.dataInicio)
+        : eventoAtual.dataInicio;
+
+      if (dto.dataInicio && diasVinculados.length > 0) {
+        const novoPeriodo = this.getOperationalMonthYear(novaDataInicio);
+        const mudaDePeriodo = diasVinculados.some(
+          (dia) =>
+            dia.escala.mes !== novoPeriodo.mes ||
+            dia.escala.ano !== novoPeriodo.ano,
+        );
+
+        if (mudaDePeriodo) {
+          throw new ConflictException(
+            'O evento está vinculado a uma escala mensal. Desvincule-o da escala antes de alterar a data para outro mês.',
+          );
+        }
+      }
+
       await tx.evento.update({
         where: { id },
         data: {
@@ -407,15 +558,32 @@ export class EventosService {
         },
       });
 
-      if (dto.tipo !== undefined || dto.ministerioIds !== undefined) {
+      if (diasVinculados.length > 0) {
+        await tx.escalaDia.updateMany({
+          where: { id: { in: diasVinculados.map((dia) => dia.id) } },
+          data: {
+            titulo: dto.titulo,
+            data: dto.dataInicio ? novaDataInicio : undefined,
+          },
+        });
+      }
+
+      if (dto.tipo !== undefined || ministeriosFornecidos) {
         await tx.eventoMinisterio.deleteMany({ where: { eventoId: id } });
 
-        if (ministeriosValidos.length > 0 && tipo !== EventoTipo.GERAL) {
+        if (ministeriosValidos.length > 0) {
           await tx.eventoMinisterio.createMany({
-            data: ministeriosValidos.map((ministerioId) => ({
-              eventoId: id,
-              ministerioId,
-            })),
+            data: ministeriosValidos.map((ministerioId) => {
+              const config = ministeriosConfig.find(
+                (ministerio) => ministerio.ministerioId === ministerioId,
+              );
+
+              return {
+                eventoId: id,
+                ministerioId,
+                requerEscala: config?.requerEscala ?? false,
+              };
+            }),
             skipDuplicates: true,
           });
         }
@@ -440,5 +608,3 @@ export class EventosService {
     return { message: 'Evento removido com sucesso.' };
   }
 }
-
-
