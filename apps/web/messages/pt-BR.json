@@ -441,7 +441,7 @@
       "all": "Todos"
     },
     "modal": {
-      "title": "Nova Escala Mensal",
+      "title": "Nova Escala",
       "month": "Mês",
       "year": "Ano",
       "ministry": "Ministério",
@@ -568,6 +568,44 @@
       "emptyDescription": "Ajuste o período ou o status para localizar outros eventos."
     },
     "newEvent": "Novo Evento",
+    "batch": {
+      "creationMode": "Como deseja criar o evento?",
+      "mode": {
+        "single": "Evento único",
+        "weekly": "Repetir semanalmente"
+      },
+      "modeDescription": {
+        "single": "Cria um único evento.",
+        "weekly": "Gera eventos recorrentes no período."
+      },
+      "startDate": "Data inicial",
+      "endDate": "Data final",
+      "weekdaysLabel": "Dias e horários",
+      "weekdaysDescription": "Selecione os dias que se repetem no período para gerar os eventos automaticamente.",
+      "startTime": "Hora inicial",
+      "endTime": "Hora final",
+      "timeHint": "A hora final é opcional e deve ser posterior à inicial.",
+      "weekdays": {
+        "sunday": "Domingo",
+        "monday": "Segunda-feira",
+        "tuesday": "Terça-feira",
+        "wednesday": "Quarta-feira",
+        "thursday": "Quinta-feira",
+        "friday": "Sexta-feira",
+        "saturday": "Sábado"
+      },
+      "previewTitle": "Prévia das datas",
+      "previewCount": "{count} de até {max} eventos",
+      "previewEmpty": "Informe o período, selecione os dias e preencha os horários para gerar a prévia.",
+      "removeOccurrence": "Remover",
+      "restoreRemoved": "Restaurar removidas ({count})",
+      "independentNotice": "As datas serão criadas como eventos independentes. Alterações futuras serão feitas individualmente em cada evento.",
+      "createButton": "Criar {count} eventos",
+      "createdSuccess": "{count} eventos foram criados com sucesso.",
+      "conflictError": "Já existem eventos com o mesmo título nestas datas: {dates}.",
+      "noOccurrencesError": "Mantenha pelo menos uma data na prévia antes de criar o lote.",
+      "invalidPattern": "Não foi possível gerar as datas com o padrão informado."
+    },
     "reload": "Recarregar",
     "noEvents": "Nenhum evento agendado",
     "noEventsDesc": "Você pode criar novos eventos e cultos oficiais da igreja para alimentar a agenda compartilhada.",
@@ -609,10 +647,10 @@
     },
     "modal": {
       "editTitle": "Editar Evento",
-      "createTitle": "Novo Evento da Igreja",
-      "titleLabel": "Título do Evento *",
+      "createTitle": "Novo Evento",
+      "titleLabel": "Título do Evento",
       "titlePlaceholder": "Ex: Culto de Jovens, Reunião de Líderes",
-      "startTime": "Horário Início *",
+      "startTime": "Horário Início",
       "endTime": "Horário Fim",
       "locationLabel": "Local / Templo",
       "locationPlaceholder": "Ex: Templo Principal, Sala 3",
@@ -623,6 +661,10 @@
       "generalVisibilityHelp": "Em eventos gerais, essa seleção não altera quem pode visualizar o evento.",
       "ministeriosLoading": "Carregando ministérios...",
       "noMinisterios": "Nenhum ministério ativo disponível.",
+      "ministrySearchPlaceholder": "Buscar ministério...",
+      "ministrySearchEmpty": "Nenhum ministério disponível encontrado.",
+      "noSelectedMinistries": "Nenhum ministério selecionado.",
+      "removeMinistryLabel": "Remover {name}",
         "requiresScheduleLabel": "Precisa de escala",
         "scheduleNotUsedLabel": "Não utiliza escala",
       "descriptionLabel": "Descrição / Pautas",

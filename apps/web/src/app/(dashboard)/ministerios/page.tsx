@@ -422,9 +422,10 @@ export default function MinisteriosPage() {
       <ModalShell
         isOpen={isModalOpen}
         title={selectedMinisterio ? selectedMinisterio.nome : t('modal.titleNew')}
-        description={selectedMinisterio ? t('modal.subtitleEdit') : t('modal.subtitleNew')}
+        description={selectedMinisterio ? t('modal.subtitleEdit') : undefined}
         onClose={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
-        size="lg"
+        size={selectedMinisterio ? 'lg' : 'md'}
+        height={!selectedMinisterio ? 'viewport' : 'auto'}
         bodyClassName="p-0"
       >
         {/* Feedback de erro global */}
@@ -446,7 +447,7 @@ export default function MinisteriosPage() {
               <form id="ministerio-form" onSubmit={handleSave} className="space-y-4">
                 <InputField
                   id="min-nome"
-                  label={`${t('modal.fields.name')} *`}
+                  label={t('modal.fields.name')}
                   type="text"
                   required
                   value={nome}
@@ -696,7 +697,7 @@ export default function MinisteriosPage() {
             <div className="space-y-4 p-6">
               <InputField
                 id="min-nome"
-                label={`${t('modal.fields.name')} *`}
+                label={t('modal.fields.name')}
                 type="text"
                 required
                 value={nome}
@@ -719,19 +720,21 @@ export default function MinisteriosPage() {
                 </span>
               </label>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase">{t('functions.newFunction')}</label>
-                <p className="text-xs text-gray-400">{t('functions.description')}</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={novaFuncao}
-                    onChange={(e) => setNovaFuncao(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
-                    placeholder={t('functions.functionPlaceholder')}
-                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                  />
-                  <button type="button" onClick={handleAddFuncao} className="px-3 py-2 bg-gray-800 text-white text-sm font-semibold rounded-xl hover:bg-gray-900">{t('functions.add')}</button>
+                <div className="flex items-end gap-2">
+                  <div className="min-w-0 flex-1">
+                    <InputField
+                      id="new-ministry-function"
+                      label={t('functions.newFunction')}
+                      type="text"
+                      value={novaFuncao}
+                      onChange={(e) => setNovaFuncao(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
+                      placeholder={t('functions.functionPlaceholder')}
+                    />
+                  </div>
+                  <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="shrink-0 px-3 py-2.5 bg-gray-800 text-white text-sm font-semibold rounded-xl hover:bg-gray-900 disabled:opacity-50">{t('functions.add')}</button>
                 </div>
+                <p className="text-xs text-gray-400">{t('functions.description')}</p>
                 {funcoes.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-1">
                     {funcoes.map((f) => (

@@ -13,6 +13,7 @@ import { EventosService } from './eventos.service';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
 import { FilterEventosDto } from './dto/filter-eventos.dto';
+import { CreateEventosEmLoteDto } from './dto/create-eventos-em-lote.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
@@ -28,6 +29,17 @@ export class EventosController {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
     return this.eventosService.create(tenantId, createEventoDto, user);
+  }
+
+  @Post('lote')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  createBatch(
+    @Body() dto: CreateEventosEmLoteDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.eventosService.createBatch(tenantId, dto, user);
   }
 
   @Get()

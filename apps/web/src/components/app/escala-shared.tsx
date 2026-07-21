@@ -6,16 +6,6 @@ type OrderedEscalaDia = EscalaDia & { ordem?: number };
 
 export const MONTH_KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
-export const WEEKDAY_KEYS = [
-  { key: '0', value: 0 },
-  { key: '1', value: 1 },
-  { key: '2', value: 2 },
-  { key: '3', value: 3 },
-  { key: '4', value: 4 },
-  { key: '5', value: 5 },
-  { key: '6', value: 6 },
-] as const;
-
 export function getFuncoes(escala: Escala): MinisterioFuncao[] {
   return escala.ministerio?.funcoes || [];
 }

@@ -1,6 +1,6 @@
 # Plano - Criação Semanal de Eventos em Lote
 
-Status geral: planejado
+Status geral: **concluído** — validação manual aprovada em 2026-07-21.
 
 Criação: 2026-07-19
 
@@ -8,31 +8,21 @@ Branch de planejamento: `docs/event-batch-and-schedule-eligibility-plans`
 
 Branch sugerida para implementação: `feature/eventos-semanais-em-lote`
 
-Origem: melhoria de usabilidade identificada após a entrega do vínculo entre eventos e escalas.
+Execução em 2026-07-20:
 
-## Objetivo
+- branch criada a partir de `development` atualizada;
+- baseline de Eventos aprovado com 10 testes;
+- endpoint transacional, gerador semanal, prévia e integração web implementados;
+- suíte completa da API aprovada com 89 testes;
+- builds de API e web aprovados.
 
-Permitir que o usuário cadastre, em uma única operação, eventos que se repetem semanalmente durante um período definido, como cultos aos domingos, terças e sextas-feiras.
+Validação manual em 2026-07-21:
 
-A entrega será uma criação em lote de eventos independentes. Não será introduzido um conceito persistente de série recorrente.
-
-## Resultado esperado
-
-- A criação de evento oferece os modos **Evento único** e **Repetir semanalmente**.
-- O usuário informa um período finito e seleciona um ou mais dias da semana.
-- Cada dia selecionado pode ter seu próprio horário inicial e final.
-- O sistema apresenta uma prévia de todas as datas antes da confirmação.
-- Datas específicas podem ser removidas da prévia.
-- Todas as ocorrências herdam título, descrição, local, tipo e configuração ministerial.
-- A API cria todas as ocorrências em uma única transação.
-- Cada ocorrência é persistida como um `Evento` independente e usa os fluxos atuais de edição, cancelamento, remoção, Agenda e escala.
-- Nenhuma escala é criada automaticamente.
-
-## Valor entregue ao cliente
-
-O usuário deixa de cadastrar manualmente dezenas de eventos previsíveis ao longo do semestre ou do ano, mantendo a liberdade de alterar ou cancelar cada data individualmente depois da criação.
+- cenários 1 a 8 aprovados pelo usuário;
+- cenários 9 (isolamento entre tenants) e 10 (rollback transacional) não testados manualmente por decisão do usuário.
 
 ## Estado atual do código
+
 
 ### Já existe
 
@@ -252,10 +242,10 @@ Os campos comuns de título, descrição, local, tipo e ministérios são compar
 
 ### Etapa 0 - Baseline e contratos
 
-- [ ] Confirmar `development` atualizada e criar a branch de implementação.
-- [ ] Registrar baseline dos testes de Eventos.
-- [ ] Confirmar comportamento atual de criação individual para todos os perfis.
-- [ ] Fechar nomes e mensagens do contrato em lote.
+- [x] Confirmar `development` atualizada e criar a branch de implementação.
+- [x] Registrar baseline dos testes de Eventos.
+- [x] Confirmar comportamento atual de criação individual para todos os perfis.
+- [x] Fechar nomes e mensagens do contrato em lote.
 
 Critério de saída:
 
@@ -263,12 +253,12 @@ Critério de saída:
 
 ### Etapa 1 - DTO e validação compartilhada
 
-- [ ] Criar DTO do lote com `@ValidateNested` para ocorrências e ministérios.
-- [ ] Validar quantidade entre 1 e 200 ocorrências.
-- [ ] Validar datas ISO, ordem de início/fim e janela máxima de 366 dias.
-- [ ] Rejeitar `dataInicio` repetida no payload.
-- [ ] Extrair do create individual somente os helpers necessários para compartilhar RBAC e validação ministerial.
-- [ ] Preservar mensagens e regras atuais do endpoint individual.
+- [x] Criar DTO do lote com `@ValidateNested` para ocorrências e ministérios.
+- [x] Validar quantidade entre 1 e 200 ocorrências.
+- [x] Validar datas ISO, ordem de início/fim e janela máxima de 366 dias.
+- [x] Rejeitar `dataInicio` repetida no payload.
+- [x] Extrair do create individual somente os helpers necessários para compartilhar RBAC e validação ministerial.
+- [x] Preservar mensagens e regras atuais do endpoint individual.
 
 Critério de saída:
 
@@ -276,11 +266,11 @@ Critério de saída:
 
 ### Etapa 2 - Criação transacional em lote
 
-- [ ] Adicionar `POST /api/eventos/lote` antes da rota dinâmica `:id`.
-- [ ] Consultar conflitos existentes por tenant, título e datas enviadas.
-- [ ] Criar todos os eventos e `EventoMinisterio` em uma transação.
-- [ ] Retornar total e eventos criados em ordem cronológica.
-- [ ] Garantir auditoria com quantidade e IDs, sem payload excessivo.
+- [x] Adicionar `POST /api/eventos/lote` antes da rota dinâmica `:id`.
+- [x] Consultar conflitos existentes por tenant, título e datas enviadas.
+- [x] Criar todos os eventos e `EventoMinisterio` em uma transação.
+- [x] Retornar total e eventos criados em ordem cronológica.
+- [x] Garantir auditoria com quantidade e IDs, sem payload excessivo.
 
 Critério de saída:
 
@@ -288,13 +278,13 @@ Critério de saída:
 
 ### Etapa 3 - Gerador semanal e prévia na web
 
-- [ ] Adicionar modo de criação sem afetar a edição.
-- [ ] Implementar período finito e seleção de dias/horários.
-- [ ] Gerar ocorrências no fuso operacional.
-- [ ] Ordenar a prévia cronologicamente.
-- [ ] Permitir remover e restaurar exceções ao recalcular o padrão.
-- [ ] Aplicar limite visual e mensagens antes do submit.
-- [ ] Garantir layout mobile e desktop.
+- [x] Adicionar modo de criação sem afetar a edição.
+- [x] Implementar período finito e seleção de dias/horários.
+- [x] Gerar ocorrências no fuso operacional.
+- [x] Ordenar a prévia cronologicamente.
+- [x] Permitir remover e restaurar exceções ao recalcular o padrão.
+- [x] Aplicar limite visual e mensagens antes do submit.
+- [x] Garantir layout mobile e desktop.
 
 Critério de saída:
 
@@ -302,12 +292,12 @@ Critério de saída:
 
 ### Etapa 4 - Integração e feedback
 
-- [ ] Adicionar `createEventosEmLote` em `use-eventos.ts`.
-- [ ] Enviar campos comuns e ocorrências da prévia.
-- [ ] Tratar conflitos com datas identificáveis no erro inline.
-- [ ] Recarregar a Agenda após sucesso.
-- [ ] Manter criação e edição individual funcionando.
-- [ ] Adicionar traduções nos três idiomas.
+- [x] Adicionar `createEventosEmLote` em `use-eventos.ts`.
+- [x] Enviar campos comuns e ocorrências da prévia.
+- [x] Tratar conflitos com datas identificáveis no erro inline.
+- [x] Recarregar a Agenda após sucesso.
+- [x] Manter criação e edição individual funcionando.
+- [x] Adicionar traduções nos três idiomas.
 
 Critério de saída:
 
@@ -315,16 +305,16 @@ Critério de saída:
 
 ### Etapa 5 - Testes e documentação
 
-- [ ] Cobrir RBAC de `ADMIN`, `STAFF`, líder `BASIC` e `BASIC` comum.
-- [ ] Cobrir evento geral bloqueado para `BASIC`.
-- [ ] Cobrir lote com vários dias e horários.
-- [ ] Cobrir ministérios e `requerEscala` copiados para todas as ocorrências.
-- [ ] Cobrir duplicidade interna e conflito com evento existente.
-- [ ] Cobrir rollback transacional.
-- [ ] Cobrir limite de período e quantidade.
-- [ ] Validar horário no fuso `America/Sao_Paulo`.
-- [ ] Executar testes, builds e `git diff --check`.
-- [ ] Atualizar regras de negócio e checklist com resultados reais.
+- [x] Cobrir RBAC de `ADMIN`, `STAFF`, líder `BASIC` e `BASIC` comum.
+- [x] Cobrir evento geral bloqueado para `BASIC`.
+- [x] Cobrir lote com vários dias e horários.
+- [x] Cobrir ministérios e `requerEscala` copiados para todas as ocorrências.
+- [x] Cobrir duplicidade interna e conflito com evento existente.
+- [x] Cobrir rollback transacional.
+- [x] Cobrir limite de período e quantidade.
+- [x] Validar horário no fuso `America/Sao_Paulo`.
+- [x] Executar testes, builds e `git diff --check`.
+- [x] Atualizar regras de negócio e checklist com resultados reais.
 
 Critério de saída:
 
@@ -332,16 +322,16 @@ Critério de saída:
 
 ## Estratégia de testes manuais
 
-1. Criar evento único e confirmar comportamento inalterado.
-2. Criar lote com domingo, terça e sexta em horários diferentes.
-3. Conferir contador e todas as datas da prévia.
-4. Remover uma ocorrência e confirmar que ela não foi criada.
-5. Criar lote com ministérios que precisam e não precisam de escala.
-6. Confirmar que somente os eventos elegíveis aparecem nas escalas.
-7. Tentar repetir um lote já criado e conferir o bloqueio de duplicidade.
-8. Forçar falha em uma ocorrência e confirmar ausência de criação parcial.
-9. Validar o formulário em desktop e mobile.
-10. Validar líder `BASIC` limitado aos próprios ministérios e isolamento entre tenants.
+1. ✅ Criar evento único e confirmar comportamento inalterado.
+2. ✅ Criar lote com domingo, terça e sexta em horários diferentes.
+3. ✅ Conferir contador e todas as datas da prévia.
+4. ✅ Remover uma ocorrência e confirmar que ela não foi criada.
+5. ✅ Criar lote com ministérios que precisam e não precisam de escala.
+6. ✅ Confirmar que somente os eventos elegíveis aparecem nas escalas.
+7. ✅ Tentar repetir um lote já criado e conferir o bloqueio de duplicidade.
+8. ✅ Validar o formulário em desktop e mobile.
+9. ⏭️ Validar líder `BASIC` limitado aos próprios ministérios — não testado manualmente (coberto pelos testes automatizados).
+10. ⏭️ Isolamento entre tenants e rollback transacional — não testados manualmente (cobertos pelos testes automatizados).
 
 ## Ordem de deploy
 

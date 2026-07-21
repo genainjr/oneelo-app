@@ -6,6 +6,7 @@ import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { EscalaPrintGrid } from '@/components/app/escala-print-grid';
 import { EscalaReadonlyGrid } from '@/components/app/escala-readonly-grid';
+import { CollapseButton } from '@/components/app/collapse-button';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { StatCard } from '@/components/app/stat-card';
@@ -229,14 +230,12 @@ export default function EscalasVisualizacaoPage() {
                     {escala.observacoes && <p className="mt-1 text-sm text-gray-500">{escala.observacoes}</p>}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleEscalaMinimizada(escala.id)}
-                      aria-expanded={!minimizada}
-                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
-                    >
-                      {minimizada ? 'Mostrar escala' : 'Minimizar escala'}
-                    </button>
+                    <CollapseButton
+                      collapsed={minimizada}
+                      onToggle={() => toggleEscalaMinimizada(escala.id)}
+                      collapseLabel="Minimizar escala"
+                      expandLabel="Mostrar escala"
+                    />
                     <StatusBadge
                       label={STATUS_ESCALA_LABEL[escala.status]}
                       className={`px-2.5 py-1 font-bold ${STATUS_ESCALA_COLOR[escala.status]}`}

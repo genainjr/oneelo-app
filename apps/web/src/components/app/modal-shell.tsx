@@ -2,6 +2,7 @@ import { X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
+type ModalHeight = 'auto' | 'viewport';
 
 // ─── ModalShell ──────────────────────────────────────────────────────────────
 
@@ -14,6 +15,7 @@ interface ModalShellProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: ModalSize;
+  height?: ModalHeight;
   bodyClassName?: string;
   contentClassName?: string;
   closeLabel?: string;
@@ -35,6 +37,7 @@ export function ModalShell({
   children,
   footer,
   size = 'md',
+  height = 'auto',
   bodyClassName,
   contentClassName,
   closeLabel = 'Fechar',
@@ -46,6 +49,7 @@ export function ModalShell({
       <div
         className={cn(
           'relative w-full bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[92vh] sm:max-h-[90vh]',
+          height === 'viewport' && 'h-[92vh] sm:h-[90vh]',
           sizeClass[size],
           contentClassName,
         )}
@@ -78,7 +82,7 @@ export function ModalShell({
         </div>
 
         {/* Body — scrollable */}
-        <div className={cn('flex-1 overflow-y-auto overscroll-contain', bodyClassName)}>
+        <div className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain', bodyClassName)}>
           {children}
         </div>
 
