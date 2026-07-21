@@ -198,6 +198,16 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 - A visualizacao individual de escalas deve retornar somente itens vinculados ao
   `memberId` do usuario autenticado.
 
+### Evento em lote
+
+- `POST /api/eventos/lote` preserva as mesmas permissões e validações ministeriais da criação individual.
+- O lote contém de 1 a 200 ocorrências e cobre uma janela máxima de 366 dias.
+- Cada ocorrência exige `dataInicio` ISO; `dataFim`, quando informada, deve ser posterior e permanecer no mesmo dia operacional em `America/Sao_Paulo`.
+- Datas iniciais repetidas no mesmo payload são rejeitadas.
+- Evento existente com o mesmo título normalizado e a mesma data inicial bloqueia todo o lote e retorna as datas conflitantes.
+- Todas as ocorrências e relações ministeriais são criadas em uma única transação.
+- As ocorrências são eventos independentes; não existe série persistida, edição coletiva ou criação automática de escala.
+
 ### EscalaItem
 
 - `membroId`: membro ativo do mesmo tenant.

@@ -263,6 +263,26 @@ export interface Evento {
   ministerios?: EventoMinisterio[];
 }
 
+export interface EventoOcorrenciaInput {
+  dataInicio: string;
+  dataFim?: string;
+}
+
+export interface EventosEmLoteInput {
+  titulo: string;
+  descricao?: string;
+  local?: string;
+  tipo?: EventoTipo;
+  status?: StatusEvento;
+  ministerios?: EventoMinisterioInput[];
+  ocorrencias: EventoOcorrenciaInput[];
+}
+
+export interface EventosEmLoteResponse {
+  total: number;
+  eventos: Evento[];
+}
+
 // ─── User (Sistema) ───────────────────────────────────────────────────────────
 
 export interface User {

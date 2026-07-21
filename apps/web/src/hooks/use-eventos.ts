@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, buildQuery, HttpError } from '@/lib/api';
-import { Evento, EventoMinisterioInput } from '@/types';
+import { Evento, EventoMinisterioInput, EventosEmLoteInput, EventosEmLoteResponse } from '@/types';
 
 export interface FilterEventos {
   dataInicio?: string;
@@ -54,6 +54,14 @@ export function useEventos(initialFilter: FilterEventos = {}, options: UseEvento
     return created;
   }
 
+  async function createEventosEmLote(data: EventosEmLoteInput) {
+    const response = await api.post<EventosEmLoteResponse>('/api/eventos/lote', data);
+    setEventos((prev) => [...response.eventos, ...prev].sort(
+      (a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime(),
+    ));
+    return response;
+  }
+
   async function updateEvento(id: string, data: EventoInput) {
     const updated = await api.patch<Evento>(`/api/eventos/${id}`, data);
     setEventos((prev) => prev.map((e) => (e.id === id ? updated : e)));
@@ -79,6 +87,7 @@ export function useEventos(initialFilter: FilterEventos = {}, options: UseEvento
     applyFilter,
     refetch: () => fetchEventos(filter),
     createEvento,
+    createEventosEmLote,
     updateEvento,
     deleteEvento,
   };

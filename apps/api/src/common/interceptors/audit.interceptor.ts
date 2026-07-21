@@ -62,8 +62,19 @@ export class AuditInterceptor implements NestInterceptor {
             AUDITED_PATHS.includes(part),
           );
           const entidade = urlParts[entityIndex] ?? 'desconhecido';
-          const entidadeId =
-            urlParts[entityIndex + 1] ?? responseData?.id ?? 'novo';
+          const isEventosBatch =
+            entidade === 'eventos' && urlParts[entityIndex + 1] === 'lote';
+          const entidadeId = isEventosBatch
+            ? `lote:${responseData?.total ?? 0}`
+            : urlParts[entityIndex + 1] ?? responseData?.id ?? 'novo';
+          const payloadAfter = isEventosBatch
+            ? {
+                total: responseData?.total ?? 0,
+                eventoIds: Array.isArray(responseData?.eventos)
+                  ? responseData.eventos.map((evento: { id?: string }) => evento.id).filter(Boolean)
+                  : [],
+              }
+            : responseData ?? body;
 
           if (user?.tenantId) {
             await this.prisma.auditLog.create({
@@ -75,7 +86,7 @@ export class AuditInterceptor implements NestInterceptor {
                 acao,
                 payloadBefore: method === 'DELETE' ? body : undefined,
                 payloadAfter:
-                  method !== 'DELETE' ? (responseData ?? body) : undefined,
+                  method !== 'DELETE' ? payloadAfter : undefined,
                 ipAddress: ip,
               },
             });

@@ -441,7 +441,7 @@
       "all": "All"
     },
     "modal": {
-      "title": "New Monthly Schedule",
+      "title": "New Schedule",
       "month": "Month",
       "year": "Year",
       "ministry": "Ministry",
@@ -568,6 +568,44 @@
       "emptyDescription": "Adjust the period or status to find other events."
     },
     "newEvent": "New Event",
+    "batch": {
+      "creationMode": "How would you like to create the event?",
+      "mode": {
+        "single": "Single event",
+        "weekly": "Repeat weekly"
+      },
+      "modeDescription": {
+        "single": "Creates a single event.",
+        "weekly": "Generates recurring events within the period."
+      },
+      "startDate": "Start date",
+      "endDate": "End date",
+      "weekdaysLabel": "Days and times",
+      "weekdaysDescription": "Select the days that repeat in the period to generate events automatically.",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "timeHint": "The end time is optional and must be later than the start time.",
+      "weekdays": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday"
+      },
+      "previewTitle": "Date preview",
+      "previewCount": "{count} of up to {max} events",
+      "previewEmpty": "Enter the period, select weekdays, and fill in the times to generate the preview.",
+      "removeOccurrence": "Remove",
+      "restoreRemoved": "Restore removed ({count})",
+      "independentNotice": "The dates will be created as independent events. Future changes will be made individually for each event.",
+      "createButton": "Create {count} events",
+      "createdSuccess": "{count} events were created successfully.",
+      "conflictError": "Events with the same title already exist on these dates: {dates}.",
+      "noOccurrencesError": "Keep at least one date in the preview before creating the batch.",
+      "invalidPattern": "The dates could not be generated from the provided pattern."
+    },
     "reload": "Reload",
     "noEvents": "No events scheduled",
     "noEventsDesc": "Create new events and official church services to populate the shared calendar.",
@@ -609,10 +647,10 @@
     },
     "modal": {
       "editTitle": "Edit Event",
-      "createTitle": "New Church Event",
-      "titleLabel": "Event Title *",
+      "createTitle": "New Event",
+      "titleLabel": "Event Title",
       "titlePlaceholder": "E.g.: Youth Service, Leaders Meeting",
-      "startTime": "Start Time *",
+      "startTime": "Start Time",
       "endTime": "End Time",
       "locationLabel": "Location / Venue",
       "locationPlaceholder": "E.g.: Main Sanctuary, Room 3",
@@ -623,6 +661,10 @@
       "generalVisibilityHelp": "For general events, this selection does not change who can view the event.",
       "ministeriosLoading": "Loading ministries...",
       "noMinisterios": "No active ministries available.",
+      "ministrySearchPlaceholder": "Search ministry...",
+      "ministrySearchEmpty": "No available ministry found.",
+      "noSelectedMinistries": "No ministry selected.",
+      "removeMinistryLabel": "Remove {name}",
         "requiresScheduleLabel": "Schedule required",
         "scheduleNotUsedLabel": "No schedule",
       "descriptionLabel": "Description / Agenda",

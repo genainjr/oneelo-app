@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Escala } from '@/types';
 import { getDatePartsWithWeekday } from '@/lib/utils';
 import { getDiaDisplayTitle, getFuncoes, getDias, getItens, isFuncaoOculta, MemberChip } from './escala-shared';
+import { CollapseButton } from './collapse-button';
 
 interface EscalaReadonlyGridProps {
   escala: Escala;
@@ -63,14 +64,12 @@ export function EscalaReadonlyGrid({ escala }: EscalaReadonlyGridProps) {
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleDiaMinimizado(dia.id)}
-                  aria-expanded={!minimizado}
-                  className="shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
-                >
-                  {minimizado ? 'Mostrar dia' : 'Minimizar dia'}
-                </button>
+                <CollapseButton
+                  collapsed={minimizado}
+                  onToggle={() => toggleDiaMinimizado(dia.id)}
+                  collapseLabel="Minimizar dia"
+                  expandLabel="Mostrar dia"
+                />
               </div>
 
               {!minimizado && (
@@ -137,14 +136,12 @@ export function EscalaReadonlyGrid({ escala }: EscalaReadonlyGridProps) {
                       </div>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleDiaMinimizado(dia.id)}
-                    aria-expanded={!minimizado}
-                    className="shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-xs transition hover:bg-gray-50"
-                  >
-                    {minimizado ? 'Mostrar dia' : 'Minimizar dia'}
-                  </button>
+                  <CollapseButton
+                    collapsed={minimizado}
+                    onToggle={() => toggleDiaMinimizado(dia.id)}
+                    collapseLabel="Minimizar dia"
+                    expandLabel="Mostrar dia"
+                  />
                 </div>
               </div>
               {!minimizado && <div className="space-y-3">

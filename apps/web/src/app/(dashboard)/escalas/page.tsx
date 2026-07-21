@@ -23,7 +23,9 @@ import {
   AuthUser,
   StatusEscala,
 } from '@/types';
-import { MONTH_KEYS, WEEKDAY_KEYS } from '@/components/app/escala-shared';
+import { MONTH_KEYS } from '@/components/app/escala-shared';
+import { WeekdaySelector } from '@/components/app/weekday-selector';
+import { CreationModeSelector } from '@/components/app/creation-mode-selector';
 import { StatusBadge } from '@/components/app/status-badge';
 import { EscalaGrid } from '@/components/app/escala-grid';
 import { STATUS_ESCALA_COLOR } from '@/lib/utils';
@@ -592,6 +594,7 @@ export default function EscalasPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
+
                   {canManageSelectedEscala && detailedEscala.status === 'PUBLICADA' && (
                     <button
                       onClick={() => handleUpdateStatus('RASCUNHO')}
@@ -715,6 +718,7 @@ export default function EscalasPage() {
           setCreateError('');
         }}
         size="md"
+        height="viewport"
       >
         <form id="escala-form" onSubmit={handleCreate}>
           <div className="space-y-4 p-6">
@@ -723,7 +727,8 @@ export default function EscalasPage() {
             <div className="grid grid-cols-2 gap-4">
               <SelectField
                 id="create-mes"
-                label={`${t('modal.month')} *`}
+                label={t('modal.month')}
+                required
                 value={newMes}
                 onChange={(e) => {
                   setNewMes(parseInt(e.target.value));
@@ -737,7 +742,8 @@ export default function EscalasPage() {
               </SelectField>
               <SelectField
                 id="create-ano"
-                label={`${t('modal.year')} *`}
+                label={t('modal.year')}
+                required
                 value={newAno}
                 onChange={(e) => {
                   setNewAno(parseInt(e.target.value));
@@ -753,7 +759,7 @@ export default function EscalasPage() {
 
             <SelectField
               id="create-ministerio"
-              label={`${t('modal.ministry')} *`}
+              label={t('modal.ministry')}
               value={newMinId}
               required
               onChange={(e) => {
@@ -769,66 +775,36 @@ export default function EscalasPage() {
               {ministerios.filter(m => m.ativo && m.usaEscalas).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </SelectField>
 
-            <fieldset className="space-y-2">
-              <legend className="text-xs font-bold uppercase text-gray-500">{t('modal.creationMode')}</legend>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {(['DIAS_SEMANA', 'EVENTOS', 'VAZIA'] as ModoCriacaoEscala[]).map((modo) => (
-                  <label
-                    key={modo}
-                    className={`cursor-pointer rounded-xl border p-3 transition-colors ${
-                      newModoCriacao === modo
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200'
-                    }`}
-                  >
-                    <input
-                      className="sr-only"
-                      type="radio"
-                      name="modoCriacao"
-                      value={modo}
-                      checked={newModoCriacao === modo}
-                      onChange={() => {
-                        setNewModoCriacao(modo);
-                        setNewDiasSemana([]);
-                        setSelectedEventoIds([]);
-                        setEventosElegiveis([]);
-                        setEventosError('');
-                        setLoadingEventos(modo === 'EVENTOS' && Boolean(newMinId));
-                      }}
-                    />
-                    <span className="block text-sm font-semibold">{t(`modal.modes.${modo}.title`)}</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-gray-500">
-                      {t(`modal.modes.${modo}.description`)}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+            <CreationModeSelector
+              legend={t('modal.creationMode')}
+              options={(['DIAS_SEMANA', 'EVENTOS', 'VAZIA'] as ModoCriacaoEscala[]).map((modo) => ({
+                id: modo,
+                title: t(`modal.modes.${modo}.title`),
+                description: t(`modal.modes.${modo}.description`),
+              }))}
+              selected={newModoCriacao}
+              columns={3}
+              onChange={(modo) => {
+                setNewModoCriacao(modo);
+                setNewDiasSemana([]);
+                setSelectedEventoIds([]);
+                setEventosElegiveis([]);
+                setEventosError('');
+                setLoadingEventos(modo === 'EVENTOS' && Boolean(newMinId));
+              }}
+            />
 
             {newModoCriacao === 'DIAS_SEMANA' && <div className="space-y-2">
               <label className="text-xs font-bold text-gray-500 uppercase">{t('modal.weekdays')}</label>
               <p className="text-xs text-gray-400">{t('modal.weekdaysDesc')}</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {WEEKDAY_KEYS.map(({ key, value }) => {
-                  const selected = newDiasSemana.includes(value);
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setNewDiasSemana(prev =>
-                        selected ? prev.filter(d => d !== value) : [...prev, value]
-                      )}
-                      className={`inline-flex h-8 items-center justify-center rounded-xl border px-3 text-xs font-bold transition-all select-none ${
-                        selected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
-                      }`}
-                    >
-                      {t(`modal.days.${key}` as never)}
-                    </button>
-                  );
-                })}
-              </div>
+              <WeekdaySelector
+                selectedDays={newDiasSemana}
+                onToggle={(weekday) => setNewDiasSemana((current) =>
+                  current.includes(weekday) ? current.filter((day) => day !== weekday) : [...current, weekday]
+                )}
+                getLabel={(key) => t(`modal.days.${key}` as never)}
+                ariaLabel={t('modal.weekdays')}
+              />
               {newDiasSemana.length > 0 && (() => {
                 const totalDias = new Date(newAno, newMes, 0).getDate();
                 let count = 0;

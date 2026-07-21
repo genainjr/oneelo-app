@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { endOfWeek, startOfWeek } from 'date-fns';
+import { Check, X } from 'lucide-react';
 import { EventoInput, useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
@@ -14,9 +15,18 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { useMinisterios } from '@/hooks/use-ministerios';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { InputField, SelectField, TextareaField } from '@/components/app/form-field';
-import { api } from '@/lib/api';
+import { WEEKDAY_OPTIONS, WeekdaySelector } from '@/components/app/weekday-selector';
+import { CreationModeSelector } from '@/components/app/creation-mode-selector';
+import { SearchCombobox } from '@/components/app/search-combobox';
+import { api, HttpError } from '@/lib/api';
 import { Evento, AuthUser, EventoMinisterioInput, EventoTipo, StatusEvento, Ministerio } from '@/types';
 import { formatDate } from '@/lib/utils';
+import {
+  EVENT_BATCH_MAX_OCCURRENCES,
+  formatOperationalDateTime,
+  generateWeeklyOccurrences,
+  type WeeklyEventDay,
+} from '@/lib/event-batch';
 
 type FeedbackMessage = {
   type: 'success' | 'error';
@@ -44,8 +54,29 @@ function toDateInputValue(date: Date) {
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
 }
 
+const WEEKDAY_TRANSLATION_KEYS = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+] as const;
+
+function createInitialWeeklyDays(): WeeklyEventDay[] {
+  return WEEKDAY_OPTIONS.map(({ value: weekday }) => ({
+    weekday,
+    enabled: false,
+    startTime: '',
+    endTime: '',
+  }));
+}
+
 export default function AgendaPage() {
   const t = useTranslations('agenda');
+  const tSchedules = useTranslations('schedules');
+  const locale = useLocale();
   const weekStart = useMemo(() => startOfWeek(new Date(), { weekStartsOn: 1 }), []);
   const weekEnd = useMemo(() => endOfWeek(new Date(), { weekStartsOn: 1 }), []);
   const initialFilter = useMemo(
@@ -59,7 +90,7 @@ export default function AgendaPage() {
     [weekStart, weekEnd],
   );
 
-  const { eventos, loading, error, refetch, applyFilter, createEvento, updateEvento, deleteEvento } = useEventos(initialFilter, { scope: 'MANAGE' });
+  const { eventos, loading, error, refetch, applyFilter, createEvento, createEventosEmLote, updateEvento, deleteEvento } = useEventos(initialFilter, { scope: 'MANAGE' });
   const { ministerios, loading: ministeriosLoading } = useMinisterios();
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -74,9 +105,17 @@ export default function AgendaPage() {
   const [status, setStatus] = useState<'AGENDADO' | 'REALIZADO' | 'CANCELADO'>('AGENDADO');
   const [tipo, setTipo] = useState<EventoTipo>('GERAL');
   const [ministeriosConfig, setMinisteriosConfig] = useState<EventoMinisterioInput[]>([]);
+  const [ministerioSearch, setMinisterioSearch] = useState('');
+  const [createMode, setCreateMode] = useState<'single' | 'weekly'>('single');
+  const [weeklyStartDate, setWeeklyStartDate] = useState('');
+  const [weeklyEndDate, setWeeklyEndDate] = useState('');
+  const [weeklyDays, setWeeklyDays] = useState<WeeklyEventDay[]>(createInitialWeeklyDays);
+  const [excludedOccurrences, setExcludedOccurrences] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
 
   const {
     formState: filterState,
+    setFormState: setFilterState,
     setField: setFilterField,
     handleClear: handleClearFilters,
     handleSubmit: handleFilterSubmit,
@@ -115,6 +154,28 @@ export default function AgendaPage() {
     () => ministeriosAtivos.filter((ministerio) => ministeriosConfig.some((config) => config.ministerioId === ministerio.id)),
     [ministeriosAtivos, ministeriosConfig],
   );
+  const ministeriosDisponiveis = useMemo(
+    () => ministeriosAtivos.filter((ministerio) => !ministeriosConfig.some((config) => config.ministerioId === ministerio.id)),
+    [ministeriosAtivos, ministeriosConfig],
+  );
+  const weeklyGeneration = useMemo(() => {
+    try {
+      return {
+        error: null,
+        occurrences: generateWeeklyOccurrences(weeklyStartDate, weeklyEndDate, weeklyDays),
+      };
+    } catch (error) {
+      return {
+        error: getErrorMessage(error, t('batch.invalidPattern')),
+        occurrences: [],
+      };
+    }
+  }, [t, weeklyDays, weeklyEndDate, weeklyStartDate]);
+  const batchOccurrences = useMemo(
+    () => weeklyGeneration.occurrences.filter((occurrence) => !excludedOccurrences.has(occurrence.dataInicio)),
+    [excludedOccurrences, weeklyGeneration.occurrences],
+  );
+  const removedOccurrenceCount = weeklyGeneration.occurrences.length - batchOccurrences.length;
 
   function toggleMinisterioId(ministerioId: string) {
     setMinisteriosConfig((current) => {
@@ -133,17 +194,55 @@ export default function AgendaPage() {
     );
   }
 
+  function addMinisterio(ministerio: Ministerio) {
+    setMinisteriosConfig((current) => (
+      current.some((config) => config.ministerioId === ministerio.id)
+        ? current
+        : [...current, { ministerioId: ministerio.id, requerEscala: false }]
+    ));
+    setMinisterioSearch('');
+  }
+
+  function updateWeeklyDay(weekday: number, patch: Partial<WeeklyEventDay>) {
+    setWeeklyDays((current) => current.map((day) => (
+      day.weekday === weekday ? { ...day, ...patch } : day
+    )));
+  }
+
+  function changeCreateMode(mode: 'single' | 'weekly') {
+    setCreateMode(mode);
+    setModalError(null);
+    if (mode === 'single') {
+      setWeeklyStartDate('');
+      setWeeklyEndDate('');
+      setWeeklyDays(createInitialWeeklyDays());
+      setExcludedOccurrences(new Set());
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!titulo.trim() || !dataInicio) return;
+    if (!titulo.trim()) return;
 
+    if (!selectedEvento && createMode === 'weekly') {
+      if (weeklyGeneration.error) {
+        setModalError(weeklyGeneration.error);
+        return;
+      }
+      if (batchOccurrences.length === 0) {
+        setModalError(t('batch.noOccurrencesError'));
+        return;
+      }
+    } else if (!dataInicio) {
+      return;
+    }
+
+    setSaving(true);
     try {
-      const payload: EventoInput = {
+      const commonPayload = {
         titulo: titulo.trim(),
         descricao: descricao.trim() || undefined,
         tipo,
-        dataInicio: new Date(dataInicio).toISOString(),
-        dataFim: dataFim ? new Date(dataFim).toISOString() : undefined,
         local: local.trim() || undefined,
         status,
         ministerios: ministeriosConfig.map((config) => ({
@@ -153,15 +252,45 @@ export default function AgendaPage() {
       };
 
       if (selectedEvento) {
+        const payload: EventoInput = {
+          ...commonPayload,
+          dataInicio: new Date(dataInicio).toISOString(),
+          dataFim: dataFim ? new Date(dataFim).toISOString() : undefined,
+        };
         await updateEvento(selectedEvento.id, payload);
+      } else if (createMode === 'weekly') {
+        const response = await createEventosEmLote({
+          ...commonPayload,
+          ocorrencias: batchOccurrences.map(({ dataInicio, dataFim }) => ({ dataInicio, dataFim })),
+        });
+        setFeedback({
+          type: 'success',
+          message: t('batch.createdSuccess', { count: response.total }),
+        });
+        await refetch();
       } else {
-        await createEvento(payload);
+        await createEvento({
+          ...commonPayload,
+          dataInicio: new Date(dataInicio).toISOString(),
+          dataFim: dataFim ? new Date(dataFim).toISOString() : undefined,
+        });
       }
       setIsModalOpen(false);
       setSelectedEvento(null);
       setModalError(null);
     } catch (error: unknown) {
-      setModalError(getErrorMessage(error, t('errorSave')));
+      const conflictingDates = error instanceof HttpError
+        ? (error.data as typeof error.data & { conflictingDates?: string[] }).conflictingDates
+        : undefined;
+      setModalError(
+        conflictingDates?.length
+          ? t('batch.conflictError', {
+              dates: conflictingDates.map((date) => formatOperationalDateTime(date, locale)).join(', '),
+            })
+          : getErrorMessage(error, t('errorSave')),
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -221,6 +350,8 @@ export default function AgendaPage() {
         requerEscala: relacao.requerEscala ?? false,
       })),
     );
+    setMinisterioSearch('');
+    setCreateMode('single');
     setModalError(null);
     setIsModalOpen(true);
   }
@@ -235,6 +366,12 @@ export default function AgendaPage() {
     setStatus('AGENDADO');
     setTipo(canCreateGeneralEvent ? 'GERAL' : 'MINISTERIO');
     setMinisteriosConfig([]);
+    setMinisterioSearch('');
+    setCreateMode('single');
+    setWeeklyStartDate('');
+    setWeeklyEndDate('');
+    setWeeklyDays(createInitialWeeklyDays());
+    setExcludedOccurrences(new Set());
     setModalError(null);
     setIsModalOpen(true);
   }
@@ -326,13 +463,21 @@ export default function AgendaPage() {
             label={t('filter.from')}
             type="date"
             value={filterState.dataInicio}
-            onChange={(e) => setFilterField('dataInicio', e.target.value)}
+            onChange={(e) => {
+              const dataInicio = e.target.value;
+              setFilterState((current) => ({
+                ...current,
+                dataInicio,
+                dataFim: dataInicio && current.dataFim && current.dataFim < dataInicio ? dataInicio : current.dataFim,
+              }));
+            }}
           />
 
           <FilterInput
             id="filter-end"
             label={t('filter.to')}
             type="date"
+            min={filterState.dataInicio || undefined}
             value={filterState.dataFim}
             onChange={(e) => setFilterField('dataFim', e.target.value)}
           />
@@ -480,7 +625,9 @@ export default function AgendaPage() {
           setSelectedEvento(null);
           setModalError(null);
         }}
-        size="lg"
+        size="md"
+        height={!selectedEvento ? 'viewport' : 'auto'}
+        bodyClassName="[overflow-anchor:none]"
       >
         <form id="agenda-form" onSubmit={handleSave}>
           <ModalError message={modalError} />
@@ -494,18 +641,6 @@ export default function AgendaPage() {
               onChange={(e) => setTitulo(e.target.value)}
               placeholder={t('modal.titlePlaceholder')}
             />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField
-                id="ev-inicio"
-                label={t('modal.startTime')}
-                type="datetime-local"
-                required
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-              />
-              <InputField id="ev-fim" label={t('modal.endTime')} type="datetime-local" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
-            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InputField
@@ -523,101 +658,164 @@ export default function AgendaPage() {
               </SelectField>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <SelectField id="ev-tipo" label={t('modal.typeLabel')} value={tipo} onChange={(e) => setTipo(e.target.value as EventoTipo)}>
                 {canCreateGeneralEvent && <option value="GERAL">{t('event.type.GERAL')}</option>}
                 <option value="MINISTERIO">{t('event.type.MINISTERIO')}</option>
                 <option value="REUNIAO_INTERNA">{t('event.type.REUNIAO_INTERNA')}</option>
               </SelectField>
 
-              <fieldset aria-labelledby="event-ministries-label" className="space-y-2 sm:col-span-2">
-                <div className="flex items-center justify-between gap-3">
-                  <span id="event-ministries-label" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('modal.ministeriosLabel')}
-                  </span>
-                  <span className="text-[11px] font-medium text-gray-400">
-                    {ministeriosSelecionados.length}/{ministeriosAtivos.length}
-                  </span>
-                </div>
+              <fieldset className="space-y-2">
+                <SearchCombobox
+                  label={t('modal.ministeriosLabel')}
+                  optionalLabel={`${ministeriosSelecionados.length}/${ministeriosAtivos.length}`}
+                  placeholder={t('modal.ministrySearchPlaceholder')}
+                  loadingPlaceholder={t('modal.ministeriosLoading')}
+                  loading={ministeriosLoading}
+                  options={ministeriosDisponiveis}
+                  search={ministerioSearch}
+                  emptyMessage={t('modal.ministrySearchEmpty')}
+                  onSearchChange={setMinisterioSearch}
+                  onSelect={addMinisterio}
+                  onClear={() => setMinisterioSearch('')}
+                />
                 <p className="text-xs leading-5 text-gray-500">
                   {t('modal.ministeriosHelp')}
                   {tipo === 'GERAL' ? ` ${t('modal.generalVisibilityHelp')}` : ''}
                 </p>
-                <div className="max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-2">
-                  {ministeriosLoading ? (
-                    <div className="px-3 py-2 text-sm text-gray-500">{t('modal.ministeriosLoading')}</div>
-                  ) : ministeriosAtivos.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-gray-500">{t('modal.noMinisterios')}</div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {ministeriosAtivos.map((ministerio) => {
-                        const config = ministeriosConfig.find((item) => item.ministerioId === ministerio.id);
-                        const checked = Boolean(config);
-
-                        return (
-                          <div
-                            key={ministerio.id}
-                            className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 transition-all ${checked ? 'border-indigo-200 bg-indigo-50 text-indigo-900' : 'border-gray-200 bg-white text-gray-700'}`}
-                          >
-                            <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-                              <input type="checkbox" checked={checked} onChange={() => toggleMinisterioId(ministerio.id)} className="sr-only" />
-                              <span
-                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                                  checked ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300 bg-white'
-                                }`}
-                                aria-hidden="true"
-                              >
-                                {checked && (
-                                  <svg className="h-3 w-3" viewBox="0 0 20 20" fill="none">
-                                    <path d="M5 10.5L8.5 14L15 6.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
+                {ministeriosSelecionados.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-gray-200 px-4 py-3 text-sm text-gray-400">
+                    {t('modal.noSelectedMinistries')}
+                  </p>
+                ) : (
+                  <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+                    {ministeriosSelecionados.map((ministerio) => {
+                      const config = ministeriosConfig.find((item) => item.ministerioId === ministerio.id);
+                      return (
+                        <div key={ministerio.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+                          <span className="min-w-0 flex-1 text-sm font-semibold text-gray-800">{ministerio.nome}</span>
+                          {ministerio.usaEscalas ? (
+                            <button
+                              type="button"
+                              role="checkbox"
+                              aria-checked={config?.requerEscala ?? false}
+                              onClick={() => toggleRequerEscala(ministerio.id)}
+                              className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700"
+                            >
+                              <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${config?.requerEscala ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-300 bg-white'}`}>
+                                {config?.requerEscala && <Check className="h-3 w-3" strokeWidth={2.5} />}
                               </span>
-                              <span className="min-w-0 flex-1 text-sm font-medium leading-5">{ministerio.nome}</span>
-                            </label>
-
-                            {checked && ministerio.usaEscalas && (
-                              <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-indigo-800">
-                                <input
-                                  type="checkbox"
-                                  checked={config?.requerEscala ?? false}
-                                  onChange={() => toggleRequerEscala(ministerio.id)}
-                                  className="sr-only"
-                                />
-                                <span
-                                  className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
-                                    config?.requerEscala
-                                      ? 'border-indigo-600 bg-indigo-600 text-white'
-                                      : 'border-indigo-300 bg-white'
-                                  }`}
-                                  aria-hidden="true"
-                                >
-                                  {config?.requerEscala && (
-                                    <svg className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="none">
-                                      <path
-                                        d="M5 10.5L8.5 14L15 6.5"
-                                        stroke="currentColor"
-                                        strokeWidth="2.2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
-                                  )}
-                                </span>
-                                <span className="block font-semibold">{t('modal.requiresScheduleLabel')}</span>
-                              </label>
-                            )}
-                            {checked && !ministerio.usaEscalas && (
-                              <span className="shrink-0 text-[11px] font-semibold text-gray-500">{t('modal.scheduleNotUsedLabel')}</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                              {t('modal.requiresScheduleLabel')}
+                            </button>
+                          ) : (
+                            <span className="text-xs font-semibold text-gray-400">{t('modal.scheduleNotUsedLabel')}</span>
+                          )}
+                          <button type="button" onClick={() => toggleMinisterioId(ministerio.id)} aria-label={t('modal.removeMinistryLabel', { name: ministerio.nome })} className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </fieldset>
             </div>
+
+            {!selectedEvento && (
+              <CreationModeSelector
+                legend={t('batch.creationMode')}
+                options={(['single', 'weekly'] as const).map((mode) => ({
+                  id: mode,
+                  title: t(`batch.mode.${mode}`),
+                  description: t(`batch.modeDescription.${mode}`),
+                }))}
+                selected={createMode}
+                onChange={changeCreateMode}
+              />
+            )}
+
+            {selectedEvento || createMode === 'single' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputField
+                  id="ev-inicio"
+                  label={t('modal.startTime')}
+                  type="datetime-local"
+                  required
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                />
+                <InputField id="ev-fim" label={t('modal.endTime')} type="datetime-local" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+              </div>
+            ) : (
+              <section className="space-y-4 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <InputField id="batch-start" label={t('batch.startDate')} type="date" required value={weeklyStartDate} onChange={(event) => setWeeklyStartDate(event.target.value)} />
+                  <InputField id="batch-end" label={t('batch.endDate')} type="date" required value={weeklyEndDate} min={weeklyStartDate || undefined} onChange={(event) => setWeeklyEndDate(event.target.value)} />
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase text-gray-500">{t('batch.weekdaysLabel')}</p>
+                  <p className="text-xs text-gray-400">{t('batch.weekdaysDescription')}</p>
+                  <WeekdaySelector
+                    selectedDays={weeklyDays.filter((day) => day.enabled).map((day) => day.weekday)}
+                    onToggle={(weekday) => {
+                      const day = weeklyDays.find((item) => item.weekday === weekday);
+                      updateWeeklyDay(weekday, { enabled: !day?.enabled });
+                    }}
+                    getLabel={(key) => tSchedules(`modal.days.${key}`)}
+                    ariaLabel={t('batch.weekdaysLabel')}
+                  />
+                  <div className="space-y-2 pt-1">
+                    {weeklyDays.filter((day) => day.enabled).map((day) => (
+                      <div key={day.weekday} className="space-y-3 rounded-xl border border-indigo-200 bg-white p-3">
+                        <p className="text-sm font-semibold text-gray-700">
+                          {t(`batch.weekdays.${WEEKDAY_TRANSLATION_KEYS[day.weekday]}`)}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <InputField id={`batch-start-time-${day.weekday}`} label={t('batch.startTime')} type="time" required value={day.startTime} onChange={(event) => updateWeeklyDay(day.weekday, { startTime: event.target.value })} />
+                          <InputField id={`batch-end-time-${day.weekday}`} label={t('batch.endTime')} type="time" value={day.endTime} onChange={(event) => updateWeeklyDay(day.weekday, { endTime: event.target.value })} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">{t('batch.timeHint')}</p>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">{t('batch.previewTitle')}</p>
+                      <p className="text-xs text-gray-500">{t('batch.previewCount', { count: batchOccurrences.length, max: EVENT_BATCH_MAX_OCCURRENCES })}</p>
+                    </div>
+                    {removedOccurrenceCount > 0 && (
+                      <button type="button" onClick={() => setExcludedOccurrences(new Set())} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+                        {t('batch.restoreRemoved', { count: removedOccurrenceCount })}
+                      </button>
+                    )}
+                  </div>
+                  {weeklyGeneration.error ? (
+                    <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{weeklyGeneration.error}</p>
+                  ) : batchOccurrences.length === 0 ? (
+                    <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">{t('batch.previewEmpty')}</p>
+                  ) : (
+                    <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1">
+                      {batchOccurrences.map((occurrence) => (
+                        <div key={occurrence.dataInicio} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2 text-sm">
+                          <span className="font-medium text-gray-700">
+                            {formatOperationalDateTime(occurrence.dataInicio, locale)}
+                            {occurrence.dataFim ? ` - ${formatOperationalDateTime(occurrence.dataFim, locale, false)}` : ''}
+                          </span>
+                          <button type="button" onClick={() => setExcludedOccurrences((current) => new Set(current).add(occurrence.dataInicio))} className="shrink-0 text-xs font-semibold text-rose-600 hover:text-rose-700">
+                            {t('batch.removeOccurrence')}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{t('batch.independentNotice')}</p>
+                </div>
+              </section>
+            )}
 
             <TextareaField
               id="ev-desc"
@@ -631,7 +829,9 @@ export default function AgendaPage() {
 
           <ModalFooter
             form="agenda-form"
-            primaryLabel={selectedEvento ? t('modal.save') : t('modal.save')}
+            primaryLabel={!selectedEvento && createMode === 'weekly' ? t('batch.createButton', { count: batchOccurrences.length }) : t('modal.save')}
+            loading={saving}
+            disabled={!selectedEvento && createMode === 'weekly' && (batchOccurrences.length === 0 || Boolean(weeklyGeneration.error))}
             onCancel={() => {
               setIsModalOpen(false);
               setSelectedEvento(null);

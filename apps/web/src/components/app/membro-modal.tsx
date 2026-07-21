@@ -132,6 +132,7 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
       isOpen={isOpen}
       title={membro ? 'Editar Membro' : 'Novo Membro'}
       onClose={onClose}
+      height="viewport"
       bodyClassName="p-6"
       footer={
         <>
