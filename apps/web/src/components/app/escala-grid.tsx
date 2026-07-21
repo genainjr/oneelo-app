@@ -6,6 +6,7 @@ import { InputField, SelectField } from '@/components/app/form-field';
 import { Escala, EscalaDia, EventoElegivelEscala, MinisterioMembro } from '@/types';
 import { getDiaDisplayTitle, getDias, getFuncoes, getItens, isFuncaoOculta, MemberChip } from './escala-shared';
 import { getCivilDateKey, getDatePartsWithWeekday, STATUS_CONFIRMACAO_COLOR } from '@/lib/utils';
+import { CollapseButton } from './collapse-button';
 
 const OPERATIONAL_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Sao_Paulo',
@@ -163,6 +164,7 @@ export function EscalaGrid({
   const [loadingEventos, setLoadingEventos] = useState(false);
   const [eventosError, setEventosError] = useState(false);
   const [eventosRetry, setEventosRetry] = useState(0);
+  const [diasMinimizados, setDiasMinimizados] = useState<Set<string>>(() => new Set());
   const baseDias = useMemo(() => getDias(escala), [escala]);
   const dias = useMemo(() => {
     if (!orderedDiaIds) return baseDias;
@@ -245,6 +247,15 @@ export function EscalaGrid({
     setEventosRetry((value) => value + 1);
   }
 
+  function toggleDiaMinimizado(diaId: string) {
+    setDiasMinimizados((current) => {
+      const next = new Set(current);
+      if (next.has(diaId)) next.delete(diaId);
+      else next.add(diaId);
+      return next;
+    });
+  }
+
   return (
     <>
     <div className="space-y-3 md:hidden">
@@ -257,9 +268,10 @@ export function EscalaGrid({
           const { weekday, date } = getDatePartsWithWeekday(dia.data, 'dd/MM/yyyy');
           const diaTitle = getDiaDisplayTitle(dia);
           const canDrag = canManage && escala.status === 'RASCUNHO';
+          const minimizado = diasMinimizados.has(dia.id);
           return (
             <section key={dia.id} className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="mb-3 flex items-start justify-between gap-3">
+              <div className={`${minimizado ? '' : 'mb-3'} flex items-start justify-between gap-3`}>
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase text-indigo-600">{weekday}</p>
                   <p className="text-sm font-bold text-gray-900">{date}</p>
@@ -275,7 +287,7 @@ export function EscalaGrid({
                       )}
                     </div>
                   )}
-                  <DayEventContext
+                  {!minimizado && <DayEventContext
                     dia={dia}
                     eventos={eventosElegiveis}
                     canManage={canManage && escala.status !== 'ENCERRADA'}
@@ -284,10 +296,17 @@ export function EscalaGrid({
                     onRetry={() => setEventosRetry((value) => value + 1)}
                     onChange={handleUpdateDiaEvento}
                     tGrid={tGrid}
-                  />
+                  />}
                 </div>
-                {canManage && (
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  <CollapseButton
+                    collapsed={minimizado}
+                    onToggle={() => toggleDiaMinimizado(dia.id)}
+                    collapseLabel="Minimizar dia"
+                    expandLabel="Mostrar dia"
+                  />
+                  {canManage && (
+                    <>
                     {canDrag && (
                       <>
                         <button
@@ -324,11 +343,12 @@ export function EscalaGrid({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
-                  </div>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-3">
+              {!minimizado && <div className="space-y-3">
                 {funcoes.map((funcao) => {
                   const cellItems = getItens(dia, funcao.id);
                   const dayAssignedMemberIds = (dia.itens || []).map((item) => item.membroId);
@@ -398,7 +418,7 @@ export function EscalaGrid({
                     </div>
                   );
                 })}
-              </div>
+              </div>}
             </section>
           );
         })
@@ -448,6 +468,7 @@ export function EscalaGrid({
               const diaTitle = getDiaDisplayTitle(dia);
               const isDragOver = dragOverId === dia.id;
               const canDrag = canManage && escala.status === 'RASCUNHO';
+              const minimizado = diasMinimizados.has(dia.id);
               return (
                 <tr
                   key={dia.id}
@@ -497,7 +518,7 @@ export function EscalaGrid({
                               )}
                             </div>
                           )}
-                          <DayEventContext
+                          {!minimizado && <DayEventContext
                             dia={dia}
                             eventos={eventosElegiveis}
                             canManage={canManage && escala.status !== 'ENCERRADA'}
@@ -506,7 +527,7 @@ export function EscalaGrid({
                             onRetry={() => setEventosRetry((value) => value + 1)}
                             onChange={handleUpdateDiaEvento}
                             tGrid={tGrid}
-                          />
+                          />}
                         </div>
                       </div>
                       {canManage && (
@@ -522,8 +543,19 @@ export function EscalaGrid({
                         </button>
                       )}
                     </div>
+                    <div className="mt-2">
+                      <CollapseButton
+                        collapsed={minimizado}
+                        onToggle={() => toggleDiaMinimizado(dia.id)}
+                        collapseLabel="Minimizar dia"
+                        expandLabel="Mostrar dia"
+                        className="w-full"
+                      />
+                    </div>
                   </td>
-                  {funcoes.map((funcao) => {
+                  {minimizado ? (
+                    <td colSpan={funcoes.length} className="p-0" />
+                  ) : funcoes.map((funcao) => {
                     const cellItems = getItens(dia, funcao.id);
                     const dayAssignedMemberIds = (dia.itens || []).map((item) => item.membroId);
                     const isOculta = isFuncaoOculta(dia, funcao.id);

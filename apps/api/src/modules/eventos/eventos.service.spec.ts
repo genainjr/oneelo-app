@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { EventoTipo, Prisma, Role } from '@prisma/client';
 import { AuthorizationService } from '../../common/authorization/authorization.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -24,6 +24,10 @@ describe('EventosService', () => {
     });
     const transactionClient = {
       evento: {
+        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({
+          id: `evento-lote-${String(data.dataInicio)}`,
+          ...data,
+        })),
         update: jest.fn().mockResolvedValue({ id: 'evento-1' }),
         findFirst: jest.fn().mockResolvedValue({ id: 'evento-1' }),
       },
@@ -45,9 +49,13 @@ describe('EventosService', () => {
       ministerio: {
         findMany: jest.fn().mockResolvedValue([{ id: ministerioId, usaEscalas: true }]),
       },
+      ministerioMembro: {
+        findMany: jest.fn().mockResolvedValue([{ ministerioId }]),
+      },
       evento: {
         create: createEvento,
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       $transaction: jest.fn(
         (operation: (tx: typeof transactionClient) => Promise<unknown>) =>
@@ -94,6 +102,152 @@ describe('EventosService', () => {
         create: [{ ministerioId, requerEscala: false }],
       },
     });
+  });
+
+  it('cria lote atomico em ordem cronologica e copia ministerios', async () => {
+    const { service, prisma, transactionClient } = createService();
+
+    const result = await service.createBatch(tenantId, {
+      titulo: 'Culto semanal',
+      tipo: EventoTipo.MINISTERIO,
+      ministerios: [{ ministerioId, requerEscala: true }],
+      ocorrencias: [
+        { dataInicio: '2026-08-09T22:00:00.000Z', dataFim: '2026-08-10T00:00:00.000Z' },
+        { dataInicio: '2026-08-02T22:00:00.000Z', dataFim: '2026-08-03T00:00:00.000Z' },
+      ],
+    }, user);
+
+    expect(result.total).toBe(2);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(transactionClient.evento.create).toHaveBeenCalledTimes(2);
+    expect(transactionClient.evento.create.mock.calls[0][0].data).toMatchObject({
+      titulo: 'Culto semanal',
+      dataInicio: new Date('2026-08-02T22:00:00.000Z'),
+      ministerios: {
+        create: [{ ministerio: { connect: { id: ministerioId } }, requerEscala: true }],
+      },
+    });
+  });
+
+  it('rejeita data inicial repetida dentro do lote', async () => {
+    const { service } = createService();
+    await expect(service.createBatch(tenantId, {
+      titulo: 'Culto semanal',
+      ocorrencias: [
+        { dataInicio: '2026-08-02T22:00:00.000Z' },
+        { dataInicio: '2026-08-02T22:00:00.000Z' },
+      ],
+    }, user)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('lista conflito existente com titulo normalizado', async () => {
+    const { service, prisma } = createService();
+    prisma.evento.findMany.mockResolvedValue([{
+      titulo: 'Culto Ágape',
+      dataInicio: new Date('2026-08-02T22:00:00.000Z'),
+    }]);
+
+    await expect(service.createBatch(tenantId, {
+      titulo: '  culto agape ',
+      ocorrencias: [{ dataInicio: '2026-08-02T22:00:00.000Z' }],
+    }, user)).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'EVENT_BATCH_CONFLICT',
+        conflictingDates: ['2026-08-02T22:00:00.000Z'],
+      }),
+    });
+  });
+
+  it('preserva bloqueio de evento geral para BASIC', async () => {
+    const { service } = createService();
+    await expect(service.createBatch(tenantId, {
+      titulo: 'Evento geral',
+      tipo: EventoTipo.GERAL,
+      ocorrencias: [{ dataInicio: '2026-08-02T22:00:00.000Z' }],
+    }, { ...user, role: Role.BASIC, memberId: '44444444-4444-4444-8444-444444444444' }))
+      .rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('permite lote ministerial ao BASIC lider somente no proprio ministerio', async () => {
+    const { service } = createService();
+    const result = await service.createBatch(tenantId, {
+      titulo: 'Encontro do ministerio',
+      tipo: EventoTipo.MINISTERIO,
+      ministerios: [{ ministerioId, requerEscala: false }],
+      ocorrencias: [{ dataInicio: '2026-08-02T22:00:00.000Z' }],
+    }, { ...user, role: Role.BASIC, memberId: '44444444-4444-4444-8444-444444444444' });
+    expect(result.total).toBe(1);
+  });
+
+  it('rejeita ocorrencia que atravessa a meia-noite operacional', async () => {
+    const { service } = createService();
+    await expect(service.createBatch(tenantId, {
+      titulo: 'Vigilia',
+      ocorrencias: [{
+        dataInicio: '2026-08-02T02:30:00.000Z',
+        dataFim: '2026-08-02T04:00:00.000Z',
+      }],
+    }, user)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita lote com mais de 200 ocorrencias mesmo fora do ValidationPipe', async () => {
+    const { service } = createService();
+    const ocorrencias = Array.from({ length: 201 }, (_, index) => ({
+      dataInicio: new Date(Date.UTC(2026, 0, 1, 12, index)).toISOString(),
+    }));
+    await expect(service.createBatch(tenantId, {
+      titulo: 'Lote excessivo',
+      ocorrencias,
+    }, user)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita janela superior a 366 dias', async () => {
+    const { service } = createService();
+    await expect(service.createBatch(tenantId, {
+      titulo: 'Lote longo',
+      ocorrencias: [
+        { dataInicio: '2026-01-01T12:00:00.000Z' },
+        { dataInicio: '2027-01-03T12:00:00.000Z' },
+      ],
+    }, user)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('executa todas as escritas pelo cliente transacional e propaga falha', async () => {
+    const { service, prisma, transactionClient } = createService();
+    transactionClient.evento.create
+      .mockResolvedValueOnce({ id: 'evento-1' })
+      .mockRejectedValueOnce(new Error('falha simulada'));
+
+    await expect(service.createBatch(tenantId, {
+      titulo: 'Lote atomico',
+      ocorrencias: [
+        { dataInicio: '2026-08-02T22:00:00.000Z' },
+        { dataInicio: '2026-08-09T22:00:00.000Z' },
+      ],
+    }, user)).rejects.toThrow('falha simulada');
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(transactionClient.evento.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('permite evento geral em lote para STAFF', async () => {
+    const { service } = createService();
+    const result = await service.createBatch(tenantId, {
+      titulo: 'Evento geral da equipe',
+      tipo: EventoTipo.GERAL,
+      ocorrencias: [{ dataInicio: '2026-08-02T22:00:00.000Z' }],
+    }, { ...user, role: Role.STAFF });
+    expect(result.total).toBe(1);
+  });
+
+  it('bloqueia BASIC comum sem membro vinculado', async () => {
+    const { service } = createService();
+    await expect(service.createBatch(tenantId, {
+      titulo: 'Evento ministerial',
+      tipo: EventoTipo.MINISTERIO,
+      ministerios: [{ ministerioId, requerEscala: false }],
+      ocorrencias: [{ dataInicio: '2026-08-02T22:00:00.000Z' }],
+    }, { ...user, role: Role.BASIC, memberId: undefined }))
+      .rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('usa o contrato novo como fonte de verdade e persiste requerEscala', async () => {

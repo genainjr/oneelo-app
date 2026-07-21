@@ -13,6 +13,9 @@ import { CreateEventoDto } from './dto/create-evento.dto';
 import { EventoMinisterioInputDto } from './dto/evento-ministerio-input.dto';
 import { FilterEventosDto } from './dto/filter-eventos.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
+import { CreateEventosEmLoteDto } from './dto/create-eventos-em-lote.dto';
+import { EventoOcorrenciaInputDto } from './dto/evento-ocorrencia-input.dto';
+import { normalizeSearchText } from '../../common/utils/search-text';
 
 type EventoMinisterioConfig = Pick<
   EventoMinisterioInputDto,
@@ -234,6 +237,160 @@ export class EventosService {
     return ministerioIds;
   }
 
+  private async prepareCreateContext(
+    tenantId: string,
+    input: Pick<CreateEventoDto, 'tipo' | 'ministerios' | 'ministerioIds'>,
+    user: JwtPayload,
+  ) {
+    const tipo = input.tipo ?? EventoTipo.GERAL;
+    const ministeriosConfig = this.normalizeMinisterios(input);
+    const ministerioIds = ministeriosConfig.map(
+      (ministerio) => ministerio.ministerioId,
+    );
+
+    if (tipo === EventoTipo.MINISTERIO && ministerioIds.length === 0) {
+      throw new BadRequestException(
+        'Evento do tipo ministério exige pelo menos 1 ministério vinculado.',
+      );
+    }
+
+    if (user.role === Role.BASIC) {
+      if (tipo === EventoTipo.GERAL) {
+        throw new ForbiddenException(
+          'Usuários BASIC não podem criar eventos gerais.',
+        );
+      }
+
+      if (!user.memberId) {
+        throw new ForbiddenException(
+          'Usuário BASIC sem membro vinculado não pode criar eventos.',
+        );
+      }
+
+      const ministeriosPermitidos = await this.getMinisterioIdsDoUsuario(
+        tenantId,
+        user,
+      );
+      if (ministeriosPermitidos.length === 0) {
+        throw new ForbiddenException(
+          'Você não lidera ou auxilia ministérios elegíveis.',
+        );
+      }
+
+      if (tipo === EventoTipo.REUNIAO_INTERNA && ministerioIds.length === 0) {
+        throw new BadRequestException(
+          'Reunião interna exige ao menos um ministério.',
+        );
+      }
+
+      const invalidos = ministerioIds.filter(
+        (id) => !ministeriosPermitidos.includes(id),
+      );
+      if (invalidos.length > 0) {
+        throw new ForbiddenException(
+          'Você só pode criar eventos para ministérios que lidera ou auxilia.',
+        );
+      }
+    }
+
+    const ministeriosValidos = await this.validateMinisterios(
+      tenantId,
+      ministeriosConfig,
+      user,
+      tipo,
+    );
+
+    return { tipo, ministeriosConfig, ministeriosValidos };
+  }
+
+  private buildCreateData(
+    tenantId: string,
+    dto: Pick<CreateEventoDto, 'titulo' | 'descricao' | 'local' | 'status'>,
+    ocorrencia: EventoOcorrenciaInputDto,
+    context: Awaited<ReturnType<EventosService['prepareCreateContext']>>,
+  ): Prisma.EventoCreateInput {
+    return {
+      titulo: dto.titulo.trim(),
+      descricao: dto.descricao,
+      tipo: context.tipo,
+      dataInicio: new Date(ocorrencia.dataInicio),
+      dataFim: ocorrencia.dataFim ? new Date(ocorrencia.dataFim) : undefined,
+      local: dto.local,
+      status: dto.status,
+      tenant: { connect: { id: tenantId } },
+      ministerios: context.ministeriosValidos.length
+        ? {
+            create: context.ministeriosValidos.map((ministerioId) => {
+              const config = context.ministeriosConfig.find(
+                (ministerio) => ministerio.ministerioId === ministerioId,
+              );
+              return {
+                ministerio: { connect: { id: ministerioId } },
+                requerEscala: config?.requerEscala ?? false,
+              };
+            }),
+          }
+        : undefined,
+    };
+  }
+
+  private getOperationalDateKey(date: Date) {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  }
+
+  private validateBatchOccurrences(ocorrencias: EventoOcorrenciaInputDto[]) {
+    if (ocorrencias.length < 1 || ocorrencias.length > 200) {
+      throw new BadRequestException(
+        'O lote deve conter entre 1 e 200 ocorrências.',
+      );
+    }
+    const starts = ocorrencias.map((ocorrencia) => new Date(ocorrencia.dataInicio));
+    const timestamps = starts.map((date) => date.getTime());
+
+    if (timestamps.some((timestamp) => !Number.isFinite(timestamp))) {
+      throw new BadRequestException('Uma ou mais ocorrências possuem data inválida.');
+    }
+
+    if (new Set(timestamps).size !== timestamps.length) {
+      throw new BadRequestException(
+        'Não repita a mesma data e horário no lote.',
+      );
+    }
+
+    for (const ocorrencia of ocorrencias) {
+      if (!ocorrencia.dataFim) continue;
+      const inicio = new Date(ocorrencia.dataInicio);
+      const fim = new Date(ocorrencia.dataFim);
+      if (!Number.isFinite(fim.getTime())) {
+        throw new BadRequestException('Uma ou mais ocorrências possuem data final inválida.');
+      }
+      if (fim <= inicio) {
+        throw new BadRequestException(
+          'A hora final deve ser posterior à hora inicial em todas as ocorrências.',
+        );
+      }
+      if (this.getOperationalDateKey(inicio) !== this.getOperationalDateKey(fim)) {
+        throw new BadRequestException(
+          'Eventos que atravessam a meia-noite não são permitidos no lote.',
+        );
+      }
+    }
+
+    const first = Math.min(...timestamps);
+    const last = Math.max(...timestamps);
+    const maxWindowMs = 366 * 24 * 60 * 60 * 1000;
+    if (last - first > maxWindowMs) {
+      throw new BadRequestException(
+        'O período do lote não pode ultrapassar 366 dias.',
+      );
+    }
+  }
+
   private async buildVisibilityWhere(
     tenantId: string,
     query: FilterEventosDto,
@@ -362,84 +519,28 @@ export class EventosService {
   }
 
   async create(tenantId: string, dto: CreateEventoDto, user: JwtPayload) {
-    const tipo = dto.tipo ?? EventoTipo.GERAL;
-    const ministeriosConfig = this.normalizeMinisterios(dto);
-    const ministerioIds = ministeriosConfig.map(
-      (ministerio) => ministerio.ministerioId,
-    );
-
     if (dto.dataFim && new Date(dto.dataFim) < new Date(dto.dataInicio)) {
       throw new BadRequestException(
         'Data final não pode ser anterior à data inicial.',
       );
     }
 
-    if (tipo === EventoTipo.MINISTERIO && ministerioIds.length === 0) {
-      throw new BadRequestException(
-        'Evento do tipo ministério exige pelo menos 1 ministério vinculado.',
-      );
-    }
-
-    if (user.role === Role.BASIC) {
-      if (tipo === EventoTipo.GERAL) {
-        throw new ForbiddenException(
-          'Usuários BASIC não podem criar eventos gerais.',
-        );
-      }
-
-      if (!user.memberId) {
-        throw new ForbiddenException(
-          'Usuário BASIC sem membro vinculado não pode criar eventos.',
-        );
-      }
-
-      const ministeriosPermitidos = await this.getMinisterioIdsDoUsuario(
-        tenantId,
-        user,
-      );
-      if (ministeriosPermitidos.length === 0) {
-        throw new ForbiddenException(
-          'Você não lidera ou auxilia ministérios elegíveis.',
-        );
-      }
-
-      if (tipo === EventoTipo.REUNIAO_INTERNA && ministerioIds.length === 0) {
-        throw new BadRequestException(
-          'Reunião interna exige ao menos um ministério.',
-        );
-      }
-
-      const invalidos = ministerioIds.filter(
-        (id) => !ministeriosPermitidos.includes(id),
-      );
-      if (invalidos.length > 0) {
-        throw new ForbiddenException(
-          'Você só pode criar eventos para ministérios que lidera ou auxilia.',
-        );
-      }
-    }
-
-    const ministeriosValidos = await this.validateMinisterios(
-      tenantId,
-      ministeriosConfig,
-      user,
-      tipo,
-    );
+    const context = await this.prepareCreateContext(tenantId, dto, user);
 
     return this.prisma.evento.create({
       data: {
         titulo: dto.titulo,
         descricao: dto.descricao,
-        tipo,
+        tipo: context.tipo,
         dataInicio: new Date(dto.dataInicio),
         dataFim: dto.dataFim ? new Date(dto.dataFim) : undefined,
         local: dto.local,
         status: dto.status,
         tenantId,
-        ministerios: ministeriosValidos.length
+        ministerios: context.ministeriosValidos.length
           ? {
-              create: ministeriosValidos.map((ministerioId) => {
-                const config = ministeriosConfig.find(
+              create: context.ministeriosValidos.map((ministerioId) => {
+                const config = context.ministeriosConfig.find(
                   (ministerio) => ministerio.ministerioId === ministerioId,
                 );
 
@@ -453,6 +554,49 @@ export class EventosService {
       },
       include: eventoInclude,
     });
+  }
+
+  async createBatch(
+    tenantId: string,
+    dto: CreateEventosEmLoteDto,
+    user: JwtPayload,
+  ) {
+    this.validateBatchOccurrences(dto.ocorrencias);
+    const context = await this.prepareCreateContext(tenantId, dto, user);
+    const orderedOccurrences = [...dto.ocorrencias].sort(
+      (a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime(),
+    );
+    const starts = orderedOccurrences.map((item) => new Date(item.dataInicio));
+    const normalizedTitle = normalizeSearchText(dto.titulo);
+    const existing = await this.prisma.evento.findMany({
+      where: { tenantId, dataInicio: { in: starts } },
+      select: { titulo: true, dataInicio: true },
+    });
+    const conflictingDates = existing
+      .filter((evento) => normalizeSearchText(evento.titulo) === normalizedTitle)
+      .map((evento) => evento.dataInicio.toISOString())
+      .sort();
+
+    if (conflictingDates.length > 0) {
+      throw new ConflictException({
+        message: `Já existem eventos com o mesmo título nestas datas: ${conflictingDates.join(', ')}.`,
+        code: 'EVENT_BATCH_CONFLICT',
+        conflictingDates,
+      });
+    }
+
+    const eventos = await this.prisma.$transaction(async (tx) =>
+      Promise.all(
+        orderedOccurrences.map((ocorrencia) =>
+          tx.evento.create({
+            data: this.buildCreateData(tenantId, dto, ocorrencia, context),
+            include: eventoInclude,
+          }),
+        ),
+      ),
+    );
+
+    return { total: eventos.length, eventos };
   }
 
   async findAll(tenantId: string, query: FilterEventosDto, user: JwtPayload) {
