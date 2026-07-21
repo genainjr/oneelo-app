@@ -588,17 +588,23 @@ export class EventosService {
       });
     }
 
-    const eventos = await this.prisma.$transaction(async (tx) => {
-      const list: any[] = [];
-      for (const ocorrencia of orderedOccurrences) {
-        const item = await tx.evento.create({
-          data: this.buildCreateData(tenantId, dto, ocorrencia, context),
-          include: eventoInclude,
-        });
-        list.push(item);
-      }
-      return list;
-    });
+    const eventos = await this.prisma.$transaction(
+      async (tx) => {
+        const list: any[] = [];
+        for (const ocorrencia of orderedOccurrences) {
+          const item = await tx.evento.create({
+            data: this.buildCreateData(tenantId, dto, ocorrencia, context),
+            include: eventoInclude,
+          });
+          list.push(item);
+        }
+        return list;
+      },
+      {
+        maxWait: 10000,
+        timeout: 30000,
+      },
+    );
 
     return { total: eventos.length, eventos };
   }
