@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -308,7 +308,7 @@ export class EventosService {
     dto: Pick<CreateEventoDto, 'titulo' | 'descricao' | 'local' | 'status'>,
     ocorrencia: EventoOcorrenciaInputDto,
     context: Awaited<ReturnType<EventosService['prepareCreateContext']>>,
-  ): Prisma.EventoCreateInput {
+  ): Prisma.EventoUncheckedCreateInput {
     return {
       titulo: dto.titulo.trim(),
       descricao: dto.descricao,
@@ -317,7 +317,7 @@ export class EventosService {
       dataFim: ocorrencia.dataFim ? new Date(ocorrencia.dataFim) : undefined,
       local: dto.local,
       status: dto.status,
-      tenant: { connect: { id: tenantId } },
+      tenantId,
       ministerios: context.ministeriosValidos.length
         ? {
             create: context.ministeriosValidos.map((ministerioId) => {
@@ -561,6 +561,9 @@ export class EventosService {
     dto: CreateEventosEmLoteDto,
     user: JwtPayload,
   ) {
+    if (!tenantId) {
+      throw new BadRequestException('Tenant não identificado.');
+    }
     this.validateBatchOccurrences(dto.ocorrencias);
     const context = await this.prepareCreateContext(tenantId, dto, user);
     const orderedOccurrences = [...dto.ocorrencias].sort(
@@ -585,15 +588,22 @@ export class EventosService {
       });
     }
 
-    const eventos = await this.prisma.$transaction(async (tx) =>
-      Promise.all(
-        orderedOccurrences.map((ocorrencia) =>
-          tx.evento.create({
+    const eventos = await this.prisma.$transaction(
+      async (tx) => {
+        const list: any[] = [];
+        for (const ocorrencia of orderedOccurrences) {
+          const item = await tx.evento.create({
             data: this.buildCreateData(tenantId, dto, ocorrencia, context),
             include: eventoInclude,
-          }),
-        ),
-      ),
+          });
+          list.push(item);
+        }
+        return list;
+      },
+      {
+        maxWait: 10000,
+        timeout: 30000,
+      },
     );
 
     return { total: eventos.length, eventos };
