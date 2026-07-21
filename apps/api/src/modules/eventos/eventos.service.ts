@@ -586,7 +586,7 @@ export class EventosService {
     }
 
     const eventos = await this.prisma.$transaction(async (tx) => {
-      const list = [];
+      const list: any[] = [];
       for (const ocorrencia of orderedOccurrences) {
         const item = await tx.evento.create({
           data: this.buildCreateData(tenantId, dto, ocorrencia, context),
