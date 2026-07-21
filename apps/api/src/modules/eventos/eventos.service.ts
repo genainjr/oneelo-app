@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -585,16 +585,17 @@ export class EventosService {
       });
     }
 
-    const eventos = await this.prisma.$transaction(async (tx) =>
-      Promise.all(
-        orderedOccurrences.map((ocorrencia) =>
-          tx.evento.create({
-            data: this.buildCreateData(tenantId, dto, ocorrencia, context),
-            include: eventoInclude,
-          }),
-        ),
-      ),
-    );
+    const eventos = await this.prisma.$transaction(async (tx) => {
+      const list = [];
+      for (const ocorrencia of orderedOccurrences) {
+        const item = await tx.evento.create({
+          data: this.buildCreateData(tenantId, dto, ocorrencia, context),
+          include: eventoInclude,
+        });
+        list.push(item);
+      }
+      return list;
+    });
 
     return { total: eventos.length, eventos };
   }
