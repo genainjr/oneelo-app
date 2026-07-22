@@ -10,6 +10,7 @@ Ao adicionar um novo documento, inclua-o no início deste índice com a data, o 
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 22/07/2026 | [central-documentos.md](central-documentos.md) | Central de documentos e geração assíncrona de arquivos |
 | 18/07/2026 | [tenant-branded-experience.md](tenant-branded-experience.md) | Experiência personalizada da igreja por tenant |
 | 17/07/2026 | [phone-password-login.md](phone-password-login.md) | Login com telefone e senha |
 | 17/07/2026 | [notification-center.md](notification-center.md) | Central e infraestrutura robusta de notificações |

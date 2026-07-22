@@ -51,38 +51,40 @@ export function EscalaPrintGrid({ escala }: EscalaPrintGridProps) {
   }
 
   return (
-    <table className="print-schedule-table print-schedule-grid">
-      <thead>
-        <tr>
-          <th className="print-day-column">Dia</th>
-          <th className="print-date-column">Data</th>
-          {funcoes.map((funcao) => (
-            <th key={funcao.id}>{funcao.nome}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {dias.map((dia) => (
-          <tr key={dia.id}>
-            <td className={`print-day-column${isSundayDia(dia) ? ' print-schedule-sunday-cell' : ''}`}>
-              {getWeekdayLabel(dia)}
-            </td>
-            <td className={`print-date-column${isSundayDia(dia) ? ' print-schedule-sunday-cell' : ''}`}>
-              {formatDate(dia.data, 'dd/MM/yyyy')}
-            </td>
-            {funcoes.map((funcao) => {
-              const oculto = isFuncaoOculta(dia, funcao.id);
-              const nomes = getMemberNames(dia, funcao.id);
-
-              return (
-                <td key={funcao.id}>
-                  {oculto ? 'Indisponivel' : nomes || '-'}
-                </td>
-              );
-            })}
+    <div className="print-table-frame">
+      <table className="print-schedule-table print-schedule-grid">
+        <thead>
+          <tr>
+            <th className="print-day-column">Dia</th>
+            <th className="print-date-column">Data</th>
+            {funcoes.map((funcao) => (
+              <th key={funcao.id}>{funcao.nome}</th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {dias.map((dia) => (
+            <tr key={dia.id}>
+              <td className={`print-day-column${isSundayDia(dia) ? ' print-schedule-sunday-cell' : ''}`}>
+                {getWeekdayLabel(dia)}
+              </td>
+              <td className={`print-date-column${isSundayDia(dia) ? ' print-schedule-sunday-cell' : ''}`}>
+                {formatDate(dia.data, 'dd/MM/yyyy')}
+              </td>
+              {funcoes.map((funcao) => {
+                const oculto = isFuncaoOculta(dia, funcao.id);
+                const nomes = getMemberNames(dia, funcao.id);
+
+                return (
+                  <td key={funcao.id}>
+                    {oculto ? 'Indisponivel' : nomes || '-'}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
