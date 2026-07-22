@@ -106,8 +106,31 @@ body {
     --print-color-sunday-bg: #fef3c7;
     --print-color-sunday-text: #1f2937;
     --print-space-cell-x: 5px;
-    --print-space-cell-y: 4px;
+    --print-space-cell-y: 3px;
+    --print-font-size-table: 7.2pt;
     --print-line-height-table: 1.12;
+  }
+
+  .print-document--schedule .print-document-header {
+    grid-template-columns: 34mm minmax(0, 1fr) 90mm;
+  }
+
+  .print-document--schedule .print-document-header-title {
+    font-size: 10pt;
+    white-space: nowrap;
+  }
+
+  .print-document--agenda {
+    --print-font-size-title: 18pt;
+    --print-font-size-document-title: 10pt;
+    --print-font-size-period: 8pt;
+    --print-font-size-table-header: 7.2pt;
+    --print-font-size-table: 6.8pt;
+    --print-line-height-table: 1.08;
+    --print-space-cell-x: 3px;
+    --print-space-cell-y: 3px;
+    --print-space-header-bottom: 3mm;
+    --print-space-header-padding: 3mm;
   }
 
   .print-page {
@@ -252,16 +275,25 @@ body {
     line-height: 1;
   }
 
+  .print-table-frame {
+    border: 1.5px solid var(--print-color-border-strong);
+    border-radius: 8px;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
   .print-schedule-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     table-layout: fixed;
-    border: 1.5px solid var(--print-color-border-strong);
-    border-radius: 8px;
+    border: 0;
+    border-radius: 0;
     font-size: var(--print-font-size-table);
     line-height: var(--print-line-height-table);
-    overflow: hidden;
   }
 
   .print-schedule-table th,
@@ -315,14 +347,14 @@ body {
   }
 
   .print-day-column {
-    width: 11%;
+    width: 4%;
     background: var(--print-color-fixed-cell) !important;
     font-weight: 700;
     text-transform: lowercase;
   }
 
   .print-date-column {
-    width: 13%;
+    width: 7%;
     background: var(--print-color-fixed-cell) !important;
     font-weight: 700;
     white-space: nowrap;
@@ -330,57 +362,73 @@ body {
 
   .print-document--schedule .print-schedule-table th,
   .print-document--schedule .print-schedule-table td {
-    padding-block: var(--print-space-cell-y);
+    padding: var(--print-space-cell-y) 3px;
   }
 
   .print-document--schedule .print-schedule-table td {
     min-height: 8mm;
   }
 
+  .print-schedule-grid th:not(.print-day-column):not(.print-date-column),
+  .print-schedule-grid td:not(.print-day-column):not(.print-date-column) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .print-events-table th:nth-child(1),
   .print-events-table td:nth-child(1) {
-    width: 11%;
+    width: 12%;
     white-space: nowrap;
   }
 
   .print-events-table th:nth-child(2),
   .print-events-table td:nth-child(2) {
-    width: 18%;
+    width: 23%;
     text-align: left;
     font-weight: 700;
   }
 
   .print-events-table th:nth-child(3),
   .print-events-table td:nth-child(3) {
-    width: 10%;
+    width: 8%;
   }
 
   .print-events-table th:nth-child(4),
   .print-events-table td:nth-child(4) {
-    width: 18%;
+    width: 36%;
     text-align: left;
   }
 
   .print-events-table th:nth-child(5),
   .print-events-table td:nth-child(5) {
-    width: 10%;
+    width: 8%;
   }
 
   .print-events-table th:nth-child(6),
   .print-events-table td:nth-child(6) {
-    width: 12%;
+    width: 13%;
     text-align: left;
   }
 
   .print-events-table th:nth-child(7),
   .print-events-table td:nth-child(7) {
-    width: 21%;
-    text-align: left;
+    display: none;
   }
 
   .print-events-table {
-    font-size: 7.1pt;
-    line-height: 1.05;
+    font-size: var(--print-font-size-table);
+    line-height: var(--print-line-height-table);
+  }
+
+  .print-document--agenda .print-schedule-table th,
+  .print-document--agenda .print-schedule-table td {
+    padding: var(--print-space-cell-y) var(--print-space-cell-x);
+  }
+
+  .print-document--agenda .print-schedule-table tbody tr {
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   .print-empty {

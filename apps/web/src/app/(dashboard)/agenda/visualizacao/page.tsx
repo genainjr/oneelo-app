@@ -31,6 +31,8 @@ const STATUS_VIEW_COLOR: Record<StatusEvento, string> = {
   CANCELADO: 'bg-rose-50 text-rose-700 border-rose-150',
 };
 
+const PRINT_EVENTS_PER_PAGE = 28;
+
 function toDateInputValue(date: Date) {
   const tzOffset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
@@ -96,6 +98,14 @@ export default function AgendaVisualizacaoPage() {
   const sortedEventos = useMemo(() => {
     return [...eventos].sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime());
   }, [eventos]);
+
+  const printEventPages = useMemo(() => {
+    const pages: Evento[][] = [];
+    for (let index = 0; index < sortedEventos.length; index += PRINT_EVENTS_PER_PAGE) {
+      pages.push(sortedEventos.slice(index, index + PRINT_EVENTS_PER_PAGE));
+    }
+    return pages;
+  }, [sortedEventos]);
 
   const stats = useMemo(() => {
     const total = sortedEventos.length;
@@ -287,16 +297,18 @@ export default function AgendaVisualizacaoPage() {
 
       {!loading && sortedEventos.length > 0 && (
         <div className="print-area print-document print-document--agenda hidden" aria-hidden="true">
-          <section className="print-page">
-            <PrintDocumentHeader
-              organizationName={tenantName}
-              documentTitle="Agenda de Eventos"
-              period={`${formatDate(filterState.dataInicio, 'dd/MM/yyyy')} a ${formatDate(filterState.dataFim, 'dd/MM/yyyy')}`}
-              logoUrl={tenantLogoUrl}
-            />
-            <AgendaPrintTable eventos={sortedEventos} t={t} />
-            <PrintScheduleFooter printedAt={printedAt} />
-          </section>
+          {printEventPages.map((eventosPagina, index) => (
+            <section key={index} className="print-page">
+              <PrintDocumentHeader
+                organizationName={tenantName}
+                documentTitle="Agenda de Eventos"
+                period={`${formatDate(filterState.dataInicio, 'dd/MM/yyyy')} a ${formatDate(filterState.dataFim, 'dd/MM/yyyy')}`}
+                logoUrl={tenantLogoUrl}
+              />
+              <AgendaPrintTable eventos={eventosPagina} t={t} />
+              <PrintScheduleFooter printedAt={printedAt} />
+            </section>
+          ))}
         </div>
       )}
     </div>
@@ -311,6 +323,7 @@ function AgendaPrintTable({
   t: any;
 }) {
   return (
+    <div className="print-table-frame">
     <table className="print-schedule-table print-events-table">
       <thead>
         <tr>
@@ -337,5 +350,6 @@ function AgendaPrintTable({
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
