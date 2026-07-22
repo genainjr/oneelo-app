@@ -25,11 +25,11 @@ export function PrintDocumentHeader({
         />
       )}
       <div className="print-document-header-content">
-        <h1>{organizationName}</h1>
-        <div className="print-document-header-meta">
-          <p className="print-document-header-title">{documentTitle}</p>
-          <p className="print-document-header-period">{period}</p>
-        </div>
+        <h1>{documentTitle}</h1>
+      </div>
+      <div className="print-document-header-meta">
+        <p className="print-document-header-period">{period}</p>
+        <p className="print-document-header-organization">{organizationName}</p>
       </div>
     </header>
   );
