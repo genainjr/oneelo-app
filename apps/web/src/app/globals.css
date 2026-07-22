@@ -111,15 +111,6 @@ body {
     --print-line-height-table: 1.12;
   }
 
-  .print-document--schedule .print-document-header {
-    grid-template-columns: 34mm minmax(0, 1fr) 90mm;
-  }
-
-  .print-document--schedule .print-document-header-title {
-    font-size: 10pt;
-    white-space: nowrap;
-  }
-
   .print-document--agenda {
     --print-font-size-title: 18pt;
     --print-font-size-document-title: 10pt;
@@ -146,9 +137,9 @@ body {
 
   .print-document-header {
     display: grid;
-    grid-template-columns: 34mm minmax(0, 1fr) 52mm;
+    grid-template-columns: 34mm minmax(0, 1fr) 64mm;
     align-items: center;
-    column-gap: 5mm;
+    column-gap: 6mm;
     min-height: 28mm;
     margin-bottom: var(--print-space-header-bottom);
     padding-bottom: var(--print-space-header-padding);
@@ -167,21 +158,17 @@ body {
   }
 
   .print-document-header-content {
+    grid-column: 2;
     min-width: 0;
     width: 100%;
-    display: contents;
-  }
-
-  .print-document-header:not(:has(.print-document-header-logo)) .print-document-header-content {
+    max-width: 100%;
     display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: minmax(0, 1fr) 52mm;
-    align-items: center;
-    column-gap: 5mm;
+    justify-items: center;
+    text-align: center;
+    justify-self: center;
   }
 
   .print-document-header h1 {
-    grid-column: 2;
     margin: 0;
     font-size: var(--print-font-size-title);
     font-weight: 800;
@@ -192,32 +179,49 @@ body {
     color: var(--print-color-heading);
   }
 
-  .print-document-header:not(:has(.print-document-header-logo)) h1 {
+  .print-document-header:not(:has(.print-document-header-logo)) {
+    grid-template-columns: minmax(0, 1fr) 64mm;
+  }
+
+  .print-document-header:not(:has(.print-document-header-logo)) .print-document-header-content {
     grid-column: 1;
   }
 
   .print-document-header-meta {
     grid-column: 3;
     justify-self: end;
+    min-width: 0;
+    max-width: 64mm;
     border-left: var(--print-border-width) solid var(--print-color-border);
-    padding-left: 5mm;
+    padding-left: 4mm;
     text-align: right;
+    display: grid;
+    gap: 1.2mm;
   }
 
-  .print-document-header-title {
+  .print-document-header:not(:has(.print-document-header-logo)) .print-document-header-meta {
+    grid-column: 2;
+  }
+
+  .print-document-header-organization {
     margin: 0;
     color: var(--print-color-heading);
-    font-size: var(--print-font-size-document-title);
+    font-size: 9pt;
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.12;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .print-document-header-period {
-    margin: 0.8mm 0 0;
+    margin: 0;
     color: var(--print-color-muted);
     font-size: var(--print-font-size-period);
-    font-weight: 500;
-    line-height: 1.15;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    text-align: right;
   }
 
   .print-schedule-footer {
@@ -378,41 +382,46 @@ body {
 
   .print-events-table th:nth-child(1),
   .print-events-table td:nth-child(1) {
-    width: 12%;
-    white-space: nowrap;
+    width: 5%;
   }
 
   .print-events-table th:nth-child(2),
   .print-events-table td:nth-child(2) {
-    width: 23%;
-    text-align: left;
-    font-weight: 700;
+    width: 12%;
+    white-space: nowrap;
   }
 
   .print-events-table th:nth-child(3),
   .print-events-table td:nth-child(3) {
-    width: 8%;
+    width: 21%;
+    text-align: left;
+    font-weight: 700;
   }
 
   .print-events-table th:nth-child(4),
   .print-events-table td:nth-child(4) {
-    width: 36%;
-    text-align: left;
+    width: 8%;
   }
 
   .print-events-table th:nth-child(5),
   .print-events-table td:nth-child(5) {
-    width: 8%;
+    width: 33%;
+    text-align: left;
   }
 
   .print-events-table th:nth-child(6),
   .print-events-table td:nth-child(6) {
-    width: 13%;
-    text-align: left;
+    width: 8%;
   }
 
   .print-events-table th:nth-child(7),
   .print-events-table td:nth-child(7) {
+    width: 13%;
+    text-align: left;
+  }
+
+  .print-events-table th:nth-child(8),
+  .print-events-table td:nth-child(8) {
     display: none;
   }
 

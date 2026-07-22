@@ -32,6 +32,13 @@ const STATUS_VIEW_COLOR: Record<StatusEvento, string> = {
 };
 
 const PRINT_EVENTS_PER_PAGE = 28;
+const WEEKDAY_LABELS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+
+function getWeekdayLabel(dateValue: string) {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return '-';
+  return WEEKDAY_LABELS[date.getDay()] ?? '-';
+}
 
 function toDateInputValue(date: Date) {
   const tzOffset = date.getTimezoneOffset() * 60000;
@@ -327,7 +334,8 @@ function AgendaPrintTable({
     <table className="print-schedule-table print-events-table">
       <thead>
         <tr>
-          <th>Data</th>
+            <th>Dia</th>
+            <th>Data</th>
           <th>Evento</th>
           <th>Tipo</th>
           <th>Ministérios</th>
@@ -339,7 +347,8 @@ function AgendaPrintTable({
       <tbody>
         {eventos.map((evento) => (
           <tr key={evento.id}>
-            <td>{formatDate(evento.dataInicio, 'dd/MM/yyyy HH:mm')}</td>
+              <td>{getWeekdayLabel(evento.dataInicio)}</td>
+              <td>{formatDate(evento.dataInicio, 'dd/MM/yyyy HH:mm')}</td>
             <td>{evento.titulo}</td>
             <td>{t(`event.type.${evento.tipo}` as any)}</td>
             <td>{evento.ministerios?.map((item) => item.ministerio?.nome).filter(Boolean).join(', ') || '-'}</td>
