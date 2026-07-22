@@ -10,6 +10,8 @@ Ao adicionar um novo documento, inclua-o no início deste índice com a data, o 
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 22/07/2026 | [central-notificacoes-plan.md](central-notificacoes-plan.md) | Central robusta de notificações |
+| 22/07/2026 | [central-documentos-plan.md](central-documentos-plan.md) | Central de documentos |
 | 19/07/2026 | [eventos-semanais-em-lote-plan.md](eventos-semanais-em-lote-plan.md) | Criação semanal de eventos independentes em lote |
 | 19/07/2026 | [ministerios-elegibilidade-escalas-plan.md](ministerios-elegibilidade-escalas-plan.md) | Elegibilidade de ministérios e membros para escalas |
 | 19/07/2026 | [escala-evento-workflow-plan.md](escala-evento-workflow-plan.md) | Criação de escalas com base em eventos |
