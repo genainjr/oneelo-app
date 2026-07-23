@@ -6,7 +6,7 @@ import { includesNormalizedText } from '@/lib/utils';
 
 export interface SearchComboboxOption {
   id: string;
-  nome: string;
+  nome?: string;
 }
 
 interface SearchComboboxProps<T extends SearchComboboxOption> {
@@ -58,7 +58,7 @@ export function SearchCombobox<T extends SearchComboboxOption>({
   }, []);
 
   const filteredOptions = search.trim()
-    ? options.filter((option) => includesNormalizedText(getDisplayText?.(option) ?? option.nome, search))
+    ? options.filter((option) => includesNormalizedText(getDisplayText?.(option) ?? option.nome ?? '', search))
     : options;
 
   function handleSelect(option: T) {
@@ -101,7 +101,7 @@ export function SearchCombobox<T extends SearchComboboxOption>({
           <div id={listboxId} role="listbox" className="absolute top-full z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
             {filteredOptions.map((option) => {
               const secondaryText = getSecondaryText?.(option);
-              const displayText = getDisplayText?.(option) ?? option.nome;
+              const displayText = getDisplayText?.(option) ?? option.nome ?? '';
               return (
                 <button key={option.id} type="button" role="option" aria-selected={selected?.id === option.id} onClick={() => handleSelect(option)} className="flex w-full flex-col px-4 py-2.5 text-left transition-colors hover:bg-indigo-50">
                   <span className="text-sm font-semibold text-gray-800">{displayText}</span>
@@ -122,7 +122,7 @@ export function SearchCombobox<T extends SearchComboboxOption>({
       {selected && selectedPrefix && (
         <p className="flex items-center gap-1 text-xs text-emerald-600">
           <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-          {selectedPrefix} <strong>{getDisplayText?.(selected) ?? selected.nome}</strong>
+          {selectedPrefix} <strong>{getDisplayText?.(selected) ?? selected.nome ?? ''}</strong>
         </p>
       )}
     </div>

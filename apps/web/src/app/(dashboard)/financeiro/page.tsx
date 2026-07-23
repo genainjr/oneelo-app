@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, FileText, Pencil, ShieldCheck, Tags, Trash2, WalletCards, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, FileText, Pencil, ShieldCheck, Tags, Trash2, WalletCards } from "lucide-react";
 import { CollapseButton } from "@/components/app/collapse-button";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { DataTable, type Column } from "@/components/app/data-table";
@@ -30,6 +30,7 @@ import {
   FinancialTransaction,
   FinancialTransactionStatus,
   FinancialTransactionType,
+  PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
   TRANSACTION_STATUS_LABELS,
   currencyFormatter,
@@ -329,6 +330,8 @@ export default function FinanceiroPage() {
       const { receiptFile, removeReceipt, ...transactionData } = data;
       const payload = {
         ...transactionData,
+        eventoId: transactionData.eventoId || null,
+        paymentMethod: transactionData.paymentMethod || null,
         amount: Number(data.amount),
         date: new Date(`${data.date}T12:00:00`).toISOString(),
       };
@@ -561,7 +564,13 @@ export default function FinanceiroPage() {
                     {item.paymentMethod && (
                       <span className="flex min-w-0 items-center gap-1.5">
                         <CreditCard className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        <span className="truncate">Pagamento: {item.paymentMethod}</span>
+                        <span className="truncate">Pagamento: {PAYMENT_METHOD_LABELS[item.paymentMethod] ?? item.paymentMethod}</span>
+                      </span>
+                    )}
+                    {item.evento && (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="truncate">Evento: {item.evento.titulo}</span>
                       </span>
                     )}
                     {item.receiptUrl && (
@@ -574,7 +583,7 @@ export default function FinanceiroPage() {
                 </div>
                 <div className="flex w-full justify-end sm:w-auto md:self-start">
                   <div className="flex items-center justify-end gap-2">
-                    {canCancelTransaction && (
+                    {canCancelTransaction && item.status !== "CANCELLED" && (
                       <button
                         type="button"
                         onClick={() => { setFormError(""); setModal({ type: "transaction-status", item }); }}
@@ -584,14 +593,12 @@ export default function FinanceiroPage() {
                       >
                         {item.status === "DRAFT" ? (
                           <Clock3 className="h-4 w-4 text-amber-600" />
-                        ) : item.status === "CANCELLED" ? (
-                          <XCircle className="h-4 w-4 text-red-500" />
                         ) : (
                           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                         )}
                       </button>
                     )}
-                    {canCreateTransaction && (
+                    {canCreateTransaction && item.status !== "CANCELLED" && (
                       <button
                         type="button"
                         onClick={() => { setFormError(""); setModal({ type: "transaction", item }); }}
@@ -601,7 +608,7 @@ export default function FinanceiroPage() {
                         <Pencil className="h-4 w-4 text-indigo-500" />
                       </button>
                     )}
-                    {canCancelTransaction && (
+                    {canCancelTransaction && item.status !== "CANCELLED" && (
                       <button
                         type="button"
                         onClick={() => setConfirm({ type: "transaction", item })}

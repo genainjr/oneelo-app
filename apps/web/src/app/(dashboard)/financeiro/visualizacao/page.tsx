@@ -20,6 +20,7 @@ import {
   FinanceTypeBadge,
   FinancialTransactionStatus,
   FinancialTransactionType,
+  PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
   TRANSACTION_STATUS_LABELS,
   currencyFormatter,
@@ -345,7 +346,13 @@ export default function FinanceiroVisualizacaoPage() {
                     {item.paymentMethod && (
                       <span className="flex min-w-0 items-center gap-1.5">
                         <CreditCard className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        <span className="truncate">Pagamento: {item.paymentMethod}</span>
+                        <span className="truncate">Pagamento: {PAYMENT_METHOD_LABELS[item.paymentMethod] ?? item.paymentMethod}</span>
+                      </span>
+                    )}
+                    {item.evento && (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="truncate">Evento: {item.evento.titulo}</span>
                       </span>
                     )}
                     {item.receiptUrl && (

@@ -151,6 +151,19 @@ enum FinancialTransactionStatus {
   @@map("financial_transaction_status")
 }
 
+enum FinancialPaymentMethod {
+  PIX
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  BOLETO
+  CHECK
+  OTHER
+
+  @@map("financial_payment_method")
+}
+
 model Tenant {
   id               String           @id @default(uuid())
   nome             String           @map("name")
@@ -291,6 +304,7 @@ model FinancialTransaction {
   tenantId          String                     @map("tenant_id")
   accountId         String                     @map("account_id")
   categoryId        String                     @map("category_id")
+  eventoId          String?                    @map("event_id")
   memberId          String?                    @map("member_id")
   createdByUserId   String                     @map("created_by_user_id")
   cancelledByUserId String?                    @map("cancelled_by_user_id")
@@ -299,7 +313,7 @@ model FinancialTransaction {
   date              DateTime
   amount            Decimal                    @db.Decimal(12, 2)
   description       String?
-  paymentMethod     String?                    @map("payment_method")
+  paymentMethod     FinancialPaymentMethod?    @map("payment_method")
   counterpartyName  String?                    @map("counterparty_name")
   receiptUrl        String?                    @map("receipt_url")
   receiptKey        String?                    @map("receipt_key")
@@ -312,6 +326,7 @@ model FinancialTransaction {
   tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   account     FinancialAccount  @relation(fields: [accountId], references: [id])
   category    FinancialCategory @relation(fields: [categoryId], references: [id])
+  evento      Evento?           @relation(fields: [eventoId], references: [id], onDelete: SetNull)
   member      Membro?            @relation(fields: [memberId], references: [id])
   createdBy   User              @relation("FinancialTransactionCreatedBy", fields: [createdByUserId], references: [id])
   cancelledBy User?             @relation("FinancialTransactionCancelledBy", fields: [cancelledByUserId], references: [id])
@@ -322,6 +337,7 @@ model FinancialTransaction {
   @@index([tenantId, status])
   @@index([tenantId, accountId])
   @@index([tenantId, categoryId])
+  @@index([tenantId, eventoId])
   @@index([tenantId, memberId])
   @@map("tb_financial_transaction")
 }
@@ -552,6 +568,7 @@ model Evento {
 
   tenant      Tenant             @relation(fields: [tenantId], references: [id])
   escalasDias EscalaDia[]
+  financialTransactions FinancialTransaction[]
   ministerios EventoMinisterio[]
 
   @@index([tenantId])

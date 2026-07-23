@@ -68,6 +68,7 @@ export class FinancialTransactionsService {
       include: {
         account: { select: { id: true, name: true, type: true } },
         category: { select: { id: true, name: true, type: true } },
+        evento: { select: { id: true, titulo: true, dataInicio: true, dataFim: true, local: true, status: true } },
         member: { select: { id: true, nome: true, email: true, whatsapp: true } },
         createdBy: { select: { id: true, nome: true } },
       },
@@ -135,6 +136,7 @@ export class FinancialTransactionsService {
   ) {
     await this.financeAuthorization.ensureFinanceRole(tenantId, actor, WRITE_ROLES);
     await this.validateAccountAndCategory(tenantId, dto.accountId, dto.categoryId, dto.type);
+    await this.validateEvento(tenantId, dto.eventoId);
     const member = await this.validateMember(tenantId, dto.memberId, dto.type);
 
     const memberPrintName = member ? this.getMemberPrintName(member) : null;
@@ -143,6 +145,7 @@ export class FinancialTransactionsService {
         tenantId,
         accountId: dto.accountId,
         categoryId: dto.categoryId,
+        eventoId: dto.eventoId || null,
         memberId: member?.id ?? null,
         createdByUserId: actor.sub,
         type: dto.type,
@@ -150,7 +153,7 @@ export class FinancialTransactionsService {
         date: new Date(dto.date),
         amount: dto.amount,
         description: dto.description?.trim() || null,
-        paymentMethod: dto.paymentMethod?.trim() || null,
+        paymentMethod: dto.paymentMethod ?? null,
         counterpartyName: memberPrintName ?? (dto.counterpartyName?.trim() || null),
       },
     });
@@ -174,8 +177,10 @@ export class FinancialTransactionsService {
     const nextType = dto.type ?? current.type;
     const nextAccountId = dto.accountId ?? current.accountId;
     const nextCategoryId = dto.categoryId ?? current.categoryId;
+    const nextEventoId = dto.eventoId !== undefined ? dto.eventoId : current.eventoId;
     const nextMemberId = dto.memberId !== undefined ? dto.memberId : current.memberId;
     await this.validateAccountAndCategory(tenantId, nextAccountId, nextCategoryId, nextType);
+    await this.validateEvento(tenantId, nextEventoId);
     const member = await this.validateMember(tenantId, nextMemberId, nextType);
 
     const memberPrintName = member ? this.getMemberPrintName(member) : null;
@@ -184,13 +189,14 @@ export class FinancialTransactionsService {
       data: {
         ...(dto.accountId !== undefined ? { accountId: dto.accountId } : {}),
         ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
+        ...(dto.eventoId !== undefined ? { eventoId: dto.eventoId || null } : {}),
         ...(dto.memberId !== undefined || dto.type !== undefined ? { memberId: member?.id ?? null } : {}),
         ...(dto.type !== undefined ? { type: dto.type } : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         ...(dto.date !== undefined ? { date: new Date(dto.date) } : {}),
         ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
         ...(dto.description !== undefined ? { description: dto.description?.trim() || null } : {}),
-        ...(dto.paymentMethod !== undefined ? { paymentMethod: dto.paymentMethod?.trim() || null } : {}),
+        ...(dto.paymentMethod !== undefined ? { paymentMethod: dto.paymentMethod ?? null } : {}),
         ...(dto.counterpartyName !== undefined || dto.memberId !== undefined || dto.type !== undefined ? { counterpartyName: memberPrintName ?? (dto.counterpartyName?.trim() || null) } : {}),
       },
     });
@@ -330,6 +336,15 @@ export class FinancialTransactionsService {
     return member;
   }
 
+  private async validateEvento(tenantId: string, eventoId: string | null | undefined) {
+    if (!eventoId) return null;
+    const evento = await this.prisma.evento.findFirst({
+      where: { id: eventoId, tenantId },
+      select: { id: true },
+    });
+    if (!evento) throw new BadRequestException('Evento inválido.');
+    return evento;
+  }
   private getMemberPrintName(member: { nome: string; nomeExibicao?: string | null }) {
     const displayName = member.nomeExibicao?.trim();
     if (displayName) return displayName;

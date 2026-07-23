@@ -104,13 +104,14 @@ interface ModalErrorProps {
   message?: string | null;
   /** Or pass children for full control */
   children?: React.ReactNode;
+  className?: string;
 }
 
-export function ModalError({ message, children }: ModalErrorProps) {
+export function ModalError({ message, children, className }: ModalErrorProps) {
   const content = message ?? children;
   if (!content) return null;
   return (
-    <div className="mx-6 mt-5 p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl">
+    <div className={cn("mx-6 mt-5 p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl", className)}>
       {content}
     </div>
   );

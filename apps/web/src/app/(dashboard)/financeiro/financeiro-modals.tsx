@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Upload, X } from "lucide-react";
+import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
 import { InputField, SelectField } from "@/components/app/form-field";
 import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
 import { ModalError, ModalFooter, ModalShell } from "@/components/app/modal-shell";
+import { StatusActionModal } from "@/components/app/status-action-modal";
 import { api } from "@/lib/api";
 import {
   ACCOUNT_TYPE_LABELS,
@@ -13,9 +15,12 @@ import {
   FinancialAccountType,
   FinancialCategory,
   FinancialCategoryType,
+  FinancialPaymentMethod,
   FinancialTransaction,
   FinancialTransactionStatus,
   FinancialTransactionType,
+  PAYMENT_METHOD_LABELS,
+  TRANSACTION_STATUS_LABELS,
   todayInputValue,
 } from "./financeiro-shared";
 
@@ -39,8 +44,9 @@ export type TransactionFormData = {
   amount: string;
   accountId: string;
   categoryId: string;
+  eventoId: string;
   description: string;
-  paymentMethod: string;
+  paymentMethod: "" | FinancialPaymentMethod;
   counterpartyName: string;
   memberId: string;
   receiptFile?: File | null;
@@ -54,6 +60,7 @@ export const emptyTransactionForm = (): TransactionFormData => ({
   amount: "",
   accountId: "",
   categoryId: "",
+  eventoId: "",
   description: "",
   paymentMethod: "",
   counterpartyName: "",
@@ -214,8 +221,12 @@ export function TransactionModal({
   const [form, setForm] = useState<TransactionFormData>(emptyTransactionForm);
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(false);
+  const [eventos, setEventos] = useState<EventoOption[]>([]);
+  const [eventosLoading, setEventosLoading] = useState(false);
   const [membroSearch, setMembroSearch] = useState("");
+  const [eventoSearch, setEventoSearch] = useState("");
   const [selectedMembro, setSelectedMembro] = useState<MembroOption | null>(null);
+  const [selectedEvento, setSelectedEvento] = useState<EventoOption | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
   const categoryOptions = useMemo(
     () => categories.filter((category) => category.active && category.type === form.type),
@@ -244,7 +255,28 @@ export function TransactionModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    let active = true;
+    setEventosLoading(true);
+    api.get<EventoOption[]>("/api/eventos?scope=MANAGE")
+      .then((data) => {
+        if (active) setEventos(Array.isArray(data) ? data.filter((evento) => evento.status !== "CANCELADO") : []);
+      })
+      .catch(() => {
+        if (active) setEventos([]);
+      })
+      .finally(() => {
+        if (active) setEventosLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     const member = transaction?.member ?? null;
+    const evento = transaction?.evento ?? null;
     const counterpartyName = member?.nome ?? transaction?.counterpartyName ?? "";
     setForm(transaction ? {
       type: transaction.type,
@@ -254,6 +286,7 @@ export function TransactionModal({
       accountId: transaction.account.id,
       categoryId: transaction.category.id,
       description: transaction.description ?? "",
+      eventoId: transaction.eventoId ?? transaction.evento?.id ?? "",
       paymentMethod: transaction.paymentMethod ?? "",
       counterpartyName,
       memberId: transaction.memberId ?? member?.id ?? "",
@@ -262,6 +295,8 @@ export function TransactionModal({
     } : emptyTransactionForm());
     setSelectedMembro(member);
     setMembroSearch(counterpartyName);
+    setSelectedEvento(evento);
+    setEventoSearch(evento ? getEventoDisplayName(evento) : "");
   }, [isOpen, transaction]);
 
   return (
@@ -299,14 +334,14 @@ export function TransactionModal({
               <option value="INCOME">Entrada</option>
               <option value="EXPENSE">Despesa</option>
             </SelectField>
-            <InputField id="finance-date" label="Data" required type="date" value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InputField id="finance-amount" label="Valor" required type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))} />
             <SelectField id="finance-status" label="Status" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as FinancialTransactionStatus }))}>
               <option value="CONFIRMED">Confirmado</option>
               <option value="DRAFT">Rascunho</option>
             </SelectField>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <InputField id="finance-date" label="Data" required type="date" value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} />
+            <InputField id="finance-amount" label="Valor" required type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))} />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectField id="finance-account" label="Conta" required value={form.accountId} onChange={(event) => setForm((current) => ({ ...current, accountId: event.target.value }))}>
@@ -322,7 +357,70 @@ export function TransactionModal({
               ))}
             </SelectField>
           </div>
-          <InputField id="finance-description" label="Descrição" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Ex: Oferta do culto" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField id="finance-payment" label="Pagamento" value={form.paymentMethod} onChange={(event) => setForm((current) => ({ ...current, paymentMethod: event.target.value as TransactionFormData["paymentMethod"] }))}>
+              <option value="">Selecione</option>
+              {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </SelectField>
+            <InputField id="finance-description" label="Descrição" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Ex: Oferta do culto" />
+          </div>
+          <EventoSearchCombobox
+            label="Evento"
+            optionalLabel="opcional"
+            placeholder="Buscar evento pelo nome..."
+            loading={eventosLoading}
+            options={eventos}
+            selected={selectedEvento}
+            search={eventoSearch}
+            emptyMessage="Nenhum evento encontrado."
+            selectedPrefix="Evento"
+            onSearchChange={setEventoSearch}
+            onSelect={(evento) => {
+              setSelectedEvento(evento);
+              setEventoSearch(getEventoDisplayName(evento));
+              setForm((current) => ({ ...current, eventoId: evento.id }));
+            }}
+            onClear={() => {
+              setSelectedEvento(null);
+              setEventoSearch("");
+              setForm((current) => ({ ...current, eventoId: "" }));
+            }}
+          />
+          <div className="grid grid-cols-1 gap-4">
+            {form.type === "INCOME" ? (
+              <MembroSearchCombobox
+                label="Membro"
+                optionalLabel="opcional"
+                placeholder="Buscar membro pelo nome..."
+                loading={membrosLoading}
+                options={membros}
+                selected={selectedMembro}
+                search={membroSearch}
+                emptyMessage="Nenhum membro encontrado."
+                selectedPrefix="Selecionado"
+                onSearchChange={(value) => {
+                  setMembroSearch(value);
+                  setSelectedMembro(null);
+                  setForm((current) => ({ ...current, memberId: "", counterpartyName: value }));
+                }}
+                onSelect={(membro) => {
+                  const membroPrintName = getMembroPrintName(membro);
+                  setSelectedMembro(membro);
+                  setMembroSearch(membroPrintName);
+                  setForm((current) => ({ ...current, memberId: membro.id, counterpartyName: membroPrintName }));
+                }}
+                onClear={() => {
+                  setSelectedMembro(null);
+                  setMembroSearch("");
+                  setForm((current) => ({ ...current, memberId: "", counterpartyName: "" }));
+                }}
+              />
+            ) : (
+              <InputField id="finance-counterparty" label="Fornecedor" value={form.counterpartyName} onChange={(event) => setForm((current) => ({ ...current, counterpartyName: event.target.value, memberId: "" }))} />
+            )}
+          </div>
           <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
             <input
               ref={receiptInputRef}
@@ -368,40 +466,6 @@ export function TransactionModal({
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InputField id="finance-payment" label="Pagamento" value={form.paymentMethod} onChange={(event) => setForm((current) => ({ ...current, paymentMethod: event.target.value }))} placeholder="Pix, dinheiro..." />
-            {form.type === "INCOME" ? (
-              <MembroSearchCombobox
-                label="Membro"
-                optionalLabel="opcional"
-                placeholder="Buscar membro pelo nome..."
-                loading={membrosLoading}
-                options={membros}
-                selected={selectedMembro}
-                search={membroSearch}
-                emptyMessage="Nenhum membro encontrado."
-                selectedPrefix="Selecionado"
-                onSearchChange={(value) => {
-                  setMembroSearch(value);
-                  setSelectedMembro(null);
-                  setForm((current) => ({ ...current, memberId: "", counterpartyName: value }));
-                }}
-                onSelect={(membro) => {
-                  const membroPrintName = getMembroPrintName(membro);
-                  setSelectedMembro(membro);
-                  setMembroSearch(membroPrintName);
-                  setForm((current) => ({ ...current, memberId: membro.id, counterpartyName: membroPrintName }));
-                }}
-                onClear={() => {
-                  setSelectedMembro(null);
-                  setMembroSearch("");
-                  setForm((current) => ({ ...current, memberId: "", counterpartyName: "" }));
-                }}
-              />
-            ) : (
-              <InputField id="finance-counterparty" label="Fornecedor" value={form.counterpartyName} onChange={(event) => setForm((current) => ({ ...current, counterpartyName: event.target.value, memberId: "" }))} />
-            )}
-          </div>
         </div>
       </form>
     </ModalShell>
@@ -423,41 +487,28 @@ export function TransactionStatusModal({
   onClose: () => void;
   onSubmit: (status: FinancialTransactionStatus) => void | Promise<void>;
 }) {
-  const [status, setStatus] = useState<FinancialTransactionStatus>("CONFIRMED");
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setStatus(transaction?.status === "CONFIRMED" ? "DRAFT" : "CONFIRMED");
-  }, [isOpen, transaction?.status]);
+  const statusOptions = (["DRAFT", "CONFIRMED", "CANCELLED"] as const)
+    .filter((option) => option !== transaction?.status)
+    .map((option) => ({
+      value: option,
+      label: TRANSACTION_STATUS_LABELS[option],
+      className: option === "CANCELLED"
+        ? "border-red-600 bg-red-600 text-white hover:bg-red-700"
+        : option === "CONFIRMED"
+          ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
+          : "border-gray-500 bg-gray-500 text-white hover:bg-gray-600",
+    }));
 
   return (
-    <ModalShell
+    <StatusActionModal
       isOpen={isOpen}
       title="Mudar status"
       onClose={onClose}
-      size="sm"
-      footer={<ModalFooter onCancel={onClose} loading={loading} primaryLabel="Salvar" form="finance-status-form" />}
-    >
-      <form id="finance-status-form" onSubmit={(event) => { event.preventDefault(); void onSubmit(status); }}>
-        <ModalError message={error} />
-        <div className="space-y-4 p-6">
-          <p className="text-sm leading-6 text-gray-600">
-            {transaction ? `Escolha o novo status do lançamento "${transaction.description || transaction.counterpartyName || "Lançamento financeiro"}".` : ""}
-          </p>
-          <SelectField
-            id="finance-transaction-status-update"
-            label="Status"
-            value={status}
-            onChange={(event) => setStatus(event.target.value as FinancialTransactionStatus)}
-          >
-            {(["DRAFT", "CONFIRMED", "CANCELLED"] as const).filter((option) => option !== transaction?.status).map((option) => (
-              <option key={option} value={option}>
-                {option === "DRAFT" ? "Rascunho" : option === "CONFIRMED" ? "Confirmado" : "Cancelado"}
-              </option>
-            ))}
-          </SelectField>
-        </div>
-      </form>
-    </ModalShell>
+      loading={loading}
+      error={error}
+      options={statusOptions}
+      onSelect={onSubmit}
+      description={transaction ? `Escolha o novo status do lançamento "${transaction.description || transaction.counterpartyName || "Lançamento financeiro"}".` : ""}
+    />
   );
 }

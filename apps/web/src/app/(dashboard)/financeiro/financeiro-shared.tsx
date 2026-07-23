@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Banknote, CircleDollarSign, Landmark } from "lucide-react";
 import { api } from "@/lib/api";
-import { FinanceRole } from "@/types";
+import { FinanceRole, type StatusEvento } from "@/types";
 
 export type FinancePermissionSummary = {
   role: FinanceRole | null;
@@ -17,6 +17,7 @@ export type FinancialAccountType = "CASH" | "BANK" | "PIX" | "OTHER";
 export type FinancialCategoryType = "INCOME" | "EXPENSE";
 export type FinancialTransactionType = "INCOME" | "EXPENSE";
 export type FinancialTransactionStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
+export type FinancialPaymentMethod = "PIX" | "CASH" | "CREDIT_CARD" | "DEBIT_CARD" | "BANK_TRANSFER" | "BOLETO" | "CHECK" | "OTHER";
 
 export type FinancialAccount = {
   id: string;
@@ -40,7 +41,9 @@ export type FinancialTransaction = {
   date: string;
   amount: number;
   description?: string | null;
-  paymentMethod?: string | null;
+  paymentMethod?: FinancialPaymentMethod | null;
+  eventoId?: string | null;
+  evento?: { id: string; titulo: string; dataInicio: string; dataFim?: string | null; local?: string | null; status: StatusEvento } | null;
   counterpartyName?: string | null;
   receiptUrl?: string | null;
   receiptFileName?: string | null;
@@ -87,6 +90,17 @@ export const TRANSACTION_STATUS_LABELS: Record<FinancialTransactionStatus, strin
   DRAFT: "Rascunho",
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
+};
+
+export const PAYMENT_METHOD_LABELS: Record<FinancialPaymentMethod, string> = {
+  PIX: "Pix",
+  CASH: "Dinheiro",
+  CREDIT_CARD: "Cartão de crédito",
+  DEBIT_CARD: "Cartão de débito",
+  BANK_TRANSFER: "Transferência",
+  BOLETO: "Boleto",
+  CHECK: "Cheque",
+  OTHER: "Outro",
 };
 
 export const currencyFormatter = new Intl.NumberFormat("pt-BR", {

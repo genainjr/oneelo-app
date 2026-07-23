@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { FinancialTransactionStatus, FinancialTransactionType } from '@prisma/client';
+import { FinancialPaymentMethod, FinancialTransactionStatus, FinancialTransactionType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
@@ -34,6 +34,11 @@ export class CreateFinancialTransactionDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
+  eventoId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
   memberId?: string;
 
   @ApiPropertyOptional()
@@ -41,10 +46,10 @@ export class CreateFinancialTransactionDto {
   @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional()
-  @IsString()
+  @ApiPropertyOptional({ enum: FinancialPaymentMethod })
+  @IsEnum(FinancialPaymentMethod, { message: 'Forma de pagamento inválida.' })
   @IsOptional()
-  paymentMethod?: string;
+  paymentMethod?: FinancialPaymentMethod | null;
 
   @ApiPropertyOptional()
   @IsString()

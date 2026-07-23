@@ -4,6 +4,7 @@ import { ExportShell } from '@/components/app/export-shell';
 import { useExport } from '@/hooks/use-export';
 import {
   FinancialTransaction,
+  PAYMENT_METHOD_LABELS,
   TRANSACTION_STATUS_LABELS,
   currencyFormatter,
   dateFormatter,
@@ -17,6 +18,7 @@ const ALL_FIELDS = [
   { key: 'description', label: 'Descrição' },
   { key: 'account', label: 'Conta' },
   { key: 'category', label: 'Categoria' },
+  { key: 'evento', label: 'Evento' },
   { key: 'amount', label: 'Valor' },
   { key: 'paymentMethod', label: 'Pagamento' },
   { key: 'counterpartyName', label: 'Pessoa/fornecedor' },
@@ -47,8 +49,9 @@ export default function FinanceiroExportacaoPage() {
       if (field.key === 'status') return TRANSACTION_STATUS_LABELS[transaction.status] ?? transaction.status;
       if (field.key === 'account') return transaction.account.name;
       if (field.key === 'category') return transaction.category.name;
+      if (field.key === 'evento') return transaction.evento?.titulo ?? '';
       if (field.key === 'amount') return currencyFormatter.format(transaction.amount);
-      if (field.key === 'paymentMethod') return transaction.paymentMethod ?? '';
+      if (field.key === 'paymentMethod') return transaction.paymentMethod ? PAYMENT_METHOD_LABELS[transaction.paymentMethod] : '';
       if (field.key === 'counterpartyName') return transaction.counterpartyName ?? '';
       if (field.key === 'receiptUrl') return transaction.receiptUrl ?? '';
       return (transaction as unknown as Record<string, unknown>)[field.key] as string ?? '';

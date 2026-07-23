@@ -13,6 +13,9 @@ CREATE TYPE "financial_transaction_type" AS ENUM ('INCOME', 'EXPENSE');
 -- CreateEnum
 CREATE TYPE "financial_transaction_status" AS ENUM ('DRAFT', 'CONFIRMED', 'CANCELLED');
 
+-- CreateEnum
+CREATE TYPE "financial_payment_method" AS ENUM ('PIX', 'CASH', 'CREDIT_CARD', 'DEBIT_CARD', 'BANK_TRANSFER', 'BOLETO', 'CHECK', 'OTHER');
+
 -- CreateTable
 CREATE TABLE "tb_finance_permission" (
     "id" TEXT NOT NULL,
@@ -61,6 +64,7 @@ CREATE TABLE "tb_financial_transaction" (
     "tenant_id" TEXT NOT NULL,
     "account_id" TEXT NOT NULL,
     "category_id" TEXT NOT NULL,
+    "event_id" TEXT,
     "member_id" TEXT,
     "created_by_user_id" TEXT NOT NULL,
     "cancelled_by_user_id" TEXT,
@@ -69,7 +73,7 @@ CREATE TABLE "tb_financial_transaction" (
     "date" TIMESTAMP(3) NOT NULL,
     "amount" DECIMAL(12,2) NOT NULL,
     "description" TEXT,
-    "payment_method" TEXT,
+    "payment_method" "financial_payment_method",
     "counterparty_name" TEXT,
     "receipt_url" TEXT,
     "receipt_key" TEXT,
@@ -137,6 +141,9 @@ CREATE INDEX "tb_financial_transaction_tenant_id_account_id_idx" ON "tb_financia
 CREATE INDEX "tb_financial_transaction_tenant_id_category_id_idx" ON "tb_financial_transaction"("tenant_id", "category_id");
 
 -- CreateIndex
+CREATE INDEX "tb_financial_transaction_tenant_id_event_id_idx" ON "tb_financial_transaction"("tenant_id", "event_id");
+
+-- CreateIndex
 CREATE INDEX "tb_financial_transaction_tenant_id_member_id_idx" ON "tb_financial_transaction"("tenant_id", "member_id");
 
 -- AddForeignKey
@@ -165,6 +172,9 @@ ALTER TABLE "tb_financial_transaction" ADD CONSTRAINT "tb_financial_transaction_
 
 -- AddForeignKey
 ALTER TABLE "tb_financial_transaction" ADD CONSTRAINT "tb_financial_transaction_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "tb_financial_category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tb_financial_transaction" ADD CONSTRAINT "tb_financial_transaction_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "tb_event"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "tb_financial_transaction" ADD CONSTRAINT "tb_financial_transaction_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "tb_member"("id") ON DELETE SET NULL ON UPDATE CASCADE;
