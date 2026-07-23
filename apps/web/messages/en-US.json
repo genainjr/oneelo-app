@@ -614,8 +614,14 @@
     "errorDelete": "Error deleting event.",
     "deleteConfirm": "Are you sure you want to delete the event \"{title}\"?",
     "actions": {
+      "changeStatus": "Change status",
+      "completeEvent": "Completed",
+      "markCanceled": "Canceled",
       "markCompleted": "Mark as completed",
       "cancelEvent": "Cancel event"
+    },
+    "statusModal": {
+      "description": "Choose the new status for \"{title}\"."
     },
     "status": {
       "AGENDADO": "Scheduled",
@@ -672,6 +678,8 @@
       "editTooltip": "Edit event",
       "deleteTooltip": "Delete event",
       "cancel": "Cancel",
+      "close": "Close",
+      "processing": "Processing...",
       "save": "Save"
     }
   },

@@ -251,46 +251,49 @@ export default function AgendaVisualizacaoPage() {
               const statusClass = STATUS_VIEW_COLOR[evento.status];
 
               return (
-                <EntityCard
-                  key={evento.id}
-                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-3">
-                      <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold border rounded-lg ${statusClass}`}>
-                        {statusLabel}
-                      </span>
-                      <span className="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-lg bg-gray-50 text-gray-600">
-                        {t(`event.type.${evento.tipo}` as any)}
-                      </span>
-                      <h3 className="text-base font-bold text-gray-800 tracking-tight">{evento.titulo}</h3>
+                <EntityCard key={evento.id} className="flex flex-col gap-4 p-4 sm:p-5 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="min-w-0 space-y-2">
+                      <h3 className="break-words text-base font-bold leading-6 tracking-tight text-gray-800 sm:text-lg">
+                        {evento.titulo}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex shrink-0 rounded-lg border px-2.5 py-0.5 text-xs font-bold ${statusClass}`}>
+                          {statusLabel}
+                        </span>
+                        <span className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                          {t(`event.type.${evento.tipo}` as any)}
+                        </span>
+                      </div>
                     </div>
 
                     {evento.descricao && (
-                      <p className="text-sm text-gray-500 max-w-3xl">{evento.descricao}</p>
+                      <p className="max-w-3xl break-words text-sm leading-6 text-gray-500">{evento.descricao}</p>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400 font-medium">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Clock3 className="h-3.5 w-3.5 text-gray-400" />
-                        {t('event.start')}: {formatDate(evento.dataInicio, 'dd/MM/yyyy HH:mm')}
+                    <div className="grid gap-2 text-xs font-medium text-gray-500 sm:grid-cols-2 xl:grid-cols-4">
+                      <span className="inline-flex min-w-0 items-center gap-1.5">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="truncate">{t('event.start')}: {formatDate(evento.dataInicio, 'dd/MM/yyyy HH:mm')}</span>
                       </span>
                       {evento.dataFim && (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Clock3 className="h-3.5 w-3.5 text-gray-400" />
-                          {t('event.end')}: {formatDate(evento.dataFim, 'dd/MM/yyyy HH:mm')}
+                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                          <Clock3 className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                          <span className="truncate">{t('event.end')}: {formatDate(evento.dataFim, 'dd/MM/yyyy HH:mm')}</span>
                         </span>
                       )}
                       {evento.local && (
-                        <span className="inline-flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                          {evento.local}
+                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                          <span className="truncate">{evento.local}</span>
                         </span>
                       )}
                       {evento.ministerios?.length ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <CalendarDays className="h-3.5 w-3.5 text-gray-400" />
-                          {t('event.ministerios')}: {evento.ministerios.map((item) => item.ministerio?.nome).filter(Boolean).join(', ')}
+                        <span className="inline-flex min-w-0 items-start gap-1.5 sm:col-span-2 xl:col-span-1">
+                          <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                          <span className="min-w-0 break-words">
+                            {t('event.ministerios')}: {evento.ministerios.map((item) => item.ministerio?.nome).filter(Boolean).join(', ')}
+                          </span>
                         </span>
                       ) : null}
                     </div>

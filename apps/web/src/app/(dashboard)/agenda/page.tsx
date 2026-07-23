@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { endOfWeek, startOfWeek } from 'date-fns';
-import { Check, X } from 'lucide-react';
+import { AlertTriangle, Check, X } from 'lucide-react';
 import { EventoInput, useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
@@ -135,6 +135,7 @@ export default function AgendaPage() {
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [pendingDeleteEvento, setPendingDeleteEvento] = useState<Evento | null>(null);
+  const [pendingStatusEvento, setPendingStatusEvento] = useState<Evento | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
@@ -297,13 +298,18 @@ export default function AgendaPage() {
   async function handleUpdateStatus(ev: Evento, nextStatus: StatusEvento) {
     if (ev.status === nextStatus) return;
 
+    setConfirmLoading(true);
+    setFeedback(null);
     try {
       await updateEvento(ev.id, { status: nextStatus });
+      setPendingStatusEvento(null);
     } catch (error: unknown) {
       setFeedback({
         type: 'error',
         message: getErrorMessage(error, t('errorSave')),
       });
+    } finally {
+      setConfirmLoading(false);
     }
   }
 
@@ -506,40 +512,49 @@ export default function AgendaPage() {
               .map((relacao) => relacao.ministerio?.nome)
               .filter(Boolean)
               .join(', ');
+            const statusActionClass: Record<StatusEvento, string> = {
+              AGENDADO: 'text-amber-600',
+              REALIZADO: 'text-emerald-600',
+              CANCELADO: 'text-red-500',
+            };
 
             return (
-              <EntityCard key={ev.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-2 flex-1">
-                  <div className="flex items-center gap-3">
-                    <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold border rounded-lg ${colors[evStatus]}`}>
-                      {t(statusTranslationKeys[evStatus])}
-                    </span>
-                    <span className="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-lg bg-gray-50 text-gray-600">
-                      {t(typeTranslationKeys[ev.tipo])}
-                    </span>
-                    <h3 className="text-base font-bold text-gray-800">{ev.titulo}</h3>
+              <EntityCard key={ev.id} className="flex flex-col gap-4 p-4 sm:p-5 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="min-w-0 space-y-2">
+                    <h3 className="break-words text-base font-bold leading-6 tracking-tight text-gray-800 sm:text-lg">
+                      {ev.titulo}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex shrink-0 rounded-lg border px-2.5 py-0.5 text-xs font-bold ${colors[evStatus]}`}>
+                        {t(statusTranslationKeys[evStatus])}
+                      </span>
+                      <span className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+                        {t(typeTranslationKeys[ev.tipo])}
+                      </span>
+                    </div>
                   </div>
 
-                  {ev.descricao && <p className="text-sm text-gray-500 max-w-2xl">{ev.descricao}</p>}
+                  {ev.descricao && <p className="max-w-3xl break-words text-sm leading-6 text-gray-500">{ev.descricao}</p>}
 
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-400 font-medium">
-                    <span className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <div className="grid gap-2 text-xs font-medium text-gray-500 sm:grid-cols-2 xl:grid-cols-4">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <svg className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      {t('event.start')}: {formatDate(ev.dataInicio, 'dd/MM/yyyy HH:mm')}
+                      <span className="truncate">{t('event.start')}: {formatDate(ev.dataInicio, 'dd/MM/yyyy HH:mm')}</span>
                     </span>
                     {ev.dataFim && (
-                      <span className="flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <svg className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        {t('event.end')}: {formatDate(ev.dataFim, 'dd/MM/yyyy HH:mm')}
+                        <span className="truncate">{t('event.end')}: {formatDate(ev.dataFim, 'dd/MM/yyyy HH:mm')}</span>
                       </span>
                     )}
                     {ev.local && (
-                      <span className="flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <svg className="h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -547,41 +562,44 @@ export default function AgendaPage() {
                           />
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        {t('event.location')}: {ev.local}
+                        <span className="truncate">{t('event.location')}: {ev.local}</span>
                       </span>
                     )}
                     {ministeriosRelacionados && (
-                      <span className="flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <span className="flex min-w-0 items-start gap-1.5 sm:col-span-2 xl:col-span-1">
+                        <svg className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
                         </svg>
-                        {t('event.ministerios')}: {ministeriosRelacionados}
+                        <span className="min-w-0 break-words">{t('event.ministerios')}: {ministeriosRelacionados}</span>
                       </span>
                     )}
                   </div>
                 </div>
 
                 {canManage && (
-                  <div className="flex w-full flex-col items-end gap-2 sm:w-auto md:self-auto">
-                    {ev.status === 'AGENDADO' && (
-                      <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus(ev, 'REALIZADO')}
-                          className="inline-flex shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all"
-                        >
-                          {t('actions.markCompleted')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus(ev, 'CANCELADO')}
-                          className="inline-flex shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-100 hover:bg-red-50 rounded-xl transition-all"
-                        >
-                          {t('actions.cancelEvent')}
-                        </button>
-                      </div>
-                    )}
+                  <div className="flex w-full justify-end sm:w-auto md:self-start">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPendingStatusEvento(ev)}
+                        className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
+                        title={t('actions.changeStatus')}
+                        aria-label={t('actions.changeStatus')}
+                      >
+                        {ev.status === 'AGENDADO' ? (
+                          <svg className={`h-4 w-4 ${statusActionClass[ev.status]}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m5-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                          </svg>
+                        ) : ev.status === 'REALIZADO' ? (
+                          <svg className={`h-4 w-4 ${statusActionClass[ev.status]}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                          </svg>
+                        ) : (
+                          <svg className={`h-4 w-4 ${statusActionClass[ev.status]}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                          </svg>
+                        )}
+                      </button>
                       <button
                         onClick={() => openEdit(ev)}
                         className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
@@ -839,6 +857,51 @@ export default function AgendaPage() {
             }}
           />
         </form>
+      </ModalShell>
+
+      <ModalShell
+        isOpen={!!pendingStatusEvento}
+        title={t('actions.changeStatus')}
+        icon={<AlertTriangle className="h-5 w-5" />}
+        onClose={() => setPendingStatusEvento(null)}
+        size="sm"
+        bodyClassName="p-6"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setPendingStatusEvento(null)}
+              disabled={confirmLoading}
+              className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-150 rounded-xl transition-all disabled:opacity-60"
+            >
+              {t('modal.cancel')}
+            </button>
+            {pendingStatusEvento?.status !== 'CANCELADO' && (
+              <button
+                type="button"
+                onClick={() => pendingStatusEvento && handleUpdateStatus(pendingStatusEvento, 'CANCELADO')}
+                disabled={confirmLoading}
+                className="px-5 py-2 text-sm font-semibold text-white rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60 bg-red-600 hover:bg-red-700"
+              >
+                {confirmLoading ? t('modal.processing') : t('actions.markCanceled')}
+              </button>
+            )}
+            {pendingStatusEvento?.status !== 'REALIZADO' && (
+              <button
+                type="button"
+                onClick={() => pendingStatusEvento && handleUpdateStatus(pendingStatusEvento, 'REALIZADO')}
+                disabled={confirmLoading}
+                className="px-5 py-2 text-sm font-semibold text-white rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60 bg-emerald-600 hover:bg-emerald-700"
+              >
+                {confirmLoading ? t('modal.processing') : t('actions.completeEvent')}
+              </button>
+            )}
+          </>
+        }
+      >
+        <div className="text-sm leading-6 text-gray-600">
+          {pendingStatusEvento ? t('statusModal.description', { title: pendingStatusEvento.titulo }) : ''}
+        </div>
       </ModalShell>
 
       <ConfirmDialog
