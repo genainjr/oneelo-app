@@ -19,7 +19,13 @@ import {
   IMAGE_UPLOAD_ACCEPT,
   validateImageFile,
 } from "@/lib/image-upload";
-import { User, AuditLog, AuthUser, PaginatedItemsResponse } from "@/types";
+import {
+  User,
+  AuditLog,
+  AuthUser,
+  PaginatedItemsResponse,
+  FinanceRole,
+} from "@/types";
 import { useDateFormatter } from "@/hooks/use-date-formatter";
 import { includesNormalizedText } from "@/lib/utils";
 
@@ -296,11 +302,20 @@ export default function ConfiguracoesPage() {
     setModalOpen(true);
   }
 
-  async function handleSave(data: Partial<User> & { senha?: string }) {
+  async function handleSave(
+    data: Partial<User> & {
+      senha?: string;
+      financePermission?: FinanceRole | null;
+    },
+  ) {
+    const { financePermission, ...userData } = data;
+    let savedUserId = editingUser?.id;
+
     if (editingUser) {
-      await api.patch(`/api/auth/users/${editingUser.id}`, data);
+      await api.patch(`/api/auth/users/${editingUser.id}`, userData);
     } else {
-      const created = await api.post<User>("/api/auth/users", data);
+      const created = await api.post<User>("/api/auth/users", userData);
+      savedUserId = created.id;
       setCreatedActivationLink(created.activationLink ?? null);
       setCreatedActivationUser(created.activationLink ? created : null);
       if (created.activationLink) {
@@ -310,6 +325,13 @@ export default function ConfiguracoesPage() {
         }));
       }
     }
+
+    if (savedUserId && financePermission !== undefined) {
+      await api.patch(`/api/financeiro/permissions/users/${savedUserId}`, {
+        role: financePermission,
+      });
+    }
+
     await loadUsers();
     if (auditPage === 1) {
       await loadAuditLogs(1);
@@ -1336,6 +1358,12 @@ export default function ConfiguracoesPage() {
         onSave={handleSave}
         usuario={editingUser}
         currentUserId={currentUser?.id}
+        canManageFinance={Boolean(
+          currentUser?.financeCanManage || currentUser?.financeCanBootstrap,
+        )}
+        financeBootstrapOnly={Boolean(
+          currentUser?.financeCanBootstrap && !currentUser?.financeHasManager,
+        )}
       />
 
       {deletingUser && (

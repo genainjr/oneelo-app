@@ -14,6 +14,13 @@ locals {
       file_size_limit    = var.bucket_file_size_limit
       allowed_mime_types = var.allowed_image_mime_types
     }
+    financial_receipts = {
+      id                 = "financial-receipts"
+      name               = "financial-receipts"
+      public             = var.public_buckets
+      file_size_limit    = var.financial_receipt_file_size_limit
+      allowed_mime_types = var.allowed_financial_receipt_mime_types
+    }
   }
 }
 

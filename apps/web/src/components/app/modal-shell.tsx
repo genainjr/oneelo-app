@@ -104,13 +104,14 @@ interface ModalErrorProps {
   message?: string | null;
   /** Or pass children for full control */
   children?: React.ReactNode;
+  className?: string;
 }
 
-export function ModalError({ message, children }: ModalErrorProps) {
+export function ModalError({ message, children, className }: ModalErrorProps) {
   const content = message ?? children;
   if (!content) return null;
   return (
-    <div className="mx-6 mt-5 p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl">
+    <div className={cn("mx-6 mt-5 p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl", className)}>
       {content}
     </div>
   );
@@ -151,7 +152,7 @@ export function ModalFooter({
   onClick,
 }: ModalFooterProps) {
   return (
-    <div className="flex shrink-0 items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+    <div className="flex w-full shrink-0 items-center justify-between">
       {/* Left slot — destructive secondary action */}
       <div>{secondaryAction ?? <span />}</div>
 

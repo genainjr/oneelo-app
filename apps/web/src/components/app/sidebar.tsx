@@ -144,7 +144,7 @@ function SidebarUserAvatar({ user }: { user: AuthUser }) {
 }
 
 // Roots where isActive must be an exact match (not startsWith)
-const EXACT_ROOTS = ['/dashboard', '/personal-panel', '/membros', '/ministerios', '/escalas', '/agenda', '/minhas-escalas', '/meu-perfil'];
+const EXACT_ROOTS = ['/dashboard', '/personal-panel', '/membros', '/ministerios', '/escalas', '/agenda', '/financeiro', '/minhas-escalas', '/meu-perfil'];
 
 // Pill "Em breve" do menu — contraste legivel sobre o fundo indigo escuro
 const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-indigo-500/25 text-indigo-200';
@@ -161,6 +161,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     '/ministerios': false,
     '/escalas': false,
     '/agenda': false,
+    '/financeiro': false,
   });
   const [currentLocale, setCurrentLocale] = useState<Locale>('pt-BR');
   const [localeOpen, setLocaleOpen] = useState(false);
@@ -278,8 +279,20 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         { href: '/agenda/exportacao', label: t('export'), icon: ICONS.export },
       ],
     },
-    { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupModules' },
-    { href: '/financeiro', label: t('finance'), icon: ICONS.finance, comingSoon: true },
+    ...(user?.financePermission || user?.financeCanBootstrap
+      ? [{
+          href: '/financeiro',
+          label: t('finance'),
+          icon: ICONS.finance,
+          groupStart: 'groupModules',
+          children: [
+            { href: '/financeiro', label: t('manage'), icon: ICONS.manage },
+            { href: '/financeiro/visualizacao', label: t('view'), icon: ICONS.view },
+            { href: '/financeiro/exportacao', label: t('export'), icon: ICONS.export },
+          ],
+        }]
+      : []),
+    { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupFuture' },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
     { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile, groupStart: 'groupAccount' },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
@@ -329,6 +342,18 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           ],
         }
       : { href: '/agenda/visualizacao', label: t('agenda'), icon: ICONS.agenda },
+    ...(user?.financePermission || user?.financeCanBootstrap
+      ? [{
+          href: '/financeiro',
+          label: t('finance'),
+          icon: ICONS.finance,
+          children: [
+            { href: '/financeiro', label: t('manage'), icon: ICONS.manage },
+            { href: '/financeiro/visualizacao', label: t('view'), icon: ICONS.view },
+            { href: '/financeiro/exportacao', label: t('export'), icon: ICONS.export },
+          ],
+        }]
+      : []),
     { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile },
   ];
 

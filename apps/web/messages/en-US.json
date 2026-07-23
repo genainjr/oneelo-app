@@ -93,6 +93,7 @@
     "finance": "Financial",
     "groupManagement": "Management",
     "groupModules": "Modules",
+    "groupFuture": "Coming soon",
     "groupAccount": "Account",
     "profile": "My Profile"
   },
@@ -556,7 +557,7 @@
   },
   "agenda": {
     "title": "Calendar",
-    "pageTitle": "Church Calendar",
+    "pageTitle": "Calendar",
     "pageDescription": "Track services, rehearsals, meetings and official church events.",
     "view": {
       "pageTitle": "Calendar View",

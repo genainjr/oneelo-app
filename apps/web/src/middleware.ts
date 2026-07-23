@@ -79,7 +79,6 @@ export function middleware(request: NextRequest) {
       '/dashboard',
       '/membros',
       '/configuracoes',
-      '/financeiro',
       '/grupos',
       '/integracoes',
     ];

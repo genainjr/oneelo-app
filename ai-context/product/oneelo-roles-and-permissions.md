@@ -48,6 +48,27 @@ Permissões estritamente básicas.
 
 ---
 
+## Permissões específicas do Financeiro
+
+O módulo financeiro usa uma camada própria por tenant, separada de `User.role`.
+
+Papéis financeiros iniciais:
+
+- `FINANCE_VIEWER`: acessa a área financeira em leitura.
+- `FINANCE_OPERATOR`: reservado para lançamentos financeiros quando o fluxo existir.
+- `FINANCE_APPROVER`: reservado para aprovações financeiras quando o fluxo existir.
+- `FINANCE_MANAGER`: gerencia permissões financeiras e configurações do módulo.
+
+Regras:
+
+- `ADMIN` global não recebe acesso financeiro automaticamente.
+- Novo tenant nasce com o usuário administrador inicial como `FINANCE_MANAGER`.
+- Tenant existente sem `FINANCE_MANAGER` permite bootstrap inicial por `ADMIN`.
+- Depois do primeiro `FINANCE_MANAGER`, a gestão das permissões financeiras passa a ser exclusiva do próprio `FINANCE_MANAGER`.
+- A UI pode ocultar menu e ações, mas a autorização real deve permanecer no backend.
+
+---
+
 ## Melhorias Futuras Identificadas
 * **Granularidade Horizontal:** Criar suporte a permissões isoladas por módulos extras (ex: um papel "Tesoureiro" que vê finanças mas não escalas).
 * **Controle de Visibilidade de Exportação:** Refinar se líderes podem exportar a base inteira dos seus ministérios ou se requerem aprovação.

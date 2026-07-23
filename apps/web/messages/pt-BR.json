@@ -93,6 +93,7 @@
     "finance": "Financeiro",
     "groupManagement": "Gestão",
     "groupModules": "Módulos",
+    "groupFuture": "Em breve",
     "groupAccount": "Conta",
     "profile": "Meu Perfil"
   },
@@ -203,7 +204,7 @@
       "whatsappLabel": "WhatsApp",
       "whatsappPlaceholder": "Buscar por whatsapp...",
       "statusLabel": "Status",
-      "allStatuses": "Todos os status",
+      "allStatuses": "Todos",
       "apply": "Filtrar",
       "clear": "Limpar",
       "tagsLabel": "Filtro por Tags",
@@ -291,7 +292,7 @@
       "historyWarning": "As {count} escala(s) já criadas serão preservadas e continuarão acessíveis."
     },
     "view": {
-      "pageTitle": "Visualização de Ministérios",
+      "pageTitle": "Visualização Ministérios",
       "pageDescription": "Consulte os ministérios em leitura rápida, com líderes, funções e resumo operacional.",
       "filter": {
         "nameLabel": "Nome do ministério",
@@ -556,10 +557,10 @@
   },
   "agenda": {
     "title": "Agenda",
-    "pageTitle": "Agenda da Igreja",
+    "pageTitle": "Agenda",
     "pageDescription": "Acompanhe cultos, ensaios, reuniões e eventos oficiais da igreja.",
     "view": {
-      "pageTitle": "Visualização de Agenda",
+      "pageTitle": "Visualização Agenda",
       "pageDescription": "Consulte os eventos por período e status em modo apenas leitura, sem ações de edição.",
       "noDescription": "Sem descrição cadastrada.",
       "stats": {
@@ -634,11 +635,11 @@
     },
     "filter": {
       "statusLabel": "Status",
-      "allStatuses": "Todos os status",
+      "allStatuses": "Todos",
       "tipoLabel": "Tipo",
-      "allTypes": "Todos os tipos",
+      "allTypes": "Todos",
       "ministryLabel": "Ministério",
-      "allMinisterios": "Todos os ministérios",
+      "allMinisterios": "Todos",
       "from": "A partir de (Data)",
       "to": "Até (Data)",
       "apply": "Filtrar",
@@ -766,8 +767,8 @@
         "searchPlaceholder": "Nome, e-mail, telefone ou membro",
         "roleLabel": "Perfil",
         "statusLabel": "Status",
-        "allRoles": "Todos os perfis",
-        "allStatuses": "Todos os status",
+        "allRoles": "Todos",
+        "allStatuses": "Todos",
         "apply": "Filtrar",
         "clear": "Limpar"
       },
@@ -805,9 +806,9 @@
         "operator": "Operador",
         "operation": "Operação",
         "resource": "Recurso",
-        "allOperators": "Todos os operadores",
-        "allOperations": "Todas as operações",
-        "allResources": "Todos os recursos"
+        "allOperators": "Todos",
+        "allOperations": "Todos",
+        "allResources": "Todos"
       },
       "actions": {
         "CRIAR": "Criação",
