@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Banknote, CalendarDays, CircleDollarSign, CreditCard, FileText, ShieldCheck, Tags, WalletCards } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
+import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterInput, FilterSelect } from "@/components/app/filter-field";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
 import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
@@ -46,6 +47,7 @@ type TransactionFilterState = {
   description: string;
   type: "all" | FinancialTransactionType;
   status: "all" | FinancialTransactionStatus;
+  eventoId: string;
   memberId: string;
   startDate: string;
   endDate: string;
@@ -57,6 +59,7 @@ export default function FinanceiroVisualizacaoPage() {
     description: "",
     type: "all",
     status: "all",
+    eventoId: "",
     memberId: "",
     startDate: initialPeriod.startDate,
     endDate: initialPeriod.endDate,
@@ -75,8 +78,12 @@ export default function FinanceiroVisualizacaoPage() {
   const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(false);
+  const [eventos, setEventos] = useState<EventoOption[]>([]);
+  const [eventosLoading, setEventosLoading] = useState(false);
   const [membroFilterSearch, setMembroFilterSearch] = useState("");
+  const [eventoFilterSearch, setEventoFilterSearch] = useState("");
   const [selectedMembroFilter, setSelectedMembroFilter] = useState<MembroOption | null>(null);
+  const [selectedEventoFilter, setSelectedEventoFilter] = useState<EventoOption | null>(null);
   const [tenantName, setTenantName] = useState("One Elo");
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState(() => new Date());
@@ -124,6 +131,26 @@ export default function FinanceiroVisualizacaoPage() {
     };
   }, [summary?.role]);
 
+  useEffect(() => {
+    if (!summary?.role) return;
+    let active = true;
+    setEventosLoading(true);
+    api.get<EventoOption[]>("/api/eventos?scope=MANAGE")
+      .then((data) => {
+        if (active) setEventos(Array.isArray(data) ? data.filter((evento) => evento.status !== "CANCELADO") : []);
+      })
+      .catch(() => {
+        if (active) setEventos([]);
+      })
+      .finally(() => {
+        if (active) setEventosLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [summary?.role]);
+
   const filteredTransactions = useMemo(
     () => transactions.filter((transaction) => {
       const descriptionSearch = appliedTransactionFilters.description.trim().toLowerCase();
@@ -139,6 +166,7 @@ export default function FinanceiroVisualizacaoPage() {
       }
       if (appliedTransactionFilters.status !== "all" && transaction.status !== appliedTransactionFilters.status) return false;
       if (appliedTransactionFilters.type !== "all" && transaction.type !== appliedTransactionFilters.type) return false;
+      if (appliedTransactionFilters.eventoId && transaction.eventoId !== appliedTransactionFilters.eventoId) return false;
       if (appliedTransactionFilters.memberId && transaction.memberId !== appliedTransactionFilters.memberId) return false;
       const transactionDate = transaction.date.slice(0, 10);
       if (appliedTransactionFilters.startDate && transactionDate < appliedTransactionFilters.startDate) return false;
@@ -165,6 +193,8 @@ export default function FinanceiroVisualizacaoPage() {
   function clearTransactionFilters() {
     setSelectedMembroFilter(null);
     setMembroFilterSearch("");
+    setSelectedEventoFilter(null);
+    setEventoFilterSearch("");
     handleClearTransactionFilters();
   }
 
@@ -265,6 +295,32 @@ export default function FinanceiroVisualizacaoPage() {
               <option value="EXPENSE">Despesas</option>
             </FilterSelect>
             <FilterInput label="Descrição" value={transactionFilterState.description} onChange={(event) => setTransactionFilterField("description", event.target.value)} placeholder="Buscar" />
+            <EventoSearchCombobox
+              label="Evento"
+              optionalLabel="opcional"
+              placeholder="Todos"
+              loading={eventosLoading}
+              options={eventos}
+              selected={selectedEventoFilter}
+              search={eventoFilterSearch}
+              emptyMessage="Nenhum evento encontrado."
+              selectedPrefix="Evento"
+              onSearchChange={(value) => {
+                setEventoFilterSearch(value);
+                setSelectedEventoFilter(null);
+                setTransactionFilterField("eventoId", "");
+              }}
+              onSelect={(evento) => {
+                setSelectedEventoFilter(evento);
+                setEventoFilterSearch(getEventoDisplayName(evento));
+                setTransactionFilterField("eventoId", evento.id);
+              }}
+              onClear={() => {
+                setSelectedEventoFilter(null);
+                setEventoFilterSearch("");
+                setTransactionFilterField("eventoId", "");
+              }}
+            />
             <MembroSearchCombobox
               label="Membro"
               optionalLabel="opcional"
