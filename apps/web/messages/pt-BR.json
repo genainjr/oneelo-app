@@ -427,6 +427,8 @@
       "ENCERRADA": "Finalizada"
     },
     "statusActions": {
+      "changeStatus": "Alterar status",
+      "changeStatusDescription": "Escolha o novo status da escala de {ministry} - {month}/{year}.",
       "publish": "Publicar",
       "returnDraft": "Rascunho",
       "returnDraftTitle": "Mover escala para Rascunho",
@@ -484,6 +486,8 @@
       },
       "notes": "Observações",
       "notesPlaceholder": "Notas gerais para esta escala...",
+      "cancel": "Cancelar",
+      "processing": "Processando...",
       "create": "Criar Escala",
       "creating": "Criando...",
       "days": {
