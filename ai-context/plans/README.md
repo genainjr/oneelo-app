@@ -10,6 +10,7 @@ Ao adicionar um novo documento, inclua-o no início deste índice com a data, o 
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 23/07/2026 | [financeiro-patrimonial-plan.md](financeiro-patrimonial-plan.md) | Módulo financeiro, permissões e MVP |
 | 22/07/2026 | [central-notificacoes-plan.md](central-notificacoes-plan.md) | Central robusta de notificações |
 | 22/07/2026 | [central-documentos-plan.md](central-documentos-plan.md) | Central de documentos |
 | 19/07/2026 | [eventos-semanais-em-lote-plan.md](eventos-semanais-em-lote-plan.md) | Criação semanal de eventos independentes em lote |

@@ -72,22 +72,52 @@ Possível perfil futuro:
 ### Regras iniciais
 
 - `SUPER_ADMIN` não deve acessar dados financeiros de tenant como regra operacional comum, salvo suporte explícito e auditado.
-- `ADMIN` global pode receber permissão financeira por padrão somente se essa decisão for aprovada no produto.
+- `ADMIN` global não acessa financeiro por padrão.
+- Permissão financeira é uma camada específica do módulo, separada de `User.role`.
+- Novo tenant deve nascer com o usuário criador/dono como `ADMIN` global e `FINANCE_MANAGER`.
+- Tenant existente sem `FINANCE_MANAGER` ativo permite que um `ADMIN` indique o primeiro gestor financeiro.
+- Depois que o tenant possui ao menos um `FINANCE_MANAGER` ativo, somente `FINANCE_MANAGER` pode conceder, alterar ou remover permissões financeiras.
 - `BASIC` comum não acessa financeiro.
 - Permissões financeiras devem ser validadas no backend.
 - A UI deve ocultar ações sem permissão, mas não pode ser a barreira principal.
 - Toda alteração financeira relevante precisa registrar autor e data.
 
+### Bootstrap inicial de permissões financeiras
+
+Novo tenant:
+
+- o fluxo de criação/onboarding do tenant deve criar a primeira permissão financeira para o usuário dono;
+- esse usuário fica com `User.role = ADMIN` e permissão financeira `FINANCE_MANAGER`;
+- essa regra evita tenant sem responsável financeiro no primeiro acesso.
+
+Tenant existente:
+
+- não migrar todos os `ADMIN` automaticamente para `FINANCE_MANAGER`;
+- nenhum usuário existente recebe permissão financeira automaticamente;
+- usuários existentes continuam com o mesmo `User.role` e começam como `Sem acesso` ao financeiro;
+- se não existir gestor financeiro ativo, um `ADMIN` pode acessar uma ação de configuração inicial para definir o primeiro `FINANCE_MANAGER`;
+- essa ação deve ser única, auditável e bloqueada assim que houver gestor financeiro ativo.
+
+Interface inicial:
+
+- a configuração principal deve ficar em `Configurações > Usuários`, junto do usuário;
+- manter o campo atual `Perfil/Permissão` para o papel global do sistema;
+- adicionar uma seção separada `Permissões específicas`, com o grupo `Financeiro`;
+- no MVP, usar um seletor único por usuário: `Sem acesso`, `Visualizador`, `Operador`, `Aprovador` e `Gestor financeiro`;
+- uma tela futura em `Financeiro > Configurações > Permissões` pode existir como atalho operacional, mas deve usar a mesma fonte de verdade.
+
 ## Entregas mínimas sugeridas
 
-### Entrega 1 - Fundação e permissões financeiras
+### Entrega 1 - Fundação, permissões financeiras e bootstrap inicial
 
 Objetivo: liberar acesso controlado antes de qualquer dado financeiro real.
 
 Escopo:
 
 - criar estrutura de permissões financeiras por tenant;
-- tela/configuração para conceder e remover permissões financeiras;
+- configurar bootstrap para novo tenant com `FINANCE_MANAGER` inicial;
+- configurar bootstrap para tenant existente sem gestor financeiro;
+- incluir permissões financeiras em `Configurações > Usuários`;
 - proteger rota `/financeiro`;
 - criar menu visível apenas para usuários autorizados;
 - criar tela inicial do financeiro com estado vazio e cartões básicos.
@@ -95,6 +125,10 @@ Escopo:
 Critérios de aceite:
 
 - usuário sem permissão não acessa `/financeiro`;
+- `ADMIN` sem permissão financeira não acessa dados financeiros quando já existe gestor financeiro no tenant;
+- novo tenant nasce com o dono como `FINANCE_MANAGER`;
+- tenant existente sem gestor financeiro permite configuração inicial por `ADMIN`;
+- tenant existente com gestor financeiro bloqueia `ADMIN` sem permissão de alterar permissões financeiras;
 - usuário com `FINANCE_VIEWER` acessa tela inicial;
 - usuário com `FINANCE_MANAGER` gerencia permissões financeiras;
 - alterações de permissões ficam auditáveis;
@@ -424,7 +458,6 @@ Campos esperados:
 
 ## Decisões pendentes
 
-- `ADMIN` global recebe `FINANCE_MANAGER` automaticamente no primeiro release?
 - Haverá papel "Pastor" ou "Liderança" com visão financeira sem edição?
 - Despesa nasce sempre pendente ou pode nascer paga?
 - Entrada precisa de aprovação?
@@ -455,4 +488,3 @@ Esse MVP evita começar por relatórios avançados, conciliação ou patrimônio
 - Relatórios simples batem com lançamentos filtrados.
 - Anexos não ficam públicos.
 - O módulo pode evoluir para relatórios e patrimônio sem refazer a base.
-
