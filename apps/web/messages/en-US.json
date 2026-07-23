@@ -427,6 +427,8 @@
       "ENCERRADA": "Finished"
     },
     "statusActions": {
+      "changeStatus": "Change status",
+      "changeStatusDescription": "Choose the new status for {ministry} - {month}/{year}.",
       "publish": "Publish",
       "returnDraft": "Draft",
       "returnDraftTitle": "Move schedule to Draft",
@@ -484,6 +486,8 @@
       },
       "notes": "Notes",
       "notesPlaceholder": "General notes for this schedule...",
+      "cancel": "Cancel",
+      "processing": "Processing...",
       "create": "Create Schedule",
       "creating": "Creating...",
       "days": {
