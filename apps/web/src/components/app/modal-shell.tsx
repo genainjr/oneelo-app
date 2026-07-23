@@ -151,7 +151,7 @@ export function ModalFooter({
   onClick,
 }: ModalFooterProps) {
   return (
-    <div className="flex shrink-0 items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+    <div className="flex w-full shrink-0 items-center justify-between">
       {/* Left slot — destructive secondary action */}
       <div>{secondaryAction ?? <span />}</div>
 

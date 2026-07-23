@@ -22,6 +22,7 @@ import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { TenantMediaService } from '../../common/storage/tenant-media.service';
 import {
   AcaoAuditoria,
+  FinanceRole,
   Prisma,
   Role,
   StatusMembro,
@@ -415,6 +416,11 @@ export class AuthService {
             pwaUpdatedAt: true,
           },
         },
+        financePermissions: {
+          where: { revokedAt: null },
+          select: { role: true },
+          take: 1,
+        },
       },
     });
 
@@ -422,10 +428,23 @@ export class AuthService {
       throw new UnauthorizedException('Sessão inválida.');
     }
 
-    const { senhaHash, ...safeUser } = user;
+    const financeManagerCount = await this.prisma.financePermission.count({
+      where: {
+        tenantId,
+        role: FinanceRole.FINANCE_MANAGER,
+        revokedAt: null,
+      },
+    });
+
+    const { senhaHash, financePermissions, ...safeUser } = user;
+    const financePermission = financePermissions[0]?.role ?? null;
 
     return {
       ...safeUser,
+      financePermission,
+      financeHasManager: financeManagerCount > 0,
+      financeCanBootstrap: financeManagerCount === 0 && user.role === Role.ADMIN,
+      financeCanManage: financePermission === FinanceRole.FINANCE_MANAGER,
       hasPassword: Boolean(senhaHash),
     };
   }
@@ -786,9 +805,19 @@ export class AuthService {
         membro: {
           select: { id: true, nome: true },
         },
+        financePermissions: {
+          where: { revokedAt: null },
+          select: { role: true },
+          take: 1,
+        },
       },
       orderBy: { nome: 'asc' },
-    });
+    }).then((users) =>
+      users.map(({ financePermissions, ...user }) => ({
+        ...user,
+        financePermission: financePermissions[0]?.role ?? null,
+      })),
+    );
   }
 
   async findAllAuditLogs(

@@ -30,3 +30,20 @@ variable "allowed_image_mime_types" {
     "image/webp",
   ]
 }
+
+variable "financial_receipt_file_size_limit" {
+  description = "Maximum financial receipt file size accepted by Supabase Storage, aligned with backend validation."
+  type        = number
+  default     = 10485760
+}
+
+variable "allowed_financial_receipt_mime_types" {
+  description = "Allowed financial receipt MIME types, aligned with backend validation."
+  type        = list(string)
+  default = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]
+}

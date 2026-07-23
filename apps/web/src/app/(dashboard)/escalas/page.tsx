@@ -442,6 +442,13 @@ export default function EscalasPage() {
         }
         onClose={() => setAiToastOpen(false)}
         size="sm"
+        footer={
+          <ModalFooter
+            onCancel={() => setAiToastOpen(false)}
+            type="button"
+            onClick={() => setAiToastOpen(false)}
+          />
+        }
       >
         <div className="px-6 py-5 space-y-3">
           <p className="text-sm text-gray-500 leading-relaxed">{t('ai.description')}</p>
@@ -456,13 +463,6 @@ export default function EscalasPage() {
             ))}
           </div>
         </div>
-        <ModalFooter
-          primaryLabel={t('ai.understood')}
-          cancelLabel={t('ai.understood')}
-          onCancel={() => setAiToastOpen(false)}
-          type="button"
-          onClick={() => setAiToastOpen(false)}
-        />
       </ModalShell>
 
       <div className="mb-6 flex justify-end">
@@ -716,6 +716,21 @@ export default function EscalasPage() {
         }}
         size="md"
         height="viewport"
+        footer={
+          <ModalFooter
+            form="escala-form"
+            onCancel={() => {
+              setIsCreateOpen(false);
+              setCreateError('');
+            }}
+            loading={creating}
+            disabled={
+              !newMinId ||
+              (newModoCriacao === 'DIAS_SEMANA' && newDiasSemana.length === 0) ||
+              (newModoCriacao === 'EVENTOS' && selectedEventoIds.length === 0)
+            }
+          />
+        }
       >
         <form id="escala-form" onSubmit={handleCreate}>
           <div className="space-y-4 p-6">
@@ -909,21 +924,6 @@ export default function EscalasPage() {
               placeholder={t('modal.notesPlaceholder')}
             />
           </div>
-
-          <ModalFooter
-            form="escala-form"
-            primaryLabel={creating ? t('modal.creating') : t('modal.create')}
-            onCancel={() => {
-              setIsCreateOpen(false);
-              setCreateError('');
-            }}
-            loading={creating}
-            disabled={
-              !newMinId ||
-              (newModoCriacao === 'DIAS_SEMANA' && newDiasSemana.length === 0) ||
-              (newModoCriacao === 'EVENTOS' && selectedEventoIds.length === 0)
-            }
-          />
         </form>
       </ModalShell>
 

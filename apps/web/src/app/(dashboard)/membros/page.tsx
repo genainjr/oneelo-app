@@ -529,6 +529,12 @@ export default function MembrosPage() {
         title={t('tag.createTitle')}
         onClose={() => setShowNewTagInput(false)}
         size="sm"
+        footer={
+          <ModalFooter
+            form="new-tag-form"
+            onCancel={() => setShowNewTagInput(false)}
+          />
+        }
       >
         <form id="new-tag-form" onSubmit={handleCreateTag}>
           <div className="space-y-4 p-6">
@@ -558,12 +564,6 @@ export default function MembrosPage() {
               </div>
             </div>
           </div>
-          <ModalFooter
-            form="new-tag-form"
-            primaryLabel={t('tag.create')}
-            cancelLabel={t('tag.cancel')}
-            onCancel={() => setShowNewTagInput(false)}
-          />
         </form>
       </ModalShell>
 

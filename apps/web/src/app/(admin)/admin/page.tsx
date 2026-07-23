@@ -113,7 +113,19 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
   }
 
   return (
-    <ModalShell isOpen title="Novo Tenant" onClose={onClose} size="lg">
+    <ModalShell
+      isOpen
+      title="Novo Tenant"
+      onClose={onClose}
+      size="lg"
+      footer={
+        <ModalFooter
+          form="create-tenant-form"
+          onCancel={onClose}
+          loading={loading}
+        />
+      }
+    >
       <form id="create-tenant-form" onSubmit={handleSubmit}>
         <div className="space-y-4 p-6">
           <ModalError message={error} />
@@ -180,13 +192,6 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
             </div>
           </div>
         </div>
-
-        <ModalFooter
-          form="create-tenant-form"
-          primaryLabel={loading ? 'Criando...' : 'Criar Tenant'}
-          onCancel={onClose}
-          loading={loading}
-        />
       </form>
     </ModalShell>
   );
@@ -283,7 +288,19 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
   }
 
   return (
-    <ModalShell isOpen title={`Editar — ${tenant.nome}`} onClose={onClose} size="lg">
+    <ModalShell
+      isOpen
+      title={`Editar — ${tenant.nome}`}
+      onClose={onClose}
+      size="lg"
+      footer={
+        <ModalFooter
+          form="edit-tenant-form"
+          onCancel={onClose}
+          loading={loading}
+        />
+      }
+    >
       <form id="edit-tenant-form" onSubmit={handleSubmit}>
         <div className="space-y-4 p-6">
           <ModalError message={error} />
@@ -346,13 +363,6 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
             <span className="text-sm text-gray-700">{form.ativo ? 'Ativo' : 'Inativo'}</span>
           </div>
         </div>
-
-        <ModalFooter
-          form="edit-tenant-form"
-          primaryLabel={loading ? 'Salvando...' : 'Salvar'}
-          onCancel={onClose}
-          loading={loading}
-        />
       </form>
     </ModalShell>
   );
@@ -386,7 +396,19 @@ function CreateUserModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
   }
 
   return (
-    <ModalShell isOpen title={`Novo Usuário — ${tenant.nome}`} onClose={onClose} size="md">
+    <ModalShell
+      isOpen
+      title={`Novo Usuário — ${tenant.nome}`}
+      onClose={onClose}
+      size="md"
+      footer={
+        <ModalFooter
+          form="create-user-form"
+          onCancel={onClose}
+          loading={loading}
+        />
+      }
+    >
       <form id="create-user-form" onSubmit={handleSubmit}>
         <div className="space-y-4 p-6">
           <ModalError message={error} />
@@ -402,13 +424,6 @@ function CreateUserModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
             <option value="BASIC">Membro</option>
           </SelectField>
         </div>
-
-        <ModalFooter
-          form="create-user-form"
-          primaryLabel={loading ? 'Criando...' : 'Criar Usuário'}
-          onCancel={onClose}
-          loading={loading}
-        />
       </form>
     </ModalShell>
   );

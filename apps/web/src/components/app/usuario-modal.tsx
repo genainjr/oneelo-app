@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LoaderCircle, UserRound } from "lucide-react";
-import { User, Role } from "@/types";
+import { User, Role, FinanceRole } from "@/types";
 import { api } from "@/lib/api";
 import { InputField, PasswordField, SelectField } from "./form-field";
 import { InternationalPhoneInput } from "./international-phone-input";
@@ -14,16 +14,29 @@ interface UsuarioModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (
-    data: Partial<User> & { senha?: string; memberId?: string | null },
+    data: Partial<User> & {
+      senha?: string;
+      memberId?: string | null;
+      financePermission?: FinanceRole | null;
+    },
   ) => Promise<void>;
   usuario?: User | null;
   currentUserId?: string;
+  canManageFinance?: boolean;
+  financeBootstrapOnly?: boolean;
 }
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "ADMIN", label: "Administrador" },
   { value: "STAFF", label: "Colaborador" },
   { value: "BASIC", label: "Basico" },
+];
+
+const FINANCE_ROLE_OPTIONS: { value: FinanceRole; label: string }[] = [
+  { value: "FINANCE_VIEWER", label: "Visualizador" },
+  { value: "FINANCE_OPERATOR", label: "Operador" },
+  { value: "FINANCE_APPROVER", label: "Aprovador" },
+  { value: "FINANCE_MANAGER", label: "Gestor financeiro" },
 ];
 
 export function UsuarioModal(props: UsuarioModalProps) {
@@ -38,12 +51,17 @@ function UsuarioModalContent({
   onSave,
   usuario,
   currentUserId,
+  canManageFinance = false,
+  financeBootstrapOnly = false,
 }: UsuarioModalProps) {
   const [nome, setNome] = useState(usuario?.nome || "");
   const [email, setEmail] = useState(usuario?.email || "");
   const [telefoneLogin, setTelefoneLogin] = useState(usuario?.telefoneLogin || "");
   const [senha, setSenha] = useState("");
   const [role, setRole] = useState<Role>(usuario?.role || "BASIC");
+  const [financePermission, setFinancePermission] = useState<
+    "" | FinanceRole
+  >(usuario?.financePermission ?? "");
   const [ativo, setAtivo] = useState(usuario?.ativo ?? true);
 
   const [membros, setMembros] = useState<MembroOption[]>([]);
@@ -134,6 +152,7 @@ function UsuarioModalContent({
       const payload: Partial<User> & {
         senha?: string;
         memberId?: string | null;
+        financePermission?: FinanceRole | null;
       } = {
         nome: nome.trim(),
         email: email.trim(),
@@ -145,6 +164,12 @@ function UsuarioModalContent({
             ? null
             : undefined,
       };
+      const initialFinancePermission = usuario?.financePermission ?? "";
+      const financePermissionChanged =
+        financePermission !== initialFinancePermission;
+      if (canManageFinance && (isEditing ? financePermissionChanged : Boolean(financePermission))) {
+        payload.financePermission = financePermission || null;
+      }
       payload.telefoneLogin = telefoneLogin.trim() || (isEditing ? null : undefined);
       if (senha) payload.senha = senha;
 
@@ -277,6 +302,46 @@ function UsuarioModalContent({
               <option value="false">Inativo</option>
             </SelectField>
           </div>
+
+          {canManageFinance && (
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Permissões específicas
+                </p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  A permissão financeira é independente do perfil geral do sistema.
+                </p>
+              </div>
+
+              <SelectField
+                id="u-finance-permission"
+                label="Financeiro"
+                value={financePermission}
+                onChange={(e) =>
+                  setFinancePermission(e.target.value as "" | FinanceRole)
+                }
+              >
+                <option value="">Sem acesso</option>
+                {FINANCE_ROLE_OPTIONS.filter((option) =>
+                  financeBootstrapOnly
+                    ? option.value === "FINANCE_MANAGER"
+                    : true,
+                ).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </SelectField>
+
+              {financeBootstrapOnly && (
+                <p className="text-xs leading-5 text-amber-700">
+                  Este tenant ainda não possui gestor financeiro. O setup inicial
+                  permite definir apenas um Gestor financeiro.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-xs text-indigo-700 leading-relaxed">
             <strong>Perfis:</strong> Administrador tem acesso total; Colaborador

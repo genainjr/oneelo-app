@@ -2,6 +2,12 @@
 
 export type Role = 'ADMIN' | 'STAFF' | 'BASIC' | 'SUPER_ADMIN';
 
+export type FinanceRole =
+  | 'FINANCE_VIEWER'
+  | 'FINANCE_OPERATOR'
+  | 'FINANCE_APPROVER'
+  | 'FINANCE_MANAGER';
+
 export type Plano = 'GRATUITO' | 'BASICO' | 'PROFISSIONAL';
 
 export type AuthProvider = 'GOOGLE' | 'APPLE';
@@ -47,6 +53,10 @@ export interface AuthUser {
   telefoneLogin?: string | null;
   role: Role;
   status?: UserStatus;
+  financePermission?: FinanceRole | null;
+  financeHasManager?: boolean;
+  financeCanBootstrap?: boolean;
+  financeCanManage?: boolean;
   hasPassword?: boolean;
   onboardingCompletedAt?: string | null;
   createdAt?: string;
@@ -292,6 +302,7 @@ export interface User {
   email: string;
   telefoneLogin?: string | null;
   role: Role;
+  financePermission?: FinanceRole | null;
   ativo: boolean;
   status: UserStatus;
   activationExpiresAt?: string | null;

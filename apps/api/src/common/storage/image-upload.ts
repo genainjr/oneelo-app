@@ -9,6 +9,12 @@ const IMAGE_EXTENSION_BY_MIME: Record<string, string> = {
 };
 
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+export const MAX_FINANCIAL_RECEIPT_SIZE = 10 * 1024 * 1024;
+
+const FINANCIAL_RECEIPT_EXTENSION_BY_MIME: Record<string, string> = {
+  ...IMAGE_EXTENSION_BY_MIME,
+  'application/pdf': 'pdf',
+};
 
 export function validateImageUpload(file: Multer.File | undefined, label: string) {
   if (!file) {
@@ -38,6 +44,28 @@ export function getMemberPhotoPath(tenantId: string, memberId: string, file: Mul
 
 export function getTenantLogoPath(tenantId: string, file: Multer.File) {
   return `tenants/${tenantId}/logo/logo-${Date.now()}.${getImageExtension(file)}`;
+}
+
+export function validateFinancialReceiptUpload(file: Multer.File | undefined) {
+  if (!file) {
+    throw new BadRequestException('Comprovante é obrigatório.');
+  }
+
+  if (!FINANCIAL_RECEIPT_EXTENSION_BY_MIME[file.mimetype]) {
+    throw new BadRequestException('Formato de comprovante inválido. Use PDF, JPG, PNG ou WEBP.');
+  }
+
+  if (file.size > MAX_FINANCIAL_RECEIPT_SIZE) {
+    throw new BadRequestException('O comprovante deve ter no máximo 10 MB.');
+  }
+}
+
+export function getFinancialReceiptPath(tenantId: string, transactionId: string, file: Multer.File) {
+  const extension = FINANCIAL_RECEIPT_EXTENSION_BY_MIME[file.mimetype];
+  if (!extension) {
+    throw new BadRequestException('Formato de comprovante inválido.');
+  }
+  return `tenants/${tenantId}/financeiro/transactions/${transactionId}/receipt-${Date.now()}.${extension}`;
 }
 
 export const PWA_ICON_SIZES = [180, 192, 512] as const;
