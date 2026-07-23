@@ -614,8 +614,14 @@
     "errorDelete": "Erro ao eliminar evento.",
     "deleteConfirm": "Tem a certeza que deseja eliminar o evento \"{title}\"?",
     "actions": {
+      "changeStatus": "Alterar estado",
+      "completeEvent": "Realizado",
+      "markCanceled": "Cancelado",
       "markCompleted": "Marcar como realizado",
       "cancelEvent": "Cancelar evento"
+    },
+    "statusModal": {
+      "description": "Escolha o novo estado para o evento \"{title}\"."
     },
     "status": {
       "AGENDADO": "Agendado",
@@ -672,6 +678,8 @@
       "editTooltip": "Editar evento",
       "deleteTooltip": "Eliminar evento",
       "cancel": "Cancelar",
+      "close": "Fechar",
+      "processing": "A processar...",
       "save": "Guardar"
     }
   },
