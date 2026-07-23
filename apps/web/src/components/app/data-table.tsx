@@ -51,6 +51,7 @@ interface DataTableProps<T> {
   emptyTitle?: string;
   emptyDescription?: string;
   emptyAction?: React.ReactNode;
+  showHeader?: boolean;
 }
 
 const DESKTOP_SHOW: Record<MobileBreakpoint, string> = {
@@ -102,6 +103,7 @@ export function DataTable<T>({
   emptyTitle = 'Nenhum resultado encontrado',
   emptyDescription = 'Tente ajustar os seus filtros de busca.',
   emptyAction,
+  showHeader = true,
 }: DataTableProps<T>) {
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -166,6 +168,7 @@ export function DataTable<T>({
     <div ref={tableRef} className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
       <div className={cn('overflow-x-auto', hasMobile && DESKTOP_SHOW[mobileBreakpoint])}>
         <table className="w-full text-left border-collapse">
+          {showHeader && (
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
               {onSelectChange && (
@@ -211,6 +214,7 @@ export function DataTable<T>({
               })}
             </tr>
           </thead>
+          )}
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               // Loading skeletons

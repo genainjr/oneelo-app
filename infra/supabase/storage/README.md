@@ -1,15 +1,18 @@
 # Supabase Storage - OneElo Media
 
-Esta pasta versiona a infraestrutura de Storage usada por fotos de membros e logos dos tenants.
+Esta pasta versiona a infraestrutura de Storage usada por fotos de membros, logos dos tenants e comprovantes financeiros.
 
 ## Recursos
 
 - Bucket publico `member-photos`
 - Bucket publico `tenant-logos`
-- Limite de arquivo: `5 MB`
-- MIME types aceitos: `image/jpeg`, `image/png`, `image/webp`
+- Bucket publico `financial-receipts`
+- Limite de arquivo para midias: `5 MB`
+- Limite de arquivo para comprovantes financeiros: `10 MB`
+- MIME types de midia: `image/jpeg`, `image/png`, `image/webp`
+- MIME types de comprovante: `application/pdf`, `image/jpeg`, `image/png`, `image/webp`
 
-Os buckets sao publicos por decisao atual do produto. O backend continua sendo responsavel por validar permissao de upload/remocao e por salvar apenas `fotoUrl`/`fotoKey` ou `logoUrl`/`logoKey` no banco.
+Os buckets sao publicos por decisao atual do produto. O backend continua sendo responsavel por validar permissao de upload/remocao e por salvar apenas referencias no banco, como `fotoUrl`/`fotoKey`, `logoUrl`/`logoKey` ou `receiptUrl`/`receiptKey`.
 
 ## Variaveis
 

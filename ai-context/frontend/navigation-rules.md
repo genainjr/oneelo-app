@@ -182,6 +182,21 @@ Ele nao substitui:
 - validacoes de service;
 - `AuthorizationService`.
 
+### Regra especial: Financeiro
+
+O item `/financeiro` nao deve ser decidido apenas por `User.role`.
+
+Visibilidade:
+
+- mostrar para usuarios com `financePermission` ativa;
+- mostrar para `ADMIN` somente quando o tenant estiver no bootstrap inicial sem `FINANCE_MANAGER`;
+- ocultar para usuarios sem permissao financeira.
+
+Acesso direto:
+
+- o middleware nao deve bloquear `/financeiro` apenas por `Role.BASIC`, pois um usuario `BASIC` pode ter permissao financeira especifica;
+- a pagina e o backend devem consultar `/api/financeiro/permissions/me` e bloquear quando nao houver permissao financeira.
+
 ---
 
 ## Referencias

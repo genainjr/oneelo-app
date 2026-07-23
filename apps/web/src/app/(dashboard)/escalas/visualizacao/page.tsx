@@ -126,7 +126,7 @@ export default function EscalasVisualizacaoPage() {
     <div className="p-6">
       <div className="no-print">
       <PageHeader
-        title="Visualizacao de escalas"
+        title="Visualização Escalas"
         description="Acompanhe as escalas publicadas ou em rascunho em formato de leitura, sem controles de montagem."
           action={(
             <button
@@ -162,7 +162,7 @@ export default function EscalasVisualizacaoPage() {
             value={filterState.ministerioId}
             onChange={(event) => setFilterField('ministerioId', event.target.value)}
           >
-            <option value="">Todos os ministerios</option>
+            <option value="">Todos</option>
             {ministerios.map((ministerio) => (
               <option key={ministerio.id} value={ministerio.id}>{ministerio.nome}</option>
             ))}
@@ -172,7 +172,7 @@ export default function EscalasVisualizacaoPage() {
             value={filterState.status}
             onChange={(event) => setFilterField('status', event.target.value)}
           >
-            <option value="">Todos os status</option>
+            <option value="">Todos</option>
             <option value="RASCUNHO">Rascunho</option>
             <option value="PUBLICADA">Publicada</option>
             <option value="ENCERRADA">Encerrada</option>

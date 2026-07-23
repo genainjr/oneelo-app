@@ -20,7 +20,7 @@ import { MembroVisualizacao, Ministerio } from '@/types';
 import { Briefcase, Calendar, PhoneOff, Users } from 'lucide-react';
 
 const MESES = [
-  { value: '', label: 'Todos os meses' },
+  { value: '', label: 'Todos' },
   { value: '1', label: 'Janeiro' },
   { value: '2', label: 'Fevereiro' },
   { value: '3', label: 'Marco' },
@@ -215,7 +215,7 @@ export default function MembrosVisualizacaoPage() {
   return (
     <div className="p-6">
       <PageHeader
-        title="Visualizacao de membros"
+        title="Visualização Membros"
         description="Consulte membros, contatos, aniversarios e participacao em ministerios sem abrir o modo de edicao."
       />
 
@@ -251,7 +251,7 @@ export default function MembrosVisualizacaoPage() {
             value={filterState.status}
             onChange={(event) => setFilterField('status', event.target.value)}
           >
-            <option value="">Todos os status</option>
+            <option value="">Todos</option>
             <option value="ATIVO">Ativo</option>
             <option value="INATIVO">Inativo</option>
             <option value="VISITANTE">Visitante</option>
@@ -262,7 +262,7 @@ export default function MembrosVisualizacaoPage() {
             value={filterState.ministerioId}
             onChange={(event) => setFilterField('ministerioId', event.target.value)}
           >
-            <option value="">Todos os ministerios</option>
+            <option value="">Todos</option>
             {ministerios.map((ministerio) => (
               <option key={ministerio.id} value={ministerio.id}>{ministerio.nome}</option>
             ))}

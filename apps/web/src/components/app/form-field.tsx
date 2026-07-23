@@ -111,6 +111,34 @@ export function SelectField({
   );
 }
 
+type CheckboxFieldProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & {
+  label: string;
+  helperText?: string;
+};
+
+export function CheckboxField({
+  label,
+  helperText,
+  className,
+  id,
+  ...props
+}: CheckboxFieldProps) {
+  return (
+    <label htmlFor={id} className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+      <input
+        id={id}
+        type="checkbox"
+        className={cn('mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600', className)}
+        {...props}
+      />
+      <span>
+        <span className="block font-semibold">{label}</span>
+        {helperText && <span className="mt-0.5 block text-xs text-gray-500">{helperText}</span>}
+      </span>
+    </label>
+  );
+}
+
 type TextareaFieldProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
   error?: string | null;

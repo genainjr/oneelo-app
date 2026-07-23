@@ -427,6 +427,30 @@ export default function MinisteriosPage() {
         size={selectedMinisterio ? 'lg' : 'md'}
         height={!selectedMinisterio ? 'viewport' : 'auto'}
         bodyClassName="p-0"
+        footer={
+          (modalTab === 'info' || !selectedMinisterio) && canManage ? (
+            <ModalFooter
+              form="ministerio-form"
+              onCancel={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
+              secondaryAction={
+                selectedMinisterio ? (
+                  <button
+                    type="button"
+                    onClick={() => { handleDelete(selectedMinisterio); }}
+                    className="px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    {t('modal.archiveAction')}
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : selectedMinisterio && modalTab === 'info' && !canManage ? (
+            <ModalFooter
+              onCancel={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
+              form="ministerio-form"
+            />
+          ) : undefined
+        }
       >
         {/* Feedback de erro global */}
         <ModalError message={feedback?.type === 'error' ? feedback.message : null} />
@@ -751,32 +775,6 @@ export default function MinisteriosPage() {
         )}
 
         {/* Footer — shown on info tab or creation mode */}
-        {(modalTab === 'info' || !selectedMinisterio) && canManage && (
-          <ModalFooter
-            form="ministerio-form"
-            primaryLabel={selectedMinisterio ? t('modal.saveChanges') : t('modal.createMinistry')}
-            onCancel={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
-            secondaryAction={
-              selectedMinisterio ? (
-                <button
-                  type="button"
-                  onClick={() => { handleDelete(selectedMinisterio); }}
-                  className="px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                >
-                  {t('modal.archiveAction')}
-                </button>
-              ) : undefined
-            }
-          />
-        )}
-        {/* Footer for non-admin on info tab while editing */}
-        {selectedMinisterio && modalTab === 'info' && !canManage && (
-          <ModalFooter
-            primaryLabel={t('modal.saveChanges')}
-            onCancel={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
-            form="ministerio-form"
-          />
-        )}
       </ModalShell>
 
       <ConfirmDialog

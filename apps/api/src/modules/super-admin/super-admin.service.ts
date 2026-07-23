@@ -13,7 +13,7 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
-import { Role, AcaoAuditoria, UserStatus } from '@prisma/client';
+import { Role, AcaoAuditoria, FinanceRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import type { Multer } from 'multer';
 
@@ -114,6 +114,16 @@ export class SuperAdminService {
           activatedAt: new Date(),
         },
         select: { id: true, nome: true, email: true, role: true },
+      });
+
+      await tx.financePermission.create({
+        data: {
+          tenantId: tenant.id,
+          userId: adminUser.id,
+          role: FinanceRole.FINANCE_MANAGER,
+          createdByUserId: adminId,
+          updatedByUserId: adminId,
+        },
       });
 
       await tx.auditLog.create({

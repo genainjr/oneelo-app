@@ -646,6 +646,18 @@ export default function AgendaPage() {
         size="md"
         height={!selectedEvento ? 'viewport' : 'auto'}
         bodyClassName="[overflow-anchor:none]"
+        footer={
+          <ModalFooter
+            form="agenda-form"
+            loading={saving}
+            disabled={!selectedEvento && createMode === 'weekly' && (batchOccurrences.length === 0 || Boolean(weeklyGeneration.error))}
+            onCancel={() => {
+              setIsModalOpen(false);
+              setSelectedEvento(null);
+              setModalError(null);
+            }}
+          />
+        }
       >
         <form id="agenda-form" onSubmit={handleSave}>
           <ModalError message={modalError} />
@@ -844,18 +856,6 @@ export default function AgendaPage() {
               placeholder={t('modal.descriptionPlaceholder')}
             />
           </div>
-
-          <ModalFooter
-            form="agenda-form"
-            primaryLabel={!selectedEvento && createMode === 'weekly' ? t('batch.createButton', { count: batchOccurrences.length }) : t('modal.save')}
-            loading={saving}
-            disabled={!selectedEvento && createMode === 'weekly' && (batchOccurrences.length === 0 || Boolean(weeklyGeneration.error))}
-            onCancel={() => {
-              setIsModalOpen(false);
-              setSelectedEvento(null);
-              setModalError(null);
-            }}
-          />
         </form>
       </ModalShell>
 
