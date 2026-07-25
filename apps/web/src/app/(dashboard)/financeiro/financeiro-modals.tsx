@@ -21,6 +21,8 @@ import {
   FinancialTransactionType,
   PAYMENT_METHOD_LABELS,
   TRANSACTION_STATUS_LABELS,
+  financeiroEventosPath,
+  getTransactionDisplayTitle,
   todayInputValue,
 } from "./financeiro-shared";
 
@@ -68,6 +70,11 @@ export const emptyTransactionForm = (): TransactionFormData => ({
   receiptFile: null,
   removeReceipt: false,
 });
+
+function withSelectedEvento(options: EventoOption[], selected: EventoOption | null) {
+  if (!selected || options.some((option) => option.id === selected.id)) return options;
+  return [selected, ...options];
+}
 
 export function AccountModal({
   isOpen,
@@ -256,13 +263,17 @@ export function TransactionModal({
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
+    const currentEvento = transaction?.evento ?? null;
     setEventosLoading(true);
-    api.get<EventoOption[]>("/api/eventos?scope=MANAGE")
+    api.get<EventoOption[]>(financeiroEventosPath())
       .then((data) => {
-        if (active) setEventos(Array.isArray(data) ? data.filter((evento) => evento.status !== "CANCELADO") : []);
+        if (active) {
+          const options = Array.isArray(data) ? data.filter((evento) => evento.status !== "CANCELADO") : [];
+          setEventos(withSelectedEvento(options, currentEvento));
+        }
       })
       .catch(() => {
-        if (active) setEventos([]);
+        if (active) setEventos(withSelectedEvento([], currentEvento));
       })
       .finally(() => {
         if (active) setEventosLoading(false);
@@ -271,7 +282,7 @@ export function TransactionModal({
     return () => {
       active = false;
     };
-  }, [isOpen]);
+  }, [isOpen, transaction?.evento]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -508,7 +519,7 @@ export function TransactionStatusModal({
       error={error}
       options={statusOptions}
       onSelect={onSubmit}
-      description={transaction ? `Escolha o novo status do lançamento "${transaction.description || transaction.counterpartyName || "Lançamento financeiro"}".` : ""}
+      description={transaction ? `Escolha o novo status do lançamento "${getTransactionDisplayTitle(transaction)}".` : ""}
     />
   );
 }

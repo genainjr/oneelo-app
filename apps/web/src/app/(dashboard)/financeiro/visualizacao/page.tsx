@@ -26,6 +26,8 @@ import {
   TRANSACTION_STATUS_LABELS,
   currencyFormatter,
   dateFormatter,
+  financeiroEventosPath,
+  getTransactionDisplayTitle,
   useFinanceiroData,
 } from "../financeiro-shared";
 
@@ -135,7 +137,7 @@ export default function FinanceiroVisualizacaoPage() {
     if (!summary?.role) return;
     let active = true;
     setEventosLoading(true);
-    api.get<EventoOption[]>("/api/eventos?scope=MANAGE")
+    api.get<EventoOption[]>(financeiroEventosPath())
       .then((data) => {
         if (active) setEventos(Array.isArray(data) ? data.filter((evento) => evento.status !== "CANCELADO") : []);
       })
@@ -375,7 +377,7 @@ export default function FinanceiroVisualizacaoPage() {
                 <div className="min-w-0 flex-1 space-y-3">
                   <div className="min-w-0 space-y-2">
                     <h3 className="break-words text-base font-bold leading-6 tracking-tight text-gray-800 sm:text-lg">
-                      {item.description || item.counterpartyName || "Lançamento financeiro"}
+                      {getTransactionDisplayTitle(item)}
                     </h3>
                     <div className="flex flex-wrap items-center gap-2">
                       <FinanceStatusBadge status={item.status} />
@@ -455,7 +457,7 @@ export default function FinanceiroVisualizacaoPage() {
                 ) : filteredTransactions.map((item) => (
                   <tr key={item.id}>
                     <td>{dateFormatter.format(new Date(item.date))}</td>
-                    <td>{item.description || item.counterpartyName || "Lançamento financeiro"}</td>
+                    <td>{getTransactionDisplayTitle(item)}</td>
                     <td>{item.type === "INCOME" ? "Entrada" : "Despesa"}</td>
                     <td>{TRANSACTION_STATUS_LABELS[item.status]}</td>
                     <td>{item.account.name}</td>
