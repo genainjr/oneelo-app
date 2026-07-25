@@ -156,8 +156,35 @@ export function FinanceEntityIcon({ type }: { type: "account" | "category" | "tr
   return <Banknote className="h-5 w-5" />;
 }
 
+export function getTransactionDisplayTitle(transaction: FinancialTransaction) {
+  const description = transaction.description?.trim();
+  if (description) return description;
+  const eventTitle = transaction.evento?.titulo?.trim();
+  if (eventTitle) return eventTitle;
+  const counterpartyName = transaction.counterpartyName?.trim();
+  if (counterpartyName) return counterpartyName;
+  return `${TRANSACTION_TYPE_LABELS[transaction.type]} - ${transaction.category.name}`;
+}
+
 export function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+export function financeiroEventoLookupPeriod(referenceDate = new Date()) {
+  const start = new Date(referenceDate);
+  start.setDate(start.getDate() - 60);
+  const end = new Date(referenceDate);
+  end.setDate(end.getDate() + 30);
+  return {
+    dataInicio: start.toISOString().slice(0, 10),
+    dataFim: end.toISOString().slice(0, 10),
+  };
+}
+
+export function financeiroEventosPath() {
+  const period = financeiroEventoLookupPeriod();
+  const params = new URLSearchParams(period);
+  return `/api/eventos?${params.toString()}`;
 }
 
 const emptySummary: FinancialSummary = {
