@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { api, HttpError } from '@/lib/api';
 
-// ─── Ícones ────────────────────────────────────────────────────────────────────
+// Ícones
 
 function IconUsers() {
   return (
@@ -40,27 +41,32 @@ function IconGrid() {
 
 function IconCheck() {
   return (
-    <svg className="w-5 h-5 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className="w-5 h-5 text-teal-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
     </svg>
   );
 }
 
-// ─── Seções ────────────────────────────────────────────────────────────────────
+// Seções
 
 function Navbar() {
   return (
-    <header className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <header className="fixed top-0 inset-x-0 z-50 bg-white/85 backdrop-blur-md border-b border-slate-100">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">O</span>
-          </div>
-          <span className="font-bold text-gray-900 text-lg">OneElo</span>
+          <Image
+            src="/logo.jpg"
+            alt="One Elo"
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-lg object-cover"
+            priority
+          />
+          <span className="font-bold text-gray-900 text-lg">One Elo</span>
         </div>
         <Link
           href="/login"
-          className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 border border-indigo-200 hover:border-indigo-300 rounded-lg transition"
+          className="px-4 py-2 text-sm font-medium text-indigo-700 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-300 rounded-lg transition"
         >
           Entrar
         </Link>
@@ -70,57 +76,189 @@ function Navbar() {
 }
 
 function Hero({ onCtaClick }: { onCtaClick: () => void }) {
-  return (
-    <section className="pt-32 pb-20 px-6 text-center">
-      <div className="max-w-3xl mx-auto">
-        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-medium mb-6">
-          Gestão para igrejas
-        </span>
-        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight mb-5">
-          Organize sua igreja com{' '}
-          <span className="text-indigo-600">mais facilidade</span>
-        </h1>
-        <p className="text-lg text-gray-500 leading-relaxed mb-8 max-w-xl mx-auto">
-          OneElo centraliza membros, ministérios, escalas e agenda em um só lugar —
-          para que você foque no que realmente importa.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            onClick={onCtaClick}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition shadow-lg shadow-indigo-200 text-sm"
-          >
-            Solicitar demonstração
-          </button>
-          <Link
-            href="/login"
-            className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium text-sm transition"
-          >
-            Já tenho acesso →
-          </Link>
-        </div>
-      </div>
+  const previewStats = [
+    { label: 'Membros', value: 'Cadastro', color: 'bg-indigo-50 text-indigo-700' },
+    { label: 'Ministérios', value: 'Equipes', color: 'bg-teal-50 text-teal-700' },
+    { label: 'Agenda', value: 'Eventos', color: 'bg-sky-50 text-sky-700' },
+  ];
 
-      {/* Preview mockup */}
-      <div className="mt-16 max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl shadow-gray-200/80 overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-100 px-4 py-3 flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-300" />
-            <div className="w-3 h-3 rounded-full bg-yellow-300" />
-            <div className="w-3 h-3 rounded-full bg-green-300" />
-            <div className="flex-1 bg-white rounded-md h-6 mx-4 border border-gray-200" />
+  const previewRows = [
+    { title: 'Culto de domingo', meta: 'Agenda', status: 'Agendado', tone: 'bg-sky-50 text-sky-700' },
+    { title: 'Escala de louvor', meta: 'Escalas', status: 'Confirmações', tone: 'bg-teal-50 text-teal-700' },
+    { title: 'Equipe de recepção', meta: 'Ministérios', status: 'Organizado', tone: 'bg-indigo-50 text-indigo-700' },
+  ];
+
+  return (
+    <section className="pt-28 pb-20 px-6 bg-[radial-gradient(circle_at_top_left,#334155_0%,#1e1b4b_42%,#0f172a_100%)]">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-[0.95fr_1.05fr] gap-12 lg:gap-14 items-center">
+        <div className="text-center lg:text-left">
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-indigo-100 text-xs font-medium mb-6">
+            Gestão operacional para igrejas
+          </span>
+          <h1 className="text-3xl sm:text-5xl font-bold text-white leading-tight mb-5">
+            Menos planilhas. Menos mensagens perdidas.{' '}
+            <span className="text-teal-200">Mais organização para a sua igreja.</span>
+          </h1>
+          <p className="text-lg text-indigo-100/80 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
+            O One Elo centraliza membros, ministérios, escalas e agenda para ajudar sua igreja a reduzir o retrabalho e organizar melhor a rotina administrativa.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
+            <button
+              onClick={onCtaClick}
+              className="w-full sm:w-auto px-6 py-3 bg-teal-400 hover:bg-teal-300 text-slate-950 font-semibold rounded-xl transition shadow-lg shadow-teal-950/30 text-sm"
+            >
+              Solicitar demonstração
+            </button>
           </div>
-          <div className="grid grid-cols-4 divide-x divide-gray-100 text-xs">
-            {['Membros', 'Ministérios', 'Escalas', 'Agenda'].map((mod) => (
-              <div key={mod} className="p-4 text-center">
-                <div className="w-8 h-8 bg-indigo-100 rounded-lg mx-auto mb-2" />
-                <span className="text-gray-600 font-medium">{mod}</span>
+        </div>
+
+        <div className="relative">
+          <div className="bg-white rounded-2xl border border-white/20 shadow-2xl shadow-slate-950/40 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-300" />
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-300" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-300" />
               </div>
-            ))}
-          </div>
-          <div className="p-4 grid grid-cols-3 gap-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-16 bg-gray-50 rounded-xl border border-gray-100 animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
-            ))}
+              <div className="flex-1 text-center text-xs font-medium text-gray-400">Painel One Elo</div>
+            </div>
+
+            <div className="sm:hidden bg-slate-50 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Dashboard</p>
+                  <p className="text-xs text-gray-500">Rotina administrativa</p>
+                </div>
+                <Image
+                  src="/logo.jpg"
+                  alt="One Elo"
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 rounded-lg object-cover"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {previewStats.slice(0, 2).map((stat) => (
+                  <div key={stat.label} className="bg-white rounded-xl border border-slate-100 p-3 shadow-sm">
+                    <p className="text-[11px] font-medium text-gray-500">{stat.label}</p>
+                    <p className="mt-1 text-sm font-bold text-gray-900">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="border-b border-slate-100 px-3 py-3">
+                  <p className="text-sm font-semibold text-gray-900">Rotina da semana</p>
+                  <p className="text-xs text-gray-400">Agenda e escalas conectadas</p>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {previewRows.slice(0, 2).map((row) => (
+                    <div key={row.title} className="px-3 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{row.title}</p>
+                          <p className="text-xs text-gray-400">{row.meta}</p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-medium ${row.tone}`}>
+                          {row.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                {['Membros', 'Ministérios', 'Escalas', 'Agenda'].map((mod) => (
+                  <div key={mod} className="bg-white border border-slate-100 rounded-xl px-2.5 py-2 text-center font-medium text-gray-600 shadow-sm">
+                    {mod}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden sm:grid sm:grid-cols-[132px_1fr] min-h-[430px] bg-slate-50">
+              <aside className="bg-indigo-950 text-indigo-100 p-4">
+                <div className="flex items-center gap-2 mb-6">
+                  <Image
+                    src="/logo.jpg"
+                    alt="One Elo"
+                    width={28}
+                    height={28}
+                    className="h-7 w-7 rounded-lg object-cover"
+                  />
+                  <span className="text-sm font-semibold">One Elo</span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  {['Dashboard', 'Membros', 'Escalas', 'Agenda'].map((item, index) => (
+                    <div
+                      key={item}
+                      className={`rounded-lg px-2.5 py-2 ${index === 0 ? 'bg-indigo-700 text-white' : 'text-indigo-200'}`}
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </aside>
+
+              <div className="p-5 min-w-0">
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <p className="text-base font-bold text-gray-900">Dashboard</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Visão da rotina administrativa</p>
+                  </div>
+                  <span className="inline-flex rounded-lg bg-white border border-slate-100 px-3 py-1.5 text-xs font-medium text-gray-500">
+                    Hoje
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {previewStats.map((stat) => (
+                    <div key={stat.label} className="bg-white rounded-xl border border-slate-100 p-3 shadow-sm">
+                      <div className={`w-8 h-8 rounded-lg ${stat.color} flex items-center justify-center mb-3`}>
+                        <span className="h-2 w-2 rounded-full bg-current" />
+                      </div>
+                      <p className="text-[11px] font-medium text-gray-500 truncate">{stat.label}</p>
+                      <p className="mt-0.5 text-lg font-bold text-gray-900">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Rotina da semana</p>
+                      <p className="text-xs text-gray-400">Agenda, escalas e equipes conectadas</p>
+                    </div>
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                      Organizado
+                    </span>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {previewRows.map((row) => (
+                      <div key={row.title} className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3 items-center">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{row.title}</p>
+                          <p className="text-xs text-gray-400">{row.meta}</p>
+                        </div>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${row.tone}`}>
+                          {row.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
+                  {['Membros', 'Ministérios', 'Escalas', 'Agenda'].map((mod) => (
+                    <div key={mod} className="bg-white border border-slate-100 rounded-xl px-3 py-2.5 text-center font-medium text-gray-600 shadow-sm">
+                      {mod}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -131,46 +269,61 @@ function Hero({ onCtaClick }: { onCtaClick: () => void }) {
 const MODULOS = [
   {
     icon: <IconUsers />,
-    titulo: 'Gestão de Membros',
-    descricao: 'Cadastre, filtre e organize todos os membros da sua igreja. Tags, status, datas de nascimento e muito mais.',
-    cor: 'bg-blue-50 text-blue-600',
+    titulo: 'Membros',
+    descricao: 'Mantenha os dados das pessoas organizados, com histórico, status e informações úteis para a rotina administrativa da igreja.',
+    cor: 'bg-sky-50 text-sky-700',
+    detalhe: 'Base cadastral',
   },
   {
     icon: <IconMusic />,
     titulo: 'Ministérios',
-    descricao: 'Crie ministérios, defina funções e gerencie quem faz parte de cada equipe com controle de liderança.',
-    cor: 'bg-purple-50 text-purple-600',
+    descricao: 'Organize equipes, funções e lideranças para saber quem participa de cada área e quem pode ajudar em cada responsabilidade.',
+    cor: 'bg-teal-50 text-teal-700',
+    detalhe: 'Equipes e funções',
   },
   {
     icon: <IconGrid />,
     titulo: 'Escalas',
-    descricao: 'Monte grades mensais de serviço por ministério. Membros confirmam presença diretamente pelo sistema.',
-    cor: 'bg-indigo-50 text-indigo-600',
+    descricao: 'Monte escalas por ministério, envie convites e receba as confirmações dos voluntários diretamente pelo sistema.',
+    cor: 'bg-indigo-50 text-indigo-700',
+    detalhe: 'Serviço voluntário',
   },
   {
     icon: <IconCalendar />,
     titulo: 'Agenda',
-    descricao: 'Registre cultos, ensaios e eventos. Tudo integrado com as escalas para uma visão completa da semana.',
-    cor: 'bg-emerald-50 text-emerald-600',
+    descricao: 'Registre cultos, reuniões e eventos para dar mais visibilidade à programação e apoiar o planejamento das equipes.',
+    cor: 'bg-emerald-50 text-emerald-700',
+    detalhe: 'Programação',
   },
 ];
 
 function Modulos() {
   return (
-    <section className="py-20 px-6 bg-gray-50">
+    <section className="py-20 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">Tudo que sua igreja precisa</h2>
-          <p className="text-gray-500 max-w-xl mx-auto">Quatro módulos integrados para uma gestão completa, sem planilhas e sem complicação.</p>
+        <div className="max-w-2xl mb-12">
+          <span className="inline-flex items-center rounded-full bg-white border border-slate-100 px-3 py-1 text-xs font-medium text-indigo-700 mb-4">
+            Módulos principais
+          </span>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Menos informação espalhada, mais rotina organizada</h2>
+          <p className="text-gray-500">Reúna os principais cadastros e processos da igreja em uma plataforma feita para apoiar a administração do dia a dia.</p>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {MODULOS.map((m) => (
-            <div key={m.titulo} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${m.cor}`}>
-                {m.icon}
+            <div key={m.titulo} className="group bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${m.cor}`}>
+                  {m.icon}
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 group-hover:text-gray-500 transition-colors">
+                  {m.detalhe}
+                </span>
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">{m.titulo}</h3>
               <p className="text-sm text-gray-500 leading-relaxed">{m.descricao}</p>
+              <div className="mt-5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div className={`h-full w-1/2 rounded-full ${m.cor.split(' ')[0]}`} />
+              </div>
             </div>
           ))}
         </div>
@@ -181,21 +334,21 @@ function Modulos() {
 
 const BENEFICIOS = [
   {
-    titulo: 'Organização real',
+    titulo: 'Centralização da rotina',
     itens: [
-      'Visão centralizada de toda a igreja',
-      'Histórico completo de cada membro',
-      'Filtros e buscas avançadas',
-      'Log de auditoria de ações',
+      'Membros, ministérios, escalas e agenda no mesmo ambiente',
+      'Menos dependência de planilhas e conversas antigas',
+      'Informações importantes mais fáceis de localizar',
+      'Histórico para apoiar decisões administrativas',
     ],
   },
   {
-    titulo: 'Multi-idioma',
+    titulo: 'Organização para as equipes',
     itens: [
-      'Português (Brasil)',
-      'Português (Portugal)',
-      'Inglês (EUA)',
-      'Mais idiomas em breve',
+      'Responsabilidades mais claras por ministério',
+      'Escalas organizadas por período e equipe',
+      'Convites e confirmações diretamente pelo sistema',
+      'Mais previsibilidade para líderes e voluntários',
     ],
   },
   {
@@ -213,14 +366,19 @@ function Beneficios() {
   return (
     <section className="py-20 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">Por que o OneElo?</h2>
-          <p className="text-gray-500 max-w-xl mx-auto">Desenvolvido para a realidade das igrejas brasileiras, com foco em simplicidade e eficiência.</p>
+        <div className="text-center mb-12 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Por que o One Elo?</h2>
+          <p className="text-gray-500">Porque a gestão da igreja fica mais leve quando as informações estão centralizadas, atualizadas e fáceis de encontrar.</p>
         </div>
-        <div className="grid sm:grid-cols-3 gap-6">
-          {BENEFICIOS.map((b) => (
-            <div key={b.titulo} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <h3 className="font-semibold text-gray-900 mb-4">{b.titulo}</h3>
+        <div className="grid lg:grid-cols-3 gap-5">
+          {BENEFICIOS.map((b, index) => (
+            <div key={b.titulo} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-sm font-bold text-indigo-700">
+                  {index + 1}
+                </span>
+                <h3 className="font-semibold text-gray-900">{b.titulo}</h3>
+              </div>
               <ul className="space-y-3">
                 {b.itens.map((item) => (
                   <li key={item} className="flex items-start gap-2 text-sm text-gray-600">
@@ -237,82 +395,83 @@ function Beneficios() {
   );
 }
 
-const PLANOS = [
-  {
-    nome: 'Gratuito',
-    preco: 'R$ 0',
-    periodo: 'para sempre',
-    descricao: 'Para igrejas pequenas começando a se organizar.',
-    itens: ['Até 50 membros', '2 ministérios', 'Escalas mensais', 'Agenda básica'],
-    destaque: false,
-    cta: 'Solicitar acesso',
-  },
-  {
-    nome: 'Básico',
-    preco: 'R$ 49',
-    periodo: 'por mês',
-    descricao: 'Para igrejas em crescimento com mais ministérios.',
-    itens: ['Até 200 membros', 'Ministérios ilimitados', 'Escalas + confirmação', 'Suporte prioritário'],
-    destaque: true,
-    cta: 'Solicitar demonstração',
-  },
-  {
-    nome: 'Profissional',
-    preco: 'R$ 99',
-    periodo: 'por mês',
-    descricao: 'Para igrejas grandes que precisam do máximo.',
-    itens: ['Membros ilimitados', 'Tudo do Básico', 'Múltiplos administradores', 'Relatórios avançados'],
-    destaque: false,
-    cta: 'Solicitar demonstração',
-  },
-];
-
 function Planos({ onCtaClick }: { onCtaClick: () => void }) {
+  const rotina = [
+    {
+      icon: <IconUsers />,
+      titulo: 'Membros',
+      descricao: 'A igreja começa com uma base organizada de pessoas, contatos, status e histórico administrativo.',
+    cor: 'bg-sky-50 text-sky-700',
+    },
+    {
+      icon: <IconMusic />,
+      titulo: 'Ministérios',
+      descricao: 'Com os membros organizados, as equipes ganham funções e lideranças mais claras.',
+    cor: 'bg-teal-50 text-teal-700',
+    },
+    {
+      icon: <IconGrid />,
+      titulo: 'Escalas',
+      descricao: 'Com as equipes definidas, os líderes organizam os serviços e acompanham as confirmações dos voluntários.',
+    cor: 'bg-indigo-50 text-indigo-700',
+    },
+    {
+      icon: <IconCalendar />,
+      titulo: 'Agenda',
+      descricao: 'A programação da igreja fica mais visível, ajudando a equipe a acompanhar cultos, reuniões e eventos.',
+    cor: 'bg-emerald-50 text-emerald-700',
+    },
+  ];
+
   return (
-    <section className="py-20 px-6 bg-gray-50">
+    <section className="py-20 px-6">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">Planos simples e transparentes</h2>
-          <p className="text-gray-500 max-w-xl mx-auto">Comece gratuitamente e escale conforme sua igreja cresce.</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Da base de membros à rotina da semana</h2>
+          <p className="text-gray-500 max-w-2xl mx-auto">O One Elo organiza as informações em uma sequência simples: pessoas bem cadastradas, equipes definidas, escalas acompanhadas e agenda visível para a equipe.</p>
         </div>
-        <div className="grid sm:grid-cols-3 gap-6 items-start">
-          {PLANOS.map((p) => (
-            <div
-              key={p.nome}
-              className={`rounded-2xl p-6 border ${p.destaque
-                ? 'bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-200'
-                : 'bg-white border-gray-100 shadow-sm'
-              }`}
-            >
-              <div className="mb-5">
-                <p className={`text-sm font-medium mb-1 ${p.destaque ? 'text-indigo-200' : 'text-gray-500'}`}>{p.nome}</p>
-                <div className="flex items-end gap-1.5">
-                  <span className={`text-3xl font-bold ${p.destaque ? 'text-white' : 'text-gray-900'}`}>{p.preco}</span>
-                  <span className={`text-sm pb-1 ${p.destaque ? 'text-indigo-200' : 'text-gray-400'}`}>/ {p.periodo}</span>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 lg:p-8">
+          <div className="grid gap-0 lg:grid-cols-4">
+            {rotina.map((item, index) => (
+              <div key={item.titulo} className="relative">
+                {index < rotina.length - 1 && (
+                  <>
+                    <div className="hidden lg:block absolute left-[calc(50%+40px)] right-[-50%] top-9 h-px bg-slate-200" />
+                    <div className="lg:hidden absolute left-6 top-14 bottom-0 w-px bg-slate-200" />
+                  </>
+                )}
+
+                <div className="relative flex gap-4 pb-8 last:pb-0 lg:block lg:px-4 lg:pb-0 lg:text-center">
+                  <div className="relative z-10 flex shrink-0 flex-col items-center">
+                    <span className="mb-2 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-700 text-[11px] font-bold text-white">
+                      {index + 1}
+                    </span>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.cor}`}>
+                      {item.icon}
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 pt-1 lg:pt-4">
+                    <h3 className="font-semibold text-gray-900 mb-2">{item.titulo}</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">{item.descricao}</p>
+                  </div>
                 </div>
-                <p className={`text-sm mt-2 ${p.destaque ? 'text-indigo-200' : 'text-gray-500'}`}>{p.descricao}</p>
               </div>
-              <ul className="space-y-2.5 mb-6">
-                {p.itens.map((item) => (
-                  <li key={item} className={`flex items-center gap-2 text-sm ${p.destaque ? 'text-indigo-100' : 'text-gray-600'}`}>
-                    <svg className={`w-4 h-4 shrink-0 ${p.destaque ? 'text-indigo-300' : 'text-indigo-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={onCtaClick}
-                className={`w-full py-2.5 rounded-xl text-sm font-semibold transition ${p.destaque
-                  ? 'bg-white text-indigo-600 hover:bg-indigo-50'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-500'
-                }`}
-              >
-                {p.cta}
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          <div className="mt-8 border-t border-slate-100 pt-6 text-center">
+            <p className="text-sm text-gray-600 max-w-2xl mx-auto leading-relaxed">
+              Quando tudo está conectado, a equipe perde menos tempo procurando informações e ganha mais clareza para organizar a semana.
+            </p>
+            <button
+              onClick={onCtaClick}
+              className="mt-5 w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-semibold transition bg-indigo-700 text-white hover:bg-indigo-600 shadow-lg shadow-indigo-200"
+            >
+              Solicitar uma demonstração
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -345,9 +504,9 @@ function Formulario({ formRef }: { formRef: React.RefObject<HTMLElement | null> 
   return (
     <section ref={formRef as React.RefObject<HTMLElement>} className="py-20 px-6">
       <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">Solicitar demonstração</h2>
-          <p className="text-gray-500">Preencha o formulário e entraremos em contato em até 48 horas.</p>
+        <div className="text-center mb-10 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Conheça o One Elo na prática</h2>
+          <p className="text-gray-500">Envie seus dados e vamos entender a rotina da sua igreja para mostrar como o One Elo pode ajudar.</p>
         </div>
 
         {status === 'success' ? (
@@ -357,11 +516,11 @@ function Formulario({ formRef }: { formRef: React.RefObject<HTMLElement | null> 
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-emerald-900 mb-1">Solicitação recebida!</h3>
-            <p className="text-emerald-700 text-sm">Entraremos em contato em breve no e-mail informado.</p>
+            <h3 className="text-lg font-semibold text-emerald-900 mb-1">Solicitação recebida</h3>
+            <p className="text-emerald-700 text-sm">Vamos entrar em contato pelo e-mail informado para combinar os próximos passos.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
@@ -370,8 +529,8 @@ function Formulario({ formRef }: { formRef: React.RefObject<HTMLElement | null> 
                     required
                     value={form.nome}
                     onChange={(e) => set('nome', e.target.value)}
-                    placeholder="Pastor João"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+                    placeholder="Seu nome"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                   />
                 </div>
                 <div>
@@ -381,8 +540,8 @@ function Formulario({ formRef }: { formRef: React.RefObject<HTMLElement | null> 
                     type="email"
                     value={form.email}
                     onChange={(e) => set('email', e.target.value)}
-                    placeholder="pastor@suaigreja.com"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+                    placeholder="voce@suaigreja.com"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                   />
                 </div>
               </div>
@@ -392,7 +551,7 @@ function Formulario({ formRef }: { formRef: React.RefObject<HTMLElement | null> 
                   value={form.telefone}
                   onChange={(e) => set('telefone', e.target.value)}
                   placeholder="(11) 99999-9999"
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
               <div>
@@ -401,8 +560,8 @@ function Formulario({ formRef }: { formRef: React.RefObject<HTMLElement | null> 
                   rows={3}
                   value={form.mensagem}
                   onChange={(e) => set('mensagem', e.target.value)}
-                  placeholder="Conte um pouco sobre sua igreja e o que você precisa..."
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition resize-none"
+                  placeholder="Conte quais processos hoje dão mais trabalho na sua igreja..."
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"
                 />
               </div>
 
@@ -413,9 +572,9 @@ function Formulario({ formRef }: { formRef: React.RefObject<HTMLElement | null> 
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition disabled:opacity-60 text-sm shadow-lg shadow-indigo-200"
+                className="w-full py-3 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold rounded-xl transition disabled:opacity-60 text-sm shadow-lg shadow-indigo-200"
               >
-                {status === 'loading' ? 'Enviando...' : 'Enviar solicitação'}
+                {status === 'loading' ? 'Enviando...' : 'Solicitar contato'}
               </button>
             </form>
           </div>
@@ -427,13 +586,17 @@ function Formulario({ formRef }: { formRef: React.RefObject<HTMLElement | null> 
 
 function Footer() {
   return (
-    <footer className="border-t border-gray-100 py-8 px-6">
-      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-400">
+    <footer className="border-t border-slate-100 py-8 px-6">
+      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left text-sm text-gray-400">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-indigo-600 rounded flex items-center justify-center">
-            <span className="text-white font-bold text-xs">O</span>
-          </div>
-          <span>OneElo — <span className="text-gray-500">Lookup Labs</span></span>
+          <Image
+            src="/logo.jpg"
+            alt="One Elo"
+            width={20}
+            height={20}
+            className="h-5 w-5 rounded object-cover"
+          />
+          <span>One Elo — <span className="text-gray-500">uma plataforma da Lookup Labs</span></span>
         </div>
         <span>© {new Date().getFullYear()} Lookup Labs. Todos os direitos reservados.</span>
       </div>
@@ -441,7 +604,7 @@ function Footer() {
   );
 }
 
-// ─── Página ────────────────────────────────────────────────────────────────────
+// Página
 
 export default function LandingPage() {
   const formRef = { current: null as HTMLElement | null };
@@ -451,7 +614,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_34%,#eef2ff_100%)]">
       <Navbar />
       <Hero onCtaClick={scrollToForm} />
       <Modulos />

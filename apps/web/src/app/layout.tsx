@@ -14,10 +14,10 @@ export const metadata: Metadata = {
   applicationName: 'One Elo',
   manifest: '/manifest.webmanifest',
   title: {
-    default: 'One Elo',
+    default: 'One Elo - Gestão para igrejas',
     template: '%s | One Elo',
   },
-  description: 'One Elo — plataforma de gestão para igrejas da Lookup Labs.',
+  description: 'One Elo - plataforma de gestão para igrejas da Lookup Labs.',
   appleWebApp: {
     capable: true,
     title: 'One Elo',
