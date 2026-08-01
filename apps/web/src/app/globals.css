@@ -293,7 +293,6 @@ body {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    table-layout: fixed;
     border: 0;
     border-radius: 0;
     font-size: var(--print-font-size-table);
@@ -375,8 +374,6 @@ body {
 
   .print-schedule-grid th:not(.print-day-column):not(.print-date-column),
   .print-schedule-grid td:not(.print-day-column):not(.print-date-column) {
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
@@ -445,5 +442,32 @@ body {
     padding: 16px;
     color: var(--print-color-muted);
     font-size: var(--print-font-size-empty);
+  }
+
+  .print-list-frame {
+    border: 1.5px solid var(--print-color-border-strong);
+    border-radius: 8px;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    width: 45%;
+    margin-inline: auto;
+  }
+
+  .print-document--schedule .print-list-table th,
+  .print-document--schedule .print-list-table td {
+    padding: var(--print-space-cell-y) 3px;
+  }
+
+  .print-document--schedule .print-list-table td {
+    min-height: 8mm;
+  }
+
+  .print-list-table .print-day-column {
+    width: 9%;
+  }
+
+  .print-list-table .print-date-column {
+    width: 15%;
   }
 }
