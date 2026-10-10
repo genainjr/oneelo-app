@@ -6,6 +6,12 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 Ao adicionar um novo documento, inclua-o no início deste índice com a data, o link e o assunto principal.
 
+## Outubro de 2026
+
+| CriaÃ§Ã£o | Documento | Assunto |
+|---|---|---|
+| 09/10/2026 | [exportacao-pdf.md](exportacao-pdf.md) | ExportaÃ§Ã£o sÃ­ncrona de PDF e imagens para Escalas e Agenda |
+
 ## Julho de 2026
 
 | Criação | Documento | Assunto |
