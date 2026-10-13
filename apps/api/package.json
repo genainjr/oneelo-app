@@ -25,6 +25,7 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
     "push:keys": "node scripts/generate-vapid-keys.mjs",
+    "spike:export-renderer": "node scripts/playwright-renderer-spike.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
   },
   "dependencies": {
@@ -42,6 +43,7 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "libphonenumber-js": "^1.13.9",
+    "playwright": "^1.64.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",
