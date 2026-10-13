@@ -28,6 +28,17 @@ export class HttpError extends Error {
   }
 }
 
+export interface ApiFileResponse {
+  blob: Blob;
+  fileName: string | null;
+  headers: Headers;
+}
+
+function getFileName(contentDisposition: string | null) {
+  const match = contentDisposition?.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ?? null;
+}
+
 // ─── Cliente HTTP ─────────────────────────────────────────────────────────────
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -68,11 +79,45 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return data as T;
 }
 
+async function requestFile(path: string, options: RequestOptions = {}): Promise<ApiFileResponse> {
+  const { body, headers, ...rest } = options;
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const isBlob = typeof Blob !== 'undefined' && body instanceof Blob;
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...rest,
+    credentials: 'include',
+    headers: isFormData || isBlob
+      ? { ...headers }
+      : { 'Content-Type': 'application/json', ...headers },
+    body: body === undefined ? undefined : isFormData || isBlob ? body : JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let data: ApiError;
+    try {
+      data = await res.json() as ApiError;
+    } catch {
+      data = { statusCode: res.status, message: res.statusText };
+    }
+    throw new HttpError(res.status, data);
+  }
+
+  return {
+    blob: await res.blob(),
+    fileName: getFileName(res.headers.get('Content-Disposition')),
+    headers: res.headers,
+  };
+}
+
 // ─── Métodos HTTP ─────────────────────────────────────────────────────────────
 
 export const api = {
   get<T>(path: string, options?: RequestOptions) {
     return request<T>(path, { ...options, method: 'GET' });
+  },
+
+  getFile(path: string, options?: RequestOptions) {
+    return requestFile(path, { ...options, method: 'GET' });
   },
 
   post<T>(path: string, body?: unknown, options?: RequestOptions) {

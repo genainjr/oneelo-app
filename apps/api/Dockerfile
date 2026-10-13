@@ -1,5 +1,5 @@
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:20-bookworm-slim AS deps
 
 WORKDIR /app
 
@@ -10,12 +10,14 @@ COPY package*.json ./
 RUN npm install
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
 # Instala dependências necessárias do sistema
-RUN apk add --no-cache openssl libc6-compat
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
 
 # Copia node_modules preparado do stage anterior
 COPY --from=deps /app/node_modules ./node_modules
@@ -34,20 +36,26 @@ RUN npm run build
 RUN npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es2021 --esModuleInterop
 
 # Stage 3: Runtime
-FROM node:20-alpine AS runtime
+FROM node:20-bookworm-slim AS runtime
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
 # Instala dependências essenciais do sistema
-RUN apk add --no-cache openssl netcat-openbsd libc6-compat
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl netcat-openbsd \
+  && rm -rf /var/lib/apt/lists/*
 
 # Copia package*.json
 COPY package*.json ./
 
 # Instala apenas dependências de produção
 RUN npm install --production
+
+# O Chromium distribuido pelo Playwright exige uma distribuicao Linux baseada em glibc.
+# A imagem Debian e suas dependencias garantem a mesma execucao no container local e no deploy.
+RUN npx playwright install --with-deps chromium
 
 # Copia o Prisma schema e migrations
 COPY prisma ./prisma
