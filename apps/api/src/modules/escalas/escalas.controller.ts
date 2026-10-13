@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
 import { EscalasService } from './escalas.service';
 import { CreateEscalaDto } from './dto/create-escala.dto';
@@ -21,9 +22,10 @@ import { ToggleDiaFuncaoOcultaDto } from './dto/toggle-dia-funcao-oculta.dto';
 import { EventosElegiveisDto } from './dto/eventos-elegiveis.dto';
 import { AddEscalaDiaDto } from './dto/add-escala-dia.dto';
 import { UpdateEscalaDiaEventoDto } from './dto/update-escala-dia-evento.dto';
+import { ExportEscalaDto } from './dto/export-escala.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 
 @Controller('escalas')
@@ -55,6 +57,26 @@ export class EscalasController {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
     return this.escalasService.findVisualizacao(tenantId, query, user);
+  }
+
+  @Get('exportacao')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  async exportar(
+    @Query() query: ExportEscalaDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    const document = await this.escalasService.exportar(tenantId, query, user);
+
+    res.setHeader('Content-Type', document.mimeType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${document.fileName}"`,
+    );
+    res.setHeader('X-Document-Page-Count', String(document.pageCount));
+    return res.send(document.buffer);
   }
 
   @Get('minhas')

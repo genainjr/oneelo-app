@@ -11,6 +11,7 @@ import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ModoCriacaoEscala } from './dto/create-escala.dto';
 import { EscalasService } from './escalas.service';
+import { EscalaDocumentRendererService } from './export/escala-document-renderer.service';
 
 describe('EscalasService - criação baseada em eventos', () => {
   const tenantId = '11111111-1111-4111-8111-111111111111';
@@ -86,6 +87,7 @@ describe('EscalasService - criação baseada em eventos', () => {
     const service = new EscalasService(
       prisma as unknown as PrismaService,
       notifications as unknown as NotificationsService,
+      { render: jest.fn() } as unknown as EscalaDocumentRendererService,
     );
 
     return {
@@ -146,6 +148,7 @@ describe('EscalasService - criação baseada em eventos', () => {
     const service = new EscalasService(
       prisma as unknown as PrismaService,
       { sendToUsers: jest.fn() } as unknown as NotificationsService,
+      { render: jest.fn() } as unknown as EscalaDocumentRendererService,
     );
 
     return { service, prisma, escala };
@@ -168,7 +171,11 @@ describe('EscalasService - criação baseada em eventos', () => {
       }) },
       escalaItem: { findFirst: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({ id: 'item-1' }) },
     };
-    const service = new EscalasService(prisma as unknown as PrismaService, { sendToUsers: jest.fn() } as unknown as NotificationsService);
+    const service = new EscalasService(
+      prisma as unknown as PrismaService,
+      { sendToUsers: jest.fn() } as unknown as NotificationsService,
+      { render: jest.fn() } as unknown as EscalaDocumentRendererService,
+    );
     return { service, prisma, escalaDiaId, membroId, funcaoId };
   };
 
@@ -487,5 +494,65 @@ describe('EscalasService - criação baseada em eventos', () => {
     const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true, ['outra-funcao']);
     await expect(service.addMembro(tenantId, escalaDiaId, { escalaDiaId, membroId, ministerioFuncaoId: funcaoId }, admin)).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.escalaItem.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe('EscalasService - visualizacao scope', () => {
+  const tenantId = '11111111-1111-4111-8111-111111111111';
+  const ministerioId = '22222222-2222-4222-8222-222222222222';
+  const basicUser: JwtPayload = {
+    sub: '55555555-5555-4555-8555-555555555555',
+    email: 'membro@igreja.com',
+    role: Role.BASIC,
+    tenantId,
+    memberId: '77777777-7777-4777-8777-777777777777',
+  };
+
+  function createService(liderados: Array<{ ministerioId: string }>) {
+    const prisma = {
+      ministerioMembro: {
+        findMany: jest.fn().mockResolvedValue(liderados),
+      },
+      escala: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new EscalasService(
+      prisma as unknown as PrismaService,
+      { sendToUsers: jest.fn() } as unknown as NotificationsService,
+      { render: jest.fn() } as unknown as EscalaDocumentRendererService,
+    );
+    return { service, prisma };
+  }
+
+  it('restringe BASIC aos ministerios em que e lider ou co-lider', async () => {
+    const { service, prisma } = createService([{ ministerioId }]);
+
+    await service.findVisualizacao(tenantId, {}, basicUser);
+
+    expect(prisma.ministerioMembro.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        membroId: basicUser.memberId,
+        role: { in: ['LEADER', 'ASSISTANT_LEADER'] },
+      }),
+      select: { ministerioId: true },
+    });
+    expect(prisma.escala.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tenantId,
+          ministerioId: { in: [ministerioId] },
+        },
+      }),
+    );
+  });
+
+  it('nao consulta escalas quando BASIC nao lidera nenhum ministerio', async () => {
+    const { service, prisma } = createService([]);
+
+    await expect(
+      service.findVisualizacao(tenantId, {}, basicUser),
+    ).resolves.toEqual([]);
+    expect(prisma.escala.findMany).not.toHaveBeenCalled();
   });
 });

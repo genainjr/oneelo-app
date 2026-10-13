@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateEscalaDto, ModoCriacaoEscala } from './dto/create-escala.dto';
@@ -16,6 +17,9 @@ import { ToggleDiaFuncaoOcultaDto } from './dto/toggle-dia-funcao-oculta.dto';
 import { EventosElegiveisDto } from './dto/eventos-elegiveis.dto';
 import { AddEscalaDiaDto } from './dto/add-escala-dia.dto';
 import { UpdateEscalaDiaEventoDto } from './dto/update-escala-dia-evento.dto';
+import { ExportEscalaDto } from './dto/export-escala.dto';
+import { EscalaDocumentRendererService } from './export/escala-document-renderer.service';
+import type { EscalaDocumentInput } from './export/escala-document.types';
 import {
   MinistryRole,
   Prisma,
@@ -33,6 +37,7 @@ export class EscalasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly escalaDocumentRenderer: EscalaDocumentRendererService,
   ) {}
 
   private appendDiaFilter(where: any, diaFilter: any) {
@@ -42,7 +47,10 @@ export class EscalasService {
     ];
   }
 
-  private applyEscalaPendenciasFilter(where: any, requestedStatus?: StatusEscala): boolean {
+  private applyEscalaPendenciasFilter(
+    where: any,
+    requestedStatus?: StatusEscala,
+  ): boolean {
     if (requestedStatus && requestedStatus !== StatusEscala.PUBLICADA) {
       return false;
     }
@@ -93,7 +101,9 @@ export class EscalasService {
 
   private assertEscalaAbertaParaEdicao(status: StatusEscala) {
     if (status === StatusEscala.ENCERRADA) {
-      throw new BadRequestException('Não é possível alterar uma escala encerrada. Reabra a escala antes de editar.');
+      throw new BadRequestException(
+        'Não é possível alterar uma escala encerrada. Reabra a escala antes de editar.',
+      );
     }
   }
 
@@ -105,7 +115,9 @@ export class EscalasService {
     memberId: string | undefined,
   ): Promise<void> {
     if (!memberId) {
-      throw new ForbiddenException('Acesso negado: usuário não vinculado a um membro.');
+      throw new ForbiddenException(
+        'Acesso negado: usuário não vinculado a um membro.',
+      );
     }
 
     const membership = await this.prisma.ministerioMembro.findUnique({
@@ -114,8 +126,14 @@ export class EscalasService {
       },
     });
 
-    if (!membership || (membership.role !== MinistryRole.LEADER && membership.role !== MinistryRole.ASSISTANT_LEADER)) {
-      throw new ForbiddenException('Acesso negado: você não lidera este ministério.');
+    if (
+      !membership ||
+      (membership.role !== MinistryRole.LEADER &&
+        membership.role !== MinistryRole.ASSISTANT_LEADER)
+    ) {
+      throw new ForbiddenException(
+        'Acesso negado: você não lidera este ministério.',
+      );
     }
   }
 
@@ -130,7 +148,9 @@ export class EscalasService {
     });
 
     if (!ministerio) {
-      throw new BadRequestException('Ministério não encontrado ou não utiliza escalas.');
+      throw new BadRequestException(
+        'Ministério não encontrado ou não utiliza escalas.',
+      );
     }
 
     if (user.role === Role.BASIC) {
@@ -143,7 +163,9 @@ export class EscalasService {
     const eventoIds = dto.eventoIds ?? [];
 
     if (new Set(eventoIds).size !== eventoIds.length) {
-      throw new BadRequestException('Não repita o mesmo evento na criação da escala.');
+      throw new BadRequestException(
+        'Não repita o mesmo evento na criação da escala.',
+      );
     }
 
     if (diasSemana.length > 0 && eventoIds.length > 0) {
@@ -161,7 +183,9 @@ export class EscalasService {
           : ModoCriacaoEscala.VAZIA);
 
     if (modo === ModoCriacaoEscala.EVENTOS && eventoIds.length === 0) {
-      throw new BadRequestException('Selecione ao menos um evento para criar a escala.');
+      throw new BadRequestException(
+        'Selecione ao menos um evento para criar a escala.',
+      );
     }
 
     if (modo === ModoCriacaoEscala.DIAS_SEMANA && diasSemana.length === 0) {
@@ -174,7 +198,9 @@ export class EscalasService {
       (modo === ModoCriacaoEscala.VAZIA &&
         (diasSemana.length > 0 || eventoIds.length > 0))
     ) {
-      throw new BadRequestException('Os dados enviados não correspondem ao modo de criação.');
+      throw new BadRequestException(
+        'Os dados enviados não correspondem ao modo de criação.',
+      );
     }
 
     return { modo, diasSemana, eventoIds };
@@ -319,7 +345,11 @@ export class EscalasService {
     query: EventosElegiveisDto,
     user: JwtPayload,
   ) {
-    await this.assertCanManageScheduleMinistry(tenantId, query.ministerioId, user);
+    await this.assertCanManageScheduleMinistry(
+      tenantId,
+      query.ministerioId,
+      user,
+    );
 
     const eventos = await this.prisma.evento.findMany({
       where: this.buildEventosElegiveisWhere(tenantId, query),
@@ -342,7 +372,11 @@ export class EscalasService {
   }
 
   async create(tenantId: string, dto: CreateEscalaDto, user: JwtPayload) {
-    await this.assertCanManageScheduleMinistry(tenantId, dto.ministerioId, user);
+    await this.assertCanManageScheduleMinistry(
+      tenantId,
+      dto.ministerioId,
+      user,
+    );
     const { modo, diasSemana, eventoIds } = this.resolveModoCriacao(dto);
 
     try {
@@ -434,7 +468,11 @@ export class EscalasService {
     }
   }
 
-  private gerarDiasDoMes(mes: number, ano: number, diasSemana: number[]): Date[] {
+  private gerarDiasDoMes(
+    mes: number,
+    ano: number,
+    diasSemana: number[],
+  ): Date[] {
     const dias: Date[] = [];
     const totalDias = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
     for (let d = 1; d <= totalDias; d++) {
@@ -464,7 +502,10 @@ export class EscalasService {
       where.ano = parseInt(query.ano, 10);
     }
     if (query.pendentesApenas === 'true') {
-      const hasCompatibleStatus = this.applyEscalaPendenciasFilter(where, query.status);
+      const hasCompatibleStatus = this.applyEscalaPendenciasFilter(
+        where,
+        query.status,
+      );
       if (!hasCompatibleStatus) return false;
     }
 
@@ -474,6 +515,7 @@ export class EscalasService {
     const liderados = await this.prisma.ministerioMembro.findMany({
       where: {
         membroId: user.memberId,
+        role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
         ministerio: {
           ativo: true,
           escalas: { some: {} },
@@ -512,7 +554,10 @@ export class EscalasService {
       where.ano = parseInt(query.ano, 10);
     }
     if (query.pendentesApenas === 'true') {
-      const hasCompatibleStatus = this.applyEscalaPendenciasFilter(where, query.status);
+      const hasCompatibleStatus = this.applyEscalaPendenciasFilter(
+        where,
+        query.status,
+      );
       if (!hasCompatibleStatus) return [];
     }
 
@@ -533,13 +578,17 @@ export class EscalasService {
         // Líder/co-líder vê escalas dos seus ministérios
         if (query.ministerioId && !idsLiderados.includes(query.ministerioId)) {
           // Se pediu um ministério específico que não lidera, mostra só onde está escalado
-          this.appendDiaFilter(where, { itens: { some: { membroId: user.memberId } } });
+          this.appendDiaFilter(where, {
+            itens: { some: { membroId: user.memberId } },
+          });
         } else {
           where.ministerioId = { in: idsLiderados };
         }
       } else {
         // Membro comum: vê apenas escalas onde está escalado
-        this.appendDiaFilter(where, { itens: { some: { membroId: user.memberId } } });
+        this.appendDiaFilter(where, {
+          itens: { some: { membroId: user.memberId } },
+        });
       }
     }
 
@@ -550,13 +599,10 @@ export class EscalasService {
           select: { id: true, nome: true },
         },
         _count: {
-          select: { dias: true }
-        }
+          select: { dias: true },
+        },
       },
-      orderBy: [
-        { ano: 'desc' },
-        { mes: 'desc' },
-      ],
+      orderBy: [{ ano: 'desc' }, { mes: 'desc' }],
     });
   }
 
@@ -578,10 +624,7 @@ export class EscalasService {
           },
         },
         dias: {
-          orderBy: [
-            { ordem: 'asc' },
-            { data: 'asc' },
-          ],
+          orderBy: [{ ordem: 'asc' }, { data: 'asc' }],
           include: {
             evento: {
               select: {
@@ -624,6 +667,70 @@ export class EscalasService {
     });
   }
 
+  async exportar(tenantId: string, query: ExportEscalaDto, user: JwtPayload) {
+    const escalas = await this.findVisualizacao(tenantId, query, user);
+    if (escalas.length === 0) {
+      throw new NotFoundException(
+        'Nenhuma escala encontrada para os filtros informados.',
+      );
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { nome: true, logoUrl: true },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Organizacao nao encontrada.');
+    }
+
+    const input: EscalaDocumentInput = {
+      organizationName: tenant.nome,
+      logoUrl: tenant.logoUrl,
+      generatedAt: new Date(),
+      schedules: escalas.map((escala) => ({
+        id: escala.id,
+        ministryName: escala.ministerio.nome,
+        month: escala.mes,
+        year: escala.ano,
+        roles: escala.ministerio.funcoes.map((funcao) => ({
+          id: funcao.id,
+          name: funcao.nome,
+        })),
+        days: escala.dias.map((dia) => ({
+          date: dia.data,
+          title: dia.titulo ?? dia.evento?.titulo,
+          hiddenRoleIds: dia.funcoesOcultas.map((funcao) => funcao.funcaoId),
+          assignments: dia.itens.map((item) => {
+            const membro = item.membro as unknown as {
+              nome: string;
+              nomeExibicao?: string | null;
+            };
+            return {
+              roleId: item.ministerioFuncaoId,
+              memberName:
+                membro.nomeExibicao?.trim() ||
+                membro.nome.trim().split(/\s+/)[0] ||
+                membro.nome,
+            };
+          }),
+        })),
+      })),
+    };
+
+    try {
+      return await this.escalaDocumentRenderer.render(
+        input,
+        query.formato,
+        query.pagina,
+      );
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        'Nao foi possivel gerar a exportacao da escala.',
+      );
+    }
+  }
+
   async findMinhas(
     tenantId: string,
     query: FilterEscalaVisualizacaoDto,
@@ -653,14 +760,26 @@ export class EscalasService {
     };
 
     if (query.pendentesApenas === 'true') {
-      const hasCompatibleStatus = this.applyItemPendenciasFilter(where, escalaWhere, query.status);
+      const hasCompatibleStatus = this.applyItemPendenciasFilter(
+        where,
+        escalaWhere,
+        query.status,
+      );
       if (!hasCompatibleStatus) return [];
     }
 
-    const itens = await this.prisma.escalaItem.findMany({
+    const itens = (await this.prisma.escalaItem.findMany({
       where,
       include: {
-        membro: { select: { id: true, nome: true, nomeExibicao: true, email: true, whatsapp: true } as any },
+        membro: {
+          select: {
+            id: true,
+            nome: true,
+            nomeExibicao: true,
+            email: true,
+            whatsapp: true,
+          } as any,
+        },
         funcao: true,
         escalaDia: {
           include: {
@@ -683,7 +802,7 @@ export class EscalasService {
           },
         },
       },
-    }) as any[];
+    })) as any[];
 
     return itens
       .sort((a, b) => a.escalaDia.data.getTime() - b.escalaDia.data.getTime())
@@ -709,8 +828,8 @@ export class EscalasService {
       include: {
         ministerio: {
           include: {
-            funcoes: { orderBy: { ordem: 'asc' } }
-          }
+            funcoes: { orderBy: { ordem: 'asc' } },
+          },
         },
         dias: {
           orderBy: { ordem: 'asc' },
@@ -729,13 +848,21 @@ export class EscalasService {
             funcoesOcultas: { select: { funcaoId: true } },
             itens: {
               include: {
-                membro: { select: { id: true, nome: true, nomeExibicao: true, email: true, whatsapp: true } as any },
+                membro: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    nomeExibicao: true,
+                    email: true,
+                    whatsapp: true,
+                  } as any,
+                },
                 user: { select: { id: true, nome: true } },
-                funcao: true
-              }
-            }
-          }
-        }
+                funcao: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -745,18 +872,25 @@ export class EscalasService {
 
     if (user.role === Role.BASIC) {
       if (!user.memberId) {
-        throw new ForbiddenException('Acesso negado: usuário não vinculado a um membro.');
+        throw new ForbiddenException(
+          'Acesso negado: usuário não vinculado a um membro.',
+        );
       }
 
       // Checar se é líder/co-líder do ministério
       const membership = await this.prisma.ministerioMembro.findUnique({
         where: {
-          ministerioId_membroId: { ministerioId: escala.ministerioId, membroId: user.memberId },
+          ministerioId_membroId: {
+            ministerioId: escala.ministerioId,
+            membroId: user.memberId,
+          },
         },
       });
 
-      const isLeaderOrAssistant = membership &&
-        (membership.role === MinistryRole.LEADER || membership.role === MinistryRole.ASSISTANT_LEADER);
+      const isLeaderOrAssistant =
+        membership &&
+        (membership.role === MinistryRole.LEADER ||
+          membership.role === MinistryRole.ASSISTANT_LEADER);
 
       if (!isLeaderOrAssistant) {
         // Verificar se está escalado
@@ -768,7 +902,9 @@ export class EscalasService {
           }
         }
         if (!isEscalado) {
-          throw new ForbiddenException('Acesso negado: você não está associado a esta escala.');
+          throw new ForbiddenException(
+            'Acesso negado: você não está associado a esta escala.',
+          );
         }
       }
     }
@@ -776,7 +912,12 @@ export class EscalasService {
     return escala;
   }
 
-  async update(tenantId: string, id: string, dto: UpdateEscalaDto, user: JwtPayload) {
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateEscalaDto,
+    user: JwtPayload,
+  ) {
     const escala = await this.findOne(tenantId, id, user);
 
     if (user.role === Role.BASIC) {
@@ -784,7 +925,10 @@ export class EscalasService {
     }
 
     if (dto.status && dto.status !== escala.status) {
-      const transicaoValida = this.isValidStatusTransition(escala.status, dto.status);
+      const transicaoValida = this.isValidStatusTransition(
+        escala.status,
+        dto.status,
+      );
 
       if (!transicaoValida) {
         throw new BadRequestException(
@@ -805,7 +949,7 @@ export class EscalasService {
     const updated = await this.prisma.escala.update({
       where: { id },
       data,
-      });
+    });
 
     if (shouldNotifyPublished) {
       await this.notifyEscalaPublished(tenantId, id);
@@ -857,7 +1001,8 @@ export class EscalasService {
       .flatMap((dia) => dia.itens)
       .forEach((item) => {
         const user = item.membro.user;
-        if (!user?.id || !user.ativo || notificationsByUser.has(user.id)) return;
+        if (!user?.id || !user.ativo || notificationsByUser.has(user.id))
+          return;
 
         notificationsByUser.set(user.id, {
           funcaoNome: item.funcao.nome,
@@ -877,7 +1022,10 @@ export class EscalasService {
     );
   }
 
-  private getMembroDisplayName(membro: { nome: string; nomeExibicao?: string | null }) {
+  private getMembroDisplayName(membro: {
+    nome: string;
+    nomeExibicao?: string | null;
+  }) {
     return membro.nomeExibicao?.trim() || membro.nome;
   }
 
@@ -920,7 +1068,9 @@ export class EscalasService {
       new Set(
         liderancas
           .map((lideranca) => lideranca.membro.user?.id)
-          .filter((userId): userId is string => Boolean(userId && userId !== excludedUserId)),
+          .filter((userId): userId is string =>
+            Boolean(userId && userId !== excludedUserId),
+          ),
       ),
     );
   }
@@ -1030,7 +1180,9 @@ export class EscalasService {
       : null;
 
     if (dto.eventoId && !evento) {
-      throw new BadRequestException('O evento selecionado nÃ£o Ã© elegÃ­vel para esta escala.');
+      throw new BadRequestException(
+        'O evento selecionado nÃ£o Ã© elegÃ­vel para esta escala.',
+      );
     }
 
     const last = await this.prisma.escalaDia.findFirst({
@@ -1047,7 +1199,7 @@ export class EscalasService {
         titulo: evento?.titulo ?? dto.titulo,
         eventoId: evento?.id,
         ordem,
-      }
+      },
     });
   }
 
@@ -1084,7 +1236,9 @@ export class EscalasService {
     );
 
     if (!evento) {
-      throw new BadRequestException('O evento selecionado nÃ£o Ã© elegÃ­vel para esta escala.');
+      throw new BadRequestException(
+        'O evento selecionado nÃ£o Ã© elegÃ­vel para esta escala.',
+      );
     }
 
     if (
@@ -1119,7 +1273,12 @@ export class EscalasService {
     });
   }
 
-  async reorderDias(tenantId: string, escalaId: string, dto: ReorderDiasDto, user: JwtPayload) {
+  async reorderDias(
+    tenantId: string,
+    escalaId: string,
+    dto: ReorderDiasDto,
+    user: JwtPayload,
+  ) {
     const escala = await this.findOne(tenantId, escalaId, user);
     if (user.role === Role.BASIC) {
       await this.checkMinistryAccess(escala.ministerioId, user.memberId);
@@ -1129,8 +1288,8 @@ export class EscalasService {
 
     await Promise.all(
       dto.diaIds.map((id, index) =>
-        this.prisma.escalaDia.update({ where: { id }, data: { ordem: index } })
-      )
+        this.prisma.escalaDia.update({ where: { id }, data: { ordem: index } }),
+      ),
     );
 
     return { message: 'Dias reordenados com sucesso.' };
@@ -1139,7 +1298,7 @@ export class EscalasService {
   async removeDia(tenantId: string, diaId: string, user: JwtPayload) {
     const dia = await this.prisma.escalaDia.findUnique({
       where: { id: diaId },
-      include: { escala: true }
+      include: { escala: true },
     });
     if (!dia) throw new NotFoundException('Dia não encontrado.');
 
@@ -1165,7 +1324,7 @@ export class EscalasService {
   ) {
     const dia = await this.prisma.escalaDia.findUnique({
       where: { id: diaId },
-      include: { escala: true }
+      include: { escala: true },
     });
     if (!dia) throw new NotFoundException('Dia não encontrado.');
 
@@ -1183,11 +1342,19 @@ export class EscalasService {
 
     const [funcao, vinculoMinisterial] = await Promise.all([
       this.prisma.ministerioFuncao.findFirst({
-        where: { id: dto.ministerioFuncaoId, ministerioId: escala.ministerioId },
+        where: {
+          id: dto.ministerioFuncaoId,
+          ministerioId: escala.ministerioId,
+        },
         select: { id: true },
       }),
       this.prisma.ministerioMembro.findUnique({
-        where: { ministerioId_membroId: { ministerioId: escala.ministerioId, membroId: dto.membroId } },
+        where: {
+          ministerioId_membroId: {
+            ministerioId: escala.ministerioId,
+            membroId: dto.membroId,
+          },
+        },
         include: {
           membro: { select: { tenantId: true, status: true, deletedAt: true } },
           funcoesDisponiveis: { select: { funcaoId: true } },
@@ -1195,23 +1362,34 @@ export class EscalasService {
       }),
     ]);
 
-    if (!funcao) throw new BadRequestException('A função selecionada não pertence ao ministério da escala.');
+    if (!funcao)
+      throw new BadRequestException(
+        'A função selecionada não pertence ao ministério da escala.',
+      );
     if (
       !vinculoMinisterial ||
       vinculoMinisterial.membro.tenantId !== tenantId ||
       vinculoMinisterial.membro.status !== StatusMembro.ATIVO ||
       vinculoMinisterial.membro.deletedAt !== null
     ) {
-      throw new BadRequestException('O membro selecionado não participa deste ministério.');
+      throw new BadRequestException(
+        'O membro selecionado não participa deste ministério.',
+      );
     }
     if (!vinculoMinisterial.podeSerEscalado) {
-      throw new BadRequestException('O membro selecionado não está disponível para escalas neste ministério.');
+      throw new BadRequestException(
+        'O membro selecionado não está disponível para escalas neste ministério.',
+      );
     }
     if (
       vinculoMinisterial.funcoesDisponiveis.length > 0 &&
-      !vinculoMinisterial.funcoesDisponiveis.some((item) => item.funcaoId === dto.ministerioFuncaoId)
+      !vinculoMinisterial.funcoesDisponiveis.some(
+        (item) => item.funcaoId === dto.ministerioFuncaoId,
+      )
     ) {
-      throw new BadRequestException('O membro selecionado não está disponível para esta função.');
+      throw new BadRequestException(
+        'O membro selecionado não está disponível para esta função.',
+      );
     }
 
     const { start, end } = this.getDateRangeForScheduleDay(dia.data);
@@ -1247,7 +1425,8 @@ export class EscalasService {
     });
 
     if (conflitoNoDia) {
-      const ministerio = conflitoNoDia.escalaDia.escala.ministerio?.nome ?? 'outro ministerio';
+      const ministerio =
+        conflitoNoDia.escalaDia.escala.ministerio?.nome ?? 'outro ministerio';
       const funcao = conflitoNoDia.funcao?.nome ?? 'outra funcao';
 
       throw new BadRequestException(
@@ -1273,24 +1452,28 @@ export class EscalasService {
         observacoes: dto.observacoes,
       },
       include: {
-        membro: { select: { id: true, nome: true, nomeExibicao: true, email: true, whatsapp: true } as any },
+        membro: {
+          select: {
+            id: true,
+            nome: true,
+            nomeExibicao: true,
+            email: true,
+            whatsapp: true,
+          } as any,
+        },
         funcao: true,
       },
     });
   }
 
-  async removeMembro(
-    tenantId: string,
-    itemId: string,
-    user: JwtPayload,
-  ) {
+  async removeMembro(tenantId: string, itemId: string, user: JwtPayload) {
     const item = await this.prisma.escalaItem.findUnique({
       where: { id: itemId },
       include: {
         escalaDia: {
-          include: { escala: true }
-        }
-      }
+          include: { escala: true },
+        },
+      },
     });
     if (!item) throw new NotFoundException('Item não encontrado.');
 
@@ -1332,7 +1515,7 @@ export class EscalasService {
         },
         membro: { select: { id: true, nome: true, nomeExibicao: true } },
         funcao: { select: { nome: true } },
-      }
+      },
     });
 
     if (!item) {
@@ -1425,9 +1608,9 @@ export class EscalasService {
       where: { id: itemId },
       include: {
         escalaDia: {
-          include: { escala: true }
-        }
-      }
+          include: { escala: true },
+        },
+      },
     });
 
     if (!item) throw new NotFoundException();

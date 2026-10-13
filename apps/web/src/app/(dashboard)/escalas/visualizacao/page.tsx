@@ -14,15 +14,15 @@ import { StatusBadge } from '@/components/app/status-badge';
 import { PrintDocumentHeader, PrintScheduleFooter } from '@/components/app/print-layout';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
-import { api } from '@/lib/api';
+import { api, buildQuery, HttpError } from '@/lib/api';
 import { STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, Escala, Ministerio } from '@/types';
-import { Calendar, List, AlertTriangle } from 'lucide-react';
+import { Calendar, List, AlertTriangle, Download, ImageDown, LoaderCircle, X } from 'lucide-react';
 
 const MESES = [
   { value: '1', label: 'Janeiro' },
   { value: '2', label: 'Fevereiro' },
-  { value: '3', label: 'Marco' },
+  { value: '3', label: 'Março' },
   { value: '4', label: 'Abril' },
   { value: '5', label: 'Maio' },
   { value: '6', label: 'Junho' },
@@ -34,16 +34,25 @@ const MESES = [
   { value: '12', label: 'Dezembro' },
 ];
 
+interface ExportedImage {
+  blob: Blob;
+  fileName: string;
+}
+
 export default function EscalasVisualizacaoPage() {
   const now = new Date();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [tenantName, setTenantName] = useState('OneElo');
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState(() => new Date());
+  const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null);
+  const [exportChoiceOpen, setExportChoiceOpen] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [imageDownloads, setImageDownloads] = useState<ExportedImage[]>([]);
   const [escalasMinimizadas, setEscalasMinimizadas] = useState<Set<string>>(
     () => new Set(),
   );
-  const { escalas, loading, error, applyFilter, refetch } = useEscalasVisualizacao({
+  const { escalas, loading, error, filter, applyFilter, refetch } = useEscalasVisualizacao({
     mes: String(now.getMonth() + 1),
     ano: String(now.getFullYear()),
   });
@@ -110,6 +119,77 @@ export default function EscalasVisualizacaoPage() {
     window.setTimeout(() => window.print(), 0);
   }
 
+  function downloadFile(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function getExportQuery(formato: 'pdf' | 'png', pagina?: number) {
+    return `/api/escalas/exportacao${buildQuery({ ...filter, formato, pagina })}`;
+  }
+
+  async function handleExportPdf() {
+    setExportChoiceOpen(false);
+    setExporting('pdf');
+    setExportError(null);
+    try {
+      const file = await api.getFile(getExportQuery('pdf'));
+      downloadFile(file.blob, file.fileName || 'escalas.pdf');
+    } catch (err) {
+      setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar o PDF.');
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function handleExportImages() {
+    setExportChoiceOpen(false);
+    setExporting('png');
+    setExportError(null);
+    setImageDownloads([]);
+    try {
+      const firstFile = await api.getFile(getExportQuery('png', 1));
+      const pageCount = Number(firstFile.headers.get('X-Document-Page-Count')) || 1;
+      const files = [firstFile];
+
+      for (let page = 2; page <= pageCount; page += 1) {
+        files.push(await api.getFile(getExportQuery('png', page)));
+      }
+
+      const shareFiles = files.map((file, index) => new File(
+        [file.blob],
+        file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
+        { type: 'image/png' },
+      ));
+      const canShareFiles = typeof navigator.share === 'function'
+        && (typeof navigator.canShare !== 'function' || navigator.canShare({ files: shareFiles }));
+
+      if (canShareFiles) {
+        try {
+          await navigator.share({ files: shareFiles, title: 'Escalas' });
+          return;
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+        }
+      }
+
+      setImageDownloads(files.map((file, index) => ({
+        blob: file.blob,
+        fileName: file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
+      })));
+    } catch (err) {
+      setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar as imagens.');
+    } finally {
+      setExporting(null);
+    }
+  }
+
   function toggleEscalaMinimizada(escalaId: string) {
     setEscalasMinimizadas((current) => {
       const next = new Set(current);
@@ -129,14 +209,91 @@ export default function EscalasVisualizacaoPage() {
         title="Visualização Escalas"
         description="Acompanhe as escalas publicadas ou em rascunho em formato de leitura, sem controles de montagem."
           action={(
-            <button
-              onClick={handlePrint}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50"
-            >
-            Imprimir
-          </button>
-        )}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                onClick={() => setExportChoiceOpen(true)}
+                disabled={loading || escalas.length === 0 || exporting !== null}
+                aria-haspopup="dialog"
+                aria-expanded={exportChoiceOpen}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {exporting === 'pdf' ? 'Gerando PDF…' : exporting === 'png' ? 'Gerando imagens…' : 'Exportar'}
+              </button>
+              <button
+                onClick={handlePrint}
+                disabled={exporting !== null}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Imprimir
+              </button>
+            </div>
+          )}
       />
+
+      {exportChoiceOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-3 sm:items-center sm:p-6">
+          <button
+            type="button"
+            aria-label="Fechar opções de exportação"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setExportChoiceOpen(false)}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-choice-title"
+            aria-describedby="export-choice-description"
+            className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl sm:p-6"
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 id="export-choice-title" className="text-lg font-black text-slate-900">Como deseja exportar?</h2>
+                <p id="export-choice-description" className="mt-1 text-sm text-slate-600">Escolha o formato adequado para imprimir ou compartilhar.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExportChoiceOpen(false)}
+                aria-label="Fechar"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid gap-3">
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                className="flex items-start gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <Download className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700" />
+                <span>
+                  <strong className="block text-sm font-bold text-slate-900">PDF · escala completa em A4</strong>
+                  <span className="mt-1 block text-sm text-slate-600">Visão geral e matriz por membro, para imprimir ou enviar no grupo.</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportImages}
+                className="flex items-start gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <ImageDown className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700" />
+                <span>
+                  <strong className="block text-sm font-bold text-slate-900">PNG · imagens semanais</strong>
+                  <span className="mt-1 block text-sm text-slate-600">Cartões em formato vertical, prontos para compartilhar pelo celular.</span>
+                </span>
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExportChoiceOpen(false)}
+              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+            >
+              Cancelar
+            </button>
+          </section>
+        </div>
+      )}
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <StatCard title="Escalas" value={escalas.length} icon={<Calendar className="w-5 h-5" />} color="indigo" />
@@ -207,6 +364,31 @@ export default function EscalasVisualizacaoPage() {
       {error && (
         <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {exportError && (
+        <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+          {exportError}
+        </div>
+      )}
+
+      {imageDownloads.length > 0 && (
+        <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+          <p className="font-bold">Imagens prontas para download</p>
+          <p className="mt-1 text-indigo-700">Baixe cada semana separadamente para compartilhar onde preferir.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {imageDownloads.map((image, index) => (
+              <button
+                key={image.fileName}
+                onClick={() => downloadFile(image.blob, image.fileName)}
+                className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100"
+              >
+                <Download className="h-4 w-4" />
+                Baixar semana {index + 1}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
