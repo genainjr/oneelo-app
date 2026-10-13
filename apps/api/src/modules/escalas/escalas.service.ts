@@ -686,7 +686,6 @@ export class EscalasService {
     const input: EscalaDocumentInput = {
       organizationName: tenant.nome,
       logoUrl: tenant.logoUrl,
-      generatedAt: new Date(),
       schedules: escalas.map((escala) => ({
         id: escala.id,
         ministryName: escala.ministerio.nome,

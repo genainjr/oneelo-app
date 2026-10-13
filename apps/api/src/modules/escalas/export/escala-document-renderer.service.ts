@@ -69,14 +69,6 @@ function getWeekdayIndex(date: Date) {
   return date.getUTCDay();
 }
 
-function formatGeneratedAt(date: Date) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-    timeZone: 'America/Sao_Paulo',
-  }).format(date);
-}
-
 function capitalize(value: string) {
   return value ? `${value[0].toLocaleUpperCase('pt-BR')}${value.slice(1)}` : value;
 }
@@ -157,7 +149,8 @@ function createPdfPages(schedule: EscalaDocumentSchedule): PdfDocumentPage[] {
 
 function startOfWeek(date: Date) {
   const result = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  result.setUTCDate(result.getUTCDate() - result.getUTCDay());
+  const daysSinceMonday = (result.getUTCDay() + 6) % 7;
+  result.setUTCDate(result.getUTCDate() - daysSinceMonday);
   return result;
 }
 
@@ -173,7 +166,7 @@ function createWeeklyPages(schedules: EscalaDocumentSchedule[]): WeeklyDocumentP
   for (const schedule of schedules) {
     for (const day of schedule.days) {
       const weekStart = startOfWeek(day.date);
-      const key = weekStart.toISOString().slice(0, 10);
+      const key = `${schedule.year}-${schedule.month}-${weekStart.toISOString().slice(0, 10)}`;
       const page = pagesByWeek.get(key) ?? {
         weekStart,
         weekEnd: endOfWeek(weekStart),
@@ -198,7 +191,16 @@ function createWeeklyPages(schedules: EscalaDocumentSchedule[]): WeeklyDocumentP
       ...page,
       events: page.events.sort((a, b) => a.day.date.getTime() - b.day.date.getTime()),
     }))
-    .sort((a, b) => (a.weekStart?.getTime() ?? 0) - (b.weekStart?.getTime() ?? 0));
+    .sort((a, b) => {
+      const scheduleA = a.events[0]?.schedule ?? a.emptySchedule;
+      const scheduleB = b.events[0]?.schedule ?? b.emptySchedule;
+      if (!scheduleA || !scheduleB) {
+        return (a.weekStart?.getTime() ?? 0) - (b.weekStart?.getTime() ?? 0);
+      }
+
+      const monthOrder = scheduleA.year - scheduleB.year || scheduleA.month - scheduleB.month;
+      return monthOrder || (a.weekStart?.getTime() ?? 0) - (b.weekStart?.getTime() ?? 0);
+    });
 }
 
 function formatPeriod(schedule: EscalaDocumentSchedule) {
@@ -357,27 +359,22 @@ function formatWeekPeriod(page: WeeklyDocumentPage) {
   if (!page.weekStart || !page.weekEnd) {
     return page.emptySchedule ? formatPeriod(page.emptySchedule) : '';
   }
-  const startMonth = page.weekStart.getUTCMonth();
-  const endMonth = page.weekEnd.getUTCMonth();
-  const startDay = formatDate(page.weekStart, { day: '2-digit' });
-  const endDay = formatDate(page.weekEnd, { day: '2-digit' });
-  const startMonthLabel = MONTH_LABELS[startMonth] ?? '';
-  const endMonthLabel = MONTH_LABELS[endMonth] ?? '';
-  if (startMonth === endMonth && page.weekStart.getUTCFullYear() === page.weekEnd.getUTCFullYear()) {
-    return `Semana de ${startDay} a ${endDay} de ${endMonthLabel}`;
-  }
-  const startYear = page.weekStart.getUTCFullYear();
-  const endYear = page.weekEnd.getUTCFullYear();
-  return startYear === endYear
-    ? `Semana de ${startDay} de ${startMonthLabel} a ${endDay} de ${endMonthLabel}`
-    : `Semana de ${startDay} de ${startMonthLabel} de ${startYear} a ${endDay} de ${endMonthLabel} de ${endYear}`;
+  const schedule = page.events[0]?.schedule ?? page.emptySchedule;
+  if (!schedule) return '';
+
+  const monthStart = new Date(Date.UTC(schedule.year, schedule.month - 1, 1));
+  const monthEnd = new Date(Date.UTC(schedule.year, schedule.month, 0));
+  const visibleStart = page.weekStart < monthStart ? monthStart : page.weekStart;
+  const visibleEnd = page.weekEnd > monthEnd ? monthEnd : page.weekEnd;
+  const startDay = formatDate(visibleStart, { day: '2-digit' });
+  const endDay = formatDate(visibleEnd, { day: '2-digit' });
+  const monthLabel = MONTH_LABELS[schedule.month - 1] ?? '';
+  return `Semana de ${startDay} a ${endDay} de ${monthLabel}`;
 }
 
 function renderWeeklyPage(
   page: WeeklyDocumentPage,
   input: EscalaDocumentInput,
-  pageIndex: number,
-  totalPages: number,
 ) {
   const title = page.emptySchedule
     ? `Escala - ${page.emptySchedule.ministryName}`
@@ -387,7 +384,7 @@ function renderWeeklyPage(
     ? '<div class="weekly-empty">Não há eventos cadastrados nesta escala no período.</div>'
     : '';
 
-  return `<main class="weekly-sheet" data-week-page="${pageIndex}">${renderHeader(title, formatWeekPeriod(page), input)}<div class="weekly-events">${events}${emptyMessage}</div><footer>Gerado em ${escapeHtml(formatGeneratedAt(input.generatedAt))} · Imagem ${pageIndex} de ${totalPages}</footer></main>`;
+  return `<main class="weekly-sheet">${renderHeader(title, formatWeekPeriod(page), input)}<div class="weekly-events">${events}${emptyMessage}</div></main>`;
 }
 
 function renderStyles() {
@@ -399,7 +396,7 @@ function renderStyles() {
     .pdf-page:last-child { break-after: auto; page-break-after: auto; }
     .document-header { min-height: 22mm; display: grid; grid-template-columns: 22mm minmax(0, 1fr) 58mm; align-items: center; gap: 4mm; margin-bottom: 4mm; }
     .document-header:not(:has(.tenant-logo)) { grid-template-columns: minmax(0, 1fr) 58mm; }
-    .tenant-logo { width: 20mm; height: 20mm; object-fit: contain; }
+    .tenant-logo { width: 20mm; height: 20mm; object-fit: contain; background: transparent; }
     .header-title { grid-column: 2; min-width: 0; justify-self: center; text-align: center; }
     .document-header:not(:has(.tenant-logo)) .header-title { grid-column: 1; }
     .header-title h1 { margin: 0; color: #101827; font-size: 19pt; line-height: 1.05; font-weight: 800; text-align: center; }
@@ -409,7 +406,7 @@ function renderStyles() {
     .organization { display: block; color: #475569; font-size: 8.5pt; text-align: right; font-weight: 700; overflow-wrap: anywhere; }
     .brand { position: absolute; left: 2mm; bottom: 1mm; display: flex; align-items: center; gap: 2mm; color: #334155; font-size: 8pt; font-weight: 700; }
     .brand small { display: block; color: #64748b; font-size: 6.5pt; font-weight: 500; }
-    .lookup-labs-logo { width: 8mm; height: 8mm; object-fit: contain; }
+    .lookup-labs-logo { width: 8mm; height: 8mm; object-fit: contain; background: transparent; mix-blend-mode: multiply; }
     .page-context { margin: -2mm 0 2mm; color: #64748b; font-size: 7.5pt; text-align: center; }
     .weekday-group { margin: 0 0 3mm; break-inside: auto; page-break-inside: auto; }
     .weekday-group h2 { margin: 0; padding: 1.5mm 2mm; border-radius: 2mm 2mm 0 0; background: #203d61; color: #fff; font-size: 8pt; line-height: 1.1; text-transform: uppercase; break-after: avoid-page; page-break-after: avoid; }
@@ -435,17 +432,17 @@ function renderStyles() {
     .role-chip { display: inline-block; margin: 0.35mm; padding: 0.5mm 0.9mm; border-radius: 1mm; background: var(--role-color); color: #1f2937; font-size: 6pt; }
     .no-assignment { color: #c3cbd6; }
     .empty { padding: 8mm; border: 0.3mm dashed #cbd5e1; color: #64748b; text-align: center; font-size: 11pt; }
-    .weekly-sheet { width: 1080px; min-height: 100vh; padding: 46px 48px 36px; background: #f3f5f8; color: #111827; }
-    .weekly-sheet .document-header { grid-template-columns: 92px minmax(0, 1fr) 260px; gap: 28px; min-height: 150px; margin-bottom: 28px; }
-    .weekly-sheet .document-header:not(:has(.tenant-logo)) { grid-template-columns: minmax(0, 1fr) 260px; }
+    .weekly-sheet { width: 1080px; min-height: 100vh; padding: 46px 48px 36px; background: #fff; color: #111827; }
+    .weekly-sheet .document-header { grid-template-columns: 92px minmax(0, 1fr) minmax(290px, 340px); gap: 20px; height: 150px; min-height: 150px; margin-bottom: 28px; }
+    .weekly-sheet .document-header:not(:has(.tenant-logo)) { grid-template-columns: minmax(0, 1fr) minmax(290px, 340px); }
     .weekly-sheet .header-title { grid-column: 2; }
     .weekly-sheet .document-header:not(:has(.tenant-logo)) .header-title { grid-column: 1; }
-    .weekly-sheet .header-meta { grid-column: 3; max-width: 260px; }
+    .weekly-sheet .header-meta { grid-column: 3; max-width: 340px; }
     .weekly-sheet .document-header:not(:has(.tenant-logo)) .header-meta { grid-column: 2; }
-    .weekly-sheet .tenant-logo { width: 84px; height: 84px; }
+    .weekly-sheet .tenant-logo { width: 84px; height: 84px; background: transparent; }
     .weekly-sheet .header-title h1 { font-size: 54px; }
-    .weekly-sheet .header-period { margin-bottom: 8px; font-size: 31px; }
-    .weekly-sheet .organization { font-size: 23px; font-weight: 500; }
+    .weekly-sheet .header-period { margin-bottom: 8px; font-size: 21px; line-height: 1.2; white-space: nowrap; }
+    .weekly-sheet .organization { font-size: 20px; font-weight: 500; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
     .weekly-sheet .brand { display: none; }
     .weekly-events { display: grid; gap: 28px; }
     .event-card { overflow: hidden; border: 1px solid #d8dee8; border-radius: 22px; background: #fff; }
@@ -461,7 +458,6 @@ function renderStyles() {
     .assignment-role { color: #657184; font-size: 22px; }
     .assignment-row strong { color: #111827; font-size: 27px; line-height: 1.2; overflow-wrap: anywhere; }
     .empty-assignments, .weekly-empty { padding: 26px; color: #64748b; font-size: 23px; text-align: center; }
-    .weekly-sheet footer { margin-top: 28px; color: #64748b; font-size: 16px; text-align: right; }
     @media screen { body:has(.pdf-page) { background: #e5e7eb; } .pdf-page { width: 1123px; min-height: 794px; padding: 35px 35px 70px; margin-bottom: 16px; } .pdf-page .brand { left: 35px; bottom: 16px; } }
   </style>`;
 }
@@ -497,7 +493,7 @@ export class EscalaDocumentRendererService {
       });
       const body = format === 'pdf'
         ? pdfPages.map((pdfPage) => renderPdfPage(pdfPage, input)).join('')
-        : renderWeeklyPage(weeklyPages[selectedPage - 1], input, selectedPage, totalPages);
+        : renderWeeklyPage(weeklyPages[selectedPage - 1], input);
 
       await page.setContent(
         `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8" />${renderStyles()}</head><body>${body}</body></html>`,

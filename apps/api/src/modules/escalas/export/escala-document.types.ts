@@ -27,7 +27,6 @@ export interface EscalaDocumentSchedule {
 export interface EscalaDocumentInput {
   organizationName: string;
   logoUrl?: string | null;
-  generatedAt: Date;
   schedules: EscalaDocumentSchedule[];
 }
 
