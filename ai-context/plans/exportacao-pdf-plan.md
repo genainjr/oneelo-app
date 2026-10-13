@@ -23,13 +23,12 @@ A primeira resposta do endpoint entrega os arquivos diretamente. PDF e PNG nao s
 - o PDF de Escalas apresenta duas visoes: escala geral e matriz geral por membro, em paginas A4 paisagem;
 - a matriz por membro contem todas as pessoas nas linhas e as datas/eventos nas colunas; cada celula mostra a funcao ou funcoes daquela pessoa;
 - a matriz usa titulo generico, como `Escala por membro`, sem texto especifico de um ministerio;
-- o PNG de Escalas usa uma composicao vertical propria para celular, com cartoes dos eventos agrupados por semana civil (domingo a sabado);
+- o PNG de Escalas usa uma composicao vertical propria para celular, com cartoes dos eventos agrupados por semana civil (segunda a domingo); o intervalo exibido no cabecalho fica limitado ao mes da escala;
 - e gerado um PNG por semana que contenha dias da escala dentro do periodo filtrado; nenhum evento e omitido por ser passado ou por aparecer apenas nos exemplos visuais;
 - as imagens de referencia em `Proposta_Impressao/` definem direcao visual, nao datas, selecao de eventos nem conteudo fixo;
-- a visualizacao oferece um unico botao `Exportar`; ao aciona-lo, o usuario escolhe PDF ou PNG;
-- as opcoes explicam o resultado: `PDF - escala completa em A4, para imprimir ou compartilhar` e `PNG - imagens semanais para compartilhar no celular`;
+- a visualizacao oferece um unico botao `Compartilhar`; ao aciona-lo, o usuario escolhe PDF ou Imagem, sem textos explicativos adicionais;
 - `Imprimir` continua sendo uma acao separada para o fluxo existente de impressao do navegador;
-- no mobile, a interface compartilha os PNGs semanais com os apps disponiveis; no desktop, cada PNG pode ser baixado individualmente;
+- apos a geracao do arquivo, o usuario aciona explicitamente `Compartilhar` para abrir o compartilhamento nativo, preservando a ativacao do toque exigida por navegadores mobile; cada PNG tambem pode ser compartilhado individualmente ou baixado;
 - a exportacao e sincrona e nao cria jobs;
 - nao ha storage, historico, retencao, listagem de arquivos ou re-download;
 - autorizacao e isolamento multitenant sao aplicados no backend, segundo as regras do modulo de origem;
@@ -69,7 +68,7 @@ Gerar uma imagem vertical por semana civil com eventos, usando cabecalho com nom
 ## Arquitetura alvo da feature
 
 ```text
-Botao Exportar
+Botao Compartilhar
   -> usuario escolhe PDF (escala A4 para imprimir/compartilhar) ou PNG (imagens semanais para compartilhar)
   -> endpoint autenticado da origem
   -> service aplica tenant e autorizacao contextual
@@ -147,27 +146,29 @@ Critérios de aceite:
 Objetivo: disponibilizar a acao de exportacao sem quebrar a impressao atual.
 
 - [x] Adicionar acoes iniciais de exportacao PDF e imagem na visualizacao de Escalas.
-- [x] Substituir as duas acoes por um unico botao `Exportar` que abre a escolha do formato.
-- [x] Identificar na escolha o conteudo e uso de cada formato: escala A4 completa para PDF; imagens semanais para PNG.
+- [x] Substituir as acoes por um unico botao `Compartilhar` que abre a escolha do formato.
+- [x] Manter apenas as opcoes `PDF` e `Imagem`, sem textos explicativos no seletor.
 - [x] Usar o cliente de API autenticado existente para requisitar o arquivo.
 - [x] Tratar loading, erro e download no navegador.
 - [x] Manter `Imprimir` como fallback durante a validacao inicial.
-- [ ] Verificar acessibilidade e comportamento em viewport mobile, sem depender da impressao mobile.
+- [ ] Verificar acessibilidade e comportamento em viewport mobile, incluindo abertura do compartilhamento nativo no iPhone.
 
 Critérios de aceite:
 
-- existe um unico botao `Exportar`, seguido da escolha entre PDF e PNG;
-- cada opcao informa o conteudo e o uso esperado, incluindo que PDF tambem pode ser compartilhado;
+- existe um unico botao `Compartilhar`, seguido da escolha entre PDF e Imagem;
+- apos a geracao, um toque explicito abre o compartilhamento nativo quando suportado; ha fallback para download;
 - `Imprimir` continua claramente separado da exportacao;
 - falha de exportacao nao deixa a pagina em estado bloqueado;
 - o download mantem um nome de arquivo legivel e previsivel.
 
 ### Resultado parcial da Etapa 2 - 2026-10-09
 
-- A primeira versao da visualizacao possuia acoes separadas para `Exportar PDF`, `Exportar imagem` e `Imprimir`. Agora ha um unico botao `Exportar`; a escolha informa que o PDF traz a escala completa em A4 para imprimir/compartilhar e que o PNG traz cartoes semanais para compartilhar no celular. `Imprimir` permanece separado.
+- A primeira versao da visualizacao possuia acoes separadas para `Exportar PDF`, `Exportar imagem` e `Imprimir`. A acao principal agora se chama `Compartilhar` e abre um seletor simples com `PDF` e `Imagem`; `Imprimir` permanece separado.
 - O cliente autenticado recebe `Blob`, nome de arquivo e contador de paginas. PDF baixa como attachment; imagens sao solicitadas individualmente.
-- Em navegadores com Web Share API para arquivos, as imagens sao entregues ao compartilhamento nativo. Nos demais casos, cada PNG e baixado individualmente.
+- PDF e imagens sao preparados primeiro; um segundo toque explicito chama a Web Share API para preservar a ativacao do usuario. Em navegadores sem suporte, permanece o download individual, e PNGs podem ser compartilhados um por vez quando o navegador nao aceita multiplos arquivos.
 - Loading, falha e indisponibilidade de dados sao tratados sem bloquear a visualizacao ou a impressao existente.
+- Em mobile, `Compartilhar` e exibido acima de `Imprimir`, com acoes em largura total para evitar quebra do cabecalho.
+- O teste de uso em iPhone mostrou que a chamada da Web Share API nao deve ocorrer automaticamente apos requisicoes de rede: a ativacao transitoria do toque pode expirar. Agora os arquivos sao preparados primeiro e o usuario toca em `Compartilhar` para abrir a folha nativa; ha acao individual para cada PNG quando o navegador nao aceita compartilhar varios arquivos juntos.
 
 ## Etapa 3 - Layout aprovado e validacao de PDF e imagens de Escalas
 
@@ -210,6 +211,7 @@ Critérios de aceite:
 - A execucao anterior com uma Escala de 31 dias e duas funcoes gerou um PDF de 58.182 bytes e tres PNGs individuais; esses numeros registram a versao anterior e nao definem a paginacao final.
 - Os testes unitarios agora cobrem o escopo de visualizacao: BASIC sem lideranca nao consulta Escalas e lider/co-lider fica limitado aos ministerios associados. A consulta continua iniciando por `tenantId`.
 - Ainda e necessaria a validacao manual, com dados reais, de logo remoto, fallback sem logo, equivalencia visual e acesso entre tenants antes de considerar a Etapa 3 concluida.
+- O PNG agrupa eventos por semana de segunda a domingo, mas limita o intervalo do cabecalho as datas pertencentes ao mes da escala. O fundo da imagem semanal e branco para coincidir com o fundo da logo e da impressao; o cabecalho reserva largura para manter o periodo legivel a direita, sem rodape de geracao.
 
 ## Etapa 4 - Agenda no mesmo contrato
 

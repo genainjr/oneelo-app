@@ -17,7 +17,7 @@ import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
 import { api, buildQuery, HttpError } from '@/lib/api';
 import { STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, Escala, Ministerio } from '@/types';
-import { Calendar, List, AlertTriangle, Download, ImageDown, LoaderCircle, X } from 'lucide-react';
+import { Calendar, List, AlertTriangle, Download, FileText, ImageDown, LoaderCircle, Share2, X } from 'lucide-react';
 
 const MESES = [
   { value: '1', label: 'Janeiro' },
@@ -34,7 +34,7 @@ const MESES = [
   { value: '12', label: 'Dezembro' },
 ];
 
-interface ExportedImage {
+interface PreparedFile {
   blob: Blob;
   fileName: string;
 }
@@ -48,7 +48,7 @@ export default function EscalasVisualizacaoPage() {
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null);
   const [exportChoiceOpen, setExportChoiceOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [imageDownloads, setImageDownloads] = useState<ExportedImage[]>([]);
+  const [preparedFiles, setPreparedFiles] = useState<PreparedFile[]>([]);
   const [escalasMinimizadas, setEscalasMinimizadas] = useState<Set<string>>(
     () => new Set(),
   );
@@ -138,9 +138,13 @@ export default function EscalasVisualizacaoPage() {
     setExportChoiceOpen(false);
     setExporting('pdf');
     setExportError(null);
+    setPreparedFiles([]);
     try {
       const file = await api.getFile(getExportQuery('pdf'));
-      downloadFile(file.blob, file.fileName || 'escalas.pdf');
+      setPreparedFiles([{
+        blob: file.blob,
+        fileName: file.fileName || 'escalas.pdf',
+      }]);
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar o PDF.');
     } finally {
@@ -152,7 +156,7 @@ export default function EscalasVisualizacaoPage() {
     setExportChoiceOpen(false);
     setExporting('png');
     setExportError(null);
-    setImageDownloads([]);
+    setPreparedFiles([]);
     try {
       const firstFile = await api.getFile(getExportQuery('png', 1));
       const pageCount = Number(firstFile.headers.get('X-Document-Page-Count')) || 1;
@@ -162,24 +166,7 @@ export default function EscalasVisualizacaoPage() {
         files.push(await api.getFile(getExportQuery('png', page)));
       }
 
-      const shareFiles = files.map((file, index) => new File(
-        [file.blob],
-        file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
-        { type: 'image/png' },
-      ));
-      const canShareFiles = typeof navigator.share === 'function'
-        && (typeof navigator.canShare !== 'function' || navigator.canShare({ files: shareFiles }));
-
-      if (canShareFiles) {
-        try {
-          await navigator.share({ files: shareFiles, title: 'Escalas' });
-          return;
-        } catch (err) {
-          if (err instanceof DOMException && err.name === 'AbortError') return;
-        }
-      }
-
-      setImageDownloads(files.map((file, index) => ({
+      setPreparedFiles(files.map((file, index) => ({
         blob: file.blob,
         fileName: file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
       })));
@@ -187,6 +174,36 @@ export default function EscalasVisualizacaoPage() {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar as imagens.');
     } finally {
       setExporting(null);
+    }
+  }
+
+  async function handleSharePreparedFiles(filesToShare: PreparedFile[] = preparedFiles) {
+    if (filesToShare.length === 0) return;
+
+    if (typeof navigator.share !== 'function') {
+      setExportError('O compartilhamento nativo não está disponível neste navegador. Use os botões de download.');
+      return;
+    }
+
+    const files = filesToShare.map((file) => new File(
+      [file.blob],
+      file.fileName,
+      { type: file.fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png' },
+    ));
+
+    if (typeof navigator.canShare === 'function' && !navigator.canShare({ files })) {
+      setExportError(files.length > 1
+        ? 'Este navegador não permite compartilhar esses arquivos juntos. Compartilhe cada imagem separadamente.'
+        : 'Este navegador não permite compartilhar este arquivo. Use o botão de download.');
+      return;
+    }
+
+    setExportError(null);
+    try {
+      await navigator.share({ files, title: 'Escalas' });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setExportError('Não foi possível abrir o compartilhamento. Você ainda pode baixar os arquivos.');
     }
   }
 
@@ -209,26 +226,27 @@ export default function EscalasVisualizacaoPage() {
         title="Visualização Escalas"
         description="Acompanhe as escalas publicadas ou em rascunho em formato de leitura, sem controles de montagem."
           action={(
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
               <button
                 onClick={() => setExportChoiceOpen(true)}
                 disabled={loading || escalas.length === 0 || exporting !== null}
                 aria-haspopup="dialog"
                 aria-expanded={exportChoiceOpen}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
-                {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                {exporting === 'pdf' ? 'Gerando PDF…' : exporting === 'png' ? 'Gerando imagens…' : 'Exportar'}
+                {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                {exporting === 'pdf' ? 'Preparando PDF…' : exporting === 'png' ? 'Preparando imagens…' : 'Compartilhar'}
               </button>
               <button
                 onClick={handlePrint}
                 disabled={exporting !== null}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 Imprimir
               </button>
             </div>
           )}
+        stackActionsOnMobile
       />
 
       {exportChoiceOpen && (
@@ -243,13 +261,11 @@ export default function EscalasVisualizacaoPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="export-choice-title"
-            aria-describedby="export-choice-description"
             className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl sm:p-6"
           >
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h2 id="export-choice-title" className="text-lg font-black text-slate-900">Como deseja exportar?</h2>
-                <p id="export-choice-description" className="mt-1 text-sm text-slate-600">Escolha o formato adequado para imprimir ou compartilhar.</p>
+                <h2 id="export-choice-title" className="text-lg font-black text-slate-900">Compartilhar como</h2>
               </div>
               <button
                 type="button"
@@ -264,24 +280,18 @@ export default function EscalasVisualizacaoPage() {
               <button
                 type="button"
                 onClick={handleExportPdf}
-                className="flex items-start gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <Download className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700" />
-                <span>
-                  <strong className="block text-sm font-bold text-slate-900">PDF · escala completa em A4</strong>
-                  <span className="mt-1 block text-sm text-slate-600">Visão geral e matriz por membro, para imprimir ou enviar no grupo.</span>
-                </span>
+                <FileText className="h-5 w-5 shrink-0 text-indigo-700" />
+                <strong className="text-sm font-bold text-slate-900">PDF</strong>
               </button>
               <button
                 type="button"
                 onClick={handleExportImages}
-                className="flex items-start gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <ImageDown className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700" />
-                <span>
-                  <strong className="block text-sm font-bold text-slate-900">PNG · imagens semanais</strong>
-                  <span className="mt-1 block text-sm text-slate-600">Cartões em formato vertical, prontos para compartilhar pelo celular.</span>
-                </span>
+                <ImageDown className="h-5 w-5 shrink-0 text-indigo-700" />
+                <strong className="text-sm font-bold text-slate-900">Imagem</strong>
               </button>
             </div>
             <button
@@ -292,6 +302,40 @@ export default function EscalasVisualizacaoPage() {
               Cancelar
             </button>
           </section>
+        </div>
+      )}
+
+      {preparedFiles.length > 0 && (
+        <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleSharePreparedFiles()}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+            >
+              <Share2 className="h-4 w-4" />
+              Compartilhar
+            </button>
+            {preparedFiles.map((file, index) => (
+              <div key={file.fileName} className="flex flex-wrap gap-2">
+                {preparedFiles.length > 1 && (
+                  <button
+                    onClick={() => handleSharePreparedFiles([file])}
+                    className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Compartilhar imagem {index + 1}
+                  </button>
+                )}
+                <button
+                  onClick={() => downloadFile(file.blob, file.fileName)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100"
+                >
+                  <Download className="h-4 w-4" />
+                  {file.fileName.toLowerCase().endsWith('.pdf') ? 'Baixar PDF' : `Baixar imagem ${index + 1}`}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -370,25 +414,6 @@ export default function EscalasVisualizacaoPage() {
       {exportError && (
         <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
           {exportError}
-        </div>
-      )}
-
-      {imageDownloads.length > 0 && (
-        <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
-          <p className="font-bold">Imagens prontas para download</p>
-          <p className="mt-1 text-indigo-700">Baixe cada semana separadamente para compartilhar onde preferir.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {imageDownloads.map((image, index) => (
-              <button
-                key={image.fileName}
-                onClick={() => downloadFile(image.blob, image.fileName)}
-                className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100"
-              >
-                <Download className="h-4 w-4" />
-                Baixar semana {index + 1}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
