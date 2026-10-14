@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
@@ -39,6 +39,12 @@ interface PreparedFile {
   fileName: string;
 }
 
+interface PreparedExportCacheEntry {
+  key: string;
+  promise: Promise<PreparedFile[]>;
+  startedAt: number;
+}
+
 export default function EscalasVisualizacaoPage() {
   const now = new Date();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
@@ -49,6 +55,7 @@ export default function EscalasVisualizacaoPage() {
   const [exportChoiceOpen, setExportChoiceOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [preparedFiles, setPreparedFiles] = useState<PreparedFile[]>([]);
+  const exportCacheRef = useRef<{ pdf?: PreparedExportCacheEntry; png?: PreparedExportCacheEntry }>({});
   const [escalasMinimizadas, setEscalasMinimizadas] = useState<Set<string>>(
     () => new Set(),
   );
@@ -129,20 +136,75 @@ export default function EscalasVisualizacaoPage() {
     return `/api/escalas/exportacao${buildQuery({ ...filter, formato, pagina })}`;
   }
 
+  async function fetchPdfExport(): Promise<PreparedFile[]> {
+    const file = await api.getFile(getExportQuery('pdf'));
+    return [{
+      blob: file.blob,
+      fileName: file.fileName || 'escalas.pdf',
+    }];
+  }
+
+  async function fetchPngExport(): Promise<PreparedFile[]> {
+    const firstFile = await api.getFile(getExportQuery('png', 1));
+    const files = [firstFile];
+    const rawCount = firstFile.headers.get('X-Document-Page-Count');
+    const headerCount = rawCount === null ? Number.NaN : Number(rawCount);
+
+    if (Number.isNaN(headerCount)) {
+      for (let page = 2; page <= 30; page += 1) {
+        try {
+          files.push(await api.getFile(getExportQuery('png', page)));
+        } catch (err) {
+          if (err instanceof HttpError && (err.status === 400 || err.status === 404)) break;
+          throw err;
+        }
+      }
+    } else if (headerCount > files.length) {
+      const remaining = await Promise.all(
+        Array.from({ length: headerCount - files.length }, (_, index) =>
+          api.getFile(getExportQuery('png', files.length + index + 1))),
+      );
+      files.push(...remaining);
+    }
+
+    return files.map((file, index) => ({
+      blob: file.blob,
+      fileName: file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
+    }));
+  }
+
+  function getPreparedExport(kind: 'pdf' | 'png'): Promise<PreparedFile[]> {
+    const key = JSON.stringify(filter);
+    const cached = exportCacheRef.current[kind];
+    if (cached && cached.key === key && Date.now() - cached.startedAt < 60_000) {
+      return cached.promise;
+    }
+
+    const promise = kind === 'pdf' ? fetchPdfExport() : fetchPngExport();
+    exportCacheRef.current[kind] = { key, promise, startedAt: Date.now() };
+    promise.catch(() => {
+      if (exportCacheRef.current[kind]?.promise === promise) {
+        exportCacheRef.current[kind] = undefined;
+      }
+    });
+    return promise;
+  }
+
+  function prefetchExports() {
+    getPreparedExport('pdf');
+    getPreparedExport('png');
+  }
+
   async function handleExportPdf() {
     setExportChoiceOpen(false);
     setExporting('pdf');
     setExportError(null);
     setPreparedFiles([]);
     try {
-      const file = await api.getFile(getExportQuery('pdf'));
-      const prepared = [{
-        blob: file.blob,
-        fileName: file.fileName || 'escalas.pdf',
-      }];
+      const prepared = await getPreparedExport('pdf');
       setPreparedFiles(prepared);
       setExporting(null);
-      await deliverPreparedFiles(prepared);
+      await handleSharePreparedFiles(prepared);
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar o PDF.');
     } finally {
@@ -156,30 +218,15 @@ export default function EscalasVisualizacaoPage() {
     setExportError(null);
     setPreparedFiles([]);
     try {
-      const firstFile = await api.getFile(getExportQuery('png', 1));
-      const pageCount = Number(firstFile.headers.get('X-Document-Page-Count')) || 1;
-      const remainingFiles = await Promise.all(
-        Array.from({ length: pageCount - 1 }, (_, index) =>
-          api.getFile(getExportQuery('png', index + 2))),
-      );
-      const files = [firstFile, ...remainingFiles];
-      const prepared = files.map((file, index) => ({
-        blob: file.blob,
-        fileName: file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
-      }));
+      const prepared = await getPreparedExport('png');
       setPreparedFiles(prepared);
       setExporting(null);
-      await deliverPreparedFiles(prepared);
+      await handleSharePreparedFiles(prepared);
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar as imagens.');
     } finally {
       setExporting(null);
     }
-  }
-
-  async function deliverPreparedFiles(files: PreparedFile[]) {
-    const shared = await handleSharePreparedFiles(files, { auto: true });
-    if (!shared) downloadAllFiles(files);
   }
 
   function downloadAllFiles(filesToDownload: PreparedFile[] = preparedFiles) {
@@ -188,19 +235,12 @@ export default function EscalasVisualizacaoPage() {
     });
   }
 
-  async function handleSharePreparedFiles(
-    filesToShare: PreparedFile[] = preparedFiles,
-    options?: { auto?: boolean },
-  ): Promise<boolean> {
-    const auto = options?.auto ?? false;
-
-    if (filesToShare.length === 0) return false;
+  async function handleSharePreparedFiles(filesToShare: PreparedFile[] = preparedFiles) {
+    if (filesToShare.length === 0) return;
 
     if (typeof navigator.share !== 'function') {
-      if (!auto) {
-        setExportError('O compartilhamento nativo não está disponível neste navegador. Use o botão de download.');
-      }
-      return false;
+      setExportError('O compartilhamento nativo não está disponível neste navegador. Use o botão de download.');
+      return;
     }
 
     const files = filesToShare.map((file) => new File(
@@ -210,24 +250,18 @@ export default function EscalasVisualizacaoPage() {
     ));
 
     if (typeof navigator.canShare === 'function' && !navigator.canShare({ files })) {
-      if (!auto) {
-        setExportError(files.length > 1
-          ? 'Este navegador não permite compartilhar esses arquivos juntos. Use o botão de download.'
-          : 'Este navegador não permite compartilhar este arquivo. Use o botão de download.');
-      }
-      return false;
+      setExportError(files.length > 1
+        ? 'Este navegador não permite compartilhar esses arquivos juntos. Use o botão de download.'
+        : 'Este navegador não permite compartilhar este arquivo. Use o botão de download.');
+      return;
     }
 
     setExportError(null);
     try {
       await navigator.share({ files, title: 'Escalas' });
-      return true;
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return true;
-      if (!auto) {
-        setExportError('Não foi possível abrir o compartilhamento. Você ainda pode baixar os arquivos.');
-      }
-      return false;
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setExportError('Não foi possível abrir o compartilhamento. Você ainda pode baixar os arquivos.');
     }
   }
 
@@ -251,7 +285,10 @@ export default function EscalasVisualizacaoPage() {
         description="Acompanhe as escalas publicadas ou em rascunho em formato de leitura, sem controles de montagem."
         action={(
           <button
-            onClick={() => setExportChoiceOpen(true)}
+            onClick={() => {
+              setExportChoiceOpen(true);
+              prefetchExports();
+            }}
             disabled={loading || escalas.length === 0 || exporting !== null}
             aria-haspopup="dialog"
             aria-expanded={exportChoiceOpen}
