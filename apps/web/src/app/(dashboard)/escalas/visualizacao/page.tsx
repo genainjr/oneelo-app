@@ -136,10 +136,13 @@ export default function EscalasVisualizacaoPage() {
     setPreparedFiles([]);
     try {
       const file = await api.getFile(getExportQuery('pdf'));
-      setPreparedFiles([{
+      const prepared = [{
         blob: file.blob,
         fileName: file.fileName || 'escalas.pdf',
-      }]);
+      }];
+      setPreparedFiles(prepared);
+      setExporting(null);
+      await deliverPreparedFiles(prepared);
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar o PDF.');
     } finally {
@@ -155,21 +158,28 @@ export default function EscalasVisualizacaoPage() {
     try {
       const firstFile = await api.getFile(getExportQuery('png', 1));
       const pageCount = Number(firstFile.headers.get('X-Document-Page-Count')) || 1;
-      const files = [firstFile];
-
-      for (let page = 2; page <= pageCount; page += 1) {
-        files.push(await api.getFile(getExportQuery('png', page)));
-      }
-
-      setPreparedFiles(files.map((file, index) => ({
+      const remainingFiles = await Promise.all(
+        Array.from({ length: pageCount - 1 }, (_, index) =>
+          api.getFile(getExportQuery('png', index + 2))),
+      );
+      const files = [firstFile, ...remainingFiles];
+      const prepared = files.map((file, index) => ({
         blob: file.blob,
         fileName: file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
-      })));
+      }));
+      setPreparedFiles(prepared);
+      setExporting(null);
+      await deliverPreparedFiles(prepared);
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar as imagens.');
     } finally {
       setExporting(null);
     }
+  }
+
+  async function deliverPreparedFiles(files: PreparedFile[]) {
+    const shared = await handleSharePreparedFiles(files, { auto: true });
+    if (!shared) downloadAllFiles(files);
   }
 
   function downloadAllFiles(filesToDownload: PreparedFile[] = preparedFiles) {
@@ -178,12 +188,19 @@ export default function EscalasVisualizacaoPage() {
     });
   }
 
-  async function handleSharePreparedFiles(filesToShare: PreparedFile[] = preparedFiles) {
-    if (filesToShare.length === 0) return;
+  async function handleSharePreparedFiles(
+    filesToShare: PreparedFile[] = preparedFiles,
+    options?: { auto?: boolean },
+  ): Promise<boolean> {
+    const auto = options?.auto ?? false;
+
+    if (filesToShare.length === 0) return false;
 
     if (typeof navigator.share !== 'function') {
-      setExportError('O compartilhamento nativo não está disponível neste navegador. Use o botão de download.');
-      return;
+      if (!auto) {
+        setExportError('O compartilhamento nativo não está disponível neste navegador. Use o botão de download.');
+      }
+      return false;
     }
 
     const files = filesToShare.map((file) => new File(
@@ -193,18 +210,24 @@ export default function EscalasVisualizacaoPage() {
     ));
 
     if (typeof navigator.canShare === 'function' && !navigator.canShare({ files })) {
-      setExportError(files.length > 1
-        ? 'Este navegador não permite compartilhar esses arquivos juntos. Use o botão de download.'
-        : 'Este navegador não permite compartilhar este arquivo. Use o botão de download.');
-      return;
+      if (!auto) {
+        setExportError(files.length > 1
+          ? 'Este navegador não permite compartilhar esses arquivos juntos. Use o botão de download.'
+          : 'Este navegador não permite compartilhar este arquivo. Use o botão de download.');
+      }
+      return false;
     }
 
     setExportError(null);
     try {
       await navigator.share({ files, title: 'Escalas' });
+      return true;
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      setExportError('Não foi possível abrir o compartilhamento. Você ainda pode baixar os arquivos.');
+      if (err instanceof DOMException && err.name === 'AbortError') return true;
+      if (!auto) {
+        setExportError('Não foi possível abrir o compartilhamento. Você ainda pode baixar os arquivos.');
+      }
+      return false;
     }
   }
 
