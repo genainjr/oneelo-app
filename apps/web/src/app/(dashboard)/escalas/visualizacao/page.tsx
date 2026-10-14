@@ -176,7 +176,7 @@ export default function EscalasVisualizacaoPage() {
   function getPreparedExport(kind: 'pdf' | 'png'): Promise<PreparedFile[]> {
     const key = JSON.stringify(filter);
     const cached = exportCacheRef.current[kind];
-    if (cached && cached.key === key && Date.now() - cached.startedAt < 60_000) {
+    if (cached && cached.key === key && Date.now() - cached.startedAt < 600_000) {
       return cached.promise;
     }
 
@@ -195,6 +195,12 @@ export default function EscalasVisualizacaoPage() {
     getPreparedExport('png');
   }
 
+  useEffect(() => {
+    if (loading || escalas.length === 0) return;
+    prefetchExports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escalas, filter, loading]);
+
   async function handleExportPdf() {
     setExportChoiceOpen(false);
     setExporting('pdf');
@@ -202,9 +208,10 @@ export default function EscalasVisualizacaoPage() {
     setPreparedFiles([]);
     try {
       const prepared = await getPreparedExport('pdf');
-      setPreparedFiles(prepared);
       setExporting(null);
-      await handleSharePreparedFiles(prepared);
+      if (await handleSharePreparedFiles(prepared) !== 'shared') {
+        setPreparedFiles(prepared);
+      }
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar o PDF.');
     } finally {
@@ -219,9 +226,10 @@ export default function EscalasVisualizacaoPage() {
     setPreparedFiles([]);
     try {
       const prepared = await getPreparedExport('png');
-      setPreparedFiles(prepared);
       setExporting(null);
-      await handleSharePreparedFiles(prepared);
+      if (await handleSharePreparedFiles(prepared) !== 'shared') {
+        setPreparedFiles(prepared);
+      }
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar as imagens.');
     } finally {
@@ -235,12 +243,14 @@ export default function EscalasVisualizacaoPage() {
     });
   }
 
-  async function handleSharePreparedFiles(filesToShare: PreparedFile[] = preparedFiles) {
-    if (filesToShare.length === 0) return;
+  async function handleSharePreparedFiles(
+    filesToShare: PreparedFile[] = preparedFiles,
+  ): Promise<'shared' | 'cancelled' | 'failed'> {
+    if (filesToShare.length === 0) return 'failed';
 
     if (typeof navigator.share !== 'function') {
       setExportError('O compartilhamento nativo não está disponível neste navegador. Use o botão de download.');
-      return;
+      return 'failed';
     }
 
     const files = filesToShare.map((file) => new File(
@@ -253,15 +263,17 @@ export default function EscalasVisualizacaoPage() {
       setExportError(files.length > 1
         ? 'Este navegador não permite compartilhar esses arquivos juntos. Use o botão de download.'
         : 'Este navegador não permite compartilhar este arquivo. Use o botão de download.');
-      return;
+      return 'failed';
     }
 
     setExportError(null);
     try {
       await navigator.share({ files, title: 'Escalas' });
+      return 'shared';
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
+      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
       setExportError('Não foi possível abrir o compartilhamento. Você ainda pode baixar os arquivos.');
+      return 'failed';
     }
   }
 

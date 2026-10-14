@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   OnModuleDestroy,
+  OnModuleInit,
 } from '@nestjs/common';
 import { chromium } from 'playwright';
 import type { Browser } from 'playwright';
@@ -466,8 +467,14 @@ function renderStyles() {
 }
 
 @Injectable()
-export class EscalaDocumentRendererService implements OnModuleDestroy {
+export class EscalaDocumentRendererService
+  implements OnModuleInit, OnModuleDestroy
+{
   private browserPromise: Promise<Browser> | null = null;
+
+  onModuleInit() {
+    this.getBrowser().catch(() => undefined);
+  }
 
   private async getBrowser(): Promise<Browser> {
     for (let attempt = 0; attempt < 2; attempt += 1) {
