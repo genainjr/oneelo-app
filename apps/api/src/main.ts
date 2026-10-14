@@ -51,6 +51,7 @@ async function bootstrap() {
       callback(null, false);
     },
     credentials: true,
+    exposedHeaders: ['Content-Disposition', 'X-Document-Page-Count'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });

@@ -44,7 +44,7 @@ export function PrintScheduleFooter({ printedAt }: PrintFooterProps) {
   return (
     <footer className="print-schedule-footer">
       <div className="print-schedule-footer-brand">
-        <img src="/logo.jpg" alt="One Elo" className="print-schedule-footer-logo" />
+        <img src="/LogoLookupLabs.png" alt="Lookup Labs" className="print-schedule-footer-logo" />
         <div className="print-schedule-footer-text">
           <span className="print-schedule-footer-product">One Elo</span>
           <span className="print-schedule-footer-company">Lookup Labs</span>
