@@ -44,7 +44,7 @@ export default function EscalasVisualizacaoPage() {
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [tenantName, setTenantName] = useState('OneElo');
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
-  const [printedAt, setPrintedAt] = useState(() => new Date());
+  const [printedAt] = useState(() => new Date());
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null);
   const [exportChoiceOpen, setExportChoiceOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -114,11 +114,6 @@ export default function EscalasVisualizacaoPage() {
     return { dias, itens, pendentes };
   }, [escalas]);
 
-  function handlePrint() {
-    setPrintedAt(new Date());
-    window.setTimeout(() => window.print(), 0);
-  }
-
   function downloadFile(blob: Blob, fileName: string) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -177,11 +172,17 @@ export default function EscalasVisualizacaoPage() {
     }
   }
 
+  function downloadAllFiles(filesToDownload: PreparedFile[] = preparedFiles) {
+    filesToDownload.forEach((file, index) => {
+      window.setTimeout(() => downloadFile(file.blob, file.fileName), index * 300);
+    });
+  }
+
   async function handleSharePreparedFiles(filesToShare: PreparedFile[] = preparedFiles) {
     if (filesToShare.length === 0) return;
 
     if (typeof navigator.share !== 'function') {
-      setExportError('O compartilhamento nativo não está disponível neste navegador. Use os botões de download.');
+      setExportError('O compartilhamento nativo não está disponível neste navegador. Use o botão de download.');
       return;
     }
 
@@ -193,7 +194,7 @@ export default function EscalasVisualizacaoPage() {
 
     if (typeof navigator.canShare === 'function' && !navigator.canShare({ files })) {
       setExportError(files.length > 1
-        ? 'Este navegador não permite compartilhar esses arquivos juntos. Compartilhe cada imagem separadamente.'
+        ? 'Este navegador não permite compartilhar esses arquivos juntos. Use o botão de download.'
         : 'Este navegador não permite compartilhar este arquivo. Use o botão de download.');
       return;
     }
@@ -225,28 +226,19 @@ export default function EscalasVisualizacaoPage() {
       <PageHeader
         title="Visualização Escalas"
         description="Acompanhe as escalas publicadas ou em rascunho em formato de leitura, sem controles de montagem."
-          action={(
-            <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
-              <button
-                onClick={() => setExportChoiceOpen(true)}
-                disabled={loading || escalas.length === 0 || exporting !== null}
-                aria-haspopup="dialog"
-                aria-expanded={exportChoiceOpen}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-                {exporting === 'pdf' ? 'Preparando PDF…' : exporting === 'png' ? 'Preparando imagens…' : 'Compartilhar'}
-              </button>
-              <button
-                onClick={handlePrint}
-                disabled={exporting !== null}
-                className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                Imprimir
-              </button>
-            </div>
-          )}
-        stackActionsOnMobile
+        action={(
+          <button
+            onClick={() => setExportChoiceOpen(true)}
+            disabled={loading || escalas.length === 0 || exporting !== null}
+            aria-haspopup="dialog"
+            aria-expanded={exportChoiceOpen}
+            aria-label="Compartilhar"
+            title="Compartilhar"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+          </button>
+        )}
       />
 
       {exportChoiceOpen && (
@@ -315,26 +307,13 @@ export default function EscalasVisualizacaoPage() {
               <Share2 className="h-4 w-4" />
               Compartilhar
             </button>
-            {preparedFiles.map((file, index) => (
-              <div key={file.fileName} className="flex flex-wrap gap-2">
-                {preparedFiles.length > 1 && (
-                  <button
-                    onClick={() => handleSharePreparedFiles([file])}
-                    className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100"
-                  >
-                    <Share2 className="h-4 w-4" />
-                    Compartilhar imagem {index + 1}
-                  </button>
-                )}
-                <button
-                  onClick={() => downloadFile(file.blob, file.fileName)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100"
-                >
-                  <Download className="h-4 w-4" />
-                  {file.fileName.toLowerCase().endsWith('.pdf') ? 'Baixar PDF' : `Baixar imagem ${index + 1}`}
-                </button>
-              </div>
-            ))}
+            <button
+              onClick={() => downloadAllFiles()}
+              className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100"
+            >
+              <Download className="h-4 w-4" />
+              Baixar
+            </button>
           </div>
         </div>
       )}
