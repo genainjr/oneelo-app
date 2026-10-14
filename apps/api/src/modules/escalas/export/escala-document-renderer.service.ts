@@ -1,5 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { chromium } from 'playwright';
+import type { Browser } from 'playwright';
 import type {
   EscalaDocumentDay,
   EscalaDocumentInput,
@@ -269,7 +274,7 @@ function renderGeneralTable(days: EscalaDocumentDay[], roles: EscalaDocumentRole
 
   const groups = Array.from(daysByWeekday.entries())
     .sort(([a], [b]) => a - b)
-    .map(([weekday, groupDays]) => {
+    .map(([weekday, groupDays], groupIndex) => {
       const heading = WEEKDAY_GROUP_LABELS[weekday] ?? 'Eventos';
       const roleColumnWidths = getRoleColumnWeights(days, roles);
       const columnGroup = `<colgroup><col style="width:4.6%" />${roleColumnWidths.map((width) => `<col style="width:${width}" />`).join('')}</colgroup>`;
@@ -284,7 +289,7 @@ function renderGeneralTable(days: EscalaDocumentDay[], roles: EscalaDocumentRole
         return `<tr><td class="date-cell">${escapeHtml(formatDate(day.date, { day: '2-digit', month: '2-digit' }))}</td>${cells.join('')}</tr>`;
       }).join('');
       const roleHeaders = roles.map((role) => `<th>${escapeHtml(role.name)}</th>`).join('');
-      return `<section class="weekday-group"><h2>${escapeHtml(heading)}</h2><table class="general-table">${columnGroup}<thead><tr><th class="date-head">Data</th>${roleHeaders}</tr></thead><tbody>${rows}</tbody></table></section>`;
+      return `<section class="weekday-group" style="--group-color:${ROLE_COLORS[groupIndex % ROLE_COLORS.length]}"><h2>${escapeHtml(heading)}</h2><table class="general-table">${columnGroup}<thead><tr><th class="date-head">Data</th>${roleHeaders}</tr></thead><tbody>${rows}</tbody></table></section>`;
     });
 
   return groups.join('');
@@ -409,9 +414,7 @@ function renderStyles() {
     .lookup-labs-logo { width: 8mm; height: 8mm; object-fit: contain; background: transparent; mix-blend-mode: multiply; }
     .page-context { margin: -2mm 0 2mm; color: #64748b; font-size: 7.5pt; text-align: center; }
     .weekday-group { margin: 0 0 3mm; break-inside: auto; page-break-inside: auto; }
-    .weekday-group h2 { margin: 0; padding: 1.5mm 2mm; border-radius: 2mm 2mm 0 0; background: #203d61; color: #fff; font-size: 8pt; line-height: 1.1; text-transform: uppercase; break-after: avoid-page; page-break-after: avoid; }
-    .weekday-group:nth-child(3n + 2) h2 { background: #5b6c8c; }
-    .weekday-group:nth-child(3n) h2 { background: #2f8271; }
+    .weekday-group h2 { margin: 0; padding: 1.5mm 2mm; border-radius: 2mm 2mm 0 0; background: var(--group-color, #203d61); color: #fff; font-size: 8pt; line-height: 1.1; text-transform: uppercase; break-after: avoid-page; page-break-after: avoid; }
     .general-table, .member-matrix { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .general-table { font-size: 7.5pt; line-height: 1.15; }
     .general-table thead { display: table-header-group; }
@@ -463,7 +466,29 @@ function renderStyles() {
 }
 
 @Injectable()
-export class EscalaDocumentRendererService {
+export class EscalaDocumentRendererService implements OnModuleDestroy {
+  private browserPromise: Promise<Browser> | null = null;
+
+  private async getBrowser(): Promise<Browser> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      if (!this.browserPromise) {
+        this.browserPromise = chromium.launch({ headless: true });
+      }
+      const browser = await this.browserPromise.catch(() => null);
+      if (browser?.isConnected()) return browser;
+      this.browserPromise = null;
+    }
+    throw new Error('Nao foi possivel iniciar o navegador de renderizacao.');
+  }
+
+  async onModuleDestroy() {
+    const pending = this.browserPromise;
+    this.browserPromise = null;
+    if (!pending) return;
+    const browser = await pending.catch(() => null);
+    await browser?.close().catch(() => undefined);
+  }
+
   async render(
     input: EscalaDocumentInput,
     format: 'pdf' | 'png',
@@ -482,15 +507,15 @@ export class EscalaDocumentRendererService {
       throw new BadRequestException('A semana solicitada não existe nesta escala.');
     }
 
-    const browser = await chromium.launch({ headless: true });
+    const browser = await this.getBrowser();
+    const page = await browser.newPage({
+      viewport: format === 'pdf'
+        ? { width: 1123, height: 794 }
+        : { width: 1080, height: 1000 },
+      deviceScaleFactor: format === 'png' ? 1 : 1,
+    });
 
     try {
-      const page = await browser.newPage({
-        viewport: format === 'pdf'
-          ? { width: 1123, height: 794 }
-          : { width: 1080, height: 1000 },
-        deviceScaleFactor: format === 'png' ? 1 : 1,
-      });
       const body = format === 'pdf'
         ? pdfPages.map((pdfPage) => renderPdfPage(pdfPage, input)).join('')
         : renderWeeklyPage(weeklyPages[selectedPage - 1], input);
@@ -531,7 +556,7 @@ export class EscalaDocumentRendererService {
         pageCount: totalPages,
       };
     } finally {
-      await browser.close();
+      await page.close().catch(() => undefined);
     }
   }
 }
