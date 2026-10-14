@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
@@ -39,12 +39,6 @@ interface PreparedFile {
   fileName: string;
 }
 
-interface PreparedExportCacheEntry {
-  key: string;
-  promise: Promise<PreparedFile[]>;
-  startedAt: number;
-}
-
 export default function EscalasVisualizacaoPage() {
   const now = new Date();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
@@ -55,7 +49,6 @@ export default function EscalasVisualizacaoPage() {
   const [exportChoiceOpen, setExportChoiceOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [preparedFiles, setPreparedFiles] = useState<PreparedFile[]>([]);
-  const exportCacheRef = useRef<{ pdf?: PreparedExportCacheEntry; png?: PreparedExportCacheEntry }>({});
   const [escalasMinimizadas, setEscalasMinimizadas] = useState<Set<string>>(
     () => new Set(),
   );
@@ -160,11 +153,9 @@ export default function EscalasVisualizacaoPage() {
         }
       }
     } else if (headerCount > files.length) {
-      const remaining = await Promise.all(
-        Array.from({ length: headerCount - files.length }, (_, index) =>
-          api.getFile(getExportQuery('png', files.length + index + 1))),
-      );
-      files.push(...remaining);
+      for (let page = files.length + 1; page <= headerCount; page += 1) {
+        files.push(await api.getFile(getExportQuery('png', page)));
+      }
     }
 
     return files.map((file, index) => ({
@@ -173,45 +164,13 @@ export default function EscalasVisualizacaoPage() {
     }));
   }
 
-  function getPreparedExport(kind: 'pdf' | 'png'): Promise<PreparedFile[]> {
-    const key = JSON.stringify(filter);
-    const cached = exportCacheRef.current[kind];
-    if (cached && cached.key === key && Date.now() - cached.startedAt < 600_000) {
-      return cached.promise;
-    }
-
-    const promise = kind === 'pdf' ? fetchPdfExport() : fetchPngExport();
-    exportCacheRef.current[kind] = { key, promise, startedAt: Date.now() };
-    promise.catch(() => {
-      if (exportCacheRef.current[kind]?.promise === promise) {
-        exportCacheRef.current[kind] = undefined;
-      }
-    });
-    return promise;
-  }
-
-  function prefetchExports() {
-    getPreparedExport('pdf');
-    getPreparedExport('png');
-  }
-
-  useEffect(() => {
-    if (loading || escalas.length === 0) return;
-    prefetchExports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [escalas, filter, loading]);
-
   async function handleExportPdf() {
     setExportChoiceOpen(false);
     setExporting('pdf');
     setExportError(null);
     setPreparedFiles([]);
     try {
-      const prepared = await getPreparedExport('pdf');
-      setExporting(null);
-      if (await handleSharePreparedFiles(prepared) !== 'shared') {
-        setPreparedFiles(prepared);
-      }
+      setPreparedFiles(await fetchPdfExport());
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar o PDF.');
     } finally {
@@ -225,11 +184,7 @@ export default function EscalasVisualizacaoPage() {
     setExportError(null);
     setPreparedFiles([]);
     try {
-      const prepared = await getPreparedExport('png');
-      setExporting(null);
-      if (await handleSharePreparedFiles(prepared) !== 'shared') {
-        setPreparedFiles(prepared);
-      }
+      setPreparedFiles(await fetchPngExport());
     } catch (err) {
       setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar as imagens.');
     } finally {
@@ -299,7 +254,6 @@ export default function EscalasVisualizacaoPage() {
           <button
             onClick={() => {
               setExportChoiceOpen(true);
-              prefetchExports();
             }}
             disabled={loading || escalas.length === 0 || exporting !== null}
             aria-haspopup="dialog"
