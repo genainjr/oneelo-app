@@ -1,8 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  OnModuleDestroy,
-  OnModuleInit,
 } from '@nestjs/common';
 import { chromium } from 'playwright';
 import type { Browser } from 'playwright';
@@ -467,36 +465,34 @@ function renderStyles() {
 }
 
 @Injectable()
-export class EscalaDocumentRendererService
-  implements OnModuleInit, OnModuleDestroy
-{
-  private browserPromise: Promise<Browser> | null = null;
+export class EscalaDocumentRendererService {
+  private renderQueue: Promise<void> = Promise.resolve();
 
-  onModuleInit() {
-    this.getBrowser().catch(() => undefined);
-  }
-
-  private async getBrowser(): Promise<Browser> {
+  private async launchBrowser(): Promise<Browser> {
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      if (!this.browserPromise) {
-        this.browserPromise = chromium.launch({ headless: true });
-      }
-      const browser = await this.browserPromise.catch(() => null);
+      const browser = await chromium.launch({ headless: true }).catch(() => null);
       if (browser?.isConnected()) return browser;
-      this.browserPromise = null;
     }
     throw new Error('Nao foi possivel iniciar o navegador de renderizacao.');
   }
 
-  async onModuleDestroy() {
-    const pending = this.browserPromise;
-    this.browserPromise = null;
-    if (!pending) return;
-    const browser = await pending.catch(() => null);
-    await browser?.close().catch(() => undefined);
+  render(
+    input: EscalaDocumentInput,
+    format: 'pdf' | 'png',
+    pageNumber?: number,
+  ): Promise<RenderedDocument> {
+    const queuedRender = this.renderQueue.then(
+      () => this.renderDocument(input, format, pageNumber),
+      () => this.renderDocument(input, format, pageNumber),
+    );
+    this.renderQueue = queuedRender.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queuedRender;
   }
 
-  async render(
+  private async renderDocument(
     input: EscalaDocumentInput,
     format: 'pdf' | 'png',
     pageNumber?: number,
@@ -514,12 +510,15 @@ export class EscalaDocumentRendererService
       throw new BadRequestException('A semana solicitada não existe nesta escala.');
     }
 
-    const browser = await this.getBrowser();
+    const browser = await this.launchBrowser();
     const page = await browser.newPage({
       viewport: format === 'pdf'
         ? { width: 1123, height: 794 }
         : { width: 1080, height: 1000 },
       deviceScaleFactor: format === 'png' ? 1 : 1,
+    }).catch(async (error) => {
+      await browser.close().catch(() => undefined);
+      throw error;
     });
 
     try {
@@ -564,6 +563,7 @@ export class EscalaDocumentRendererService
       };
     } finally {
       await page.close().catch(() => undefined);
+      await browser.close().catch(() => undefined);
     }
   }
 }
