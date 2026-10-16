@@ -37,6 +37,17 @@ Planos sao documentos vivos. Eles devem refletir decisoes tomadas durante a impl
 
 ---
 
+## Execucao por Etapas e Autorizacao
+
+Durante a execucao do plano:
+
+1. O desenvolvimento deve seguir estritamente etapa por etapa.
+2. Ao concluir cada etapa, atualizar imediatamente o checklist no documento do plano correspondente em `ai-context/plans/`.
+3. Apresentar ao usuario o resumo do que foi implementado e os testes/validacoes executados.
+4. **Aguardar obrigatoriamente a autorizacao do usuario antes de iniciar a etapa seguinte.** Nao iniciar edicoes de codigo da proxima etapa sem essa confirmacao.
+
+---
+
 ## Implementacao
 
 - Seguir padroes existentes do projeto.

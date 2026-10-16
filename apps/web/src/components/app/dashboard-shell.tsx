@@ -29,11 +29,11 @@ export function DashboardShell({ children, initialUser }: { children: React.Reac
 
   return (
     <AuthUserProvider value={{ user, setUser }}>
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="flex h-screen h-[100dvh] overflow-hidden bg-gray-50">
         <Sidebar user={user} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Header onMenuClick={() => setSidebarOpen(true)} />
-          <main data-dashboard-scroll-container className="flex-1 overflow-y-auto p-4 md:p-6">
+          <main data-dashboard-scroll-container className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-6">
             <InstallAppPrompt />
             {children}
           </main>

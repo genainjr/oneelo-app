@@ -104,8 +104,20 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     await api.patch(`/api/escalas/${escalaId}/dias/order`, { diaIds });
   }
 
-  async function addMembroItem(diaId: string, membroId: string, ministerioFuncaoId: string, observacoes?: string) {
-    return api.post<EscalaItem>(`/api/escalas/dias/${diaId}/itens`, { escalaDiaId: diaId, membroId, ministerioFuncaoId, observacoes });
+  async function addMembroItem(
+    diaId: string,
+    membroId: string,
+    ministerioFuncaoId: string,
+    observacoes?: string,
+    confirmarAvisos?: boolean,
+  ) {
+    return api.post<EscalaItem>(`/api/escalas/dias/${diaId}/itens`, {
+      escalaDiaId: diaId,
+      membroId,
+      ministerioFuncaoId,
+      observacoes,
+      confirmarAvisos,
+    });
   }
 
   async function removeMembroItem(itemId: string) {

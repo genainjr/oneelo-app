@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
 
 export class ManageEscalaItemDto {
   @IsString()
@@ -16,4 +16,8 @@ export class ManageEscalaItemDto {
   @IsString()
   @IsOptional()
   observacoes?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  confirmarAvisos?: boolean;
 }

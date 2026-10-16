@@ -12,11 +12,19 @@ async function main() {
   
   // Limpar tabelas na ordem correta devido a chaves estrangeiras
   await prisma.auditLog.deleteMany();
+  await prisma.pushSubscription.deleteMany();
+  await prisma.userAuthProvider.deleteMany();
+  await prisma.financialTransaction.deleteMany();
+  await prisma.financePermission.deleteMany();
+  await prisma.financialAccount.deleteMany();
+  await prisma.financialCategory.deleteMany();
   await prisma.escalaItem.deleteMany();
   await prisma.escalaDiaFuncaoOculta.deleteMany();
   await prisma.escalaDia.deleteMany();
   await prisma.escala.deleteMany();
+  await prisma.eventoMinisterio.deleteMany();
   await prisma.evento.deleteMany();
+  await prisma.ministerioMembroFuncao.deleteMany();
   await prisma.ministerioFuncao.deleteMany();
   await prisma.ministerioMembro.deleteMany();
   await prisma.ministerio.deleteMany();
@@ -25,6 +33,7 @@ async function main() {
   await prisma.membro.deleteMany();
   await prisma.user.deleteMany();
   await prisma.tenant.deleteMany();
+  await prisma.lead.deleteMany();
 
   console.log('Banco de dados resetado com sucesso!');
 

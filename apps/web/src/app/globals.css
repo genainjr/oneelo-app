@@ -15,6 +15,7 @@
 
 body {
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  background-color: #f9fafb;
 }
 
 /* Scrollbar customizada */

@@ -12,18 +12,27 @@ import { MembroSearchCombobox, MembroOption } from '@/components/app/membro-sear
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { TabsShell, TabPanel } from '@/components/app/tabs-shell';
-import { InputField, TextareaField } from '@/components/app/form-field';
+import { InputField, TextareaField, CheckboxField } from '@/components/app/form-field';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
+import { Pencil, Trash2, MapPin } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Ministerio, Membro, AuthUser, MinistryRole } from '@/types';
+import {
+  Ministerio,
+  Membro,
+  AuthUser,
+  MinistryRole,
+  SegmentoCulto,
+  MinisterioFuncaoConfig,
+} from '@/types';
 
 type FeedbackMessage = {
-  type: 'success' | 'error';
+  type: 'error';
   message: string;
 } | null;
 
 export default function MinisteriosPage() {
   const t = useTranslations('ministries');
+  const tCommon = useTranslations('common');
   const {
     ministerios,
     loading,
@@ -77,15 +86,69 @@ export default function MinisteriosPage() {
   const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<MinistryRole>('MEMBER');
   const [podeSerEscaladoToAdd, setPodeSerEscaladoToAdd] = useState(true);
 
+  const [funcoesConfig, setFuncoesConfig] = useState<MinisterioFuncaoConfig[]>([]);
+  const [churchSegments, setChurchSegments] = useState<SegmentoCulto[]>([]);
+  const [configuringFuncao, setConfiguringFuncao] = useState<MinisterioFuncaoConfig | null>(null);
+  const [configuringNome, setConfiguringNome] = useState('');
+  const [configuringSegmentIds, setConfiguringSegmentIds] = useState<string[]>([]);
+  const [configuringLocation, setConfiguringLocation] = useState('');
+  const [savingConfiguringFuncao, setSavingConfiguringFuncao] = useState(false);
+  const [pendingDeleteFuncao, setPendingDeleteFuncao] = useState<string | null>(null);
+  const [deletingFuncaoLoading, setDeletingFuncaoLoading] = useState(false);
+
   async function fetchDetails(id: string) {
     setLoadingDetails(true);
     try {
-      const data = await api.get<any>(`/api/ministerios/${id}`);
+      const [data, fConfigs, segs] = await Promise.all([
+        api.get<any>(`/api/ministerios/${id}`),
+        api.get<MinisterioFuncaoConfig[]>(`/api/escalas/configuracao/funcoes?ministerioId=${id}`).catch(() => []),
+        api.get<SegmentoCulto[]>('/api/escalas/configuracao/segmentos').catch(() => []),
+      ]);
       setDetailedInfo(data);
+      setFuncoesConfig(Array.isArray(fConfigs) ? fConfigs : []);
+      setChurchSegments(Array.isArray(segs) ? segs : []);
     } catch (e) {
       console.error('Erro ao buscar detalhes:', e);
     } finally {
       setLoadingDetails(false);
+    }
+  }
+
+  function handleOpenConfigureFuncao(fConfig: MinisterioFuncaoConfig) {
+    setConfiguringFuncao(fConfig);
+    setConfiguringNome(fConfig.nome);
+    setConfiguringSegmentIds(fConfig.segmentos?.map((s) => s.segmento.id) ?? []);
+    setConfiguringLocation(fConfig.localAtuacao ?? '');
+  }
+
+  function toggleConfiguringSegment(segmentId: string) {
+    setConfiguringSegmentIds((prev) =>
+      prev.includes(segmentId) ? prev.filter((id) => id !== segmentId) : [...prev, segmentId],
+    );
+  }
+
+  async function handleSaveConfiguringFuncao(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!configuringFuncao || !selectedMinisterio) return;
+    const trimmedNome = configuringNome.trim();
+    if (!trimmedNome) return;
+    setSavingConfiguringFuncao(true);
+    try {
+      await api.put(`/api/escalas/configuracao/funcoes/${configuringFuncao.id}`, {
+        nome: trimmedNome,
+        segmentoIds: configuringSegmentIds,
+        localAtuacao: configuringLocation.trim() || null,
+      });
+      const oldNome = configuringFuncao.nome;
+      if (oldNome !== trimmedNome) {
+        setFuncoes((prev) => prev.map((f) => (f === oldNome ? trimmedNome : f)));
+      }
+      setConfiguringFuncao(null);
+      await fetchDetails(selectedMinisterio.id);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Erro ao salvar configuração da função.' });
+    } finally {
+      setSavingConfiguringFuncao(false);
     }
   }
 
@@ -170,7 +233,8 @@ export default function MinisteriosPage() {
     try {
       await updateMinisterio(selectedMinisterio.id, { funcoes: funcoes.filter(Boolean) });
       await fetchDetails(selectedMinisterio.id);
-      setFeedback({ type: 'success', message: t('functions.saved') });
+      setIsModalOpen(false);
+      setSelectedMinisterio(null);
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || t('functions.errorSave') });
     } finally {
@@ -187,6 +251,24 @@ export default function MinisteriosPage() {
 
   function handleRemoveFuncao(nome: string) {
     setFuncoes(funcoes.filter((f) => f !== nome));
+  }
+
+  async function confirmDeleteFuncao() {
+    if (!pendingDeleteFuncao || !selectedMinisterio) return;
+    const funcaoNome = pendingDeleteFuncao;
+    const nextFuncoes = funcoes.filter((f) => f !== funcaoNome);
+    setDeletingFuncaoLoading(true);
+    setFeedback(null);
+    try {
+      await updateMinisterio(selectedMinisterio.id, { funcoes: nextFuncoes.filter(Boolean) });
+      setFuncoes(nextFuncoes);
+      setPendingDeleteFuncao(null);
+      await fetchDetails(selectedMinisterio.id);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || t('functions.errorSave') });
+    } finally {
+      setDeletingFuncaoLoading(false);
+    }
   }
 
   function handleDelete(m: Ministerio) {
@@ -317,12 +399,8 @@ export default function MinisteriosPage() {
         </div>
       )}
 
-      {feedback && (
-        <div className={`p-4 text-sm border rounded-2xl flex items-center justify-between ${
-          feedback.type === 'success'
-            ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
-            : 'text-red-700 bg-red-50 border-red-100'
-        }`}>
+      {feedback && !isModalOpen && !configuringFuncao && feedback.type === 'error' && (
+        <div className="p-4 text-sm border border-red-100 rounded-2xl flex items-center justify-between text-red-700 bg-red-50">
           <span>{feedback.message}</span>
           <button
             type="button"
@@ -449,10 +527,18 @@ export default function MinisteriosPage() {
               onCancel={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
               form="ministerio-form"
             />
+          ) : selectedMinisterio && modalTab === 'funcoes' && canManage ? (
+            <ModalFooter
+              primaryLabel={tCommon('save')}
+              onCancel={() => { setIsModalOpen(false); setSelectedMinisterio(null); }}
+              onClick={handleSaveFuncoes}
+              type="button"
+              loading={savingFuncoes}
+            />
           ) : undefined
         }
       >
-        {/* Feedback de erro global */}
+        {/* Feedback de erro dentro do modal */}
         <ModalError message={feedback?.type === 'error' ? feedback.message : null} />
 
         {/* Abas — apenas quando editando */}
@@ -690,26 +776,67 @@ export default function MinisteriosPage() {
                   <p className="text-sm text-gray-400 text-center py-6">{t('functions.noFunctions')}</p>
                 ) : (
                   <div className="border border-gray-100 rounded-2xl divide-y divide-gray-100 overflow-hidden">
-                    {funcoes.map((f, idx) => (
-                      <div key={f} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold text-gray-400 w-5 text-right">{idx + 1}</span>
-                          <span className="text-sm font-semibold text-gray-800">{f}</span>
+                    {funcoes.map((f, idx) => {
+                      const fConfig = funcoesConfig.find((fc) => fc.nome === f);
+                      return (
+                        <div key={f} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50/50">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1 flex-wrap">
+                            <span className="text-xs font-bold text-gray-400 w-5 text-right shrink-0">{idx + 1}</span>
+                            <span className="text-sm font-semibold text-gray-800">{f}</span>
+                            {fConfig && (
+                              <>
+                                {fConfig.segmentos && fConfig.segmentos.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {fConfig.segmentos.map((s) => (
+                                      <span
+                                        key={s.segmento.id}
+                                        className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                      >
+                                        {s.segmento.nome}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
+                                    {t('functions.allSegmentsDefault')}
+                                  </span>
+                                )}
+                                {fConfig.localAtuacao && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 font-medium">
+                                    <MapPin className="w-3 h-3 text-gray-400" />
+                                    {fConfig.localAtuacao}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {canManage && fConfig && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenConfigureFuncao(fConfig)}
+                                title={t('functions.editTitle')}
+                                aria-label={t('functions.editTitle')}
+                                className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl bg-white hover:bg-gray-50 text-indigo-500 transition-all flex items-center justify-center"
+                              >
+                                <Pencil className="w-4 h-4 text-indigo-500" />
+                              </button>
+                            )}
+                            {canManage && (
+                              <button
+                                type="button"
+                                onClick={() => setPendingDeleteFuncao(f)}
+                                className="p-2 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 bg-white transition-all flex items-center justify-center"
+                                title={tCommon('delete')}
+                                aria-label={tCommon('delete')}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        {canManage && (
-                          <button onClick={() => handleRemoveFuncao(f)} className="p-1 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {canManage && (
-                  <div className="flex justify-end">
-                    <button onClick={handleSaveFuncoes} disabled={savingFuncoes} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs disabled:opacity-50">
-                      {savingFuncoes ? t('functions.saving') : t('functions.save')}
-                    </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -774,8 +901,96 @@ export default function MinisteriosPage() {
           </form>
         )}
 
-        {/* Footer — shown on info tab or creation mode */}
       </ModalShell>
+
+      {/* Modal: Editar Função (Nome + Segmentos + Local) */}
+      <ModalShell
+        isOpen={!!configuringFuncao}
+        title={t('functions.editTitle')}
+        description={t('functions.editDesc')}
+        onClose={() => setConfiguringFuncao(null)}
+        size="md"
+        footer={
+          <ModalFooter
+            primaryLabel={tCommon('save')}
+            onCancel={() => setConfiguringFuncao(null)}
+            form="configurar-funcao-form"
+            loading={savingConfiguringFuncao}
+            disabled={!configuringNome.trim()}
+          />
+        }
+      >
+        {configuringFuncao && (
+          <form id="configurar-funcao-form" onSubmit={handleSaveConfiguringFuncao} className="space-y-5 p-4 sm:p-6">
+            <div className="space-y-1">
+              <span className="text-xs uppercase font-semibold text-gray-500 block">
+                {selectedMinisterio?.nome}
+              </span>
+              <InputField
+                id="config-funcao-nome"
+                label={t('functions.nameLabel')}
+                value={configuringNome}
+                onChange={(e) => setConfiguringNome(e.target.value)}
+                placeholder={t('functions.functionPlaceholder')}
+                required
+              />
+            </div>
+
+            {/* Segmentos de Atuação */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
+                {t('functions.segments')}
+              </label>
+              <p className="text-xs text-gray-500">
+                {t('functions.selectSegmentsHelp')}
+              </p>
+
+              {churchSegments.length === 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                  Nenhum momento litúrgico cadastrado na igreja. Você pode cadastrar em Configurações → Liturgia e Escalas.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {churchSegments.map((seg) => {
+                    const isChecked = configuringSegmentIds.includes(seg.id);
+                    return (
+                      <CheckboxField
+                        key={seg.id}
+                        id={`funcao-seg-${seg.id}`}
+                        label={seg.nome}
+                        checked={isChecked}
+                        onChange={() => toggleConfiguringSegment(seg.id)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Local de Atuação */}
+            <div>
+              <InputField
+                id="config-work-location"
+                label={t('functions.location')}
+                value={configuringLocation}
+                onChange={(e) => setConfiguringLocation(e.target.value)}
+                placeholder={t('functions.locationPlaceholder')}
+              />
+            </div>
+          </form>
+        )}
+      </ModalShell>
+
+      <ConfirmDialog
+        isOpen={!!pendingDeleteFuncao}
+        title={t('functions.deleteTitle')}
+        description={pendingDeleteFuncao ? t('functions.deleteConfirm', { name: pendingDeleteFuncao }) : ''}
+        confirmLabel={tCommon('delete')}
+        variant="danger"
+        loading={deletingFuncaoLoading}
+        onConfirm={confirmDeleteFuncao}
+        onCancel={() => setPendingDeleteFuncao(null)}
+      />
 
       <ConfirmDialog
         isOpen={!!pendingArchiveMinisterio}

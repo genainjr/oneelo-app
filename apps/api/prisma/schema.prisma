@@ -85,6 +85,13 @@ enum StatusConfirmacao {
   @@map("confirmation_status")
 }
 
+enum RegraCompatibilidade {
+  PERMITIR @map("ALLOW")
+  AVISAR   @map("WARN")
+
+  @@map("schedule_role_compatibility_rule")
+}
+
 enum StatusEvento {
   AGENDADO  @map("SCHEDULED")
   REALIZADO @map("COMPLETED")
@@ -194,8 +201,10 @@ model Tenant {
   pushSubscriptions PushSubscription[]
   financePermissions FinancePermission[]
   financialAccounts FinancialAccount[]
-  financialCategories FinancialCategory[]
+  financialCategories   FinancialCategory[]
   financialTransactions FinancialTransaction[]
+  segmentosCulto        SegmentoCulto[]
+  compatibilidadesFuncao CompatibilidadeFuncao[]
 
   @@map("tb_tenant")
 }
@@ -448,11 +457,15 @@ model MinisterioFuncao {
   descricao    String? @map("description")
   corHex       String? @map("color_hex")
   ordem        Int     @default(0) @map("display_order")
+  localAtuacao String? @map("work_location")
 
-  ministerio   Ministerio               @relation(fields: [ministerioId], references: [id])
-  itens        EscalaItem[]
-  membrosAptos MinisterioMembroFuncao[]
-  diasOcultos  EscalaDiaFuncaoOculta[]
+  ministerio        Ministerio                 @relation(fields: [ministerioId], references: [id])
+  itens             EscalaItem[]
+  membrosAptos      MinisterioMembroFuncao[]
+  diasOcultos       EscalaDiaFuncaoOculta[]
+  segmentos         MinisterioFuncaoSegmento[]
+  compatibilidadesA CompatibilidadeFuncao[]    @relation("CompatibilidadeFuncaoA")
+  compatibilidadesB CompatibilidadeFuncao[]    @relation("CompatibilidadeFuncaoB")
 
   @@unique([ministerioId, nome])
   @@map("tb_ministry_position")
@@ -548,7 +561,6 @@ model EscalaItem {
   user      User?            @relation(fields: [userId], references: [id])
   funcao    MinisterioFuncao @relation(fields: [ministerioFuncaoId], references: [id])
 
-  @@unique([escalaDiaId, membroId])
   @@unique([escalaDiaId, membroId, ministerioFuncaoId])
   @@map("tb_schedule_assignment")
 }
@@ -642,4 +654,51 @@ model Lead {
 
   @@index([email])
   @@map("tb_lead")
+}
+
+model SegmentoCulto {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  nome      String   @map("name")
+  ordem     Int      @map("display_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  funcoes MinisterioFuncaoSegmento[]
+
+  @@unique([tenantId, nome])
+  @@unique([tenantId, ordem])
+  @@index([tenantId])
+  @@map("tb_schedule_segment")
+}
+
+model MinisterioFuncaoSegmento {
+  funcaoId   String @map("position_id")
+  segmentoId String @map("segment_id")
+
+  funcao   MinisterioFuncao @relation(fields: [funcaoId], references: [id], onDelete: Cascade)
+  segmento SegmentoCulto    @relation(fields: [segmentoId], references: [id], onDelete: Cascade)
+
+  @@id([funcaoId, segmentoId])
+  @@map("tb_ministry_position_segment")
+}
+
+model CompatibilidadeFuncao {
+  id         String               @id @default(uuid())
+  tenantId   String               @map("tenant_id")
+  funcaoAId  String               @map("position_a_id")
+  funcaoBId  String               @map("position_b_id")
+  regra      RegraCompatibilidade @map("rule")
+  observacao String?              @map("notes")
+  createdAt  DateTime             @default(now()) @map("created_at")
+  updatedAt  DateTime             @updatedAt @map("updated_at")
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  funcaoA MinisterioFuncao @relation("CompatibilidadeFuncaoA", fields: [funcaoAId], references: [id], onDelete: Cascade)
+  funcaoB MinisterioFuncao @relation("CompatibilidadeFuncaoB", fields: [funcaoBId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, funcaoAId, funcaoBId])
+  @@index([tenantId])
+  @@map("tb_schedule_role_compatibility")
 }
