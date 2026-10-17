@@ -10,6 +10,8 @@ Ao adicionar um novo documento, inclua-o no início deste índice com a data, o 
 
 | CriaÃ§Ã£o | Documento | Assunto |
 |---|---|---|
+| 16/10/2026 | [escala-export-performance-plan.md](escala-export-performance-plan.md) | Performance da exportação de Escalas (PDF/PNG) no Render Free |
+| 14/10/2026 | [escala-export-memory-stability-plan.md](escala-export-memory-stability-plan.md) | Estabilidade de memória da exportação de Escalas |
 | 09/10/2026 | [exportacao-pdf-plan.md](exportacao-pdf-plan.md) | ExportaÃ§Ã£o sÃ­ncrona de PDF e imagens para Escalas e Agenda |
 
 ## Julho de 2026

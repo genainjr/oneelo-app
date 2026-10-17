@@ -4,7 +4,9 @@ import {
   ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { performance } from 'node:perf_hooks';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateEscalaDto, ModoCriacaoEscala } from './dto/create-escala.dto';
 import { UpdateEscalaDto } from './dto/update-escala.dto';
@@ -19,7 +21,10 @@ import { AddEscalaDiaDto } from './dto/add-escala-dia.dto';
 import { UpdateEscalaDiaEventoDto } from './dto/update-escala-dia-evento.dto';
 import { ExportEscalaDto } from './dto/export-escala.dto';
 import { EscalaDocumentRendererService } from './export/escala-document-renderer.service';
-import type { EscalaDocumentInput } from './export/escala-document.types';
+import type {
+  EscalaDocumentInput,
+  EscalaExportResult,
+} from './export/escala-document.types';
 import {
   MinistryRole,
   Prisma,
@@ -667,7 +672,13 @@ export class EscalasService {
     });
   }
 
-  async exportar(tenantId: string, query: ExportEscalaDto, user: JwtPayload) {
+  async exportar(
+    tenantId: string,
+    query: ExportEscalaDto,
+    user: JwtPayload,
+    ifNoneMatch?: string,
+  ): Promise<EscalaExportResult> {
+    const queryStartedAt = performance.now();
     const escalas = await this.findVisualizacao(tenantId, query, user);
     if (escalas.length === 0) {
       throw new NotFoundException(
@@ -715,15 +726,30 @@ export class EscalasService {
         })),
       })),
     };
+    const queryMs = Math.round(performance.now() - queryStartedAt);
 
     try {
+      if (typeof this.escalaDocumentRenderer.renderExport === 'function') {
+        return await this.escalaDocumentRenderer.renderExport(
+          input,
+          query.formato,
+          query.pagina ?? 1,
+          { ifNoneMatch, queryMs },
+        );
+      }
+
       return await this.escalaDocumentRenderer.render(
         input,
         query.formato,
-        query.pagina,
+        typeof query.pagina === 'number' ? query.pagina : undefined,
       );
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ServiceUnavailableException
+      ) {
+        throw error;
+      }
       throw new InternalServerErrorException(
         'Nao foi possivel gerar a exportacao da escala.',
       );
