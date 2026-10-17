@@ -1,6 +1,8 @@
 # Plano - Estabilidade de memoria da exportacao de Escalas
 
-Status: em andamento
+Status: concluido
+
+Continuacao: [Plano - Performance da exportacao de Escalas](escala-export-performance-plan.md).
 
 ## Objetivo
 

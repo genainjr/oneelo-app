@@ -55,7 +55,7 @@ RUN npm install --production
 
 # O Chromium distribuido pelo Playwright exige uma distribuicao Linux baseada em glibc.
 # A imagem Debian e suas dependencias garantem a mesma execucao no container local e no deploy.
-RUN npx playwright install --with-deps chromium
+RUN npx playwright install --with-deps --only-shell chromium
 
 # Copia o Prisma schema e migrations
 COPY prisma ./prisma
@@ -63,8 +63,9 @@ COPY prisma ./prisma
 # Gera o Prisma Client para produção
 RUN npx prisma generate
 
-# Copia os arquivos compilados do builder
+# Copia os arquivos compilados do builder e assets estáticos de exportação
 COPY --from=builder /app/dist ./dist
+COPY assets ./assets
 
 # Copia entrypoint script
 COPY entrypoint.sh ./entrypoint.sh

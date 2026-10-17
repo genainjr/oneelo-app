@@ -23,6 +23,7 @@ import { EventosElegiveisDto } from './dto/eventos-elegiveis.dto';
 import { AddEscalaDiaDto } from './dto/add-escala-dia.dto';
 import { UpdateEscalaDiaEventoDto } from './dto/update-escala-dia-evento.dto';
 import { ExportEscalaDto } from './dto/export-escala.dto';
+import { ExportServiceUnavailableException } from './export/escala-document-renderer.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { Request, Response } from 'express';
@@ -68,15 +69,48 @@ export class EscalasController {
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    const document = await this.escalasService.exportar(tenantId, query, user);
+    const rawIfNoneMatch = req.headers['if-none-match'];
+    const ifNoneMatch = Array.isArray(rawIfNoneMatch)
+      ? rawIfNoneMatch.join(', ')
+      : rawIfNoneMatch;
 
-    res.setHeader('Content-Type', document.mimeType);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${document.fileName}"`,
-    );
-    res.setHeader('X-Document-Page-Count', String(document.pageCount));
-    return res.send(document.buffer);
+    try {
+      const document = await this.escalasService.exportar(
+        tenantId,
+        query,
+        user,
+        ifNoneMatch,
+      );
+
+      res.setHeader('X-Document-Page-Count', String(document.pageCount));
+      if (document.etag) {
+        res.setHeader('ETag', document.etag);
+        res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
+      }
+
+      if (document.notModified) {
+        return res.status(304).end();
+      }
+
+      if (document.kind === 'batch') {
+        return res.json({
+          files: document.files,
+          pageCount: document.pageCount,
+        });
+      }
+
+      res.setHeader('Content-Type', document.mimeType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${document.fileName}"`,
+      );
+      return res.send(document.buffer);
+    } catch (error) {
+      if (error instanceof ExportServiceUnavailableException) {
+        res.setHeader('Retry-After', String(error.retryAfterSeconds));
+      }
+      throw error;
+    }
   }
 
   @Get('minhas')

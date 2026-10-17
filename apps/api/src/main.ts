@@ -51,9 +51,9 @@ async function bootstrap() {
       callback(null, false);
     },
     credentials: true,
-    exposedHeaders: ['Content-Disposition', 'X-Document-Page-Count'],
+    exposedHeaders: ['Content-Disposition', 'X-Document-Page-Count', 'ETag', 'Retry-After'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'If-None-Match'],
   });
 
   // Configuração do Swagger

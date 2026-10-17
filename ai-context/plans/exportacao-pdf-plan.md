@@ -8,6 +8,8 @@ Branch sugerida para implementacao: `feature/pdf-export`
 
 Backlog relacionado: [exportacao-pdf.md](../backlog/exportacao-pdf.md)
 
+Planos relacionados: [estabilidade de memoria](escala-export-memory-stability-plan.md) e [performance da exportacao de Escalas](escala-export-performance-plan.md)
+
 ## Objetivo da entrega
 
 Entregar exportacao de PDF e PNG pelo backend para Escalas e Agenda, removendo a dependencia do navegador do usuario, do driver de impressao e da configuracao manual de papel.
