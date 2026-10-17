@@ -12,7 +12,7 @@ import { FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalFooter, ModalError } from '@/components/app/modal-shell';
 import { SelectField, TextareaField } from '@/components/app/form-field';
-import { api } from '@/lib/api';
+import { api, HttpError } from '@/lib/api';
 import {
   Escala,
   EscalaItem,
@@ -122,6 +122,13 @@ export default function EscalasPage() {
     diaId?: string;
   } | null>(null);
   const [pendingStatusEscala, setPendingStatusEscala] = useState<Escala | null>(null);
+  const [pendingWarningConflict, setPendingWarningConflict] = useState<{
+    diaId: string;
+    membroId: string;
+    funcaoId: string;
+    message: string;
+    conflitos: Array<{ mensagem: string }>;
+  } | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
@@ -282,6 +289,22 @@ export default function EscalasPage() {
       setPendingConfirmAction(null);
     } catch (err: unknown) {
       showToast(getErrorMessage(err, 'Erro ao executar ação.'), 'error');
+    } finally {
+      setConfirmLoading(false);
+    }
+  }
+
+  async function confirmWarningAllocation() {
+    if (!pendingWarningConflict) return;
+    const { diaId, membroId, funcaoId } = pendingWarningConflict;
+    setConfirmLoading(true);
+    try {
+      const item = await addMembroItem(diaId, membroId, funcaoId, undefined, true);
+      appendEscalaItem(diaId, item);
+      setPendingWarningConflict(null);
+      showToast('Membro escalado com sucesso!');
+    } catch (err: unknown) {
+      showToast(getErrorMessage(err, 'Erro ao confirmar alocação.'), 'error');
     } finally {
       setConfirmLoading(false);
     }
@@ -663,6 +686,22 @@ export default function EscalasPage() {
                     const item = await addMembroItem(diaId, membroId, funcaoId);
                     appendEscalaItem(diaId, item);
                   } catch (err: unknown) {
+                    if (err instanceof HttpError && err.status === 409) {
+                      const data = err.data as any;
+                      if (data?.requerConfirmacao) {
+                        setPendingWarningConflict({
+                          diaId,
+                          membroId,
+                          funcaoId,
+                          message: data.message || 'Existem avisos de compatibilidade para este membro.',
+                          conflitos: Array.isArray(data.conflitos) ? data.conflitos : [],
+                        });
+                        return;
+                      }
+                      const message = data?.message || 'Conflito de escala impede esta alocação.';
+                      showToast(message, 'error');
+                      throw err;
+                    }
                     showToast(getErrorMessage(err, 'Erro ao adicionar membro na escala.'), 'error');
                     throw err;
                   }
@@ -988,6 +1027,34 @@ export default function EscalasPage() {
         loading={confirmLoading}
         onConfirm={executePendingAction}
         onCancel={() => setPendingConfirmAction(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={!!pendingWarningConflict}
+        title="Aviso de Escala"
+        description={
+          <div className="space-y-3">
+            <p className="font-medium text-gray-800">
+              {pendingWarningConflict?.message}
+            </p>
+            {pendingWarningConflict?.conflitos && pendingWarningConflict.conflitos.length > 1 && (
+              <ul className="list-disc pl-5 space-y-1 text-xs text-gray-600">
+                {pendingWarningConflict.conflitos.map((c, i) => (
+                  <li key={i}>{c.mensagem}</li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs text-gray-500 pt-1">
+              Deseja confirmar a alocação deste membro mesmo com os avisos acima?
+            </p>
+          </div>
+        }
+        confirmLabel="Confirmar Alocação"
+        cancelLabel="Cancelar"
+        variant="warning"
+        loading={confirmLoading}
+        onConfirm={confirmWarningAllocation}
+        onCancel={() => setPendingWarningConflict(null)}
       />
     </div>
   );

@@ -161,7 +161,7 @@ describe('EscalasService - criação baseada em eventos', () => {
     const prisma = {
       escalaDia: { findUnique: jest.fn().mockResolvedValue({
         id: escalaDiaId, data: new Date('2026-07-12T12:00:00.000Z'),
-        escala: { id: '66666666-6666-4666-8666-666666666666', tenantId, ministerioId, status: StatusEscala.RASCUNHO },
+        escala: { id: '66666666-6666-4666-8666-666666666666', tenantId, ministerioId, ministerio: { id: ministerioId, nome: 'Louvor' }, status: StatusEscala.RASCUNHO },
       }) },
       ministerioFuncao: { findFirst: jest.fn().mockResolvedValue({ id: funcaoId }) },
       ministerioMembro: { findUnique: jest.fn().mockResolvedValue({
@@ -169,7 +169,10 @@ describe('EscalasService - criação baseada em eventos', () => {
         membro: { tenantId, status: 'ATIVO', deletedAt: null },
         funcoesDisponiveis: funcaoIds.map((id) => ({ funcaoId: id })),
       }) },
-      escalaItem: { findFirst: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({ id: 'item-1' }) },
+      escalaItem: { findMany: jest.fn().mockResolvedValue([]), upsert: jest.fn().mockResolvedValue({ id: 'item-1' }) },
+      segmentoCulto: { findMany: jest.fn().mockResolvedValue([]) },
+      compatibilidadeFuncao: { findMany: jest.fn().mockResolvedValue([]) },
+      auditLog: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) },
     };
     const service = new EscalasService(
       prisma as unknown as PrismaService,
@@ -494,6 +497,222 @@ describe('EscalasService - criação baseada em eventos', () => {
     const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true, ['outra-funcao']);
     await expect(service.addMembro(tenantId, escalaDiaId, { escalaDiaId, membroId, ministerioFuncaoId: funcaoId }, admin)).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.escalaItem.upsert).not.toHaveBeenCalled();
+  });
+
+  it('lanca ConflictException 409 com requerConfirmacao: false quando ha bloqueio', async () => {
+    const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true);
+    prisma.ministerioFuncao.findFirst.mockResolvedValue({
+      id: funcaoId,
+      nome: 'Bateria',
+      localAtuacao: 'Palco',
+      segmentos: [{ segmento: { id: 'seg-1', nome: 'Louvor', ordem: 1 } }],
+    });
+    prisma.escalaItem.findMany.mockResolvedValue([
+      {
+        id: 'item-existente-1',
+        membroId,
+        funcao: {
+          id: 'funcao-baixo',
+          nome: 'Baixo',
+          localAtuacao: 'Palco',
+          ministerio: { nome: 'Louvor' },
+          segmentos: [{ segmento: { id: 'seg-1', nome: 'Louvor', ordem: 1 } }],
+        },
+        escalaDia: {
+          id: escalaDiaId,
+          data: new Date('2026-07-12T12:00:00.000Z'),
+          evento: null,
+          escala: { ministerio: { nome: 'Louvor' } },
+        },
+      },
+    ]);
+    prisma.segmentoCulto.findMany.mockResolvedValue([
+      { id: 'seg-1', nome: 'Louvor', ordem: 1 },
+    ]);
+    prisma.compatibilidadeFuncao.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.addMembro(
+        tenantId,
+        escalaDiaId,
+        { escalaDiaId, membroId, ministerioFuncaoId: funcaoId },
+        admin,
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: expect.objectContaining({
+        requerConfirmacao: false,
+        error: 'Conflict',
+      }),
+    });
+    expect(prisma.escalaItem.upsert).not.toHaveBeenCalled();
+  });
+
+  it('lanca ConflictException 409 com requerConfirmacao: true quando ha aviso e nao foi confirmado', async () => {
+    const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true);
+    prisma.ministerioFuncao.findFirst.mockResolvedValue({
+      id: funcaoId,
+      nome: 'Vocal Apoio',
+      localAtuacao: 'Palco',
+      segmentos: [{ segmento: { id: 'seg-1', nome: 'Louvor', ordem: 1 } }],
+    });
+    prisma.escalaItem.findMany.mockResolvedValue([
+      {
+        id: 'item-existente-1',
+        membroId,
+        funcao: {
+          id: 'funcao-ministro',
+          nome: 'Ministro de Louvor',
+          localAtuacao: 'Palco',
+          ministerio: { nome: 'Louvor' },
+          segmentos: [{ segmento: { id: 'seg-1', nome: 'Louvor', ordem: 1 } }],
+        },
+        escalaDia: {
+          id: escalaDiaId,
+          data: new Date('2026-07-12T12:00:00.000Z'),
+          evento: null,
+          escala: { ministerio: { nome: 'Louvor' } },
+        },
+      },
+    ]);
+    prisma.segmentoCulto.findMany.mockResolvedValue([
+      { id: 'seg-1', nome: 'Louvor', ordem: 1 },
+    ]);
+    prisma.compatibilidadeFuncao.findMany.mockResolvedValue([
+      {
+        funcaoAId: funcaoId,
+        funcaoBId: 'funcao-ministro',
+        regra: 'AVISAR',
+        observacao: 'Cuidado com carga vocal',
+      },
+    ]);
+
+    await expect(
+      service.addMembro(
+        tenantId,
+        escalaDiaId,
+        { escalaDiaId, membroId, ministerioFuncaoId: funcaoId, confirmarAvisos: false },
+        admin,
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: expect.objectContaining({
+        requerConfirmacao: true,
+        error: 'Conflict',
+      }),
+    });
+    expect(prisma.escalaItem.upsert).not.toHaveBeenCalled();
+  });
+
+  it('permite e grava auditoria quando ha aviso e confirmarAvisos e true', async () => {
+    const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true);
+    prisma.ministerioFuncao.findFirst.mockResolvedValue({
+      id: funcaoId,
+      nome: 'Vocal Apoio',
+      localAtuacao: 'Palco',
+      segmentos: [{ segmento: { id: 'seg-1', nome: 'Louvor', ordem: 1 } }],
+    });
+    prisma.escalaItem.findMany.mockResolvedValue([
+      {
+        id: 'item-existente-1',
+        membroId,
+        funcao: {
+          id: 'funcao-ministro',
+          nome: 'Ministro de Louvor',
+          localAtuacao: 'Palco',
+          ministerio: { nome: 'Louvor' },
+          segmentos: [{ segmento: { id: 'seg-1', nome: 'Louvor', ordem: 1 } }],
+        },
+        escalaDia: {
+          id: escalaDiaId,
+          data: new Date('2026-07-12T12:00:00.000Z'),
+          evento: null,
+          escala: { ministerio: { nome: 'Louvor' } },
+        },
+      },
+    ]);
+    prisma.segmentoCulto.findMany.mockResolvedValue([
+      { id: 'seg-1', nome: 'Louvor', ordem: 1 },
+    ]);
+    prisma.compatibilidadeFuncao.findMany.mockResolvedValue([
+      {
+        funcaoAId: funcaoId,
+        funcaoBId: 'funcao-ministro',
+        regra: 'AVISAR',
+        observacao: 'Cuidado com carga vocal',
+      },
+    ]);
+
+    const result = await service.addMembro(
+      tenantId,
+      escalaDiaId,
+      { escalaDiaId, membroId, ministerioFuncaoId: funcaoId, confirmarAvisos: true },
+      admin,
+    );
+
+    expect(result).toBeDefined();
+    expect(prisma.escalaItem.upsert).toHaveBeenCalled();
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId,
+          entidade: 'escalas',
+          payloadAfter: expect.objectContaining({
+            tipo: 'CONFIRMACAO_AVISOS_CONFLITO',
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('permite sem avisos quando regra na matriz for PERMITIR', async () => {
+    const { service, prisma, escalaDiaId, membroId, funcaoId } = createAssignmentContext(true);
+    prisma.ministerioFuncao.findFirst.mockResolvedValue({
+      id: funcaoId,
+      nome: 'Violão',
+      localAtuacao: 'Palco',
+      segmentos: [{ segmento: { id: 'seg-1', nome: 'Louvor', ordem: 1 } }],
+    });
+    prisma.escalaItem.findMany.mockResolvedValue([
+      {
+        id: 'item-existente-1',
+        membroId,
+        funcao: {
+          id: 'funcao-ministro',
+          nome: 'Ministro de Louvor',
+          localAtuacao: 'Palco',
+          ministerio: { nome: 'Louvor' },
+          segmentos: [{ segmento: { id: 'seg-1', nome: 'Louvor', ordem: 1 } }],
+        },
+        escalaDia: {
+          id: escalaDiaId,
+          data: new Date('2026-07-12T12:00:00.000Z'),
+          evento: null,
+          escala: { ministerio: { nome: 'Louvor' } },
+        },
+      },
+    ]);
+    prisma.segmentoCulto.findMany.mockResolvedValue([
+      { id: 'seg-1', nome: 'Louvor', ordem: 1 },
+    ]);
+    prisma.compatibilidadeFuncao.findMany.mockResolvedValue([
+      {
+        funcaoAId: funcaoId,
+        funcaoBId: 'funcao-ministro',
+        regra: 'PERMITIR',
+      },
+    ]);
+
+    const result = await service.addMembro(
+      tenantId,
+      escalaDiaId,
+      { escalaDiaId, membroId, ministerioFuncaoId: funcaoId },
+      admin,
+    );
+
+    expect(result).toBeDefined();
+    expect(prisma.escalaItem.upsert).toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
   });
 });
 

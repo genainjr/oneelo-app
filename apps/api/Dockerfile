@@ -69,7 +69,8 @@ COPY assets ./assets
 
 # Copia entrypoint script
 COPY entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
+COPY scripts/run-destructive-seed.sh ./scripts/run-destructive-seed.sh
+RUN chmod +x ./entrypoint.sh ./scripts/run-destructive-seed.sh
 
 EXPOSE 4001
 
