@@ -208,13 +208,29 @@ Todas as rotas de escrita devem usar DTOs validados pelo `ValidationPipe`.
 - Todas as ocorrências e relações ministeriais são criadas em uma única transação.
 - As ocorrências são eventos independentes; não existe série persistida, edição coletiva ou criação automática de escala.
 
-### EscalaItem
+### EscalaItem e Conflitos de Escala
 
 - `membroId`: membro ativo do mesmo tenant.
 - O membro deve pertencer ao ministerio da escala e ter `podeSerEscalado = true`.
 - A funcao deve pertencer ao ministerio e respeitar as funcoes configuradas no vinculo.
 - `funcao`: obrigatoria quando a escala usa funcao textual.
 - Confirmacao/recusa deve ser limitada ao proprio membro escalado, exceto quando a regra do modulo permitir administracao por gestor.
+- **Validação de Função Repetida**: a mesma pessoa não pode ser alocada na mesma função no mesmo dia (bloqueio incondicional).
+- **Segmentos do Culto (`SegmentoCulto`)**:
+  - Definem os momentos litúrgicos institucionais do culto (ex: Acolhimento, Louvor, Avisos, Palavra, Encerramento).
+  - Funções sem segmentos vinculados são avaliadas como presentes em todos os segmentos.
+- **Matriz de Compatibilidade (`CompatibilidadeFuncao`)**:
+  - Avaliada quando duas funções alocadas para o mesmo membro no mesmo dia e horário compartilham ao menos um segmento do culto.
+  - Regra `PERMITIR`: alocação aceita diretamente.
+  - Regra `AVISAR`: retorna HTTP 409 tipado com `requerConfirmacao: true`. Caso o operador confirme (`confirmarAvisos: true`), a alocação é salva e registrada em `AuditLog`.
+  - Ausência de regra cadastrada: bloqueio estrito com HTTP 409 informando a sobreposição de funções sem autorização.
+- **Aviso de Transição de Local Físico**:
+  - Quando duas funções atuam em segmentos adjacentes/consecutivos e possuem locais de atuação (`localAtuacao`) preenchidos e distintos (ex: Palco → Salinha Infantil), gera aviso operacional de deslocamento físico exigindo confirmação.
+- **Isolamento de Horários**:
+  - Eventos em horários distintos no mesmo dia não geram conflito mútuo (ex: EBD matutina e Culto noturno).
+- **Gestão e Permissões**:
+  - Somente `ADMIN` e `STAFF` configuram os segmentos do culto e a matriz de compatibilidade institucional em `/configuracoes`.
+  - A vinculação de segmentos e local de atuação de cada função ministerial é realizada em `/ministerios`.
 
 ---
 

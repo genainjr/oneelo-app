@@ -39,12 +39,22 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exceptionPayload.code
         : undefined;
 
+    const requerConfirmacao =
+      typeof exceptionPayload?.requerConfirmacao === 'boolean'
+        ? exceptionPayload.requerConfirmacao
+        : undefined;
+    const conflitos = Array.isArray(exceptionPayload?.conflitos)
+      ? exceptionPayload.conflitos
+      : undefined;
+
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       message,
       ...(code ? { code } : {}),
+      ...(requerConfirmacao !== undefined ? { requerConfirmacao } : {}),
+      ...(conflitos ? { conflitos } : {}),
     });
   }
 }

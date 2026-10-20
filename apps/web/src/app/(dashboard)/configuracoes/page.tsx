@@ -9,9 +9,11 @@ import { DataTable, Column, SortState } from "@/components/app/data-table";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
 import { FilterInput, FilterSelect } from "@/components/app/filter-field";
 import { StatusBadge } from "@/components/app/status-badge";
+import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { UsuarioModal } from "@/components/app/usuario-modal";
 import { ImageUploadPanel } from "@/components/app/image-upload-panel";
 import { TenantPwaSettings } from "@/components/app/tenant-pwa-settings";
+import { LiturgiaEscalasSettings } from "@/components/app/liturgia-escalas-settings";
 import { useAuthUser } from "@/contexts/auth-user-context";
 import { api, buildQuery } from "@/lib/api";
 import {
@@ -97,7 +99,7 @@ export default function ConfiguracoesPage() {
   const { setUser: setShellUser } = useAuthUser();
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [activeTab, setActiveTab] = useState<"usuarios" | "audit">("usuarios");
+  const [activeTab, setActiveTab] = useState<"liturgia" | "usuarios" | "audit">("liturgia");
 
   const [users, setUsers] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -885,7 +887,7 @@ export default function ConfiguracoesPage() {
   ];
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-5 px-4 py-4 sm:space-y-6 sm:p-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
       <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
 
       {error && (
@@ -937,7 +939,28 @@ export default function ConfiguracoesPage() {
 
       {/* Tabs */}
       <div className="flex flex-col gap-3 border border-gray-100 bg-white rounded-t-2xl px-4 py-3 shadow-2xs sm:flex-row sm:items-center sm:px-5 sm:py-0">
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-8">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-8">
+          <button
+            onClick={() => setActiveTab("liturgia")}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === "liturgia" ? "bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600" : "text-gray-500 hover:text-gray-700 sm:border-transparent"}`}
+          >
+            <svg
+              className="w-4 h-4 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
+            </svg>
+            <span className="truncate">
+              {t("tabs.liturgia")}
+            </span>
+          </button>
           <button
             onClick={() => {
               setActiveTab("usuarios");
@@ -1167,7 +1190,9 @@ export default function ConfiguracoesPage() {
         </FilterShell>
       )}
 
-      {activeTab === "usuarios" ? (
+      {activeTab === "liturgia" ? (
+        <LiturgiaEscalasSettings />
+      ) : activeTab === "usuarios" ? (
         <DataTable
           columns={userColumns}
           data={pagedUsers}
@@ -1366,79 +1391,17 @@ export default function ConfiguracoesPage() {
         )}
       />
 
-      {deletingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
-                <svg
-                  className="w-5 h-5 text-red-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-800">
-                  {t("deactivate.title")}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  {t("deactivate.subtitle")}
-                </p>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600">
-              {t("deactivate.message", { name: deletingUser.nome })}
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setDeletingUser(null)}
-                disabled={deleteLoading}
-                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
-              >
-                {t("deactivate.cancel")}
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleteLoading}
-                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all disabled:opacity-60 flex items-center gap-2"
-              >
-                {deleteLoading && (
-                  <svg
-                    className="w-4 h-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8H4z"
-                    />
-                  </svg>
-                )}
-                {deleteLoading
-                  ? t("deactivate.confirming")
-                  : t("deactivate.confirm")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={Boolean(deletingUser)}
+        title={t("deactivate.title")}
+        description={deletingUser ? t("deactivate.message", { name: deletingUser.nome }) : ""}
+        confirmLabel={t("deactivate.confirm")}
+        cancelLabel={t("deactivate.cancel")}
+        loading={deleteLoading}
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setDeletingUser(null)}
+      />
     </div>
   );
 }

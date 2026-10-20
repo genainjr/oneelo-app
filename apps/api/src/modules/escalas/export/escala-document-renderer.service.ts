@@ -1,16 +1,54 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { chromium } from 'playwright';
 import type { Browser } from 'playwright';
+import sharp from 'sharp';
+import { MAX_IMAGE_SIZE } from '../../../common/storage/image-upload';
 import type {
   EscalaDocumentDay,
+  EscalaDocumentFormat,
   EscalaDocumentInput,
+  EscalaDocumentPageSelection,
   EscalaDocumentRole,
   EscalaDocumentSchedule,
+  EscalaDocumentWeekOption,
+  EscalaExportResult,
+  EscalaRenderOptions,
+  RenderedBatchDocument,
+  RenderedBatchFile,
   RenderedDocument,
 } from './escala-document.types';
+
+export const CHROMIUM_LOW_MEMORY_ARGS = [
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  ...(process.platform === 'linux' ? ['--no-sandbox', '--no-zygote'] : []),
+  '--renderer-process-limit=1',
+  '--disable-extensions',
+  '--disable-background-networking',
+  '--disable-default-apps',
+  '--disable-sync',
+  '--mute-audio',
+  '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1',
+  '--js-flags=--max-old-space-size=128',
+];
+
+export class ExportServiceUnavailableException extends ServiceUnavailableException {
+  constructor(
+    message: string,
+    public readonly retryAfterSeconds = 5,
+  ) {
+    super(message);
+  }
+}
 
 const MONTH_LABELS = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
@@ -41,11 +79,42 @@ interface WeeklyEvent {
   day: EscalaDocumentDay;
 }
 
-interface WeeklyDocumentPage {
+export interface WeeklyDocumentPage {
   weekStart: Date | null;
   weekEnd: Date | null;
   events: WeeklyEvent[];
   emptySchedule?: EscalaDocumentSchedule;
+}
+
+let cachedLookupLabsLogoDataUri: string | null | undefined;
+
+function getLookupLabsLogoDataUri(): string | null {
+  if (cachedLookupLabsLogoDataUri !== undefined) {
+    return cachedLookupLabsLogoDataUri;
+  }
+
+  const candidatePaths = [
+    join(process.cwd(), 'assets/LogoLookupLabs.png'),
+    join(process.cwd(), 'apps/api/assets/LogoLookupLabs.png'),
+    join(process.cwd(), 'apps/web/public/LogoLookupLabs.png'),
+    join(__dirname, '../../../../assets/LogoLookupLabs.png'),
+    join(__dirname, '../../../../../web/public/LogoLookupLabs.png'),
+  ];
+
+  for (const filePath of candidatePaths) {
+    try {
+      if (existsSync(filePath)) {
+        const buffer = readFileSync(filePath);
+        cachedLookupLabsLogoDataUri = `data:image/png;base64,${buffer.toString('base64')}`;
+        return cachedLookupLabsLogoDataUri;
+      }
+    } catch {
+      // ignore and try next candidate
+    }
+  }
+
+  cachedLookupLabsLogoDataUri = null;
+  return null;
 }
 
 function escapeHtml(value: string) {
@@ -75,17 +144,6 @@ function getWeekdayIndex(date: Date) {
 
 function capitalize(value: string) {
   return value ? `${value[0].toLocaleUpperCase('pt-BR')}${value.slice(1)}` : value;
-}
-
-function getLookupLabsLogoUrl() {
-  const baseUrl = process.env.DOCUMENT_ASSET_BASE_URL ?? process.env.CORS_ORIGIN;
-  if (!baseUrl) return null;
-
-  try {
-    return new URL('/LogoLookupLabs.png', baseUrl).toString();
-  } catch {
-    return null;
-  }
 }
 
 function chunk<T>(values: T[], size: number): T[][] {
@@ -164,7 +222,7 @@ function endOfWeek(weekStart: Date) {
   return result;
 }
 
-function createWeeklyPages(schedules: EscalaDocumentSchedule[]): WeeklyDocumentPage[] {
+export function createWeeklyPages(schedules: EscalaDocumentSchedule[]): WeeklyDocumentPage[] {
   const pagesByWeek = new Map<string, WeeklyDocumentPage>();
 
   for (const schedule of schedules) {
@@ -220,9 +278,9 @@ function renderHeader(
   const tenantLogo = input.logoUrl
     ? `<img class="tenant-logo" src="${escapeHtml(input.logoUrl)}" alt="" />`
     : '';
-  const lookupLabsUrl = getLookupLabsLogoUrl();
-  const lookupLabsLogo = lookupLabsUrl
-    ? `<img class="lookup-labs-logo" src="${escapeHtml(lookupLabsUrl)}" alt="Lookup Labs" />`
+  const lookupLabsDataUri = getLookupLabsLogoDataUri();
+  const lookupLabsLogo = lookupLabsDataUri
+    ? `<img class="lookup-labs-logo" src="${escapeHtml(lookupLabsDataUri)}" alt="Lookup Labs" />`
     : '';
 
   return `<header class="document-header">${tenantLogo}<div class="header-title"><h1>${escapeHtml(title)}</h1></div><div class="header-meta"><p class="header-period">${escapeHtml(subtitle)}</p><strong class="organization">${escapeHtml(input.organizationName)}</strong></div></header><div class="brand">${lookupLabsLogo}<span>One Elo <small>Lookup Labs</small></span></div>`;
@@ -359,7 +417,7 @@ function renderEventCard(event: WeeklyEvent, index: number) {
   return `<article class="event-card" style="--event-color:${ROLE_COLORS[index % ROLE_COLORS.length]}"><header><div class="event-date"><strong>${escapeHtml(formatDate(day.date, { day: '2-digit', month: '2-digit' }))}</strong><span>${escapeHtml(weekday)}</span>${eventTitle}</div><span class="ministry-tag">${escapeHtml(schedule.ministryName)}</span></header><div class="event-assignments">${roleRows || '<p class="empty-assignments">Nenhuma atribuição registrada.</p>'}</div></article>`;
 }
 
-function formatWeekPeriod(page: WeeklyDocumentPage) {
+export function formatWeekPeriod(page: WeeklyDocumentPage) {
   if (!page.weekStart || !page.weekEnd) {
     return page.emptySchedule ? formatPeriod(page.emptySchedule) : '';
   }
@@ -374,6 +432,27 @@ function formatWeekPeriod(page: WeeklyDocumentPage) {
   const endDay = formatDate(visibleEnd, { day: '2-digit' });
   const monthLabel = MONTH_LABELS[schedule.month - 1] ?? '';
   return `Semana de ${startDay} a ${endDay} de ${monthLabel}`;
+}
+
+export function getWeeklyPageFileName(page: WeeklyDocumentPage, pageNumber: number) {
+  const weekFileSuffix = page.weekStart
+    ? page.weekStart.toISOString().slice(0, 10)
+    : `sem-eventos-${String(pageNumber).padStart(2, '0')}`;
+  return `escalas-semana-${weekFileSuffix}.png`;
+}
+
+export function listWeeklyPageOptions(schedules: EscalaDocumentSchedule[]): EscalaDocumentWeekOption[] {
+  return createWeeklyPages(schedules).map((page, index) => {
+    const pageNumber = index + 1;
+    return {
+      page: pageNumber,
+      weekStart: page.weekStart ? page.weekStart.toISOString().slice(0, 10) : null,
+      weekEnd: page.weekEnd ? page.weekEnd.toISOString().slice(0, 10) : null,
+      label: formatWeekPeriod(page) || `Semana ${pageNumber}`,
+      fileName: getWeeklyPageFileName(page, pageNumber),
+      eventCount: page.events.length,
+    };
+  });
 }
 
 function renderWeeklyPage(
@@ -464,27 +543,446 @@ function renderStyles() {
   </style>`;
 }
 
+interface TenantLogoCacheEntry {
+  dataUri: string | null;
+  expiresAt: number;
+  bytes: number;
+}
+
+interface ResultCacheEntry {
+  value: RenderedDocument | RenderedBatchDocument;
+  expiresAt: number;
+  bytes: number;
+}
+
+function toMiB(bytes: number): number {
+  return Number((bytes / 1024 / 1024).toFixed(1));
+}
+
+function normalizeEtagValue(value: string): string {
+  return value.trim().replace(/^W\//i, '').replace(/^"|"$/g, '');
+}
+
+function matchesIfNoneMatch(ifNoneMatch: string | undefined, etag: string): boolean {
+  if (!ifNoneMatch) return false;
+  const target = normalizeEtagValue(etag);
+  return ifNoneMatch
+    .split(',')
+    .map((candidate) => candidate.trim())
+    .some((candidate) => candidate === '*' || normalizeEtagValue(candidate) === target);
+}
+
 @Injectable()
 export class EscalaDocumentRendererService {
+  private readonly logger = new Logger(EscalaDocumentRendererService.name);
   private renderQueue: Promise<void> = Promise.resolve();
+  private activeRenders = 0;
+  private waitingCount = 0;
+
+  private maxQueueWaiting = 3;
+  private renderTimeoutMs = 25_000;
+  private maxCacheBytes = 15 * 1024 * 1024;
+  private cacheTtlMs = 10 * 60 * 1000;
+
+  private readonly logoCache = new Map<string, TenantLogoCacheEntry>();
+  private readonly maxLogoCacheEntries = 25;
+  private readonly maxLogoBytes = MAX_IMAGE_SIZE;
+  private readonly logoCacheTtlMs = 30 * 60 * 1000;
+  private readonly logoNegativeTtlMs = 15 * 1000;
+  private readonly logoFetchTimeoutMs = 5_000;
+
+  private readonly resultCache = new Map<string, ResultCacheEntry>();
+  private resultCacheBytes = 0;
+
+  setLimitsForTesting(limits: {
+    maxQueueWaiting?: number;
+    renderTimeoutMs?: number;
+    maxCacheBytes?: number;
+    cacheTtlMs?: number;
+  }) {
+    if (limits.maxQueueWaiting !== undefined) {
+      this.maxQueueWaiting = limits.maxQueueWaiting;
+    }
+    if (limits.renderTimeoutMs !== undefined) {
+      this.renderTimeoutMs = limits.renderTimeoutMs;
+    }
+    if (limits.maxCacheBytes !== undefined) {
+      this.maxCacheBytes = limits.maxCacheBytes;
+    }
+    if (limits.cacheTtlMs !== undefined) {
+      this.cacheTtlMs = limits.cacheTtlMs;
+    }
+  }
+
+  clearCaches() {
+    this.resultCache.clear();
+    this.resultCacheBytes = 0;
+    this.logoCache.clear();
+  }
+
+  computeEtag(
+    input: EscalaDocumentInput,
+    format: EscalaDocumentFormat,
+    pageSelection: EscalaDocumentPageSelection = 1,
+  ): string {
+    const serialized = JSON.stringify({
+      v: 3,
+      format,
+      page: format === 'pdf' ? 1 : pageSelection,
+      organizationName: input.organizationName,
+      logoUrl: input.logoUrl ?? null,
+      schedules: input.schedules.map((schedule) => ({
+        id: schedule.id,
+        ministryName: schedule.ministryName,
+        month: schedule.month,
+        year: schedule.year,
+        roles: schedule.roles,
+        days: schedule.days.map((day) => ({
+          date: day.date instanceof Date ? day.date.toISOString() : String(day.date),
+          title: day.title ?? null,
+          hiddenRoleIds: day.hiddenRoleIds,
+          assignments: day.assignments,
+        })),
+      })),
+    });
+    const digest = createHash('sha256').update(serialized).digest('hex').slice(0, 32);
+    return `"${digest}"`;
+  }
+
+  private getResultCacheEntry(key: string): (RenderedDocument | RenderedBatchDocument) | null {
+    const entry = this.resultCache.get(key);
+    if (!entry) return null;
+
+    if (Date.now() > entry.expiresAt) {
+      this.resultCache.delete(key);
+      this.resultCacheBytes = Math.max(0, this.resultCacheBytes - entry.bytes);
+      return null;
+    }
+
+    // Refresh LRU order
+    this.resultCache.delete(key);
+    this.resultCache.set(key, entry);
+    return entry.value;
+  }
+
+  private setResultCacheEntry(
+    key: string,
+    value: RenderedDocument | RenderedBatchDocument,
+    bytes: number,
+  ) {
+    if (bytes <= 0 || bytes > this.maxCacheBytes) {
+      return;
+    }
+
+    const existing = this.resultCache.get(key);
+    if (existing) {
+      this.resultCache.delete(key);
+      this.resultCacheBytes = Math.max(0, this.resultCacheBytes - existing.bytes);
+    }
+
+    const now = Date.now();
+    for (const [k, v] of this.resultCache.entries()) {
+      if (now > v.expiresAt) {
+        this.resultCache.delete(k);
+        this.resultCacheBytes = Math.max(0, this.resultCacheBytes - v.bytes);
+      }
+    }
+
+    while (
+      this.resultCache.size > 0 &&
+      this.resultCacheBytes + bytes > this.maxCacheBytes
+    ) {
+      const oldestKey = this.resultCache.keys().next().value;
+      if (!oldestKey) break;
+      const oldest = this.resultCache.get(oldestKey);
+      this.resultCache.delete(oldestKey);
+      if (oldest) {
+        this.resultCacheBytes = Math.max(0, this.resultCacheBytes - oldest.bytes);
+      }
+    }
+
+    this.resultCache.set(key, {
+      value,
+      bytes,
+      expiresAt: now + this.cacheTtlMs,
+    });
+    this.resultCacheBytes += bytes;
+  }
+
+  private async resolveTenantLogoDataUri(logoUrl?: string | null): Promise<string | null> {
+    if (!logoUrl) return null;
+    const trimmed = logoUrl.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith('data:image/')) {
+      return trimmed;
+    }
+    if (!/^https?:\/\//i.test(trimmed)) {
+      return null;
+    }
+
+    const now = Date.now();
+    const cached = this.logoCache.get(trimmed);
+    if (cached) {
+      if (now <= cached.expiresAt) {
+        this.logoCache.delete(trimmed);
+        this.logoCache.set(trimmed, cached);
+        return cached.dataUri;
+      }
+      this.logoCache.delete(trimmed);
+    }
+
+    try {
+      const response = await fetch(trimmed, {
+        signal: AbortSignal.timeout(this.logoFetchTimeoutMs),
+      });
+      if (!response.ok) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'escala_export_logo_fetch_failed',
+            status: response.status,
+          }),
+        );
+        this.storeLogoCache(trimmed, null, 0, now + this.logoNegativeTtlMs);
+        return null;
+      }
+      const contentType = (response.headers.get('content-type') ?? 'image/png')
+        .split(';')[0]
+        .trim()
+        .toLowerCase();
+      if (
+        !contentType.startsWith('image/') &&
+        contentType !== 'application/octet-stream'
+      ) {
+        this.storeLogoCache(trimmed, null, 0, now + this.logoNegativeTtlMs);
+        return null;
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      if (arrayBuffer.byteLength === 0 || arrayBuffer.byteLength > this.maxLogoBytes) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'escala_export_logo_size_rejected',
+            byteLength: arrayBuffer.byteLength,
+            maxLogoBytes: this.maxLogoBytes,
+          }),
+        );
+        this.storeLogoCache(trimmed, null, 0, now + this.logoNegativeTtlMs);
+        return null;
+      }
+      const rawBuffer = Buffer.from(arrayBuffer);
+      let optimizedBuffer: Buffer = rawBuffer;
+      let finalMime = contentType.startsWith('image/') ? contentType : 'image/png';
+      try {
+        optimizedBuffer = await sharp(rawBuffer)
+          .rotate()
+          .resize(240, 240, { fit: 'inside', withoutEnlargement: true })
+          .png({ compressionLevel: 9 })
+          .toBuffer();
+        finalMime = 'image/png';
+      } catch {
+        // Fallback to original buffer if sharp cannot decode synthetic/custom image
+      }
+
+      const dataUri = `data:${finalMime};base64,${optimizedBuffer.toString('base64')}`;
+      this.storeLogoCache(
+        trimmed,
+        dataUri,
+        optimizedBuffer.byteLength,
+        now + this.logoCacheTtlMs,
+      );
+      return dataUri;
+    } catch (error) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'escala_export_logo_fetch_error',
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      this.storeLogoCache(trimmed, null, 0, now + this.logoNegativeTtlMs);
+      return null;
+    }
+  }
+
+  private storeLogoCache(
+    key: string,
+    dataUri: string | null,
+    bytes: number,
+    expiresAt: number,
+  ) {
+    if (this.logoCache.has(key)) {
+      this.logoCache.delete(key);
+    }
+    while (this.logoCache.size >= this.maxLogoCacheEntries) {
+      const oldestKey = this.logoCache.keys().next().value;
+      if (!oldestKey) break;
+      this.logoCache.delete(oldestKey);
+    }
+    this.logoCache.set(key, { dataUri, bytes, expiresAt });
+  }
 
   private async launchBrowser(): Promise<Browser> {
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const browser = await chromium.launch({ headless: true }).catch(() => null);
+      const browser = await chromium
+        .launch({
+          headless: true,
+          args: CHROMIUM_LOW_MEMORY_ARGS,
+        })
+        .catch(() => null);
       if (browser?.isConnected()) return browser;
     }
     throw new Error('Nao foi possivel iniciar o navegador de renderizacao.');
   }
 
-  render(
+  private computeTotalPages(
+    input: EscalaDocumentInput,
+    format: EscalaDocumentFormat,
+  ): number {
+    return format === 'pdf'
+      ? input.schedules.flatMap(createPdfPages).length
+      : createWeeklyPages(input.schedules).length;
+  }
+
+  private validatePageSelection(
+    format: EscalaDocumentFormat,
+    pageSelection: EscalaDocumentPageSelection,
+    totalWeeklyPages: number,
+  ) {
+    if (format === 'png' && pageSelection !== 'todas') {
+      if (pageSelection < 1 || pageSelection > totalWeeklyPages) {
+        throw new BadRequestException('A semana solicitada não existe nesta escala.');
+      }
+    }
+  }
+
+  async render(
     input: EscalaDocumentInput,
     format: 'pdf' | 'png',
     pageNumber?: number,
+    options?: EscalaRenderOptions,
   ): Promise<RenderedDocument> {
-    const queuedRender = this.renderQueue.then(
-      () => this.renderDocument(input, format, pageNumber),
-      () => this.renderDocument(input, format, pageNumber),
-    );
+    const result = await this.renderExport(input, format, pageNumber ?? 1, options);
+    if (result.kind === 'batch' || result.kind === 'not-modified') {
+      throw new BadRequestException('Modo de exportação incompatível com renderização única.');
+    }
+    return result;
+  }
+
+  async renderExport(
+    input: EscalaDocumentInput,
+    format: EscalaDocumentFormat,
+    pageSelection: EscalaDocumentPageSelection = 1,
+    options?: EscalaRenderOptions,
+  ): Promise<EscalaExportResult> {
+    const startedAt = performance.now();
+    const rssBeforeMiB = toMiB(process.memoryUsage().rss);
+    const effectiveSelection: EscalaDocumentPageSelection =
+      format === 'pdf' ? 1 : (pageSelection ?? 1);
+
+    const totalPages = this.computeTotalPages(input, format);
+    this.validatePageSelection(format, effectiveSelection, totalPages);
+
+    const etag = this.computeEtag(input, format, effectiveSelection);
+
+    if (matchesIfNoneMatch(options?.ifNoneMatch, etag)) {
+      const totalMs = Math.round(performance.now() - startedAt);
+      this.logger.log(
+        JSON.stringify({
+          event: 'escala_export',
+          format,
+          page: effectiveSelection,
+          pageCount: totalPages,
+          cache: 'etag',
+          queryMs: options?.queryMs ?? 0,
+          launchMs: 0,
+          renderMs: 0,
+          totalMs,
+          bufferBytes: 0,
+          rssBeforeMiB,
+          rssAfterMiB: toMiB(process.memoryUsage().rss),
+          queueSize: this.waitingCount,
+        }),
+      );
+      return {
+        kind: 'not-modified',
+        etag,
+        pageCount: totalPages,
+        notModified: true,
+      };
+    }
+
+    const cached = this.getResultCacheEntry(etag);
+    if (cached) {
+      const bufferBytes =
+        cached.kind === 'batch'
+          ? cached.files.reduce((acc, f) => acc + Buffer.byteLength(f.base64, 'utf8'), 0)
+          : cached.buffer.byteLength;
+      const totalMs = Math.round(performance.now() - startedAt);
+      this.logger.log(
+        JSON.stringify({
+          event: 'escala_export',
+          format,
+          page: effectiveSelection,
+          pageCount: cached.pageCount,
+          cache: 'hit',
+          queryMs: options?.queryMs ?? 0,
+          launchMs: 0,
+          renderMs: 0,
+          totalMs,
+          bufferBytes,
+          rssBeforeMiB,
+          rssAfterMiB: toMiB(process.memoryUsage().rss),
+          queueSize: this.waitingCount,
+        }),
+      );
+      return cached;
+    }
+
+    if (this.activeRenders > 0 && this.waitingCount >= this.maxQueueWaiting) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'escala_export_rejected_queue_full',
+          format,
+          page: effectiveSelection,
+          queueSize: this.waitingCount,
+          activeRenders: this.activeRenders,
+          rssMiB: rssBeforeMiB,
+        }),
+      );
+      throw new ExportServiceUnavailableException(
+        'Muitas exportações simultâneas em andamento. Tente novamente em alguns segundos.',
+        5,
+      );
+    }
+
+    const wasQueued = this.activeRenders > 0;
+    if (wasQueued) {
+      this.waitingCount += 1;
+    } else {
+      this.activeRenders = 1;
+    }
+
+    const runTask = async () => {
+      if (wasQueued) {
+        this.waitingCount = Math.max(0, this.waitingCount - 1);
+        this.activeRenders = 1;
+      }
+      try {
+        return await this.executeRenderWithTimeout(
+          input,
+          format,
+          effectiveSelection,
+          etag,
+          rssBeforeMiB,
+          startedAt,
+          options?.queryMs ?? 0,
+        );
+      } finally {
+        if (this.waitingCount === 0) {
+          this.activeRenders = 0;
+        }
+      }
+    };
+
+    const queuedRender = this.renderQueue.then(runTask, runTask);
     this.renderQueue = queuedRender.then(
       () => undefined,
       () => undefined,
@@ -492,49 +990,118 @@ export class EscalaDocumentRendererService {
     return queuedRender;
   }
 
-  private async renderDocument(
+  private async executeRenderWithTimeout(
     input: EscalaDocumentInput,
-    format: 'pdf' | 'png',
-    pageNumber?: number,
-  ): Promise<RenderedDocument> {
-    const pdfPages = format === 'pdf'
-      ? input.schedules.flatMap(createPdfPages)
-      : [];
-    const weeklyPages = format === 'png'
-      ? createWeeklyPages(input.schedules)
-      : [];
-    const totalPages = format === 'pdf' ? pdfPages.length : weeklyPages.length;
-    const selectedPage = pageNumber ?? 1;
-
-    if (format === 'png' && (selectedPage < 1 || selectedPage > weeklyPages.length)) {
-      throw new BadRequestException('A semana solicitada não existe nesta escala.');
+    format: EscalaDocumentFormat,
+    pageSelection: EscalaDocumentPageSelection,
+    etag: string,
+    rssBeforeMiB: number,
+    startedAt: number,
+    queryMs: number,
+  ): Promise<RenderedDocument | RenderedBatchDocument> {
+    // Re-check cache in case an earlier queued request already rendered the same document
+    const cachedAfterQueue = this.getResultCacheEntry(etag);
+    if (cachedAfterQueue) {
+      return cachedAfterQueue;
     }
 
+    let activeBrowser: Browser | null = null;
+    let timeoutHandle: NodeJS.Timeout | undefined;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        if (activeBrowser) {
+          activeBrowser.close().catch(() => undefined);
+        }
+        reject(
+          new ExportServiceUnavailableException(
+            'O tempo limite para gerar o documento foi excedido. Tente novamente em instantes.',
+            5,
+          ),
+        );
+      }, this.renderTimeoutMs);
+      timeoutHandle.unref?.();
+    });
+
+    try {
+      return await Promise.race([
+        this.performRender(
+          input,
+          format,
+          pageSelection,
+          etag,
+          rssBeforeMiB,
+          startedAt,
+          queryMs,
+          (browser) => {
+            activeBrowser = browser;
+          },
+        ),
+        timeoutPromise,
+      ]);
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+    }
+  }
+
+  private async performRender(
+    input: EscalaDocumentInput,
+    format: EscalaDocumentFormat,
+    pageSelection: EscalaDocumentPageSelection,
+    etag: string,
+    rssBeforeMiB: number,
+    startedAt: number,
+    queryMs: number,
+    onBrowserLaunched: (browser: Browser) => void,
+  ): Promise<RenderedDocument | RenderedBatchDocument> {
+    const resolvedLogoDataUri = await this.resolveTenantLogoDataUri(input.logoUrl);
+    const shouldCacheResult = !input.logoUrl?.trim() || resolvedLogoDataUri !== null;
+    const resolvedInput: EscalaDocumentInput = {
+      ...input,
+      logoUrl: resolvedLogoDataUri,
+    };
+
+    const pdfPages = format === 'pdf'
+      ? resolvedInput.schedules.flatMap(createPdfPages)
+      : [];
+    const weeklyPages = format === 'png'
+      ? createWeeklyPages(resolvedInput.schedules)
+      : [];
+    const totalPages = format === 'pdf' ? pdfPages.length : weeklyPages.length;
+
+    const launchStart = performance.now();
     const browser = await this.launchBrowser();
+    onBrowserLaunched(browser);
+    const launchMs = Math.round(performance.now() - launchStart);
+
+    const renderStart = performance.now();
     const page = await browser.newPage({
       viewport: format === 'pdf'
         ? { width: 1123, height: 794 }
         : { width: 1080, height: 1000 },
-      deviceScaleFactor: format === 'png' ? 1 : 1,
+      deviceScaleFactor: 1,
     }).catch(async (error) => {
       await browser.close().catch(() => undefined);
       throw error;
     });
 
     try {
-      const body = format === 'pdf'
-        ? pdfPages.map((pdfPage) => renderPdfPage(pdfPage, input)).join('')
-        : renderWeeklyPage(weeklyPages[selectedPage - 1], input);
-
-      await page.setContent(
-        `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8" />${renderStyles()}</head><body>${body}</body></html>`,
-        { waitUntil: 'domcontentloaded' },
-      );
-      await page
-        .waitForFunction(() => Array.from(document.images).every((image) => image.complete && image.naturalWidth > 0), undefined, { timeout: 3_000 })
-        .catch(() => undefined);
+      const styles = renderStyles();
+      const head = `<meta charset="utf-8" /><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline';" />${styles}`;
+      const responseEtag = shouldCacheResult ? etag : undefined;
 
       if (format === 'pdf') {
+        const body = pdfPages
+          .map((pdfPage) => renderPdfPage(pdfPage, resolvedInput))
+          .join('');
+        await page.setContent(
+          `<!doctype html><html lang="pt-BR"><head>${head}</head><body>${body}</body></html>`,
+          { waitUntil: 'domcontentloaded' },
+        );
+        await this.waitForImages(page);
+
         const buffer = await page.pdf({
           format: 'A4',
           landscape: true,
@@ -542,28 +1109,168 @@ export class EscalaDocumentRendererService {
           preferCSSPageSize: true,
           margin: { top: '7mm', right: '7mm', bottom: '7mm', left: '7mm' },
         });
-        return {
+        const renderMs = Math.round(performance.now() - renderStart);
+        const result: RenderedDocument = {
+          kind: 'single',
           buffer,
           mimeType: 'application/pdf',
           fileName: 'escalas.pdf',
           pageCount: totalPages,
+          etag: responseEtag,
         };
+        if (shouldCacheResult) {
+          this.setResultCacheEntry(etag, result, buffer.byteLength);
+        }
+        this.logRenderMetrics({
+          format,
+          page: 1,
+          pageCount: totalPages,
+          queryMs,
+          launchMs,
+          renderMs,
+          totalMs: Math.round(performance.now() - startedAt),
+          bufferBytes: buffer.byteLength,
+          rssBeforeMiB,
+        });
+        return result;
       }
 
+      if (pageSelection === 'todas') {
+        const files: RenderedBatchFile[] = [];
+        let totalBufferBytes = 0;
+
+        for (let idx = 0; idx < weeklyPages.length; idx += 1) {
+          const weeklyPage = weeklyPages[idx];
+          const body = renderWeeklyPage(weeklyPage, resolvedInput);
+          await page.setContent(
+            `<!doctype html><html lang="pt-BR"><head>${head}</head><body>${body}</body></html>`,
+            { waitUntil: 'domcontentloaded' },
+          );
+          await this.waitForImages(page);
+          const buffer = await page.screenshot({ type: 'png', fullPage: true });
+          totalBufferBytes += buffer.byteLength;
+          files.push({
+            fileName: getWeeklyPageFileName(weeklyPage, idx + 1),
+            mimeType: 'image/png',
+            base64: buffer.toString('base64'),
+          });
+        }
+
+        const renderMs = Math.round(performance.now() - renderStart);
+        const batchResult: RenderedBatchDocument = {
+          kind: 'batch',
+          files,
+          pageCount: totalPages,
+          etag: responseEtag,
+        };
+        const cacheBytes = files.reduce(
+          (acc, f) => acc + Buffer.byteLength(f.base64, 'utf8'),
+          0,
+        );
+        if (shouldCacheResult) {
+          this.setResultCacheEntry(etag, batchResult, cacheBytes);
+        }
+        this.logRenderMetrics({
+          format,
+          page: 'todas',
+          pageCount: totalPages,
+          queryMs,
+          launchMs,
+          renderMs,
+          totalMs: Math.round(performance.now() - startedAt),
+          bufferBytes: totalBufferBytes,
+          rssBeforeMiB,
+        });
+        return batchResult;
+      }
+
+      const selectedPage = pageSelection;
       const weeklyPage = weeklyPages[selectedPage - 1];
-      const weekFileSuffix = weeklyPage.weekStart
-        ? weeklyPage.weekStart.toISOString().slice(0, 10)
-        : `sem-eventos-${String(selectedPage).padStart(2, '0')}`;
+      const body = renderWeeklyPage(weeklyPage, resolvedInput);
+      await page.setContent(
+        `<!doctype html><html lang="pt-BR"><head>${head}</head><body>${body}</body></html>`,
+        { waitUntil: 'domcontentloaded' },
+      );
+      await this.waitForImages(page);
+
       const buffer = await page.screenshot({ type: 'png', fullPage: true });
-      return {
+      const renderMs = Math.round(performance.now() - renderStart);
+      const pngResult: RenderedDocument = {
+        kind: 'single',
         buffer,
         mimeType: 'image/png',
-        fileName: `escalas-semana-${weekFileSuffix}.png`,
+        fileName: getWeeklyPageFileName(weeklyPage, selectedPage),
         pageCount: totalPages,
+        etag: responseEtag,
       };
+      if (shouldCacheResult) {
+        this.setResultCacheEntry(etag, pngResult, buffer.byteLength);
+      }
+      this.logRenderMetrics({
+        format,
+        page: selectedPage,
+        pageCount: totalPages,
+        queryMs,
+        launchMs,
+        renderMs,
+        totalMs: Math.round(performance.now() - startedAt),
+        bufferBytes: buffer.byteLength,
+        rssBeforeMiB,
+      });
+      return pngResult;
     } finally {
       await page.close().catch(() => undefined);
       await browser.close().catch(() => undefined);
     }
+  }
+
+  private async waitForImages(page: {
+    evaluate?: (fn: () => Promise<void>) => Promise<void>;
+  }): Promise<void> {
+    if (typeof page.evaluate !== 'function') {
+      return;
+    }
+    await page
+      .evaluate(async () => {
+        const images = Array.from(document.images);
+        await Promise.all(
+          images.map(async (img) => {
+            if (!img.complete) {
+              await new Promise<void>((resolve) => {
+                img.addEventListener('load', () => resolve(), { once: true });
+                img.addEventListener('error', () => resolve(), { once: true });
+              });
+            }
+            if (typeof img.decode === 'function') {
+              await img.decode().catch(() => undefined);
+            }
+          }),
+        );
+      })
+      .catch(() => undefined);
+  }
+
+  private logRenderMetrics(metrics: {
+    format: EscalaDocumentFormat;
+    page: EscalaDocumentPageSelection;
+    pageCount: number;
+    queryMs: number;
+    launchMs: number;
+    renderMs: number;
+    totalMs: number;
+    bufferBytes: number;
+    rssBeforeMiB: number;
+  }) {
+    const rssAfterMiB = toMiB(process.memoryUsage().rss);
+    this.logger.log(
+      JSON.stringify({
+        event: 'escala_export',
+        ...metrics,
+        cache: 'miss',
+        rssAfterMiB,
+        rssDeltaMiB: Number((rssAfterMiB - metrics.rssBeforeMiB).toFixed(1)),
+        queueSize: this.waitingCount,
+      }),
+    );
   }
 }

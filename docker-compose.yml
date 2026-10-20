@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: postgres
     environment:
       POSTGRES_DB: oneelo_saas
@@ -9,7 +9,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata17:/var/lib/postgresql/data
     networks:
       - network
     healthcheck:
@@ -26,11 +26,17 @@ services:
     restart: always
     ports:
       - "4001:4001"
-    env_file:
-      - ./apps/api/.env
     environment:
       - DATABASE_URL=postgresql://dev:dev@postgres:5432/oneelo_saas
-      - RUN_SEED=true
+      - JWT_SECRET=local-development-only-change-me
+      - JWT_EXPIRES_IN=1d
+      - CORS_ORIGIN=http://localhost:3001
+      - DOCUMENT_ASSET_BASE_URL=http://web:3001
+      - NODE_ENV=development
+      - PORT=4001
+      - RUN_MIGRATIONS=false
+      - RUN_SEED=false
+      - ALLOW_DESTRUCTIVE_SEED=false
     volumes:
       - ./apps/api/src:/app/src
       - ./apps/api/prisma:/app/prisma
@@ -51,8 +57,6 @@ services:
     restart: always
     ports:
       - "3001:3001"
-    env_file:
-      - ./apps/web/.env
     environment:
       - INTERNAL_API_URL=http://api:4001
     volumes:
@@ -65,6 +69,7 @@ services:
 
 volumes:
   pgdata:
+  pgdata17:
 
 networks:
   network:

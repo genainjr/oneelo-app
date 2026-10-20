@@ -437,7 +437,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav ref={navRef} className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-visible">
+        <nav ref={navRef} className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overscroll-contain overflow-x-visible">
           {collapsed && (
             <button
               onClick={() => {

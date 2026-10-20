@@ -408,7 +408,8 @@ export function EscalaGrid({
                               diaId={dia.id}
                               funcaoId={funcao.id}
                               membros={ministryMembers}
-                              alreadyAssigned={dayAssignedMemberIds}
+                              cellAssigned={cellItems.map((item) => item.membroId)}
+                              dayAssigned={dayAssignedMemberIds}
                               onAdd={onAddMembro}
                               addMemberLabel={tGrid('addMember')}
                             />
@@ -617,7 +618,8 @@ export function EscalaGrid({
                                 diaId={dia.id}
                                 funcaoId={funcao.id}
                                 membros={ministryMembers}
-                                alreadyAssigned={dayAssignedMemberIds}
+                                cellAssigned={cellItems.map((item) => item.membroId)}
+                                dayAssigned={dayAssignedMemberIds}
                                 onAdd={onAddMembro}
                                 addMemberLabel={tGrid('addMember')}
                               />
@@ -728,18 +730,28 @@ interface CellMemberSelectProps {
   diaId: string;
   funcaoId: string;
   membros: MinisterioMembro[];
-  alreadyAssigned: string[];
+  cellAssigned: string[];
+  dayAssigned?: string[];
   onAdd: (diaId: string, membroId: string, funcaoId: string) => Promise<void>;
   addMemberLabel: string;
 }
 
-function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd, addMemberLabel }: CellMemberSelectProps) {
+function CellMemberSelect({
+  diaId,
+  funcaoId,
+  membros,
+  cellAssigned,
+  dayAssigned,
+  onAdd,
+  addMemberLabel,
+}: CellMemberSelectProps) {
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
   const options = membros
     .filter((ministerioMembro) => {
-      if (alreadyAssigned.includes(ministerioMembro.membroId)) return false;
+      // Bloqueia apenas se o membro já estiver atribuído a esta mesma função no dia
+      if (cellAssigned.includes(ministerioMembro.membroId)) return false;
       if (!ministerioMembro.podeSerEscalado) return false;
       if (!ministerioMembro.funcoesDisponiveis?.length) return true;
       return ministerioMembro.funcoesDisponiveis.some((funcao) => funcao.funcaoId === funcaoId);
@@ -770,11 +782,14 @@ function CellMemberSelect({ diaId, funcaoId, membros, alreadyAssigned, onAdd, ad
       className="w-full text-xs border-dashed border-gray-200 bg-transparent rounded-lg px-2 py-1 text-gray-400 hover:border-indigo-300 focus:border-indigo-400 cursor-pointer"
     >
       <option value="">{addMemberLabel}</option>
-      {options.map((ministerioMembro) => (
-        <option key={ministerioMembro.membroId} value={ministerioMembro.membroId}>
-          {ministerioMembro.membro?.nome}
-        </option>
-      ))}
+      {options.map((ministerioMembro) => {
+        const isAlsoInOtherRole = dayAssigned?.includes(ministerioMembro.membroId);
+        return (
+          <option key={ministerioMembro.membroId} value={ministerioMembro.membroId}>
+            {ministerioMembro.membro?.nome}{isAlsoInOtherRole ? ' *' : ''}
+          </option>
+        );
+      })}
     </SelectField>
   );
 }

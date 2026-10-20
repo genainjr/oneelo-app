@@ -4,7 +4,10 @@ import {
   ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
+  ServiceUnavailableException,
+  ConflictException,
 } from '@nestjs/common';
+import { performance } from 'node:perf_hooks';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateEscalaDto, ModoCriacaoEscala } from './dto/create-escala.dto';
 import { UpdateEscalaDto } from './dto/update-escala.dto';
@@ -19,8 +22,12 @@ import { AddEscalaDiaDto } from './dto/add-escala-dia.dto';
 import { UpdateEscalaDiaEventoDto } from './dto/update-escala-dia-evento.dto';
 import { ExportEscalaDto } from './dto/export-escala.dto';
 import { EscalaDocumentRendererService } from './export/escala-document-renderer.service';
-import type { EscalaDocumentInput } from './export/escala-document.types';
+import type {
+  EscalaDocumentInput,
+  EscalaExportResult,
+} from './export/escala-document.types';
 import {
+  AcaoAuditoria,
   MinistryRole,
   Prisma,
   Role,
@@ -31,6 +38,11 @@ import {
 } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  validarConflitosEscala,
+  NovaAlocacao,
+  ItemEscalaExistente,
+} from './conflitos/validador-conflitos';
 
 @Injectable()
 export class EscalasService {
@@ -667,7 +679,13 @@ export class EscalasService {
     });
   }
 
-  async exportar(tenantId: string, query: ExportEscalaDto, user: JwtPayload) {
+  async exportar(
+    tenantId: string,
+    query: ExportEscalaDto,
+    user: JwtPayload,
+    ifNoneMatch?: string,
+  ): Promise<EscalaExportResult> {
+    const queryStartedAt = performance.now();
     const escalas = await this.findVisualizacao(tenantId, query, user);
     if (escalas.length === 0) {
       throw new NotFoundException(
@@ -715,15 +733,30 @@ export class EscalasService {
         })),
       })),
     };
+    const queryMs = Math.round(performance.now() - queryStartedAt);
 
     try {
+      if (typeof this.escalaDocumentRenderer.renderExport === 'function') {
+        return await this.escalaDocumentRenderer.renderExport(
+          input,
+          query.formato,
+          query.pagina ?? 1,
+          { ifNoneMatch, queryMs },
+        );
+      }
+
       return await this.escalaDocumentRenderer.render(
         input,
         query.formato,
-        query.pagina,
+        typeof query.pagina === 'number' ? query.pagina : undefined,
       );
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ServiceUnavailableException
+      ) {
+        throw error;
+      }
       throw new InternalServerErrorException(
         'Nao foi possivel gerar a exportacao da escala.',
       );
@@ -1323,7 +1356,21 @@ export class EscalasService {
   ) {
     const dia = await this.prisma.escalaDia.findUnique({
       where: { id: diaId },
-      include: { escala: true },
+      include: {
+        escala: {
+          include: {
+            ministerio: { select: { id: true, nome: true } },
+          },
+        },
+        evento: {
+          select: {
+            id: true,
+            titulo: true,
+            dataInicio: true,
+            dataFim: true,
+          },
+        },
+      },
     });
     if (!dia) throw new NotFoundException('Dia não encontrado.');
 
@@ -1345,7 +1392,18 @@ export class EscalasService {
           id: dto.ministerioFuncaoId,
           ministerioId: escala.ministerioId,
         },
-        select: { id: true },
+        select: {
+          id: true,
+          nome: true,
+          localAtuacao: true,
+          segmentos: {
+            include: {
+              segmento: {
+                select: { id: true, nome: true, ordem: true },
+              },
+            },
+          },
+        },
       }),
       this.prisma.ministerioMembro.findUnique({
         where: {
@@ -1355,7 +1413,15 @@ export class EscalasService {
           },
         },
         include: {
-          membro: { select: { tenantId: true, status: true, deletedAt: true } },
+          membro: {
+            select: {
+              tenantId: true,
+              status: true,
+              deletedAt: true,
+              nome: true,
+              nomeExibicao: true,
+            },
+          },
           funcoesDisponiveis: { select: { funcaoId: true } },
         },
       }),
@@ -1392,7 +1458,7 @@ export class EscalasService {
     }
 
     const { start, end } = this.getDateRangeForScheduleDay(dia.data);
-    const conflitoNoDia = await this.prisma.escalaItem.findFirst({
+    const itensExistentesNoDia = await this.prisma.escalaItem.findMany({
       where: {
         membroId: dto.membroId,
         NOT: {
@@ -1410,11 +1476,35 @@ export class EscalasService {
         },
       },
       include: {
-        funcao: { select: { nome: true } },
-        escalaDia: {
-          include: {
-            escala: {
+        funcao: {
+          select: {
+            id: true,
+            nome: true,
+            localAtuacao: true,
+            ministerio: { select: { nome: true } },
+            segmentos: {
               include: {
+                segmento: {
+                  select: { id: true, nome: true, ordem: true },
+                },
+              },
+            },
+          },
+        },
+        escalaDia: {
+          select: {
+            id: true,
+            data: true,
+            evento: {
+              select: {
+                id: true,
+                titulo: true,
+                dataInicio: true,
+                dataFim: true,
+              },
+            },
+            escala: {
+              select: {
                 ministerio: { select: { nome: true } },
               },
             },
@@ -1423,16 +1513,116 @@ export class EscalasService {
       },
     });
 
-    if (conflitoNoDia) {
-      const ministerio =
-        conflitoNoDia.escalaDia.escala.ministerio?.nome ?? 'outro ministerio';
-      const funcao = conflitoNoDia.funcao?.nome ?? 'outra funcao';
+    let avisosConfirmadosParaAuditoria: any = null;
 
-      throw new BadRequestException(
-        `Membro ja esta escalado neste dia em ${ministerio} (${funcao}). Escolha outro membro ou entre em contato com a lideranca desse ministerio.`,
+    if (itensExistentesNoDia.length > 0) {
+      const funcaoIds = Array.from(
+        new Set([funcao.id, ...itensExistentesNoDia.map((i) => i.funcao.id)]),
       );
+
+      const [segmentosDoTenant, regrasMatriz] = await Promise.all([
+        this.prisma.segmentoCulto.findMany({
+          where: { tenantId },
+          orderBy: { ordem: 'asc' },
+          select: { id: true, nome: true, ordem: true },
+        }),
+        this.prisma.compatibilidadeFuncao.findMany({
+          where: {
+            tenantId,
+            funcaoAId: { in: funcaoIds },
+            funcaoBId: { in: funcaoIds },
+          },
+          select: {
+            funcaoAId: true,
+            funcaoBId: true,
+            regra: true,
+            observacao: true,
+          },
+        }),
+      ]);
+
+      const novaAlocacao: NovaAlocacao = {
+        membroId: dto.membroId,
+        membroNome: this.getMembroDisplayName(vinculoMinisterial.membro),
+        funcao: {
+          id: funcao.id,
+          nome: funcao.nome,
+          ministerioNome:
+            (escala as any).ministerio?.nome ?? 'Ministério',
+          localAtuacao: funcao.localAtuacao,
+          segmentos: (funcao.segmentos ?? []).map((s) => s.segmento),
+        },
+        evento: dia.evento
+          ? {
+              id: dia.evento.id,
+              dataInicio: dia.evento.dataInicio,
+              dataFim: dia.evento.dataFim,
+            }
+          : null,
+      };
+
+      const itensParaValidar: ItemEscalaExistente[] = itensExistentesNoDia.map(
+        (item) => ({
+          id: item.id,
+          membroId: item.membroId,
+          membroNome: this.getMembroDisplayName(vinculoMinisterial.membro),
+          funcao: {
+            id: item.funcao.id,
+            nome: item.funcao.nome,
+            ministerioNome:
+              item.funcao.ministerio?.nome ??
+              item.escalaDia.escala?.ministerio?.nome,
+            localAtuacao: item.funcao.localAtuacao,
+            segmentos: (item.funcao.segmentos ?? []).map((s) => s.segmento),
+          },
+          evento: item.escalaDia.evento
+            ? {
+                id: item.escalaDia.evento.id,
+                dataInicio: item.escalaDia.evento.dataInicio,
+                dataFim: item.escalaDia.evento.dataFim,
+              }
+            : null,
+        }),
+      );
+
+      const resultado = validarConflitosEscala({
+        novaAlocacao,
+        itensExistentes: itensParaValidar,
+        regrasMatriz: regrasMatriz.map((r) => ({
+          funcaoAId: r.funcaoAId,
+          funcaoBId: r.funcaoBId,
+          regra: r.regra as 'PERMITIR' | 'AVISAR',
+          observacao: r.observacao,
+        })),
+        segmentosDoTenant,
+      });
+
+      if (resultado.bloqueios.length > 0) {
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'Conflict',
+          message: resultado.bloqueios[0].mensagem,
+          requerConfirmacao: false,
+          conflitos: resultado.conflitos,
+        });
+      }
+
+      if (resultado.avisos.length > 0 && !dto.confirmarAvisos) {
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'Conflict',
+          message: resultado.avisos[0].mensagem,
+          requerConfirmacao: true,
+          conflitos: resultado.conflitos,
+        });
+      }
+
+      if (dto.confirmarAvisos && resultado.avisos.length > 0) {
+        avisosConfirmadosParaAuditoria = resultado.avisos;
+      }
     }
-    return this.prisma.escalaItem.upsert({
+
+    const itemSalvo = await this.prisma.escalaItem.upsert({
       where: {
         escalaDiaId_membroId_ministerioFuncaoId: {
           escalaDiaId: dto.escalaDiaId,
@@ -1463,6 +1653,28 @@ export class EscalasService {
         funcao: true,
       },
     });
+
+    if (avisosConfirmadosParaAuditoria) {
+      try {
+        await this.prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId: user.sub,
+            entidade: 'escalas',
+            entidadeId: itemSalvo.id,
+            acao: AcaoAuditoria.ATUALIZAR,
+            payloadAfter: {
+              tipo: 'CONFIRMACAO_AVISOS_CONFLITO',
+              avisos: avisosConfirmadosParaAuditoria,
+            },
+          },
+        });
+      } catch (err) {
+        // auditoria nunca quebra a operação principal
+      }
+    }
+
+    return itemSalvo;
   }
 
   async removeMembro(tenantId: string, itemId: string, user: JwtPayload) {

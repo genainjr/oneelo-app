@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
@@ -17,7 +17,7 @@ import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
 import { api, buildQuery, HttpError } from '@/lib/api';
 import { STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, Escala, Ministerio } from '@/types';
-import { Calendar, List, AlertTriangle, Download, FileText, ImageDown, LoaderCircle, Share2, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Check, Download, FileText, ImageDown, List, AlertTriangle, LoaderCircle, Share2, X } from 'lucide-react';
 
 const MESES = [
   { value: '1', label: 'Janeiro' },
@@ -34,9 +34,180 @@ const MESES = [
   { value: '12', label: 'Dezembro' },
 ];
 
+const MONTH_LABELS_LOWER = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+
 interface PreparedFile {
   blob: Blob;
   fileName: string;
+}
+
+interface BatchExportResponse {
+  files: Array<{
+    fileName: string;
+    mimeType: string;
+    base64: string;
+  }>;
+  pageCount: number;
+}
+
+interface WeeklyExportOption {
+  page: number;
+  weekStart: Date | null;
+  weekEnd: Date | null;
+  label: string;
+  eventCount: number;
+}
+
+type PngWeekSelection = number | 'todas';
+
+function startOfUtcWeek(date: Date) {
+  const result = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const daysSinceMonday = (result.getUTCDay() + 6) % 7;
+  result.setUTCDate(result.getUTCDate() - daysSinceMonday);
+  return result;
+}
+
+function endOfUtcWeek(weekStart: Date) {
+  const result = new Date(weekStart);
+  result.setUTCDate(result.getUTCDate() + 6);
+  return result;
+}
+
+function formatUtcDay(date: Date) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'UTC',
+    day: '2-digit',
+  }).format(date);
+}
+
+function buildWeeklyExportOptions(escalas: Escala[]): WeeklyExportOption[] {
+  const pagesByWeek = new Map<
+    string,
+    {
+      weekStart: Date | null;
+      weekEnd: Date | null;
+      events: Array<{ escala: Escala; date: Date }>;
+      emptySchedule?: Escala;
+    }
+  >();
+
+  for (const escala of escalas) {
+    for (const dia of escala.dias || []) {
+      const date = new Date(dia.data);
+      const weekStart = startOfUtcWeek(date);
+      const key = `${escala.ano}-${escala.mes}-${weekStart.toISOString().slice(0, 10)}`;
+      const page = pagesByWeek.get(key) ?? {
+        weekStart,
+        weekEnd: endOfUtcWeek(weekStart),
+        events: [],
+      };
+      page.events.push({ escala, date });
+      pagesByWeek.set(key, page);
+    }
+  }
+
+  if (pagesByWeek.size === 0) {
+    return escalas.map((escala, index) => ({
+      page: index + 1,
+      weekStart: null,
+      weekEnd: null,
+      label: getMesLabel(escala),
+      eventCount: 0,
+    }));
+  }
+
+  const sortedPages = Array.from(pagesByWeek.values())
+    .map((page) => ({
+      ...page,
+      events: page.events.sort((a, b) => a.date.getTime() - b.date.getTime()),
+    }))
+    .sort((a, b) => {
+      const scheduleA = a.events[0]?.escala ?? a.emptySchedule;
+      const scheduleB = b.events[0]?.escala ?? b.emptySchedule;
+      if (!scheduleA || !scheduleB) {
+        return (a.weekStart?.getTime() ?? 0) - (b.weekStart?.getTime() ?? 0);
+      }
+      const monthOrder = scheduleA.ano - scheduleB.ano || scheduleA.mes - scheduleB.mes;
+      return monthOrder || (a.weekStart?.getTime() ?? 0) - (b.weekStart?.getTime() ?? 0);
+    });
+
+  return sortedPages.map((page, index) => {
+    const pageNumber = index + 1;
+    const schedule = page.events[0]?.escala ?? page.emptySchedule;
+    if (!page.weekStart || !page.weekEnd || !schedule) {
+      return {
+        page: pageNumber,
+        weekStart: null,
+        weekEnd: null,
+        label: schedule ? getMesLabel(schedule) : `Semana ${pageNumber}`,
+        eventCount: page.events.length,
+      };
+    }
+
+    const monthStart = new Date(Date.UTC(schedule.ano, schedule.mes - 1, 1));
+    const monthEnd = new Date(Date.UTC(schedule.ano, schedule.mes, 0));
+    const visibleStart = page.weekStart < monthStart ? monthStart : page.weekStart;
+    const visibleEnd = page.weekEnd > monthEnd ? monthEnd : page.weekEnd;
+    const startDay = formatUtcDay(visibleStart);
+    const endDay = formatUtcDay(visibleEnd);
+    const monthLabel = MONTH_LABELS_LOWER[schedule.mes - 1] ?? '';
+
+    return {
+      page: pageNumber,
+      weekStart: page.weekStart,
+      weekEnd: page.weekEnd,
+      label: `Semana de ${startDay} a ${endDay} de ${monthLabel}`,
+      eventCount: page.events.length,
+    };
+  });
+}
+
+function getDefaultSelectedWeek(options: WeeklyExportOption[], referenceDate: Date): number {
+  if (options.length === 0) return 1;
+  const todayUtc = new Date(
+    Date.UTC(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate()),
+  );
+
+  const currentWeek = options.find(
+    (option) =>
+      option.weekStart !== null &&
+      option.weekEnd !== null &&
+      option.weekStart.getTime() <= todayUtc.getTime() &&
+      todayUtc.getTime() <= option.weekEnd.getTime(),
+  );
+  if (currentWeek) return currentWeek.page;
+
+  const nextWeekWithEvents = options.find(
+    (option) =>
+      option.weekEnd !== null &&
+      option.weekEnd.getTime() >= todayUtc.getTime() &&
+      option.eventCount > 0,
+  );
+  if (nextWeekWithEvents) return nextWeekWithEvents.page;
+
+  return options[0].page;
+}
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
+
+function formatExportErrorMessage(err: unknown, fallbackMessage: string): string {
+  if (err instanceof HttpError) {
+    if (err.status === 503) {
+      return 'O servidor está processando outras exportações no momento. Aguarde alguns segundos e tente novamente.';
+    }
+    return err.message || fallbackMessage;
+  }
+  return fallbackMessage;
 }
 
 export default function EscalasVisualizacaoPage() {
@@ -47,8 +218,11 @@ export default function EscalasVisualizacaoPage() {
   const [printedAt] = useState(() => new Date());
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null);
   const [exportChoiceOpen, setExportChoiceOpen] = useState(false);
+  const [exportDialogStep, setExportDialogStep] = useState<'format' | 'week'>('format');
+  const [selectedPngWeek, setSelectedPngWeek] = useState<PngWeekSelection>(1);
   const [exportError, setExportError] = useState<string | null>(null);
   const [preparedFiles, setPreparedFiles] = useState<PreparedFile[]>([]);
+  const sessionExportCacheRef = useRef<Map<string, PreparedFile[]>>(new Map());
   const [escalasMinimizadas, setEscalasMinimizadas] = useState<Set<string>>(
     () => new Set(),
   );
@@ -97,6 +271,13 @@ export default function EscalasVisualizacaoPage() {
       });
   }, []);
 
+  const weeklyOptions = useMemo(() => buildWeeklyExportOptions(escalas), [escalas]);
+
+  useEffect(() => {
+    sessionExportCacheRef.current.clear();
+    setPreparedFiles([]);
+  }, [escalas, tenantLogoUrl]);
+
   const totais = useMemo(() => {
     const dias = escalas.reduce((acc, escala) => acc + (escala.dias?.length || 0), 0);
     const itens = escalas.reduce((acc, escala) => (
@@ -125,86 +306,138 @@ export default function EscalasVisualizacaoPage() {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
-  function getExportQuery(formato: 'pdf' | 'png', pagina?: number) {
+  function getExportQuery(formato: 'pdf' | 'png', pagina?: PngWeekSelection) {
     return `/api/escalas/exportacao${buildQuery({ ...filter, formato, pagina })}`;
   }
 
+  function getSessionCacheKey(formato: 'pdf' | 'png', pagina: PngWeekSelection = 1) {
+    return JSON.stringify({
+      v: 3,
+      filter,
+      tenantLogoUrl,
+      formato,
+      pagina: formato === 'pdf' ? 1 : pagina,
+    });
+  }
+
   async function fetchPdfExport(): Promise<PreparedFile[]> {
-    const file = await api.getFile(getExportQuery('pdf'));
-    return [{
+    const cacheKey = getSessionCacheKey('pdf', 1);
+    const cached = sessionExportCacheRef.current.get(cacheKey);
+    if (cached) return cached;
+
+    const file = await api.getFile(getExportQuery('pdf'), { cache: 'no-cache' });
+    const prepared = [{
       blob: file.blob,
       fileName: file.fileName || 'escalas.pdf',
     }];
+    sessionExportCacheRef.current.set(cacheKey, prepared);
+    return prepared;
   }
 
-  async function fetchPngExport(): Promise<PreparedFile[]> {
-    const firstFile = await api.getFile(getExportQuery('png', 1));
-    const files = [firstFile];
-    const rawCount = firstFile.headers.get('X-Document-Page-Count');
-    const headerCount = rawCount === null ? Number.NaN : Number(rawCount);
+  async function fetchPngExport(selection: PngWeekSelection): Promise<PreparedFile[]> {
+    const cacheKey = getSessionCacheKey('png', selection);
+    const cached = sessionExportCacheRef.current.get(cacheKey);
+    if (cached) return cached;
 
-    if (Number.isNaN(headerCount)) {
-      for (let page = 2; page <= 30; page += 1) {
-        try {
-          files.push(await api.getFile(getExportQuery('png', page)));
-        } catch (err) {
-          if (err instanceof HttpError && (err.status === 400 || err.status === 404)) break;
-          throw err;
-        }
-      }
-    } else if (headerCount > files.length) {
-      for (let page = files.length + 1; page <= headerCount; page += 1) {
-        files.push(await api.getFile(getExportQuery('png', page)));
-      }
+    if (selection === 'todas') {
+      const response = await api.get<BatchExportResponse>(
+        getExportQuery('png', 'todas'),
+        { cache: 'no-cache' },
+      );
+      const prepared = (response.files || []).map((file, index) => ({
+        blob: base64ToBlob(file.base64, file.mimeType || 'image/png'),
+        fileName: file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
+      }));
+      sessionExportCacheRef.current.set(cacheKey, prepared);
+      return prepared;
     }
 
-    return files.map((file, index) => ({
+    const file = await api.getFile(getExportQuery('png', selection), { cache: 'no-cache' });
+    const prepared = [{
       blob: file.blob,
-      fileName: file.fileName || `escalas-pagina-${String(index + 1).padStart(2, '0')}.png`,
-    }));
+      fileName: file.fileName || `escalas-semana-${String(selection).padStart(2, '0')}.png`,
+    }];
+    sessionExportCacheRef.current.set(cacheKey, prepared);
+    return prepared;
+  }
+
+  function openExportDialog() {
+    setExportDialogStep('format');
+    setSelectedPngWeek(getDefaultSelectedWeek(weeklyOptions, new Date()));
+    setExportChoiceOpen(true);
+  }
+
+  function closeExportDialog() {
+    setExportChoiceOpen(false);
+    setExportDialogStep('format');
   }
 
   async function handleExportPdf() {
-    setExportChoiceOpen(false);
+    closeExportDialog();
     setExporting('pdf');
     setExportError(null);
     setPreparedFiles([]);
     try {
-      setPreparedFiles(await fetchPdfExport());
+      const prepared = await fetchPdfExport();
+      setExporting(null);
+      if ((await handleSharePreparedFiles(prepared, { silent: true })) === 'failed') {
+        setPreparedFiles(prepared);
+      }
     } catch (err) {
-      setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar o PDF.');
+      setExportError(formatExportErrorMessage(err, 'Não foi possível exportar o PDF.'));
     } finally {
       setExporting(null);
     }
   }
 
-  async function handleExportImages() {
-    setExportChoiceOpen(false);
+  function handleChooseImageOption() {
+    setSelectedPngWeek(getDefaultSelectedWeek(weeklyOptions, new Date()));
+    setExportDialogStep('week');
+  }
+
+  async function handleExportImages(selection: PngWeekSelection = selectedPngWeek) {
+    closeExportDialog();
     setExporting('png');
     setExportError(null);
     setPreparedFiles([]);
     try {
-      setPreparedFiles(await fetchPngExport());
+      const prepared = await fetchPngExport(selection);
+      setExporting(null);
+      if ((await handleSharePreparedFiles(prepared, { silent: true })) === 'failed') {
+        setPreparedFiles(prepared);
+      }
     } catch (err) {
-      setExportError(err instanceof HttpError ? err.message : 'Nao foi possivel exportar as imagens.');
+      setExportError(formatExportErrorMessage(err, 'Não foi possível exportar as imagens.'));
     } finally {
       setExporting(null);
     }
   }
 
   function downloadAllFiles(filesToDownload: PreparedFile[] = preparedFiles) {
-    filesToDownload.forEach((file, index) => {
-      window.setTimeout(() => downloadFile(file.blob, file.fileName), index * 300);
+    filesToDownload.forEach((file) => {
+      downloadFile(file.blob, file.fileName);
     });
+    setPreparedFiles([]);
+    setExportError(null);
+  }
+
+  async function handleFallbackShare() {
+    const filesToShare = preparedFiles;
+    setPreparedFiles([]);
+    setExportError(null);
+    await handleSharePreparedFiles(filesToShare);
   }
 
   async function handleSharePreparedFiles(
     filesToShare: PreparedFile[] = preparedFiles,
+    options?: { silent?: boolean },
   ): Promise<'shared' | 'cancelled' | 'failed'> {
     if (filesToShare.length === 0) return 'failed';
 
     if (typeof navigator.share !== 'function') {
-      setExportError('O compartilhamento nativo não está disponível neste navegador. Use o botão de download.');
+      if (!options?.silent) {
+        downloadAllFiles(filesToShare);
+      }
       return 'failed';
     }
 
@@ -215,19 +448,22 @@ export default function EscalasVisualizacaoPage() {
     ));
 
     if (typeof navigator.canShare === 'function' && !navigator.canShare({ files })) {
-      setExportError(files.length > 1
-        ? 'Este navegador não permite compartilhar esses arquivos juntos. Use o botão de download.'
-        : 'Este navegador não permite compartilhar este arquivo. Use o botão de download.');
+      if (!options?.silent) {
+        downloadAllFiles(filesToShare);
+      }
       return 'failed';
     }
 
     setExportError(null);
     try {
       await navigator.share({ files, title: 'Escalas' });
+      setPreparedFiles([]);
       return 'shared';
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
-      setExportError('Não foi possível abrir o compartilhamento. Você ainda pode baixar os arquivos.');
+      if (!options?.silent) {
+        downloadAllFiles(filesToShare);
+      }
       return 'failed';
     }
   }
@@ -252,9 +488,7 @@ export default function EscalasVisualizacaoPage() {
         description="Acompanhe as escalas publicadas ou em rascunho em formato de leitura, sem controles de montagem."
         action={(
           <button
-            onClick={() => {
-              setExportChoiceOpen(true);
-            }}
+            onClick={openExportDialog}
             disabled={loading || escalas.length === 0 || exporting !== null}
             aria-haspopup="dialog"
             aria-expanded={exportChoiceOpen}
@@ -273,7 +507,7 @@ export default function EscalasVisualizacaoPage() {
             type="button"
             aria-label="Fechar opções de exportação"
             className="absolute inset-0 cursor-default"
-            onClick={() => setExportChoiceOpen(false)}
+            onClick={closeExportDialog}
           />
           <section
             role="dialog"
@@ -282,43 +516,128 @@ export default function EscalasVisualizacaoPage() {
             className="relative z-10 w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl sm:p-6"
           >
             <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 id="export-choice-title" className="text-lg font-black text-slate-900">Compartilhar como</h2>
+              <div className="flex items-center gap-2">
+                {exportDialogStep === 'week' && (
+                  <button
+                    type="button"
+                    onClick={() => setExportDialogStep('format')}
+                    aria-label="Voltar"
+                    className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                )}
+                <h2 id="export-choice-title" className="text-lg font-black text-slate-900">
+                  {exportDialogStep === 'format' ? 'Compartilhar como' : 'Selecionar semana'}
+                </h2>
               </div>
               <button
                 type="button"
-                onClick={() => setExportChoiceOpen(false)}
+                onClick={closeExportDialog}
                 aria-label="Fechar"
                 className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="grid gap-3">
-              <button
-                type="button"
-                onClick={handleExportPdf}
-                className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <FileText className="h-5 w-5 shrink-0 text-indigo-700" />
-                <strong className="text-sm font-bold text-slate-900">PDF</strong>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportImages}
-                className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <ImageDown className="h-5 w-5 shrink-0 text-indigo-700" />
-                <strong className="text-sm font-bold text-slate-900">Imagem</strong>
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setExportChoiceOpen(false)}
-              className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-            >
-              Cancelar
-            </button>
+
+            {exportDialogStep === 'format' ? (
+              <>
+                <div className="grid gap-3">
+                  <button
+                    type="button"
+                    onClick={handleExportPdf}
+                    className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <FileText className="h-5 w-5 shrink-0 text-indigo-700" />
+                    <strong className="text-sm font-bold text-slate-900">PDF</strong>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleChooseImageOption}
+                    className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <ImageDown className="h-5 w-5 shrink-0 text-indigo-700" />
+                    <strong className="text-sm font-bold text-slate-900">Imagem</strong>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeExportDialog}
+                  className="mt-4 w-full rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                  {weeklyOptions.map((option) => {
+                    const isSelected = selectedPngWeek === option.page;
+                    return (
+                      <button
+                        key={option.page}
+                        type="button"
+                        onClick={() => setSelectedPngWeek(option.page)}
+                        className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-colors ${
+                          isSelected
+                            ? 'border-indigo-600 bg-indigo-50/80 text-indigo-950'
+                            : 'border-slate-200 bg-white text-slate-800 hover:border-indigo-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div>
+                          <strong className="block text-sm font-bold">{option.label}</strong>
+                          <span className="text-xs text-slate-500">
+                            {option.eventCount === 1
+                              ? '1 evento'
+                              : `${option.eventCount} eventos`}
+                          </span>
+                        </div>
+                        {isSelected && <Check className="h-4 w-4 shrink-0 text-indigo-600" />}
+                      </button>
+                    );
+                  })}
+
+                  {weeklyOptions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPngWeek('todas')}
+                      className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-colors ${
+                        selectedPngWeek === 'todas'
+                          ? 'border-indigo-600 bg-indigo-50/80 text-indigo-950'
+                          : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:border-indigo-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div>
+                        <strong className="block text-sm font-bold">Todas as semanas</strong>
+                        <span className="text-xs text-slate-500">
+                          {weeklyOptions.length} imagens do período
+                        </span>
+                      </div>
+                      {selectedPngWeek === 'todas' && <Check className="h-4 w-4 shrink-0 text-indigo-600" />}
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-5 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleExportImages(selectedPngWeek)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+                  >
+                    <ImageDown className="h-4 w-4" />
+                    {selectedPngWeek === 'todas' ? 'Gerar todas as semanas' : 'Gerar imagem da semana'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeExportDialog}
+                    className="w-full rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            )}
           </section>
         </div>
       )}
@@ -327,7 +646,7 @@ export default function EscalasVisualizacaoPage() {
         <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => handleSharePreparedFiles()}
+              onClick={() => handleFallbackShare()}
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-700"
             >
               <Share2 className="h-4 w-4" />

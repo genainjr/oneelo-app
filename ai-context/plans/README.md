@@ -8,9 +8,12 @@ Ao adicionar um novo documento, inclua-o no início deste índice com a data, o 
 
 ## Outubro de 2026
 
-| CriaÃ§Ã£o | Documento | Assunto |
+| Criação | Documento | Assunto |
 |---|---|---|
-| 09/10/2026 | [exportacao-pdf-plan.md](exportacao-pdf-plan.md) | ExportaÃ§Ã£o sÃ­ncrona de PDF e imagens para Escalas e Agenda |
+| 16/10/2026 | [escala-export-performance-plan.md](escala-export-performance-plan.md) | Performance da exportação de Escalas (PDF/PNG) no Render Free |
+| 14/10/2026 | [plano-compatibilidade-funcoes-escalas.md](plano-compatibilidade-funcoes-escalas.md) | Compatibilidade de funções nas escalas (matriz e segmentos do culto) |
+| 14/10/2026 | [escala-export-memory-stability-plan.md](escala-export-memory-stability-plan.md) | Estabilidade de memória da exportação de Escalas |
+| 09/10/2026 | [exportacao-pdf-plan.md](exportacao-pdf-plan.md) | Exportação síncrona de PDF e imagens para Escalas e Agenda |
 
 ## Julho de 2026
 

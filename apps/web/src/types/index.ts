@@ -365,4 +365,75 @@ export interface ApiError {
   message: string | string[];
   code?: string;
   error?: string;
+  requerConfirmacao?: boolean;
+  conflitos?: Array<{
+    tipo: 'BLOQUEIO' | 'AVISO';
+    motivo: string;
+    mensagem: string;
+    membroNome?: string;
+    funcaoExistenteNome?: string;
+    ministerioExistenteNome?: string;
+    funcaoNovaNome?: string;
+    ministerioNovoNome?: string;
+    segmentosEmComum?: string[];
+  }>;
+}
+
+// ─── Configurações de Escalas (Segmentos & Compatibilidade) ───────────────────
+
+export interface SegmentoCulto {
+  id: string;
+  tenantId: string;
+  nome: string;
+  ordem: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MinisterioFuncaoConfig {
+  id: string;
+  nome: string;
+  ordem: number;
+  localAtuacao?: string | null;
+  ministerioId: string;
+  ministerio: {
+    id: string;
+    nome: string;
+  };
+  segmentos: Array<{
+    segmento: {
+      id: string;
+      nome: string;
+      ordem: number;
+    };
+  }>;
+}
+
+export interface CompatibilidadeRegra {
+  id: string;
+  tenantId: string;
+  funcaoAId: string;
+  funcaoBId: string;
+  regra: 'PERMITIR' | 'AVISAR';
+  observacao?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  funcaoA: {
+    id: string;
+    nome: string;
+    localAtuacao?: string | null;
+    ministerio: {
+      id: string;
+      nome: string;
+    };
+  };
+  funcaoB: {
+    id: string;
+    nome: string;
+    localAtuacao?: string | null;
+    ministerio: {
+      id: string;
+      nome: string;
+    };
+  };
 }

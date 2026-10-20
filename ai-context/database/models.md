@@ -19,6 +19,7 @@ Physical database identifiers follow English `snake_case`, `tb_`-prefixed singul
 | `MemberStatus` | `member_status` | `ACTIVE`, `INACTIVE`, `VISITOR`, `TRANSFERRED` | Member lifecycle state. |
 | `ScheduleStatus` | `schedule_status` | `DRAFT`, `PUBLISHED`, `CLOSED` | Schedule lifecycle state. |
 | `ConfirmationStatus` | `confirmation_status` | `PENDING`, `CONFIRMED`, `DECLINED` | Assignment confirmation response. |
+| `RegraCompatibilidade` | `schedule_role_compatibility_rule` | `ALLOW`, `WARN` | Pairwise role compatibility rule in schedules. |
 | `EventType` | `event_type` | `GENERAL`, `MINISTRY`, `INTERNAL_MEETING` | Calendar event classification. |
 | `EventStatus` | `event_status` | `SCHEDULED`, `COMPLETED`, `CANCELLED` | Calendar event state. |
 | `AuditAction` | `audit_action` | `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT` | Audited action type. |
@@ -194,6 +195,7 @@ Defines service positions available inside a ministry.
 - `description`
 - `colorHex` / `color_hex`
 - `order` / `display_order`
+- `localAtuacao` / `work_location`, optional location (e.g. Stage, Audio Booth, Classroom, Entrance)
 - Unique per ministry: `[ministryId, name]`.
 
 ### 10. MinistryMemberPosition (`tb_ministry_member_position`)
@@ -260,6 +262,8 @@ Individual member assignment in a schedule day and ministry position.
 - `ministryPositionId` / `ministry_position_id`
 - `confirmationStatus` / `confirmation_status`
 - `notes`
+- Unique: `[scheduleDayId, memberId, ministryPositionId]` / `[schedule_day_id, member_id, ministry_position_id]`.
+- Rule: The legacy unique constraint `[schedule_day_id, member_id]` is removed by migration to allow allocating the same member to distinct, compatible positions on the same day.
 
 ### 15. Event (`tb_event`)
 
@@ -321,6 +325,43 @@ Public acquisition/contact lead.
 - `phone`
 - `message`
 - `createdAt` / `created_at`
+
+### 19. ScheduleSegment (`tb_schedule_segment`)
+
+Ordered worship service segment defined per tenant (e.g., Opening, Worship, Preaching, Closing).
+
+- `id`
+- `tenantId` / `tenant_id`
+- `name`
+- `displayOrder` / `display_order`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+- Unique per tenant and name: `[tenantId, name]`.
+- Unique per tenant and display order: `[tenantId, displayOrder]`.
+
+### 20. MinistryPositionSegment (`tb_ministry_position_segment`)
+
+Associates a ministry position with the service segments where it operates.
+
+- `positionId` / `position_id`
+- `segmentId` / `segment_id`
+- Composite key: `[positionId, segmentId]`.
+- Rule: A position without any segments configured is treated by the conflict validator as operating in all service segments.
+
+### 21. ScheduleRoleCompatibility (`tb_schedule_role_compatibility`)
+
+Defines pairwise compatibility between two positions in the same tenant.
+
+- `id`
+- `tenantId` / `tenant_id`
+- `positionAId` / `position_a_id` (normalized: smaller UUID)
+- `positionBId` / `position_b_id` (normalized: larger UUID)
+- `rule` / `schedule_role_compatibility_rule` (`ALLOW`, `WARN`)
+- `notes`
+- `createdAt` / `created_at`
+- `updatedAt` / `updated_at`
+- Unique per tenant and pair: `[tenantId, positionAId, positionBId]`.
+- Rule: Absence of a rule for overlapping segments defaults strictly to blocking.
 
 ---
 
