@@ -2,7 +2,8 @@
 
 ### FT-009 Fotos de membros e logo do tenant
 - **Prioridade**: media
-- **Fase**: 2
+- **Status**: implementado (via midia-membros-tenant-plan.md)
+- **Fase**: 2 (entregue)
 - **Categoria**: UX / branding / infraestrutura
 - **Contexto**: O sistema hoje usa marca padrao do produto nas impressoes e nao possui um campo de foto proprio para membros nem de logo por igreja. Para personalizar perfis, telas institucionais e futuras exportacoes, cada tenant precisa cadastrar a propria logo e os membros precisam poder ter foto sem depender de alteracao manual no codigo. Alem disso, o proprio usuario deve conseguir trocar sua foto no fluxo de `Meu Perfil`, quando houver interesse.
 - **Acao**: Adicionar suporte a midia por entidade, com dois fluxos:
@@ -31,3 +32,4 @@
   - `apps/web/src/app/(dashboard)/meu-perfil/`
   - `apps/web/src/components/app/print-layout.tsx`
   - `apps/web/src/types/`
+

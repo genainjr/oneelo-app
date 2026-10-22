@@ -10,6 +10,7 @@ Ao adicionar um novo documento, inclua-o no início deste índice com a data, o 
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 20/10/2026 | [agenda-exportacao-pdf-png-plan.md](agenda-exportacao-pdf-png-plan.md) | Exportação e compartilhamento de PDF e PNG para Eventos (Agenda) |
 | 16/10/2026 | [escala-export-performance-plan.md](escala-export-performance-plan.md) | Performance da exportação de Escalas (PDF/PNG) no Render Free |
 | 14/10/2026 | [plano-compatibilidade-funcoes-escalas.md](plano-compatibilidade-funcoes-escalas.md) | Compatibilidade de funções nas escalas (matriz e segmentos do culto) |
 | 14/10/2026 | [escala-export-memory-stability-plan.md](escala-export-memory-stability-plan.md) | Estabilidade de memória da exportação de Escalas |
@@ -24,7 +25,7 @@ Ao adicionar um novo documento, inclua-o no início deste índice com a data, o 
 | 22/07/2026 | [central-documentos-plan.md](central-documentos-plan.md) | Central de documentos |
 | 19/07/2026 | [eventos-semanais-em-lote-plan.md](eventos-semanais-em-lote-plan.md) | Criação semanal de eventos independentes em lote |
 | 19/07/2026 | [ministerios-elegibilidade-escalas-plan.md](ministerios-elegibilidade-escalas-plan.md) | Elegibilidade de ministérios e membros para escalas |
-| 19/07/2026 | [escala-evento-workflow-plan.md](escala-evento-workflow-plan.md) | Criação de escalas com base em eventos |
+| 27/07/2026 | [escala-evento-workflow-plan.md](escala-evento-workflow-plan.md) | Criação de escalas com base em eventos |
 | 18/07/2026 | [tenant-pwa-identity-plan.md](tenant-pwa-identity-plan.md) | PWA com nome e ícone da igreja |
 | 17/07/2026 | [phone-password-login-plan.md](phone-password-login-plan.md) | Login com telefone e senha |
 | 17/07/2026 | [member-search-activation-birthday-notifications-plan.md](member-search-activation-birthday-notifications-plan.md) | Filtros, convite de ativação e aniversários |

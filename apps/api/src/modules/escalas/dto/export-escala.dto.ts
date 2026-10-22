@@ -3,6 +3,9 @@ import { IsIn, IsInt, IsOptional, Min, ValidateIf } from 'class-validator';
 import { FilterEscalaVisualizacaoDto } from './filter-escala-visualizacao.dto';
 
 export class ExportEscalaDto extends FilterEscalaVisualizacaoDto {
+  @IsOptional()
+  _t?: string;
+
   @IsIn(['pdf', 'png'])
   formato: 'pdf' | 'png' = 'pdf';
 

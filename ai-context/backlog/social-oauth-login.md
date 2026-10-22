@@ -2,7 +2,8 @@
 
 ### FT-008 Base de login social vinculada ao usuario interno
 - **Prioridade**: alta
-- **Fase**: 2
+- **Status**: implementado (Google OAuth funcional via social-oauth-login-plan.md; base pronta para Apple)
+- **Fase**: 2 (entregue)
 - **Categoria**: seguranca / autenticacao / UX
 - **Primeiro provedor previsto**: Google
 - **Provedores futuros considerados no desenho**: Apple e outros provedores OAuth/OIDC compativeis.
@@ -131,3 +132,4 @@ Mesmo que Apple nao entre na primeira entrega, o modelo deve suportar suas parti
 - `apps/web/src/app/(dashboard)/meu-perfil/`
 - `apps/web/src/app/(dashboard)/configuracoes/`
 - `.env.example` do backend e, se necessario, do frontend
+
