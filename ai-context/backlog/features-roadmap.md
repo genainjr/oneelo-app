@@ -98,3 +98,4 @@ Features planejadas para homologação e fases seguintes. As pós-MVP têm tela 
 - **Ação**: Chat em `/ministerios/midia` onde o usuário descreve o que precisa. Claude API gera um prompt otimizado. Opção A: integração com DALL-E 3 ou Stability AI para gerar diretamente. Opção B: copia o prompt para usar no Canva IA / Midjourney. Histórico de imagens geradas salvo em S3 ou Cloudflare R2.
 - **Impacto**: Reduz tempo de criação de arte. Equipe sem habilidade técnica consegue gerar imagens de qualidade.
 - **Depende de**: Claude API key, DALL-E API ou Stability AI, bucket S3/R2 para storage. Controle de cota por tenant para gerenciar custo de geração.
+

@@ -134,3 +134,30 @@ Para grade read-only de escala:
 - Cards de metricas locais em `/minhas-escalas` e `/escalas/visualizacao`.
 - Mistura de rotas read-only e gerenciais sem padrao uniforme em alguns modulos.
 
+
+
+---
+
+## Compartilhamento de Documentos em Visualizações
+
+Telas de visualização read-only com dados periódicos (`/escalas/visualizacao`, `/agenda/visualizacao`) devem padronizar o botão de compartilhamento no `PageHeader`:
+
+```tsx
+<PageHeader
+  title="Visualização"
+  description="Consulte e acompanhe as informações."
+  action={(
+    <button
+      onClick={openExportDialog}
+      disabled={loading || items.length === 0 || exporting !== null}
+      aria-label="Compartilhar"
+      title="Compartilhar"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+    </button>
+  )}
+/>
+```
+
+O controle deve ser sempre mediado por `<ExportShareDialog />` e pelo hook `useDocumentShare`.

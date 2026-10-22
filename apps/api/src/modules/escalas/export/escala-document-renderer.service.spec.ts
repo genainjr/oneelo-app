@@ -7,6 +7,7 @@ import {
   CHROMIUM_LOW_MEMORY_ARGS,
   EscalaDocumentRendererService,
   ExportServiceUnavailableException,
+  getEscalaPdfFileName,
   listWeeklyPageOptions,
 } from './escala-document-renderer.service';
 import type { EscalaDocumentInput } from './escala-document.types';
@@ -87,7 +88,7 @@ describe('EscalaDocumentRendererService', () => {
       weekStart: '2026-09-28',
       weekEnd: '2026-10-04',
       label: 'Semana de 01 a 04 de outubro',
-      fileName: 'escalas-semana-2026-09-28.png',
+      fileName: 'escalas-semana-2026-10-01.png',
       eventCount: 1,
     });
     expect(options[1]).toMatchObject({
@@ -167,7 +168,7 @@ describe('EscalaDocumentRendererService', () => {
       expect(batchResult.pageCount).toBe(2);
       expect(batchResult.files).toEqual([
         {
-          fileName: 'escalas-semana-2026-09-28.png',
+          fileName: 'escalas-semana-2026-10-01.png',
           mimeType: 'image/png',
           base64: Buffer.from('png-week-1').toString('base64'),
         },
@@ -299,5 +300,33 @@ describe('EscalaDocumentRendererService', () => {
 
     const html = mockPage.setContent.mock.calls[0][0] as string;
     expect(html).toContain('class="tenant-logo" src="data:image/png;base64,');
+  });
+
+  it('gera nome de arquivo PDF identificando o periodo (ex: escalas-2026-10.pdf) e renderiza subtitulo no header', async () => {
+    expect(getEscalaPdfFileName(sampleInput.schedules)).toBe('escalas-2026-10.pdf');
+    expect(getEscalaPdfFileName([])).toBe('escalas.pdf');
+
+    const mockPage = {
+      setContent: jest.fn().mockResolvedValue(undefined),
+      pdf: jest.fn().mockResolvedValue(Buffer.from('pdf-data')),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    const mockBrowser = {
+      isConnected: () => true,
+      newPage: jest.fn().mockResolvedValue(mockPage),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    jest.spyOn(chromium, 'launch').mockResolvedValue(mockBrowser as any);
+
+    const renderer = new EscalaDocumentRendererService();
+    const result = await renderer.renderExport(sampleInput, 'pdf', 1);
+
+    expect(result.kind).toBe('single');
+    if (result.kind === 'single') {
+      expect(result.fileName).toBe('escalas-2026-10.pdf');
+    }
+    const html = mockPage.setContent.mock.calls[0][0] as string;
+    expect(html).toContain('<p class="header-subtitle">Outubro de 2026</p>');
+    expect(html).toContain('Emitido em ');
   });
 });

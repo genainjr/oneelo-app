@@ -1,5 +1,16 @@
-export type EscalaDocumentFormat = 'pdf' | 'png';
-export type EscalaDocumentPageSelection = number | 'todas';
+import type {
+  DocumentExportResult,
+  DocumentFormat,
+  DocumentPageSelection,
+  DocumentRenderOptions,
+  RenderedBatchDocument,
+  RenderedBatchFile,
+  RenderedDocument,
+  RenderedNotModifiedDocument,
+} from '../../../common/export';
+
+export type EscalaDocumentFormat = DocumentFormat;
+export type EscalaDocumentPageSelection = DocumentPageSelection;
 
 export interface EscalaDocumentRole {
   id: string;
@@ -40,43 +51,12 @@ export interface EscalaDocumentWeekOption {
   eventCount: number;
 }
 
-export interface RenderedDocument {
-  kind?: 'single';
-  buffer: Buffer;
-  mimeType: 'application/pdf' | 'image/png';
-  fileName: string;
-  pageCount: number;
-  etag?: string;
-  notModified?: boolean;
-}
+export type {
+  RenderedDocument,
+  RenderedBatchFile,
+  RenderedBatchDocument,
+  RenderedNotModifiedDocument,
+};
 
-export interface RenderedBatchFile {
-  fileName: string;
-  mimeType: 'image/png';
-  base64: string;
-}
-
-export interface RenderedBatchDocument {
-  kind: 'batch';
-  files: RenderedBatchFile[];
-  pageCount: number;
-  etag?: string;
-  notModified?: boolean;
-}
-
-export interface RenderedNotModifiedDocument {
-  kind: 'not-modified';
-  etag: string;
-  pageCount: number;
-  notModified: true;
-}
-
-export type EscalaExportResult =
-  | RenderedDocument
-  | RenderedBatchDocument
-  | RenderedNotModifiedDocument;
-
-export interface EscalaRenderOptions {
-  ifNoneMatch?: string;
-  queryMs?: number;
-}
+export type EscalaExportResult = DocumentExportResult;
+export type EscalaRenderOptions = DocumentRenderOptions;

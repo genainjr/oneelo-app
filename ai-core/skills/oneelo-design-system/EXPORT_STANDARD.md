@@ -94,3 +94,25 @@ function handleExport() {
 - Logica repetida de resumo, selecao de campos e botao.
 - `ALL_FIELDS` definido de forma isolada em cada pagina sem contrato comum.
 
+
+
+---
+
+## Compartilhamento e Exportação de Documentos (PDF e PNG Semanal)
+
+Para telas de visualização que oferecem exportação e compartilhamento rápido de documentos visuais (como `/escalas/visualizacao` e `/agenda/visualizacao`), o ODS estabelece um padrão único:
+
+### Componentes e Hooks Obrigatórios
+- `<ExportShareDialog />` (`@/components/app/export-share-dialog`): Diálogo acessível em 2 etapas (Escolha do formato PDF vs Imagem e Seleção da semana civil / todas as semanas).
+- `<ExportSharePreparedBanner />` e `<ExportShareErrorBanner />`: Feedback visual consistente para download/recompartilhamento e erros (503, falhas de rede).
+- `useDocumentShare` (`@/hooks/use-document-share`): Hook unificado que gerencia estados de loading, cache de sessão em memória, chamadas aos endpoints de exportação (`/api/<modulo>/exportacao`), integração com a Web Share API (`navigator.share`) e fallback resiliente para download direto (`downloadFile`).
+- Utilitários de calendário (`@/lib/export-calendar-weeks`): Agrupamento uniforme por semana civil.
+
+### Padrão Visual dos Documentos Gerados
+1. **PDF A4 Paisagem:**
+   - Grid de cabeçalho padronizado (Logo do Tenant, Título, Período e Organização);
+   - Rodapé One Elo / Lookup Labs com logo institucional;
+   - Agrupamento obrigatório por dias da semana com faixas coloridas semânticas (`ROLE_COLORS`) e tabelas zebradas.
+2. **PNG Semanal (1080px):**
+   - Folha vertical `1080px` com cabeçalho de alta resolução;
+   - Cartões estruturados (`.event-card`) com faixas coloridas semânticas, data grande (`44px`), dia da semana por extenso, pílula de categoria e linhas de detalhamento (`.assignment-row`).

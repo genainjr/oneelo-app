@@ -4,6 +4,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  InternalServerErrorException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { EventoTipo, MinistryRole, Prisma, Role } from '@prisma/client';
 import { AuthorizationService } from '../../common/authorization/authorization.service';
@@ -16,6 +18,10 @@ import { UpdateEventoDto } from './dto/update-evento.dto';
 import { CreateEventosEmLoteDto } from './dto/create-eventos-em-lote.dto';
 import { EventoOcorrenciaInputDto } from './dto/evento-ocorrencia-input.dto';
 import { normalizeSearchText } from '../../common/utils/search-text';
+import { performance } from 'node:perf_hooks';
+import { ExportEventoDto } from './dto/export-evento.dto';
+import { EventoDocumentRendererService } from './export/evento-document-renderer.service';
+import type { EventoDocumentInput, EventoExportResult } from './export/evento-document.types';
 
 type EventoMinisterioConfig = Pick<
   EventoMinisterioInputDto,
@@ -40,6 +46,7 @@ export class EventosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
+    private readonly eventoDocumentRenderer: EventoDocumentRendererService = new EventoDocumentRendererService(),
   ) {}
 
   private uniqueIds(ids?: string[]) {
@@ -768,5 +775,71 @@ export class EventosService {
     await this.prisma.evento.delete({ where: { id } });
 
     return { message: 'Evento removido com sucesso.' };
+  }
+
+  async exportar(
+    tenantId: string,
+    query: ExportEventoDto,
+    user: JwtPayload,
+    ifNoneMatch?: string,
+  ): Promise<EventoExportResult> {
+    const queryStartedAt = performance.now();
+    const eventos = await this.findAll(tenantId, query, user);
+    if (eventos.length === 0) {
+      throw new NotFoundException(
+        'Nenhum evento encontrado para os filtros informados.',
+      );
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { nome: true, logoUrl: true },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Organização não encontrada.');
+    }
+
+    const input: EventoDocumentInput = {
+      organizationName: tenant.nome,
+      logoUrl: tenant.logoUrl,
+      periodo: {
+        dataInicio: query.dataInicio,
+        dataFim: query.dataFim,
+      },
+      eventos: eventos.map((evento) => ({
+        id: evento.id,
+        titulo: evento.titulo,
+        tipo: evento.tipo,
+        status: evento.status,
+        dataInicio: evento.dataInicio,
+        dataFim: evento.dataFim,
+        local: evento.local,
+        descricao: evento.descricao,
+        ministerios: (evento.ministerios || []).map((m: any) => ({
+          id: m.ministerio.id,
+          nome: m.ministerio.nome,
+        })),
+      })),
+    };
+    const queryMs = Math.round(performance.now() - queryStartedAt);
+
+    try {
+      return await this.eventoDocumentRenderer.renderExport(
+        input,
+        query.formato,
+        query.pagina ?? 1,
+        { ifNoneMatch, queryMs },
+      );
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ServiceUnavailableException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Não foi possível gerar a exportação dos eventos.',
+      );
+    }
   }
 }

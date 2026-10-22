@@ -738,3 +738,4 @@ Comparar períodos antes e depois da adoção por tenant:
 
 - Entrega 1: `ai-context/plans/tenant-pwa-identity-plan.md`.
 - As demais entregas devem receber planos próprios somente quando forem priorizadas, preservando o modelo incremental deste backlog.
+

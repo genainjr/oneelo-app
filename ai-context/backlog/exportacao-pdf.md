@@ -3,6 +3,7 @@
 ### FT-015 Exportacao de PDF e Imagens de Escalas e Agenda
 
 - **Prioridade**: alta
+- **Status**: em andamento / fase final (Escalas PDF/PNG concluído; Agenda PDF/PNG integrado no backend e web na branch feature/unified-share-pdf-png)
 - **Fase**: melhoria de produtividade e operacao
 - **Categoria**: produto / exportacao / documentos
 - **Esforco estimado**: medio
@@ -75,3 +76,4 @@ Equivalencia nao inclui elementos do dialogo nativo do navegador, como URL, data
 - os arquivos tem cabecalho e identidade corretos do tenant e nao cortam conteudo de forma inadequada nos cenarios validados;
 - o arquivo nao e persistido em banco ou storage;
 - a aplicacao nao cria job, fila, cron, worker ou microservico para esta entrega.
+
