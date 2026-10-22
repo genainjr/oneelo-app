@@ -2,11 +2,22 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CalendarDays, CircleDashed, Clock3, ListChecks, MapPin, TriangleAlert } from 'lucide-react';
+import {
+  CalendarDays,
+  CircleDashed,
+  Clock3,
+  ListChecks,
+  LoaderCircle,
+  MapPin,
+  Share2,
+  TriangleAlert,
+} from 'lucide-react';
 import { endOfWeek, startOfWeek } from 'date-fns';
 import { useEventos } from '@/hooks/use-eventos';
 import { useMinisterios } from '@/hooks/use-ministerios';
 import { useFilterState } from '@/hooks/use-filter-state';
+import { useDocumentShare } from '@/hooks/use-document-share';
+import { buildWeeklyExportOptionsForEventos } from '@/lib/export-calendar-weeks';
 import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
@@ -14,6 +25,11 @@ import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { EmptyState } from '@/components/app/empty-state';
 import { EntityCard } from '@/components/app/entity-card';
 import { PrintDocumentHeader, PrintScheduleFooter } from '@/components/app/print-layout';
+import {
+  ExportShareDialog,
+  ExportSharePreparedBanner,
+  ExportShareErrorBanner,
+} from '@/components/app/export-share-dialog';
 import { api } from '@/lib/api';
 import { formatDate, STATUS_EVENTO_LABEL } from '@/lib/utils';
 import type { AuthUser, Evento, EventoTipo, StatusEvento } from '@/types';
@@ -64,7 +80,18 @@ export default function AgendaVisualizacaoPage() {
     [weekStart, weekEnd],
   );
 
-  const { eventos, loading, error, applyFilter, refetch } = useEventos(initialFilter);
+  const emptyFilter = useMemo(
+    () => ({
+      status: '',
+      tipo: '',
+      ministerioId: '',
+      dataInicio: '',
+      dataFim: '',
+    }),
+    [],
+  );
+
+  const { eventos, loading, error, filter, applyFilter, refetch } = useEventos(initialFilter);
   const { ministerios } = useMinisterios();
 
   useEffect(() => {
@@ -106,6 +133,56 @@ export default function AgendaVisualizacaoPage() {
     return [...eventos].sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime());
   }, [eventos]);
 
+  const weeklyOptions = useMemo(
+    () => buildWeeklyExportOptionsForEventos(sortedEventos),
+    [sortedEventos],
+  );
+
+  const defaultPdfFileName = useMemo(() => {
+    if (filter.dataInicio && filter.dataFim) {
+      if (filter.dataInicio === filter.dataFim) {
+        return `agenda-eventos-${filter.dataInicio}.pdf`;
+      }
+      const startMatch = filter.dataInicio.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const endMatch = filter.dataFim.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (startMatch && endMatch && startMatch[1] === endMatch[1] && startMatch[2] === endMatch[2]) {
+        const lastDay = new Date(Number(startMatch[1]), Number(startMatch[2]), 0).getDate();
+        if (Number(startMatch[3]) === 1 && Number(endMatch[3]) === lastDay) {
+          return `agenda-eventos-${startMatch[1]}-${startMatch[2]}.pdf`;
+        }
+      }
+      return `agenda-eventos-${filter.dataInicio}-a-${filter.dataFim}.pdf`;
+    }
+    return 'agenda-eventos.pdf';
+  }, [filter.dataInicio, filter.dataFim]);
+
+  const {
+    exporting,
+    exportChoiceOpen,
+    exportDialogStep,
+    selectedPngWeek,
+    exportError,
+    preparedFiles,
+    openExportDialog,
+    closeExportDialog,
+    setExportDialogStep,
+    setSelectedPngWeek,
+    handleChooseImageOption,
+    handleExportPdf,
+    handleExportImages,
+    handleFallbackShare,
+    downloadAllFiles,
+  } = useDocumentShare({
+    endpoint: '/api/eventos/exportacao',
+    filter,
+    tenantLogoUrl,
+    weeklyOptions,
+    documentTitle: 'Agenda de Eventos',
+    defaultPdfFileName,
+    pngFileNamePrefix: 'agenda',
+    resetDependencies: [sortedEventos, filter],
+  });
+
   const printEventPages = useMemo(() => {
     const pages: Evento[][] = [];
     for (let index = 0; index < sortedEventos.length; index += PRINT_EVENTS_PER_PAGE) {
@@ -122,11 +199,6 @@ export default function AgendaVisualizacaoPage() {
     return { total, agendados, realizados, cancelados };
   }, [sortedEventos]);
 
-  function handlePrint() {
-    setPrintedAt(new Date());
-    window.setTimeout(() => window.print(), 0);
-  }
-
   return (
     <div className="p-6">
       <div className="no-print space-y-6">
@@ -134,16 +206,43 @@ export default function AgendaVisualizacaoPage() {
           title={t('view.pageTitle')}
           description={t('view.pageDescription')}
           action={(
-            <button
-              type="button"
-              onClick={handlePrint}
-              disabled={loading || sortedEventos.length === 0}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Imprimir
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={openExportDialog}
+                disabled={loading || sortedEventos.length === 0 || exporting !== null}
+                aria-haspopup="dialog"
+                aria-expanded={exportChoiceOpen}
+                aria-label="Compartilhar"
+                title="Compartilhar"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+              </button>
+            </div>
           )}
         />
+
+        <ExportShareDialog
+          isOpen={exportChoiceOpen}
+          step={exportDialogStep}
+          selectedWeek={selectedPngWeek}
+          weeklyOptions={weeklyOptions}
+          onClose={closeExportDialog}
+          onStepChange={setExportDialogStep}
+          onSelectWeek={setSelectedPngWeek}
+          onExportPdf={handleExportPdf}
+          onChooseImageOption={handleChooseImageOption}
+          onExportImages={handleExportImages}
+        />
+
+        <ExportSharePreparedBanner
+          preparedFiles={preparedFiles}
+          onShare={handleFallbackShare}
+          onDownload={downloadAllFiles}
+        />
+
+        <ExportShareErrorBanner error={exportError} />
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard title={t('view.stats.total')} value={stats.total} icon={<CalendarDays className="w-5 h-5" />} color="indigo" />
@@ -167,7 +266,7 @@ export default function AgendaVisualizacaoPage() {
             <FilterActions
               submitLabel={t('filter.apply')}
               clearLabel={t('filter.clear')}
-              onClear={() => handleClearFilters()}
+              onClear={() => handleClearFilters(emptyFilter)}
             />
           }
         >
@@ -175,11 +274,11 @@ export default function AgendaVisualizacaoPage() {
           <FilterSelect
             label={t('filter.statusLabel')}
             value={filterState.status}
-            onChange={(event) => setFilterField('status', event.target.value as '' | StatusEvento)}
+            onChange={(event) => setFilterField('status', event.target.value)}
           >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value || 'all'} value={option.value}>
-              {t(option.labelKey as any)}
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value || 'all'} value={option.value}>
+                {t(option.labelKey as any)}
               </option>
             ))}
           </FilterSelect>
@@ -187,7 +286,7 @@ export default function AgendaVisualizacaoPage() {
           <FilterSelect
             label={t('filter.tipoLabel')}
             value={filterState.tipo}
-            onChange={(event) => setFilterField('tipo', event.target.value as '' | EventoTipo)}
+            onChange={(event) => setFilterField('tipo', event.target.value)}
           >
             <option value="">{t('filter.allTypes')}</option>
             <option value="GERAL">{t('event.type.GERAL')}</option>
@@ -211,44 +310,35 @@ export default function AgendaVisualizacaoPage() {
           <FilterInput
             label={t('filter.from')}
             type="date"
-              value={filterState.dataInicio}
-              onChange={(event) => setFilterField('dataInicio', event.target.value)}
-            />
+            value={filterState.dataInicio}
+            onChange={(event) => setFilterField('dataInicio', event.target.value)}
+          />
 
-            <FilterInput
-              label={t('filter.to')}
-              type="date"
-              value={filterState.dataFim}
-              onChange={(event) => setFilterField('dataFim', event.target.value)}
-            />
-          </div>
+          <FilterInput
+            label={t('filter.to')}
+            type="date"
+            value={filterState.dataFim}
+            onChange={(event) => setFilterField('dataFim', event.target.value)}
+          />
+        </div>
         </FilterShell>
 
         {loading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <EntityCard key={index} loading />
-            ))}
+          <div className="space-y-3">
+            <div className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
+            <div className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
+            <div className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
           </div>
         ) : sortedEventos.length === 0 ? (
           <EmptyState
-            title={t('view.emptyTitle')}
-            description={t('view.emptyDescription')}
-            action={
-              <button
-                type="button"
-                onClick={() => handleClearFilters()}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50"
-              >
-                {t('filter.clear')}
-              </button>
-            }
+            title={t('view.empty.title')}
+            description={t('view.empty.description')}
           />
         ) : (
-          <div className="space-y-4">
-            {sortedEventos.map((evento: Evento) => {
-              const statusLabel = STATUS_EVENTO_LABEL[evento.status];
-              const statusClass = STATUS_VIEW_COLOR[evento.status];
+          <div className="space-y-3">
+            {sortedEventos.map((evento) => {
+              const statusClass = STATUS_VIEW_COLOR[evento.status] || 'bg-gray-50 text-gray-700 border-gray-150';
+              const statusLabel = STATUS_EVENTO_LABEL[evento.status] || evento.status;
 
               return (
                 <EntityCard key={evento.id} className="flex flex-col gap-4 p-4 sm:p-5 md:flex-row md:items-start md:justify-between">
@@ -337,21 +427,21 @@ function AgendaPrintTable({
     <table className="print-schedule-table print-events-table">
       <thead>
         <tr>
-            <th>Dia</th>
-            <th>Data</th>
+          <th>Dia</th>
+          <th>Data</th>
           <th>Evento</th>
           <th>Tipo</th>
           <th>Ministérios</th>
           <th>Status</th>
           <th>Local</th>
-          <th>Descricao</th>
+          <th>Descrição</th>
         </tr>
       </thead>
       <tbody>
         {eventos.map((evento) => (
           <tr key={evento.id}>
-              <td>{getWeekdayLabel(evento.dataInicio)}</td>
-              <td>{formatDate(evento.dataInicio, 'dd/MM/yyyy HH:mm')}</td>
+            <td>{getWeekdayLabel(evento.dataInicio)}</td>
+            <td>{formatDate(evento.dataInicio, 'dd/MM/yyyy HH:mm')}</td>
             <td>{evento.titulo}</td>
             <td>{t(`event.type.${evento.tipo}` as any)}</td>
             <td>{evento.ministerios?.map((item) => item.ministerio?.nome).filter(Boolean).join(', ') || '-'}</td>

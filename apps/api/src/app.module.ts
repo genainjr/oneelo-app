@@ -4,6 +4,7 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { ExportModule } from './common/export/export.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MembrosModule } from './modules/membros/membros.module';
 import { TagsModule } from './modules/tags/tags.module';
@@ -32,6 +33,7 @@ import { HealthController } from './health.controller';
     ScheduleModule.forRoot(),
     // Banco de dados global
     PrismaModule,
+    ExportModule,
     // Módulos de funcionalidade — Fase 2
     AuthModule,
     MembrosModule,

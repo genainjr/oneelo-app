@@ -488,3 +488,4 @@ Esse MVP evita começar por relatórios avançados, conciliação ou patrimônio
 - Relatórios simples batem com lançamentos filtrados.
 - Anexos não ficam públicos.
 - O módulo pode evoluir para relatórios e patrimônio sem refazer a base.
+

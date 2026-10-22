@@ -2,7 +2,7 @@
 
 ## FT-008 Criar escalas com base nos eventos da agenda
 
-- **Status**: refinado - pronto para planejamento
+- **Status**: implementado (via escala-evento-workflow-plan.md)
 - **Prioridade**: alta
 - **Categoria**: UX / produto / consistência de dados
 
@@ -189,3 +189,4 @@ Mesmo quando `requerEscala = true`, o evento apenas fica disponível para seleç
 - Evento cancelado não entra em novas escalas e é sinalizado nas já existentes.
 - Nenhuma escala é criada automaticamente pela Agenda.
 - Permissões e visibilidade atuais de eventos e escalas são preservadas.
+

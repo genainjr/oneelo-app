@@ -4,12 +4,12 @@
 
 ### IMP-001 Adicionar campos email, phone e language ao Tenant
 
-- **Status**: pendente
+- **Status**: implementado
 - **Prioridade**: alta
 - **Categoria**: infraestrutura / homologacao
-- **Contexto**: O Tenant ja existe com isolamento multi-tenant completo. O roadmap previa campos de contato e idioma padrao para a entidade Tenant.
-- **Acao**: Confirmar o estado atual do schema. Se ainda faltar algo, adicionar migration Prisma e atualizar DTOs de criacao/edicao de tenant.
-- **Impacto**: Desbloqueia informacoes de contato no Super Admin e futura configuracao de idioma padrao por tenant.
+- **Contexto**: O Tenant possui campos de contato (`email`, `telefone`) e idioma padrao (`idioma`) adicionados ao schema Prisma, nos DTOs de criacao/edicao e no Super Admin.
+- **Acao**: Concluido no schema e modulo Super Admin.
+- **Impacto**: Informacoes de contato e configuracao de idioma disponiveis no Super Admin e na API.
 - **Arquivos afetados**:
   - `apps/api/prisma/schema.prisma`
   - `apps/api/src/modules/super-admin/`
@@ -18,11 +18,11 @@
 
 ### IMP-002 Landing Page publica no middleware
 
-- **Status**: revisar estado atual
+- **Status**: implementado
 - **Prioridade**: alta
 - **Categoria**: infraestrutura / homologacao
-- **Contexto**: A landing page precisa ser publica em `/`. O plano da landing esta marcado como concluido, entao este item deve ser reconciliado com o codigo atual.
-- **Acao**: Validar se `/` esta em `PUBLIC_PATHS` no middleware. Se estiver, marcar como concluido; se nao estiver, ajustar.
+- **Contexto**: A landing page precisa ser publica em `/`. Validado em `apps/web/src/middleware.ts` com `/` incluso em `PUBLIC_PATHS`.
+- **Acao**: Concluido e ativo em producao/desenvolvimento.
 - **Impacto**: Visitantes acessam a landing sem autenticacao.
 - **Arquivos afetados**:
   - `apps/web/src/middleware.ts`
@@ -72,18 +72,19 @@
 
 ### IMP-006 Nome de exibicao do membro para escalas e impressoes
 
-- **Status**: pendente
+- **Status**: implementado
 - **Prioridade**: media
 - **Categoria**: UX / consistencia de dados
-- **Contexto**: Na impressao A4 de escalas, a primeira versao usa apenas o primeiro nome do membro para manter a tabela compacta. Isso melhora a densidade, mas falha para pessoas identificadas pelo segundo nome ou por nome usual, como membros cujo cadastro comeca com "Francisco", "Joao", "Maria" ou "Jose".
-- **Acao**: Adicionar um campo opcional no cadastro de membro, como `nomeExibicao` ou `nomeEscala`, para definir o nome usado em escalas, impressoes e possivelmente buscas operacionais. A regra recomendada para exibicao e `nomeExibicao || primeiroNome || nome`.
-- **Impacto**: Reduz ambiguidades em escalas, melhora legibilidade das impressoes e evita heuristicas frageis baseadas em nomes compostos.
-- **Arquivos afetados previstos**:
+- **Contexto**: Adicionado campo opcional `nomeExibicao` no cadastro de membro (`Membro.nomeExibicao`) para exibicao em escalas, impressoes, Meu Perfil e buscas operacionais (`nomeExibicao || primeiroNome || nome`).
+- **Acao**: Concluido no Prisma, API, modal de membros, Meu Perfil e componentes de impressao/escala.
+- **Impacto**: Elimina ambiguidades em escalas e melhora legibilidade de impressoes.
+- **Arquivos afetados**:
   - `apps/api/prisma/schema.prisma`
   - `apps/api/src/modules/membros/`
-- `apps/web/src/components/app/membro-modal.tsx`
-- `apps/web/src/components/app/escala-print-grid.tsx`
-- `apps/web/src/types/index.ts`
+  - `apps/web/src/components/app/membro-modal.tsx`
+  - `apps/web/src/components/app/escala-shared.tsx`
+  - `apps/web/src/components/app/membro-search-combobox.tsx`
+  - `apps/web/src/app/(dashboard)/meu-perfil/page.tsx`
 
 ---
 
@@ -99,7 +100,7 @@
   - `apps/web/src/app/(dashboard)/membros/visualizacao/page.tsx`
   - `apps/web/src/hooks/use-membros-visualizacao.ts`
   - `apps/web/src/components/app/filter-shell.tsx`
-- `apps/web/src/hooks/use-filter-state.ts`
+  - `apps/web/src/hooks/use-filter-state.ts`
   - `apps/web/src/app/(dashboard)/dashboard/page.tsx`
 
 ---
@@ -124,17 +125,12 @@
 
 ### IMP-009 Visualizacoes read-only para ministerios e agenda
 
-- **Status**: pendente
+- **Status**: implementado
 - **Prioridade**: media
 - **Categoria**: UX / ODS / navegacao
-- **Contexto**: Hoje `ministerios` e `agenda` existem como telas de gestao, mas nao possuem uma rota de visualizacao dedicada no padrao de `membros/visualizacao` e `escalas/visualizacao`. Isso impede que o usuario tenha uma leitura clara e consistente, sem controles de edicao, separada do fluxo CRUD.
-- **Acao**: Criar visualizacoes read-only para `agenda` e `ministerios`, reaproveitando `PageHeader`, `FilterShell`, `EntityCard`, `EmptyState`, `StatusBadge` e os hooks existentes sempre que possivel. Evitar novos componentes genericos se a estrutura atual ja resolve o caso de uso.
-- **Impacto**: Melhora a leitura operacional, alinha a navegacao ao padrado ODS e separa consulta de edicao sem duplicar interface desnecessaria.
-- **Arquivos afetados previstos**:
-  - `apps/web/src/app/(dashboard)/agenda/`
-  - `apps/web/src/app/(dashboard)/ministerios/`
-  - `apps/web/src/components/app/page-header.tsx`
-  - `apps/web/src/components/app/filter-shell.tsx`
-  - `apps/web/src/components/app/entity-card.tsx`
-  - `apps/web/src/components/app/status-badge.tsx`
-  - `apps/web/src/components/app/empty-state.tsx`
+- **Contexto**: Criadas telas de visualizacao read-only dedicadas em `/agenda/visualizacao` e `/ministerios/visualizacao` seguindo o padrao ODS de `/membros/visualizacao` e `/escalas/visualizacao`.
+- **Acao**: Concluido no frontend com PageHeader, FilterShell, EntityCard, EmptyState, StatCard e cards expansivos.
+- **Impacto**: Consulta clara e separada do fluxo CRUD, alinhada ao padrao OneElo Design System.
+- **Arquivos afetados**:
+  - `apps/web/src/app/(dashboard)/agenda/visualizacao/page.tsx`
+  - `apps/web/src/app/(dashboard)/ministerios/visualizacao/page.tsx`

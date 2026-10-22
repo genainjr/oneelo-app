@@ -2,7 +2,8 @@
 
 ### FT-010 Login por numero de telefone e senha
 - **Prioridade**: alta
-- **Fase**: a priorizar
+- **Status**: implementado (via phone-password-login-plan.md)
+- **Fase**: entregue
 - **Categoria**: seguranca / autenticacao / UX
 - **Esforco estimado**: medio
 - **Contexto**: o login por senha aceita apenas e-mail, enquanto o telefone do membro e apenas um dado de contato.
@@ -128,3 +129,4 @@ Definir onde administradores e usuarios autorizados podem cadastrar ou alterar o
 ## Plano de desenvolvimento
 
 - `ai-context/plans/phone-password-login-plan.md`
+
