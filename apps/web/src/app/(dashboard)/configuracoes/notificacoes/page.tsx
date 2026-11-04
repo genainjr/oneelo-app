@@ -195,7 +195,7 @@ export default function CentralNotificacoesPage() {
       });
 
       const response = await api.get<NotificationListResponse>(
-        `/notifications${query}`,
+        `/api/notifications${query}`,
       );
       setItems(response.data);
       setTotal(response.meta.total);
@@ -215,7 +215,7 @@ export default function CentralNotificacoesPage() {
 
   const loadMinisterios = useCallback(async () => {
     try {
-      const res = await api.get<Array<{ id: string; nome: string }>>("/ministerios");
+      const res = await api.get<Array<{ id: string; nome: string }>>("/api/ministerios");
       setMinisterios(res);
     } catch {
       // Ignora erro ao carregar ministérios
@@ -229,7 +229,7 @@ export default function CentralNotificacoesPage() {
     setLoadingDetail(true);
     try {
       const res = await api.get<NotificationDetailResponse>(
-        `/notifications/${id}?page=${page}&limit=10`,
+        `/api/notifications/${id}?page=${page}&limit=10`,
       );
       setDetailData(res);
     } catch (error) {
@@ -243,7 +243,7 @@ export default function CentralNotificacoesPage() {
     if (!selectedNotificationId) return;
     try {
       setRetrying(true);
-      await api.post(`/notifications/${selectedNotificationId}/retry`);
+      await api.post(`/api/notifications/${selectedNotificationId}/retry`);
       await openDetailModal(selectedNotificationId, recipientPage);
       await loadNotifications();
     } catch (error) {
@@ -291,7 +291,7 @@ export default function CentralNotificacoesPage() {
 
     try {
       setCreating(true);
-      await api.post("/notifications/manual", {
+      await api.post("/api/notifications/manual", {
         titulo: createForm.titulo.trim(),
         mensagem: createForm.mensagem.trim(),
         urlDestino: createForm.urlDestino?.trim() || "/personal-panel",
