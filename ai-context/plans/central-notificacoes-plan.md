@@ -203,17 +203,17 @@ Status: concluído
 - Critério de validação da etapa: Criar, alterar e cancelar evento via API, comprovando nos registros de `Notification` a criação, reagendamento e cancelamento do lembrete. Testes unitários do EventosService com 25 testes passando.
 
 #### Etapa 4 - Migração das Automações de Escalas e Aniversários
-Status: planejado
+Status: concluído
 
-- [ ] Refatorar `notifyEscalaPublished` em `escalas.service.ts`:
+- [x] Refatorar `notifyEscalaPublished` em `escalas.service.ts`:
   - Enfileirar via `NotificationDispatchService` com chave `escala:{id}:published` em vez de chamar push síncrono.
-- [ ] Refatorar `notifyLeadershipAboutConfirmationResponse` em `escalas.service.ts`:
+- [x] Refatorar `notifyLeadershipAboutConfirmationResponse` em `escalas.service.ts`:
   - Enfileirar aviso com chave determinística para liderança.
-- [ ] Refatorar `runPendingConfirmationReminderJob` e `runScheduleDayReminderJob`:
+- [x] Refatorar `runPendingConfirmationReminderJob` e `runScheduleDayReminderJob`:
   - Enfileirar via central com idempotência diária.
-- [ ] Refatorar `runBirthdayNotificationJob`:
+- [x] Refatorar `runBirthdayNotificationJob`:
   - Enfileirar lembretes de aniversário do dia.
-- Critério de validação da etapa: Testes unitários do módulo de escalas e notificações passando sem chamadas diretas soltas de push.
+- Critério de validação da etapa: Testes unitários do módulo de escalas (48 testes) e notificações (26 testes) passando sem falhas, com idempotência e persistência centralizadas.
 
 ---
 

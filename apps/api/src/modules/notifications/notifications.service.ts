@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AcaoAuditoria,
   EventoTipo,
+  NotificationAudienceType,
+  NotificationOrigin,
   StatusConfirmacao,
   StatusEscala,
   StatusEvento,
@@ -13,6 +15,7 @@ import { Cron } from '@nestjs/schedule';
 import webPush from 'web-push';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
+import { NotificationDispatchService } from './services/notification-dispatch.service';
 import {
   DeletePushSubscriptionDto,
   SendTestNotificationDto,
@@ -34,6 +37,8 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    @Optional()
+    private readonly notificationDispatch?: NotificationDispatchService,
   ) {
     this.configureWebPush();
   }
@@ -429,16 +434,35 @@ export class NotificationsService {
           continue;
 
         const displayName = celebrant.nomeExibicao || celebrant.nome;
-        const result = await this.sendToUsers(tenantId, [celebrant.user.id], {
-          title: `Hoje é o seu dia, ${this.getFirstName(displayName)}! \ud83c\udf82`,
-          body: `Feliz aniversário! Que este novo ciclo seja cheio de fé, alegria e boas histórias ao lado da família ${tenantName}.`,
-          url: '/personal-panel',
-        });
+        const title = `Hoje é o seu dia, ${this.getFirstName(displayName)}! 🎂`;
+        const body = `Feliz aniversário! Que este novo ciclo seja cheio de fé, alegria e boas histórias ao lado da família ${tenantName}.`;
 
-        personalNotifications += 1;
-        sent += result.sent;
-        failed += result.failed;
-        totalSubscriptions += result.total;
+        if (this.notificationDispatch) {
+          const ano = referenceDate.getFullYear();
+          await this.notificationDispatch.createNotification({
+            tenantId,
+            origem: NotificationOrigin.SYSTEM_AUTOMATION,
+            titulo: title,
+            mensagem: body,
+            urlDestino: '/personal-panel',
+            tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+            userIds: [celebrant.user.id],
+            idempotencyKey: `tenant:${tenantId}:membro:${celebrant.user.id}:birthday-personal:${ano}`,
+          });
+          personalNotifications += 1;
+          sent += 1;
+        } else {
+          const result = await this.sendToUsers(tenantId, [celebrant.user.id], {
+            title,
+            body,
+            url: '/personal-panel',
+          });
+
+          personalNotifications += 1;
+          sent += result.sent;
+          failed += result.failed;
+          totalSubscriptions += result.total;
+        }
       }
 
       const allUserIds = await this.getTenantMemberUserIds(tenantId);
@@ -451,20 +475,39 @@ export class NotificationsService {
           (member) => member.nomeExibicao || member.nome,
         );
         const multiple = names.length > 1;
-        const result = await this.sendToUsers(tenantId, otherUserIds, {
-          title: multiple
-            ? `Hoje temos aniversariantes na ${tenantName}! \ud83c\udf89`
-            : `Hoje tem aniversário na ${tenantName}! \ud83c\udf89`,
-          body: multiple
-            ? `Hoje é dia de celebrar ${this.formatBirthdayNames(names)}. Vamos tornar o dia deles ainda mais especial!`
-            : `${names[0]} está celebrando mais um ano de vida. Que tal enviar uma mensagem especial?`,
-          url: '/personal-panel',
-        });
+        const title = multiple
+          ? `Hoje temos aniversariantes na ${tenantName}! 🎉`
+          : `Hoje tem aniversário na ${tenantName}! 🎉`;
+        const body = multiple
+          ? `Hoje é dia de celebrar ${this.formatBirthdayNames(names)}. Vamos tornar o dia deles ainda mais especial!`
+          : `${names[0]} está celebrando mais um ano de vida. Que tal enviar uma mensagem especial?`;
 
-        communityNotifications += 1;
-        sent += result.sent;
-        failed += result.failed;
-        totalSubscriptions += result.total;
+        if (this.notificationDispatch) {
+          const refYmd = referenceDate.toISOString().split('T')[0];
+          await this.notificationDispatch.createNotification({
+            tenantId,
+            origem: NotificationOrigin.SYSTEM_AUTOMATION,
+            titulo: title,
+            mensagem: body,
+            urlDestino: '/personal-panel',
+            tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+            userIds: otherUserIds,
+            idempotencyKey: `tenant:${tenantId}:birthday-community:${refYmd}`,
+          });
+          communityNotifications += 1;
+          sent += 1;
+        } else {
+          const result = await this.sendToUsers(tenantId, otherUserIds, {
+            title,
+            body,
+            url: '/personal-panel',
+          });
+
+          communityNotifications += 1;
+          sent += result.sent;
+          failed += result.failed;
+          totalSubscriptions += result.total;
+        }
       }
     }
 
@@ -545,22 +588,38 @@ export class NotificationsService {
       const userId = item.membro.user?.id;
       if (!userId) continue;
 
-      const result = await this.sendToUsers(
-        item.escalaDia.escala.tenantId,
-        [userId],
-        {
-          title: 'Confirmação pendente',
-          body: 'Sua escala de amanhã ainda aguarda confirmação. Toque para confirmar ou informar indisponibilidade.',
-          url: '/minhas-escalas?pendentesApenas=true',
-        },
-      );
+      if (this.notificationDispatch) {
+        const diaYmd = item.escalaDia.data.toISOString().split('T')[0];
+        await this.notificationDispatch.createNotification({
+          tenantId: item.escalaDia.escala.tenantId,
+          origem: NotificationOrigin.SYSTEM_AUTOMATION,
+          titulo: 'Confirmação pendente',
+          mensagem:
+            'Sua escala de amanhã ainda aguarda confirmação. Toque para confirmar ou informar indisponibilidade.',
+          urlDestino: '/minhas-escalas?pendentesApenas=true',
+          tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+          userIds: [userId],
+          idempotencyKey: `tenant:${item.escalaDia.escala.tenantId}:escala-item:${item.id}:pending-reminder:${diaYmd}`,
+        });
+        sent += 1;
+      } else {
+        const result = await this.sendToUsers(
+          item.escalaDia.escala.tenantId,
+          [userId],
+          {
+            title: 'Confirmação pendente',
+            body: 'Sua escala de amanhã ainda aguarda confirmação. Toque para confirmar ou informar indisponibilidade.',
+            url: '/minhas-escalas?pendentesApenas=true',
+          },
+        );
 
-      sent += result.sent;
-      failed += result.failed;
-      totalSubscriptions += result.total;
+        sent += result.sent;
+        failed += result.failed;
+        totalSubscriptions += result.total;
 
-      if (result.total === 0) {
-        withoutSubscription += 1;
+        if (result.total === 0) {
+          withoutSubscription += 1;
+        }
       }
     }
 
@@ -650,23 +709,41 @@ export class NotificationsService {
       const horario = this.formatNotificationTime(
         item.escalaDia.evento?.dataInicio ?? item.escalaDia.data,
       );
+      const title = 'Sua escala é hoje';
+      const body = `Hoje você servirá no ministério de ${item.escalaDia.escala.ministerio.nome} às ${horario}. Veja os detalhes.`;
+      const url = '/minhas-escalas';
 
-      const result = await this.sendToUsers(
-        item.escalaDia.escala.tenantId,
-        [userId],
-        {
-          title: 'Sua escala é hoje',
-          body: `Hoje você servirá no ministério de ${item.escalaDia.escala.ministerio.nome} às ${horario}. Veja os detalhes.`,
-          url: '/minhas-escalas',
-        },
-      );
+      if (this.notificationDispatch) {
+        const diaYmd = item.escalaDia.data.toISOString().split('T')[0];
+        await this.notificationDispatch.createNotification({
+          tenantId: item.escalaDia.escala.tenantId,
+          origem: NotificationOrigin.SYSTEM_AUTOMATION,
+          titulo: title,
+          mensagem: body,
+          urlDestino: url,
+          tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+          userIds: [userId],
+          idempotencyKey: `tenant:${item.escalaDia.escala.tenantId}:escala-item:${item.id}:day-reminder:${diaYmd}`,
+        });
+        sent += 1;
+      } else {
+        const result = await this.sendToUsers(
+          item.escalaDia.escala.tenantId,
+          [userId],
+          {
+            title,
+            body,
+            url,
+          },
+        );
 
-      sent += result.sent;
-      failed += result.failed;
-      totalSubscriptions += result.total;
+        sent += result.sent;
+        failed += result.failed;
+        totalSubscriptions += result.total;
 
-      if (result.total === 0) {
-        withoutSubscription += 1;
+        if (result.total === 0) {
+          withoutSubscription += 1;
+        }
       }
     }
 
