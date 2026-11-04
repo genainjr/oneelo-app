@@ -1,5 +1,6 @@
 'use client';
 
+import { LucideIcon, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -21,16 +22,42 @@ function FilterLabel({ htmlFor, label }: { htmlFor?: string; label: string }) {
 type FilterInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   /** Rotulo opcional (uppercase) exibido acima do campo. */
   label?: string;
+  /** Icone opcional exibido a esquerda do input. Se omitido e type === 'search', usa Search como padrao. */
+  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
 };
 
 /** Input de filtro padronizado. Sem `label`, renderiza apenas o input. */
-export function FilterInput({ label, className, id, ...props }: FilterInputProps) {
-  const input = <input id={id} className={cn(filterFieldClass, className)} {...props} />;
-  if (!label) return input;
+export function FilterInput({ label, className, id, icon, ...props }: FilterInputProps) {
+  const Icon = icon ?? (props.type === 'search' ? Search : undefined);
+
+  const input = (
+    <input
+      id={id}
+      className={cn(
+        filterFieldClass,
+        Icon && 'pl-9',
+        props.type === 'search' &&
+          '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
+        className,
+      )}
+      {...props}
+    />
+  );
+
+  const content = Icon ? (
+    <div className="relative">
+      <Icon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      {input}
+    </div>
+  ) : (
+    input
+  );
+
+  if (!label) return content;
   return (
     <div className="space-y-1.5">
       <FilterLabel htmlFor={id} label={label} />
-      {input}
+      {content}
     </div>
   );
 }

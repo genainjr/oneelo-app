@@ -296,7 +296,7 @@
       "pageDescription": "Review ministries in a read-only view, with leaders, roles and operational summary.",
       "filter": {
         "nameLabel": "Ministry name",
-        "namePlaceholder": "Search ministries by name",
+        "namePlaceholder": "Search by name...",
         "structureLabel": "Composition",
         "structureAll": "All",
         "structureLeaders": "With leadership",
@@ -717,6 +717,7 @@
     "description": "Manage your account and system settings.",
     "errorLoading": "Error loading settings data.",
     "retry": "Try Again",
+    "reload": "Reload",
     "pwa": {
       "title": "Church app",
       "description": "Define how the app is identified when installed on a phone. The institutional logo and the app icon are independent files.",

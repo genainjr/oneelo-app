@@ -73,11 +73,14 @@ export default function MinisteriosVisualizacaoPage() {
     setField: setFilterField,
     handleClear: handleClearFilters,
     handleSubmit: handleFilterSubmit,
+    isDebouncing,
   } = useFilterState({
     initialState: {
       nome: "",
       estrutura: "",
     },
+    debounceFields: ["nome"],
+    debounceMs: 350,
     onApply: (filters) => {
       setAppliedFilter({
         nome: filters.nome,
@@ -181,7 +184,6 @@ export default function MinisteriosVisualizacaoPage() {
         onSubmit={handleFilterSubmit}
         actions={
           <FilterActions
-            submitLabel={t("view.filter.apply")}
             clearLabel={t("view.filter.clear")}
             reloadLabel={t("reload")}
             onClear={() => {
@@ -191,11 +193,14 @@ export default function MinisteriosVisualizacaoPage() {
               });
             }}
             onReload={handleReload}
+            loading={loading}
+            isDebouncing={isDebouncing}
           />
         }
       >
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-end">
           <FilterInput
+            type="search"
             label={t("view.filter.nameLabel")}
             value={filterState.nome}
             onChange={(event) => setFilterField("nome", event.target.value)}

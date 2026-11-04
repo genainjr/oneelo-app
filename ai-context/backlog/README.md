@@ -36,7 +36,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 | 05/06/2026 | [features-roadmap.md](features-roadmap.md) | Features de produto pós-MVP & Super Admin | 🟡 **FT-000 Super Admin Implementado**; Features pós-MVP (WhatsApp, Louvor, IA) pendentes |
 | 03/06/2026 | [security.md](security.md) | Correções de segurança pendentes | ✅ **Implementado** (IP real em auditoria `SEC-001` e cookies seguros `SEC-002`) |
 | 03/06/2026 | [permissions-matrix.md](permissions-matrix.md) | Matriz de permissões por role e recurso | 📖 **Documentado** (Referência ativa de RBAC) |
-| 03/06/2026 | [improvements.md](improvements.md) | Melhorias gerais e débito técnico | 🟡 **6 de 8 implementados** (IMP-001, 002, 004, 005, 006, 009 prontos; IMP-007, 008 pendentes) |
+| 03/06/2026 | [improvements.md](improvements.md) | Melhorias gerais e débito técnico | 🟢 **7 de 8 implementados** (IMP-001, 002, 004, 005, 006, 007, 009 prontos; IMP-008 pendente) |
 
 ---
 

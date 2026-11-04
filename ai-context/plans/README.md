@@ -6,10 +6,18 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 Ao adicionar um novo documento, inclua-o no início deste índice com a data, o link e o título principal.
 
+## Como Criar um Novo Plano
+
+Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estritamente o modelo oficial em [PLAN_TEMPLATE.md](PLAN_TEMPLATE.md)**.
+- É obrigatório conter a seção `## Etapas de Desenvolvimento` dividida em subseções numeradas (`### Etapa 0 - ...`, `### Etapa 1 - ...`).
+- Cada etapa deve conter seu checklist (`- [ ]`) com itens verificáveis e o critério de validação.
+- Não é permitido substituir a estrutura de etapas por agrupamentos genéricos que impeçam o workflow de parada para autorização do usuário entre etapas.
+
 ## Outubro de 2026
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 31/10/2026 | [filtros-autoaplicaveis-sistema-plan.md](filtros-autoaplicaveis-sistema-plan.md) | Filtros autoaplicáveis unificados e adoção universal do FilterShell (IMP-007+) |
 | 20/10/2026 | [agenda-exportacao-pdf-png-plan.md](agenda-exportacao-pdf-png-plan.md) | Exportação e compartilhamento de PDF e PNG para Eventos (Agenda) |
 | 16/10/2026 | [escala-export-performance-plan.md](escala-export-performance-plan.md) | Performance da exportação de Escalas (PDF/PNG) no Render Free |
 | 14/10/2026 | [plano-compatibilidade-funcoes-escalas.md](plano-compatibilidade-funcoes-escalas.md) | Compatibilidade de funções nas escalas (matriz e segmentos do culto) |

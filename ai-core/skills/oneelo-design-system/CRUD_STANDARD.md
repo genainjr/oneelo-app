@@ -139,3 +139,13 @@ const [modalOpen, setModalOpen] = useState(false);
 - Mistura de labels e cores de status locais com utilitarios compartilhados.
 - Busca repetida de usuario atual em varias paginas para calcular permissoes.
 
+
+---
+
+## Padrão de Filtros em CRUDs
+
+- Filtros são organizados dentro do `FilterShell` e integrados ao `useFilterState`.
+- Não se utiliza botão manual "Filtrar".
+- Campos de texto livre usam debounce de 350ms.
+- Dropdowns, datas e checkboxes autoaplicam imediatamente ao `onChange`.
+- `FilterActions` contém exclusivamente botão "Limpar" (`onClear`) e opcionalmente "Recarregar" (`onReload`).
