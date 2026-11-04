@@ -8,6 +8,7 @@ export interface CreateTenantPayload {
   nome: string;
   slug: string;
   plano?: Plano;
+  limiteMembros?: number;
   email?: string;
   telefone?: string;
   idioma?: string;
@@ -19,6 +20,7 @@ export interface CreateTenantPayload {
 export interface UpdateTenantPayload {
   nome?: string;
   plano?: Plano;
+  limiteMembros?: number;
   ativo?: boolean;
   email?: string;
   telefone?: string;

@@ -1,12 +1,28 @@
 import { Plano } from '@prisma/client';
 import {
   canAddMember,
+  getDefaultStoredMemberLimit,
   getEffectiveMemberLimit,
   isUnlimitedMembers,
   LIMITES_MEMBROS_POR_PLANO,
+  DEFAULT_UNLIMITED_STORED_LIMIT,
 } from './tenant-plan';
 
 describe('tenant-plan utils', () => {
+  describe('getDefaultStoredMemberLimit', () => {
+    it('deve retornar 50 para GRATUITO', () => {
+      expect(getDefaultStoredMemberLimit(Plano.GRATUITO)).toBe(50);
+    });
+
+    it('deve retornar 200 para BASICO', () => {
+      expect(getDefaultStoredMemberLimit(Plano.BASICO)).toBe(200);
+    });
+
+    it('deve retornar 999999 para PROFISSIONAL', () => {
+      expect(getDefaultStoredMemberLimit(Plano.PROFISSIONAL)).toBe(DEFAULT_UNLIMITED_STORED_LIMIT);
+    });
+  });
+
   describe('isUnlimitedMembers', () => {
     it('deve retornar true apenas para PROFISSIONAL', () => {
       expect(isUnlimitedMembers(Plano.PROFISSIONAL)).toBe(true);

@@ -6,9 +6,21 @@ export const LIMITES_MEMBROS_POR_PLANO: Record<Plano, number | null> = {
   PROFISSIONAL: null, // Ilimitado
 };
 
+export const DEFAULT_UNLIMITED_STORED_LIMIT = 999999;
+
 export interface TenantPlanData {
   plano: Plano;
   limiteMembros?: number | null;
+}
+
+/**
+ * Retorna o limite numérico padrão a ser persistido no banco para um plano.
+ * - GRATUITO: 50
+ * - BASICO: 200
+ * - PROFISSIONAL: 999999 (como o schema do banco exige Int not-null, o valor representa ilimitado no armazenamento)
+ */
+export function getDefaultStoredMemberLimit(plano: Plano): number {
+  return LIMITES_MEMBROS_POR_PLANO[plano] ?? DEFAULT_UNLIMITED_STORED_LIMIT;
 }
 
 /**

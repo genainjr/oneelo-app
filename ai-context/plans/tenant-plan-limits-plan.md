@@ -1,81 +1,89 @@
-# Plano - Limites por Plano do Tenant
+# Plano de Implementação: Regras e Limites de Membros por Plano do Tenant
 
-Status geral: em andamento  
-Data de criação: 2026-11-04  
-Branch sugerida para implementação: feature/tenant-plan-limits  
+## 1. Visão Geral e Contexto
 
-## Planos e Referências Relacionados
+No OneElo, cada Tenant possui um plano cadastrado (`Plano: GRATUITO, BASICO, PROFISSIONAL`).
+A especificação oficial de limites de membros por plano é:
+- **GRATUITO**: limite padrão de **50 membros** ativos.
+- **BASICO**: limite padrão de **200 membros** ativos.
+- **PROFISSIONAL**: membros **ilimitados** (sem barreira de bloqueio).
 
-- [improvements.md](../backlog/improvements.md)
-- [feature-development.md](../workflows/feature-development.md)
+Atualmente, na criação do tenant e em seeds/migrações, o campo `limiteMembros` do model `Tenant` no Prisma possui `@default(50)`. Além disso, o cadastro de membros em `MembrosService` realizava uma verificação cega:
+```typescript
+if (totalAtivos >= tenant.limiteMembros) {
+  throw new BadRequestException('Limite de membros ativos atingido...');
+}
+```
+Isso causava bloqueios indevidos em igrejas que contrataram o plano `PROFISSIONAL`, obrigando intervenções manuais no banco para elevar artificialmente o campo `limiteMembros` (ex.: para 100, 200, 500 ou 1000).
 
----
-
-## 1. Objetivo da Entrega
-
-Corrigir e estruturar a regra de limite de membros para que respeite nativamente o plano contratado do tenant (`Plano`), eliminando bloqueios indevidos em tenants do plano `PROFISSIONAL` (ilimitado) e estabelecendo limites padrão consistentes para `GRATUITO` e `BASICO`, reduzindo a necessidade de ajustes manuais emergenciais no banco de dados.
-
----
-
-## 2. Contexto e Diagnóstico
-
-- O sistema hoje bloqueia a criação de membros com base exclusivamente em `tenant.limiteMembros` (definido por padrão no banco como `50`).
-- Ao cadastrar ou alterar um tenant para `PROFISSIONAL` no painel Super Admin, o campo `limiteMembros` permanecia com o valor padrão `50` (ou ajustado manualmente para `200`), causando bloqueio indevido de novos membros em igrejas que contrataram o plano Profissional.
-- No `MembrosService`, a verificação compara `totalAtivos >= tenant.limiteMembros` sem consultar as características do `tenant.plano`.
-- É necessário desacoplar precificação/regras de negócio de plano do override técnico emergencial, centralizando a lógica em um helper de domínio reutilizável e seguro.
+Este plano visa:
+1. Centralizar a lógica de cálculo de limites em um helper robusto e testável.
+2. Garantir que tenants no plano `PROFISSIONAL` sejam tratados como ilimitados em todo o ciclo de vida do sistema.
+3. Garantir que tenants nos planos `GRATUITO` e `BASICO` respeitem seus respectivos limites padrão (50 e 200), permitindo overrides contratuais individuais se `limiteMembros` for superior.
+4. Ajustar o Super Admin para criar e atualizar tenants sincronizando coerentemente o plano com o limite correspondente.
 
 ---
 
-## 3. Decisões de Arquitetura e Engenharia
+## 2. Status do Projeto
 
-1. **Equivalência Oficial de Limites por Plano**:
-   - `GRATUITO`: Limite padrão de **50** membros ativos.
-   - `BASICO`: Limite padrão de **200** membros ativos.
-   - `PROFISSIONAL`: **Ilimitado** (`null` / sem teto numérico restritivo).
-2. **Modelo de Override Técnico (`limiteMembros`)**:
-   - O campo `limiteMembros` é mantido no schema para compatibilidade com clientes legados e personalizações contratuais extraordinárias.
-   - `PROFISSIONAL`: sempre ilimitado (`null`), independentemente de valores legados ou números no banco.
-   - `GRATUITO` e `BASICO`: caso `limiteMembros` seja maior que o limite padrão do plano, ele atua como override técnico válido; valores menores ou legados não rebaixam o plano.
-3. **Centralização no Backend**:
-   - Módulo utilitário `apps/api/src/common/utils/tenant-plan.ts` responsável por:
-     - `LIMITES_MEMBROS_POR_PLANO`: Record oficial de limites.
-     - `isUnlimitedMembers(plano)`: verificação de ilimitado.
-     - `getEffectiveMemberLimit(tenant)`: cálculo do teto efetivo.
-     - `canAddMember(tenant, currentActiveCount)`: autorização de cadastro.
-4. **Alinhamento no Super Admin**:
-   - Ao criar ou atualizar tenant via Super Admin (`super-admin.service.ts`), inicializar `limiteMembros` de acordo com o plano selecionado.
+- **Branch de trabalho**: `feature/tenant-plan-limits`
+- **Etapa atual**: Etapa 3 concluída (Aguardando aprovação para Etapa 4)
+- **Status geral**: Em andamento
+
+---
+
+## 3. Arquivos Afetados
+
+- `apps/api/src/common/utils/tenant-plan.ts` (helper centralizado de limites e regras de plano)
+- `apps/api/src/common/utils/tenant-plan.spec.ts` (testes unitários do helper)
+- `apps/api/src/modules/membros/membros.service.ts` (aplicação do helper na validação de criação de membros)
+- `apps/api/src/modules/membros/membros.service.spec.ts` (testes unitários do serviço de membros)
+- `apps/api/src/modules/super-admin/super-admin.service.ts` (sincronização de limites ao criar/editar tenant)
+- `apps/api/src/modules/super-admin/super-admin.service.spec.ts` (testes unitários do Super Admin)
+- `apps/api/src/modules/super-admin/dto/create-tenant.dto.ts` (suporte a limiteMembros opcional)
+- `apps/api/src/modules/super-admin/dto/update-tenant.dto.ts` (suporte a limiteMembros opcional)
+- `apps/api/prisma/migrations/20261104170000_align_tenant_member_limits/migration.sql` (migração de alinhamento de limites)
+- `apps/api/scripts/backfill-tenant-limits.ts` (script de backfill)
+- `apps/web/src/types/index.ts` (adição de limiteMembros na interface Tenant)
+- `apps/web/src/hooks/use-admin.ts` (suporte a limiteMembros nos payloads)
+- `apps/web/src/app/(admin)/admin/page.tsx` (exibição amigável de limites na interface administrativa)
 
 ---
 
 ## 4. Etapas de Desenvolvimento
 
-> **Regra de Execução:** O desenvolvimento deve avançar estritamente etapa por etapa. Ao concluir uma etapa, atualize o checklist (`[x]`), apresente o resumo das validações e **aguarde a autorização explícita do usuário antes de iniciar a etapa seguinte**.
+### Etapa 0 - Preparação e Análise de Impacto
+Status: concluído
 
-### Etapa 1 - Fechamento da Regra e Helper Central de Domínio
+- [x] Confirmar branch `feature/tenant-plan-limits` a partir de `development` atualizada.
+- [x] Identificar ocorrências de `limiteMembros` e regras de plano no monorepo.
+- Critério de validação da etapa: Repositório com branch criada e escopo mapeado sem conflitos.
+
+### Etapa 1 - Helper Centralizado de Regras do Plano
 Status: concluído
 
 - [x] Mapear todos os pontos do código que consultam `tenant.limiteMembros` e `tenant.plano`.
 - [x] Definir a tabela oficial de limites (`LIMITES_MEMBROS_POR_PLANO: Record<Plano, number | null>`).
-- [x] Implementar helper de domínio com funções utilitárias (`canAddMember`, `getEffectiveMemberLimit`, `isUnlimitedMembers`).
+- [x] Implementar helper de domínio com funções utilitárias (`canAddMember`, `getEffectiveMemberLimit`, `isUnlimitedMembers`, `getDefaultStoredMemberLimit`).
 - [x] Criar testes unitários para o helper cobrindo todos os planos e cenários de override.
 - Critério de validação da etapa: Testes unitários do helper passando com 100% de cobertura nos cenários de limites por plano (`npm test -w apps/api -- tenant-plan.spec.ts`).
 
 ### Etapa 2 - Ajuste no Backend de Membros (MembrosService)
-Status: planejado
+Status: concluído
 
-- [ ] Substituir a checagem manual em `apps/api/src/modules/membros/membros.service.ts` pela chamada ao helper centralizado.
-- [ ] Garantir que tenants `PROFISSIONAL` nunca sejam bloqueados, independentemente do valor em `limiteMembros`.
-- [ ] Garantir mensagem de erro clara e contextual quando o limite de `GRATUITO` ou `BASICO` for atingido.
-- [ ] Atualizar e expandir a suíte de testes de `membros.service.spec.ts`.
-- Critério de validação da etapa: Testes de `membros.service.spec.ts` validando permissão irrestrita para `PROFISSIONAL` e bloqueios corretos para `GRATUITO` e `BASICO`.
+- [x] Substituir a checagem manual em `apps/api/src/modules/membros/membros.service.ts` pela chamada ao helper centralizado.
+- [x] Garantir que tenants `PROFISSIONAL` nunca sejam bloqueados, independentemente do valor em `limiteMembros`.
+- [x] Garantir mensagem de erro clara e contextual quando o limite de `GRATUITO` ou `BASICO` for atingido.
+- [x] Atualizar e expandir a suíte de testes de `membros.service.spec.ts`.
+- Critério de validação da etapa: Testes de `membros.service.spec.ts` validando permissão irrestrita para `PROFISSIONAL` e bloqueios corretos para `GRATUITO` e `BASICO` (`npm test -w apps/api -- membros.service.spec.ts`).
 
 ### Etapa 3 - Super Admin e Sincronização de Tenants
-Status: planejado
+Status: concluído
 
-- [ ] Atualizar `apps/api/src/modules/super-admin/super-admin.service.ts` na criação de tenants para associar o limite padrão ao plano selecionado.
-- [ ] Atualizar `super-admin.service.ts` na edição de tenant para atualizar coerentemente o limite ao trocar de plano (a menos que haja override manual).
-- [ ] Permitir que o Super Admin informe ou visualize o limite efetivo na interface administrativa se aplicável.
-- [ ] Criar script/migração de backfill para alinhar tenants `PROFISSIONAL` existentes.
+- [x] Atualizar `apps/api/src/modules/super-admin/super-admin.service.ts` na criação de tenants para associar o limite padrão ao plano selecionado.
+- [x] Atualizar `super-admin.service.ts` na edição de tenant para atualizar coerentemente o limite ao trocar de plano (a menos que haja override manual).
+- [x] Permitir que o Super Admin informe ou visualize o limite efetivo na interface administrativa se aplicável.
+- [x] Criar script/migração de backfill para alinhar tenants `PROFISSIONAL` existentes.
 - Critério de validação da etapa: Testes do Super Admin passando e criação/edição de tenant gerando limites coerentes com o plano.
 
 ### Etapa 4 - Validação Integrada, Documentação e Build Final
