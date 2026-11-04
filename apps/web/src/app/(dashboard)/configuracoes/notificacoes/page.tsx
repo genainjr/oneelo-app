@@ -89,8 +89,8 @@ const STATUS_CONFIG: Record<
 
 const ORIGIN_LABELS: Record<NotificationOrigin, string> = {
   SYSTEM_AUTOMATION: "Automação do Sistema",
-  COMMUNICATION_GENERAL: "Comunicado Geral",
-  COMMUNICATION_MINISTRY: "Comunicado Ministerial",
+  COMMUNICATION_GENERAL: "Notificação Geral",
+  COMMUNICATION_MINISTRY: "Notificação Ministerial",
 };
 
 const AUDIENCE_LABELS: Record<NotificationAudienceType, string> = {
@@ -428,7 +428,7 @@ export default function CentralNotificacoesPage() {
       const msg =
         err?.data?.message ||
         err?.message ||
-        (editingId ? "Erro ao atualizar comunicado." : "Erro ao criar comunicado.");
+        (editingId ? "Erro ao atualizar notificação." : "Erro ao criar notificação.");
       setCreateError(Array.isArray(msg) ? msg.join(", ") : msg);
     } finally {
       setCreating(false);
@@ -438,7 +438,7 @@ export default function CentralNotificacoesPage() {
   const columns: Column<NotificationItem>[] = [
     {
       key: "titulo",
-      header: "Notificação / Comunicado",
+      header: "Notificação",
       render: (item) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -593,7 +593,7 @@ export default function CentralNotificacoesPage() {
     <div className="p-6 space-y-6">
       <PageHeader
         title="Central de Notificações"
-        description="Histórico, auditoria de entregas e comunicados manuais com Web Push."
+        description="Histórico, auditoria de entregas e envio de notificações Web Push."
         stackActionsOnMobile
         action={
           <div className="flex items-center gap-2 max-sm:w-full">
@@ -612,7 +612,7 @@ export default function CentralNotificacoesPage() {
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
             >
               <Plus className="w-4 h-4" />
-              <span>Novo Comunicado</span>
+              <span>Nova Notificação</span>
             </button>
           </div>
         }
@@ -691,8 +691,8 @@ export default function CentralNotificacoesPage() {
         >
           <option value="">Todas as origens</option>
           <option value="SYSTEM_AUTOMATION">Automação do Sistema</option>
-          <option value="COMMUNICATION_GENERAL">Comunicado Geral</option>
-          <option value="COMMUNICATION_MINISTRY">Comunicado Ministerial</option>
+          <option value="COMMUNICATION_GENERAL">Notificação Geral</option>
+          <option value="COMMUNICATION_MINISTRY">Notificação Ministerial</option>
         </FilterSelect>
         <FilterSelect
           id="tipoPublico"
@@ -1010,18 +1010,18 @@ export default function CentralNotificacoesPage() {
         ) : null}
       </ModalShell>
 
-      {/* Modal de Criação / Edição de Comunicado */}
+      {/* Modal de Criação / Edição de Notificação */}
       <ModalShell
         isOpen={createModalOpen}
         onClose={() => {
           setCreateModalOpen(false);
           setEditingId(null);
         }}
-        title={editingId ? "Editar Comunicado Agendado" : "Novo Comunicado Web Push"}
+        title={editingId ? "Editar Notificação Agendada" : "Nova Notificação Web Push"}
         description={
           editingId
-            ? "Atualize o conteúdo e a data/hora programada deste comunicado"
-            : "Envie um comunicado para toda a igreja ou um ministério específico"
+            ? "Atualize o conteúdo e a data/hora programada desta notificação"
+            : "Envie uma notificação para toda a igreja ou um ministério específico"
         }
         size="md"
         bodyClassName="p-6"
@@ -1049,8 +1049,8 @@ export default function CentralNotificacoesPage() {
                 : editingId
                   ? "Salvar"
                   : createForm.isScheduled
-                    ? "Agendar Comunicado"
-                    : "Disparar Comunicado"}
+                    ? "Agendar Notificação"
+                    : "Disparar Notificação"}
             </button>
           </>
         }
