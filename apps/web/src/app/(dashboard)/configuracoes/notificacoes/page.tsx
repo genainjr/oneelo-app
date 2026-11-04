@@ -25,7 +25,7 @@ import { FilterInput, FilterSelect } from "@/components/app/filter-field";
 import { useFilterState } from "@/hooks/use-filter-state";
 import { StatusBadge } from "@/components/app/status-badge";
 import { EmptyState } from "@/components/app/empty-state";
-import { ModalShell, ModalFooter } from "@/components/app/modal-shell";
+import { ModalShell, ModalError } from "@/components/app/modal-shell";
 import { InputField, SelectField, TextareaField } from "@/components/app/form-field";
 import { useAuthUser } from "@/contexts/auth-user-context";
 import { api, buildQuery } from "@/lib/api";
@@ -602,19 +602,22 @@ export default function CentralNotificacoesPage() {
         title="Detalhes da Notificação"
         description="Auditoria de envio e entrega por destinatário"
         size="lg"
+        bodyClassName="p-6"
         footer={
-          <div className="flex items-center justify-end gap-2">
+          <>
             <button
+              type="button"
               onClick={() => setDetailModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
+              className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
             >
               Fechar
             </button>
             {detailData && detailData.stats.failed > 0 && (
               <button
+                type="button"
                 onClick={handleRetryFailed}
                 disabled={retrying}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
               >
                 <RotateCcw
                   className={`w-4 h-4 ${retrying ? "animate-spin" : ""}`}
@@ -626,7 +629,7 @@ export default function CentralNotificacoesPage() {
                 </span>
               </button>
             )}
-          </div>
+          </>
         }
       >
         {loadingDetail ? (
@@ -826,23 +829,30 @@ export default function CentralNotificacoesPage() {
         title="Novo Comunicado Web Push"
         description="Envie um comunicado para toda a igreja ou um ministério específico"
         size="md"
+        bodyClassName="p-6"
         footer={
-          <ModalFooter
-            onCancel={() => setCreateModalOpen(false)}
-            cancelLabel="Cancelar"
-            primaryLabel={creating ? "Enviando..." : "Disparar Comunicado"}
-            loading={creating}
-            onClick={handleCreateSubmit as any}
-            type="button"
-          />
+          <>
+            <button
+              type="button"
+              onClick={() => setCreateModalOpen(false)}
+              disabled={creating}
+              className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              form="notificacao-manual-form"
+              disabled={creating}
+              className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
+            >
+              {creating ? "Disparando..." : "Disparar Comunicado"}
+            </button>
+          </>
         }
       >
-        <form onSubmit={handleCreateSubmit} className="space-y-4">
-          {createError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
-              {createError}
-            </div>
-          )}
+        <form id="notificacao-manual-form" onSubmit={handleCreateSubmit} className="space-y-4">
+          {createError && <ModalError>{createError}</ModalError>}
 
           <InputField
             id="titulo"
