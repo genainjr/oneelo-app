@@ -149,7 +149,19 @@ function SidebarUserAvatar({ user }: { user: AuthUser }) {
 }
 
 // Roots where isActive must be an exact match (not startsWith)
-const EXACT_ROOTS = ['/dashboard', '/personal-panel', '/membros', '/ministerios', '/escalas', '/agenda', '/financeiro', '/minhas-escalas', '/meu-perfil'];
+const EXACT_ROOTS = [
+  '/dashboard',
+  '/personal-panel',
+  '/membros',
+  '/ministerios',
+  '/escalas',
+  '/agenda',
+  '/financeiro',
+  '/minhas-escalas',
+  '/meu-perfil',
+  '/configuracoes',
+  '/configuracoes/notificacoes',
+];
 
 // Pill "Em breve" do menu — contraste legivel sobre o fundo indigo escuro
 const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-indigo-500/25 text-indigo-200';
@@ -299,8 +311,8 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       : []),
     { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupFuture' },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
-    { href: '/configuracoes/notificacoes', label: 'Notificações', icon: ICONS.notifications, adminOnly: true },
     { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile, groupStart: 'groupAccount' },
+    { href: '/configuracoes/notificacoes', label: 'Notificações', icon: ICONS.notifications, adminOnly: true },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 
