@@ -47,7 +47,7 @@ export default function EscalasVisualizacaoPage() {
   const [tenantName, setTenantName] = useState('OneElo');
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt] = useState(() => new Date());
-  const [escalasMinimizadas, setEscalasMinimizadas] = useState<Set<string>>(
+  const [escalasExpandidas, setEscalasExpandidas] = useState<Set<string>>(
     () => new Set(),
   );
   const { escalas, loading, error, filter, applyFilter, refetch } = useEscalasVisualizacao({
@@ -219,7 +219,7 @@ export default function EscalasVisualizacaoPage() {
   }, [escalas]);
 
   function toggleEscalaMinimizada(escalaId: string) {
-    setEscalasMinimizadas((current) => {
+    setEscalasExpandidas((current) => {
       const next = new Set(current);
       if (next.has(escalaId)) {
         next.delete(escalaId);
@@ -358,7 +358,7 @@ export default function EscalasVisualizacaoPage() {
       ) : (
         <div className="space-y-4">
           {escalas.map((escala) => {
-            const minimizada = escalasMinimizadas.has(escala.id);
+            const minimizada = !escalasExpandidas.has(escala.id);
 
             return (
               <div

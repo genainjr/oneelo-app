@@ -14,7 +14,7 @@ Branch sugerida para implementação: fix/basic-member-escala-filtro-ministerios
 
 ## 1. Objetivo da Entrega
 
-Corrigir a exibição das opções no filtro "Ministério" da tela de visualização de escalas (`/escalas/visualizacao`) para membros com perfil `BASIC` (membros comuns que participam de ministérios com escalas). Atualmente, apenas a opção "Todos" era exibida, impedindo a filtragem pelos ministérios aos quais o membro está vinculado.
+Corrigir a exibição das opções no filtro "Ministério" da tela de visualização de escalas (`/escalas/visualizacao`) para membros com perfil `BASIC` (membros comuns que participam de ministérios com escalas) e ajustar o carregamento inicial dos cards de escala para iniciarem minimizados por padrão, reduzindo ruído visual e melhorando a navegabilidade.
 
 ---
 
@@ -28,6 +28,8 @@ Corrigir a exibição das opções no filtro "Ministério" da tela de visualiza�
    As chamadas `api.get('/api/ministerios')` e `api.get('/api/auth/me')` executavam em paralelo descompassado. Como `/api/ministerios` retorna `[]` para membros `BASIC`, se ela respondesse após `/api/auth/me`, a lista de ministérios era sobrescrita com `[]`.
 4. **Fallback de Escalas com Propriedades Omitidas**:
    Ao extrair ministérios a partir de `escalas`, o fallback também criava objetos apenas com `{ id, nome }`, sujeitos ao mesmo descarte no filtro.
+5. **Carga Inicial Expandida**:
+   Todas as escalas carregavam expandidas por padrão, gerando uma rolagem longa quando havia múltiplos ministérios ou dias escalados.
 
 ---
 
@@ -41,6 +43,8 @@ Corrigir a exibição das opções no filtro "Ministério" da tela de visualiza�
    Garantir que as entradas adicionadas pelo `useEffect([escalas])` contenham `ativo: true` e `usaEscalas: true`.
 4. **Filtro Defensivo no JSX**:
    Ajustar a expressão de filtragem do select para `ministerio.ativo !== false && ministerio.usaEscalas !== false`.
+5. **Escalas Minimizadas por Padrão**:
+   Substituir o estado `escalasMinimizadas` por `escalasExpandidas: Set<string>` iniciado vazio (`new Set()`). Cada escala renderiza minimizada a menos que conste em `escalasExpandidas`.
 
 ---
 
@@ -62,11 +66,19 @@ Status: concluido
 - [x] Executar typecheck com `npx tsc --project apps/web/tsconfig.json --noEmit`.
 - Critério de validação da etapa: Typecheck do frontend aprovado sem erros.
 
-### Etapa 2 - Validação, Build e Finalização
+### Etapa 2 - Carga Inicial Minimizada de Escalas
 Status: concluido
 
+- [x] Alterar gerenciamento de estado para `escalasExpandidas`, iniciando vazio.
+- [x] Garantir que `minimizada = !escalasExpandidas.has(escala.id)`.
+- [x] Validar funcionamento do `CollapseButton` para alternar entre "Mostrar escala" e "Minimizar escala".
+- Critério de validação da etapa: Escalas iniciam minimizadas e abrem/fecham ao clicar no botão.
+
+### Etapa 3 - Validação, Build e Finalização
+Status: concluido
+
+- [x] Executar typecheck (`npx tsc --project apps/web/tsconfig.json --noEmit`).
 - [x] Executar build de produção do frontend (`npm --prefix apps/web run build`).
-- [x] Testes automatizados do backend (`npm test -w apps/api`).
 - [x] Atualizar checklist do plano para concluído.
 - Critério de validação da etapa: Build e testes passando com 0 erros.
 
@@ -78,3 +90,4 @@ Status: concluido
 2. A seleção de um ministério específico filtra corretamente as escalas daquele ministério.
 3. Não há condições de corrida entre `/api/ministerios` e `/api/auth/me`.
 4. Usuários administradores e líderes continuam tendo acesso completo aos seus ministérios normalmente.
+5. As escalas carregam inicialmente minimizadas em `/escalas/visualizacao`, exibindo apenas o cabeçalho e permitindo expansão individual sob demanda.
