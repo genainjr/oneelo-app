@@ -88,12 +88,37 @@ export default function EscalasVisualizacaoPage() {
       .then((user) => {
         setTenantName(user.tenant?.nome || 'OneElo');
         setTenantLogoUrl(user.tenant?.logoUrl ?? null);
+        if (user.role === 'BASIC' && user.membro?.ministerios?.length) {
+          const userMinistries = user.membro.ministerios
+            .map((m) => m.ministerio)
+            .filter((m): m is NonNullable<typeof m> => Boolean(m && m.usaEscalas !== false))
+            .map((m) => ({ id: m.id, nome: m.nome } as Ministerio));
+          if (userMinistries.length > 0) {
+            setMinisterios((current) => current.length > 0 ? current : userMinistries);
+          }
+        }
       })
       .catch(() => {
         setTenantName('OneElo');
         setTenantLogoUrl(null);
       });
   }, []);
+
+  useEffect(() => {
+    if (escalas.length > 0) {
+      setMinisterios((current) => {
+        const existingIds = new Set(current.map((m) => m.id));
+        const toAdd: Ministerio[] = [];
+        for (const escala of escalas) {
+          if (escala.ministerioId && escala.ministerio?.nome && !existingIds.has(escala.ministerioId)) {
+            existingIds.add(escala.ministerioId);
+            toAdd.push({ id: escala.ministerioId, nome: escala.ministerio.nome } as Ministerio);
+          }
+        }
+        return toAdd.length > 0 ? [...current, ...toAdd] : current;
+      });
+    }
+  }, [escalas]);
 
   const weeklyOptions = useMemo(
     () => buildWeeklyExportOptionsForEscalas(escalas),

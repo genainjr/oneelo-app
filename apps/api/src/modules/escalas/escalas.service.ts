@@ -524,10 +524,9 @@ export class EscalasService {
     if (user.role !== Role.BASIC) return true;
     if (!user.memberId) return false;
 
-    const liderados = await this.prisma.ministerioMembro.findMany({
+    const participacoes = await this.prisma.ministerioMembro.findMany({
       where: {
         membroId: user.memberId,
-        role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
         ministerio: {
           ativo: true,
           escalas: { some: {} },
@@ -536,16 +535,16 @@ export class EscalasService {
       select: { ministerioId: true },
     });
 
-    const idsLiderados = liderados.map((liderado) => liderado.ministerioId);
-    if (idsLiderados.length === 0) return false;
+    const idsParticipados = participacoes.map((p) => p.ministerioId);
+    if (idsParticipados.length === 0) return false;
 
-    if (query.ministerioId && !idsLiderados.includes(query.ministerioId)) {
+    if (query.ministerioId && !idsParticipados.includes(query.ministerioId)) {
       return false;
     }
 
     where.ministerioId = query.ministerioId
       ? query.ministerioId
-      : { in: idsLiderados };
+      : { in: idsParticipados };
 
     return true;
   }
