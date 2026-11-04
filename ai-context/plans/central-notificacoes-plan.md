@@ -158,12 +158,12 @@ model NotificationRecipient {
 ### FATIA 1: Infraestrutura Confiável, Persistência e Automações
 
 #### Etapa 0 - Modelagem e Migrations de Banco
-Status: planejado
+Status: concluído
 
-- [ ] Adicionar enums `NotificationOrigin`, `NotificationAudienceType`, `NotificationStatus` e `RecipientDeliveryStatus` ao `schema.prisma`.
-- [ ] Adicionar modelos `Notification` e `NotificationRecipient` com índices de performance em `schema.prisma`.
-- [ ] Gerar migração com `npx prisma migrate dev --name add_notification_center_core`.
-- [ ] Executar `npx prisma generate` e validar tipos TypeScript gerados.
+- [x] Adicionar enums `NotificationOrigin`, `NotificationAudienceType`, `NotificationStatus` e `RecipientDeliveryStatus` ao `schema.prisma`.
+- [x] Adicionar modelos `Notification` e `NotificationRecipient` com índices de performance em `schema.prisma`.
+- [x] Gerar migração com `npx prisma migrate dev --name add_notification_center_core`.
+- [x] Executar `npx prisma generate` e validar tipos TypeScript gerados.
 - Critério de validação da etapa: `npx.cmd prisma validate` executado com sucesso e migration aplicada sem conflitos no banco local.
 
 #### Etapa 1 - Serviço de Comando e Materialização de Destinatários

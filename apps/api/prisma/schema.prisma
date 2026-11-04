@@ -171,6 +171,44 @@ enum FinancialPaymentMethod {
   @@map("financial_payment_method")
 }
 
+enum NotificationOrigin {
+  SYSTEM_AUTOMATION
+  COMMUNICATION_GENERAL
+  COMMUNICATION_MINISTRY
+
+  @@map("notification_origin")
+}
+
+enum NotificationAudienceType {
+  ALL_MEMBERS
+  MINISTRY
+  SPECIFIC_USERS
+
+  @@map("notification_audience_type")
+}
+
+enum NotificationStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+
+  @@map("notification_status")
+}
+
+enum RecipientDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED_RETRYABLE
+  FAILED_PERMANENT
+  NO_SUBSCRIPTION
+
+  @@map("recipient_delivery_status")
+}
+
 model Tenant {
   id               String           @id @default(uuid())
   nome             String           @map("name")
@@ -205,6 +243,7 @@ model Tenant {
   financialTransactions FinancialTransaction[]
   segmentosCulto        SegmentoCulto[]
   compatibilidadesFuncao CompatibilidadeFuncao[]
+  notifications         Notification[]
 
   @@map("tb_tenant")
 }
@@ -239,6 +278,8 @@ model User {
   financePermissionsUpdated FinancePermission[] @relation("FinancePermissionUpdatedBy")
   financialTransactionsCreated FinancialTransaction[] @relation("FinancialTransactionCreatedBy")
   financialTransactionsCancelled FinancialTransaction[] @relation("FinancialTransactionCancelledBy")
+  notificationsCreated          Notification[]          @relation("NotificationAuthor")
+  notificationRecipients        NotificationRecipient[]
 
   @@index([tenantId])
   @@index([status])
@@ -444,6 +485,7 @@ model Ministerio {
   escalas Escala[]
   funcoes MinisterioFuncao[]
   eventos EventoMinisterio[]
+  notifications Notification[]
 
   @@index([tenantId])
   @@index([tenantId, ativo, usaEscalas])
@@ -701,4 +743,51 @@ model CompatibilidadeFuncao {
   @@unique([tenantId, funcaoAId, funcaoBId])
   @@index([tenantId])
   @@map("tb_schedule_role_compatibility")
+}
+
+model Notification {
+  id             String                   @id @default(uuid())
+  tenantId       String                   @map("tenant_id")
+  titulo         String                   @map("title")
+  mensagem       String                   @map("message")
+  urlDestino     String?                  @map("target_url")
+  origem         NotificationOrigin       @map("origin")
+  tipoPublico    NotificationAudienceType @map("audience_type")
+  ministerioId   String?                  @map("ministry_id")
+  status         NotificationStatus       @default(SCHEDULED) @map("status")
+  scheduledAt    DateTime                 @default(now()) @map("scheduled_at")
+  idempotencyKey String?                  @unique @map("idempotency_key")
+  criadoPorId    String?                  @map("created_by_id")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ministerio    Ministerio?             @relation(fields: [ministerioId], references: [id], onDelete: SetNull)
+  criadoPor     User?                   @relation("NotificationAuthor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+  destinatarios NotificationRecipient[]
+
+  @@index([tenantId, status, scheduledAt])
+  @@index([tenantId, origem])
+  @@map("tb_notification")
+}
+
+model NotificationRecipient {
+  id             String                  @id @default(uuid())
+  notificationId String                  @map("notification_id")
+  userId         String                  @map("user_id")
+  status         RecipientDeliveryStatus @default(PENDING) @map("status")
+  tentativas     Int                     @default(0) @map("attempt_count")
+  ultimoErro     String?                 @map("last_error")
+  lockedUntil    DateTime?               @map("locked_until")
+  enviadoEm      DateTime?               @map("sent_at")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, lockedUntil])
+  @@index([notificationId, status])
+  @@index([userId])
+  @@map("tb_notification_recipient")
 }
