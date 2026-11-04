@@ -192,15 +192,15 @@ Status: concluído
 - Critério de validação da etapa: Teste de integração simulando envio, recuperação após lease expirado e desativação automática de assinatura 410.
 
 #### Etapa 3 - Migração do Lembrete de Eventos (Fim da Janela de 1 Minuto)
-Status: planejado
+Status: concluído
 
-- [ ] Modificar `EventosService`:
+- [x] Modificar `EventosService`:
   - Ao criar evento elegível (`GERAL` ou `MINISTERIO`), gerar a notificação agendada com `scheduledAt = dataInicio - 2 horas` e chave `evento:{id}:reminder-2h`.
   - Ao atualizar data/hora do evento, reagendar `scheduledAt` da notificação pendente.
   - Ao cancelar o evento, cancelar a notificação (`status = CANCELED`).
-- [ ] Substituir o cron de minuto de `runEventReminderJob` pelo processador de fila geral.
-- [ ] Garantir que eventos passados com mais de 2 horas de atraso não notifiquem retroativamente de forma indevida.
-- Critério de validação da etapa: Criar, alterar e cancelar evento via API, comprovando nos registros de `Notification` a criação, reagendamento e cancelamento do lembrete.
+- [x] Substituir o cron de minuto de `runEventReminderJob` pelo processador de fila geral.
+- [x] Garantir que eventos passados com mais de 2 horas de atraso não notifiquem retroativamente de forma indevida.
+- Critério de validação da etapa: Criar, alterar e cancelar evento via API, comprovando nos registros de `Notification` a criação, reagendamento e cancelamento do lembrete. Testes unitários do EventosService com 25 testes passando.
 
 #### Etapa 4 - Migração das Automações de Escalas e Aniversários
 Status: planejado

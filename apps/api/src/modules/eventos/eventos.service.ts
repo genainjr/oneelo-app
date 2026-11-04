@@ -7,7 +7,18 @@ import {
   InternalServerErrorException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { EventoTipo, MinistryRole, Prisma, Role } from '@prisma/client';
+import {
+  EventoTipo,
+  MinistryRole,
+  NotificationAudienceType,
+  NotificationOrigin,
+  Prisma,
+  Role,
+  StatusEvento,
+  StatusMembro,
+  UserStatus,
+} from '@prisma/client';
+import { NotificationDispatchService } from '../notifications/services/notification-dispatch.service';
 import { AuthorizationService } from '../../common/authorization/authorization.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
@@ -47,6 +58,7 @@ export class EventosService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly eventoDocumentRenderer: EventoDocumentRendererService = new EventoDocumentRendererService(),
+    private readonly notificationDispatch?: NotificationDispatchService,
   ) {}
 
   private uniqueIds(ids?: string[]) {
@@ -534,7 +546,7 @@ export class EventosService {
 
     const context = await this.prepareCreateContext(tenantId, dto, user);
 
-    return this.prisma.evento.create({
+    const createdEvento = await this.prisma.evento.create({
       data: {
         titulo: dto.titulo,
         descricao: dto.descricao,
@@ -561,6 +573,10 @@ export class EventosService {
       },
       include: eventoInclude,
     });
+
+    await this.scheduleEventReminder(createdEvento);
+
+    return createdEvento;
   }
 
   async createBatch(
@@ -612,6 +628,10 @@ export class EventosService {
         timeout: 30000,
       },
     );
+
+    for (const evento of eventos) {
+      await this.scheduleEventReminder(evento);
+    }
 
     return { total: eventos.length, eventos };
   }
@@ -683,7 +703,7 @@ export class EventosService {
       tipo,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    const updatedEvento = await this.prisma.$transaction(async (tx) => {
       const diasVinculados =
         dto.titulo !== undefined || dto.dataInicio !== undefined
           ? await tx.escalaDia.findMany({
@@ -763,6 +783,16 @@ export class EventosService {
         include: eventoInclude,
       });
     });
+
+    if (updatedEvento) {
+      if (updatedEvento.status === StatusEvento.CANCELADO) {
+        await this.cancelEventReminder(tenantId, id);
+      } else if (dto.dataInicio !== undefined || dto.status === StatusEvento.AGENDADO) {
+        await this.rescheduleEventReminder(updatedEvento);
+      }
+    }
+
+    return updatedEvento;
   }
 
   async remove(tenantId: string, id: string, user: JwtPayload) {
@@ -771,6 +801,8 @@ export class EventosService {
     }
 
     await this.getEventoPorId(tenantId, id, user);
+
+    await this.cancelEventReminder(tenantId, id);
 
     await this.prisma.evento.delete({ where: { id } });
 
@@ -840,6 +872,139 @@ export class EventosService {
       throw new InternalServerErrorException(
         'Não foi possível gerar a exportação dos eventos.',
       );
+    }
+  }
+
+  private getEventReminderIdempotencyKey(tenantId: string, eventoId: string): string {
+    return `tenant:${tenantId}:evento:${eventoId}:reminder-2h`;
+  }
+
+  private async scheduleEventReminder(evento: {
+    id: string;
+    tenantId: string;
+    titulo: string;
+    tipo: EventoTipo;
+    dataInicio: Date;
+    status: StatusEvento;
+    ministerios?: Array<{ ministerioId: string }>;
+  }) {
+    if (!this.notificationDispatch) return;
+
+    if (evento.status !== StatusEvento.AGENDADO) return;
+    if (evento.tipo !== EventoTipo.GERAL && evento.tipo !== EventoTipo.MINISTERIO) return;
+
+    const dataInicioDate = new Date(evento.dataInicio);
+    const now = new Date();
+
+    // Se o evento já ocorreu no passado, não agendar lembrete
+    if (dataInicioDate.getTime() <= now.getTime()) {
+      return;
+    }
+
+    const scheduledAt = new Date(dataInicioDate.getTime() - 2 * 60 * 60 * 1000);
+    const effectiveScheduledAt = scheduledAt.getTime() < now.getTime() ? now : scheduledAt;
+
+    const horario = new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    }).format(dataInicioDate);
+
+    const idempotencyKey = this.getEventReminderIdempotencyKey(evento.tenantId, evento.id);
+
+    let targetUserIds: string[] | undefined;
+    if (evento.tipo === EventoTipo.MINISTERIO) {
+      const ministerioIds = (evento.ministerios ?? []).map((m) => m.ministerioId);
+      if (ministerioIds.length > 0) {
+        const members = await this.prisma.ministerioMembro.findMany({
+          where: {
+            ministerioId: { in: ministerioIds },
+            membro: {
+              deletedAt: null,
+              status: StatusMembro.ATIVO,
+              user: {
+                tenantId: evento.tenantId,
+                ativo: true,
+                status: UserStatus.ACTIVE,
+              },
+            },
+          },
+          select: {
+            membro: {
+              select: {
+                user: {
+                  select: { id: true },
+                },
+              },
+            },
+          },
+        });
+        targetUserIds = Array.from(
+          new Set(
+            members
+              .map((m) => m.membro?.user?.id)
+              .filter((id): id is string => Boolean(id)),
+          ),
+        );
+      }
+    }
+
+    await this.notificationDispatch.createNotification({
+      tenantId: evento.tenantId,
+      titulo: 'Evento em 2 horas',
+      mensagem: `${evento.titulo} começa às ${horario}. Esperamos você!`,
+      urlDestino: '/agenda/visualizacao',
+      origem: NotificationOrigin.SYSTEM_AUTOMATION,
+      tipoPublico:
+        evento.tipo === EventoTipo.GERAL
+          ? NotificationAudienceType.ALL_MEMBERS
+          : NotificationAudienceType.MINISTRY,
+      ministerioId: evento.ministerios?.[0]?.ministerioId ?? null,
+      scheduledAt: effectiveScheduledAt,
+      idempotencyKey,
+      userIds: targetUserIds,
+    });
+  }
+
+  private async rescheduleEventReminder(evento: {
+    id: string;
+    tenantId: string;
+    titulo: string;
+    tipo: EventoTipo;
+    dataInicio: Date;
+    status: StatusEvento;
+    ministerios?: Array<{ ministerioId: string }>;
+  }) {
+    if (!this.notificationDispatch || !this.prisma.notification) return;
+
+    const idempotencyKey = this.getEventReminderIdempotencyKey(evento.tenantId, evento.id);
+    const existing = await this.prisma.notification.findUnique({
+      where: { idempotencyKey },
+    });
+
+    if (existing) {
+      const dataInicioDate = new Date(evento.dataInicio);
+      const newScheduledAt = new Date(dataInicioDate.getTime() - 2 * 60 * 60 * 1000);
+      await this.notificationDispatch.rescheduleNotification(
+        existing.id,
+        evento.tenantId,
+        newScheduledAt < new Date() ? new Date() : newScheduledAt,
+      );
+    } else {
+      await this.scheduleEventReminder(evento);
+    }
+  }
+
+  private async cancelEventReminder(tenantId: string, eventoId: string) {
+    if (!this.notificationDispatch || !this.prisma.notification) return;
+
+    const idempotencyKey = this.getEventReminderIdempotencyKey(tenantId, eventoId);
+    const existing = await this.prisma.notification.findUnique({
+      where: { idempotencyKey },
+    });
+
+    if (existing) {
+      await this.notificationDispatch.cancelNotification(existing.id, tenantId);
     }
   }
 }

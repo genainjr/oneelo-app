@@ -687,10 +687,10 @@ export class NotificationsService {
     return result;
   }
 
-  @Cron('* * * * *', {
-    name: 'event-reminder-2h',
-    timeZone: 'America/Sao_Paulo',
-  })
+  /**
+   * @deprecated Descontinuado em favor da infraestrutura central de agendamento de eventos
+   * com fila atômica via NotificationDispatchService e NotificationQueueProcessorService.
+   */
   async runEventReminderJob() {
     const { start, end } = this.getEventReminderRange();
 
