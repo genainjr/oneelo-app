@@ -1,4 +1,10 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import {
   Prisma,
   NotificationOrigin,
@@ -7,8 +13,14 @@ import {
   RecipientDeliveryStatus,
   UserStatus,
   StatusMembro,
+  Role,
+  MinistryRole,
 } from '@prisma/client';
 import { PrismaService } from '../../../common/prisma/prisma.service';
+import type { JwtPayload } from '../../../common/types/jwt-payload.interface';
+import { FilterNotificationsDto } from '../dto/filter-notifications.dto';
+import { FilterRecipientsDto } from '../dto/filter-recipients.dto';
+import { CreateManualNotificationDto } from '../dto/create-manual-notification.dto';
 
 export interface CreateNotificationInput {
   tenantId: string;
@@ -262,5 +274,386 @@ export class NotificationDispatchService {
     });
 
     return new Set(subscriptions.map((s) => s.userId));
+  }
+
+  /**
+   * Lista notificações com filtros e paginação para o painel administrativo.
+   */
+  async listNotifications(tenantId: string, query: FilterNotificationsDto) {
+    const page = query.page && query.page > 0 ? query.page : 1;
+    const limit = query.limit && query.limit > 0 ? query.limit : 20;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.NotificationWhereInput = { tenantId };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+    if (query.origem) {
+      where.origem = query.origem;
+    }
+    if (query.tipoPublico) {
+      where.tipoPublico = query.tipoPublico;
+    }
+    if (query.ministerioId) {
+      where.ministerioId = query.ministerioId;
+    }
+
+    if (query.dataInicio || query.dataFim) {
+      where.scheduledAt = {};
+      if (query.dataInicio) {
+        where.scheduledAt.gte = new Date(query.dataInicio);
+      }
+      if (query.dataFim) {
+        where.scheduledAt.lte = new Date(query.dataFim);
+      }
+    }
+
+    if (query.search) {
+      where.OR = [
+        { titulo: { contains: query.search, mode: 'insensitive' } },
+        { mensagem: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, items, metricsRaw] = await Promise.all([
+      this.prisma.notification.count({ where }),
+      this.prisma.notification.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { scheduledAt: 'desc' },
+        include: {
+          ministerio: { select: { id: true, nome: true } },
+          criadoPor: { select: { id: true, nome: true, email: true } },
+          recipients: {
+            select: {
+              status: true,
+            },
+          },
+        },
+      }),
+      this.prisma.notificationRecipient.groupBy({
+        by: ['status'],
+        where: { notification: { tenantId } },
+        _count: { status: true },
+      }),
+    ]);
+
+    const metrics = {
+      totalSent: 0,
+      totalPending: 0,
+      totalFailed: 0,
+      totalNoSubscription: 0,
+    };
+
+    for (const group of metricsRaw) {
+      if (group.status === RecipientDeliveryStatus.SENT) {
+        metrics.totalSent += group._count.status;
+      } else if (
+        group.status === RecipientDeliveryStatus.PENDING ||
+        group.status === RecipientDeliveryStatus.PROCESSING
+      ) {
+        metrics.totalPending += group._count.status;
+      } else if (
+        group.status === RecipientDeliveryStatus.FAILED_RETRYABLE ||
+        group.status === RecipientDeliveryStatus.FAILED_PERMANENT
+      ) {
+        metrics.totalFailed += group._count.status;
+      } else if (group.status === RecipientDeliveryStatus.NO_SUBSCRIPTION) {
+        metrics.totalNoSubscription += group._count.status;
+      }
+    }
+
+    const data = items.map((item) => {
+      const counts = {
+        total: item.recipients.length,
+        sent: 0,
+        pending: 0,
+        failed: 0,
+        noSubscription: 0,
+      };
+
+      for (const r of item.recipients) {
+        if (r.status === RecipientDeliveryStatus.SENT) {
+          counts.sent += 1;
+        } else if (
+          r.status === RecipientDeliveryStatus.PENDING ||
+          r.status === RecipientDeliveryStatus.PROCESSING
+        ) {
+          counts.pending += 1;
+        } else if (
+          r.status === RecipientDeliveryStatus.FAILED_RETRYABLE ||
+          r.status === RecipientDeliveryStatus.FAILED_PERMANENT
+        ) {
+          counts.failed += 1;
+        } else if (r.status === RecipientDeliveryStatus.NO_SUBSCRIPTION) {
+          counts.noSubscription += 1;
+        }
+      }
+
+      const { recipients, ...rest } = item;
+      return {
+        ...rest,
+        deliveryStats: counts,
+      };
+    });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+      metrics,
+    };
+  }
+
+  /**
+   * Obtém detalhes de uma notificação e lista paginada de destinatários.
+   */
+  async getNotificationById(
+    tenantId: string,
+    id: string,
+    query?: FilterRecipientsDto,
+  ) {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, tenantId },
+      include: {
+        ministerio: { select: { id: true, nome: true } },
+        criadoPor: { select: { id: true, nome: true, email: true } },
+      },
+    });
+
+    if (!notification) {
+      throw new NotFoundException('Notificação não encontrada.');
+    }
+
+    const page = query?.page && query.page > 0 ? query.page : 1;
+    const limit = query?.limit && query.limit > 0 ? query.limit : 20;
+    const skip = (page - 1) * limit;
+
+    const recipientWhere: Prisma.NotificationRecipientWhereInput = {
+      notificationId: id,
+    };
+    if (query?.status) {
+      recipientWhere.status = query.status;
+    }
+
+    const [totalRecipients, recipientsRaw, statusGroups] = await Promise.all([
+      this.prisma.notificationRecipient.count({ where: recipientWhere }),
+      this.prisma.notificationRecipient.findMany({
+        where: recipientWhere,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'asc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nome: true,
+              email: true,
+              membro: {
+                select: {
+                  nome: true,
+                  nomeExibicao: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.notificationRecipient.groupBy({
+        by: ['status'],
+        where: { notificationId: id },
+        _count: { status: true },
+      }),
+    ]);
+
+    const stats = {
+      total: 0,
+      sent: 0,
+      pending: 0,
+      failed: 0,
+      noSubscription: 0,
+    };
+
+    for (const group of statusGroups) {
+      stats.total += group._count.status;
+      if (group.status === RecipientDeliveryStatus.SENT) {
+        stats.sent += group._count.status;
+      } else if (
+        group.status === RecipientDeliveryStatus.PENDING ||
+        group.status === RecipientDeliveryStatus.PROCESSING
+      ) {
+        stats.pending += group._count.status;
+      } else if (
+        group.status === RecipientDeliveryStatus.FAILED_RETRYABLE ||
+        group.status === RecipientDeliveryStatus.FAILED_PERMANENT
+      ) {
+        stats.failed += group._count.status;
+      } else if (group.status === RecipientDeliveryStatus.NO_SUBSCRIPTION) {
+        stats.noSubscription += group._count.status;
+      }
+    }
+
+    const recipients = recipientsRaw.map((r) => {
+      const userDisplay =
+        r.user.membro?.nomeExibicao ||
+        r.user.membro?.nome ||
+        r.user.nome ||
+        r.user.email;
+      return {
+        id: r.id,
+        userId: r.userId,
+        userName: userDisplay,
+        userEmail: r.user.email,
+        status: r.status,
+        tentativas: r.tentativas,
+        ultimoErro: r.ultimoErro,
+        enviadoEm: r.enviadoEm,
+        createdAt: r.createdAt,
+      };
+    });
+
+    return {
+      notification,
+      stats,
+      recipients: {
+        data: recipients,
+        meta: {
+          total: totalRecipients,
+          page,
+          limit,
+          totalPages: Math.ceil(totalRecipients / limit) || 1,
+        },
+      },
+    };
+  }
+
+  /**
+   * Reprocessa destinatários que falharam em uma notificação.
+   */
+  async retryFailedRecipients(tenantId: string, id: string) {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!notification) {
+      throw new NotFoundException('Notificação não encontrada.');
+    }
+
+    const updated = await this.prisma.notificationRecipient.updateMany({
+      where: {
+        notificationId: id,
+        status: {
+          in: [
+            RecipientDeliveryStatus.FAILED_RETRYABLE,
+            RecipientDeliveryStatus.FAILED_PERMANENT,
+          ],
+        },
+      },
+      data: {
+        status: RecipientDeliveryStatus.PENDING,
+        tentativas: 0,
+        lockedUntil: null,
+        ultimoErro: null,
+      },
+    });
+
+    if (updated.count > 0) {
+      await this.prisma.notification.update({
+        where: { id },
+        data: {
+          status: NotificationStatus.PENDING,
+          scheduledAt: new Date(),
+        },
+      });
+    }
+
+    return {
+      success: true,
+      retriedCount: updated.count,
+    };
+  }
+
+  /**
+   * Cria um comunicado manual (geral ou ministerial) com validações de RBAC e agendamento.
+   */
+  async createManualNotification(
+    tenantId: string,
+    user: JwtPayload,
+    dto: CreateManualNotificationDto,
+  ) {
+    let origem = NotificationOrigin.COMMUNICATION_GENERAL;
+
+    if (dto.tipoPublico === NotificationAudienceType.MINISTRY) {
+      if (!dto.ministerioId) {
+        throw new BadRequestException(
+          'O ministério é obrigatório quando o público é MINISTERIO.',
+        );
+      }
+
+      origem = NotificationOrigin.COMMUNICATION_MINISTRY;
+
+      // Se for BASIC, deve liderar o ministério
+      if (user.role === Role.BASIC) {
+        const leadership = await this.prisma.ministerioMembro.findFirst({
+          where: {
+            ministerioId: dto.ministerioId,
+            role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+            membro: {
+              tenantId,
+              userId: user.sub,
+              deletedAt: null,
+              status: StatusMembro.ATIVO,
+            },
+          },
+        });
+
+        if (!leadership) {
+          throw new ForbiddenException(
+            'Você não tem permissão para enviar comunicados para este ministério.',
+          );
+        }
+      }
+    } else if (dto.tipoPublico === NotificationAudienceType.ALL_MEMBERS) {
+      if (user.role === Role.BASIC) {
+        throw new ForbiddenException(
+          'Apenas administradores podem enviar comunicados gerais.',
+        );
+      }
+    } else if (dto.tipoPublico === NotificationAudienceType.SPECIFIC_USERS) {
+      if (!dto.userIds || dto.userIds.length === 0) {
+        throw new BadRequestException(
+          'A lista de usuários destinatários é obrigatória.',
+        );
+      }
+      if (user.role === Role.BASIC) {
+        throw new ForbiddenException(
+          'Apenas administradores ou líderes podem enviar notificações direcionadas.',
+        );
+      }
+      if (dto.ministerioId) {
+        origem = NotificationOrigin.COMMUNICATION_MINISTRY;
+      }
+    }
+
+    const scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : new Date();
+
+    return this.createNotification({
+      tenantId,
+      titulo: dto.titulo,
+      mensagem: dto.mensagem,
+      urlDestino: dto.urlDestino || '/personal-panel',
+      origem,
+      tipoPublico: dto.tipoPublico,
+      ministerioId: dto.ministerioId || null,
+      scheduledAt,
+      criadoPorId: user.sub,
+      userIds: dto.userIds,
+    });
   }
 }

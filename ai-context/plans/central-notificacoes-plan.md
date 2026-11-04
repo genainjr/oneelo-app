@@ -220,16 +220,18 @@ Status: concluído
 ### FATIA 2: Central Administrativa e Comunicados Manuais
 
 #### Etapa 5 - Endpoints de Consulta e Auditoria
-Status: planejado
+Status: concluído
 
-- [ ] Criar `GET /notifications` no `NotificationsController`:
+- [x] Criar `GET /notifications` no `NotificationsController`:
   - Acesso para `ADMIN` e `STAFF`;
   - Paginação e filtros por status, origem, público, ministério e período (conforme padrão de filtros do ODS).
-- [ ] Criar `GET /notifications/:id`:
+- [x] Criar `GET /notifications/:id`:
   - Retorna resumo e lista paginada de destinatários com status sanitizado.
-- [ ] Criar `POST /notifications/:id/retry`:
+- [x] Criar `POST /notifications/:id/retry`:
   - Permite reprocessar destinatários em falha recuperável.
-- Critério de validação da etapa: Testes de API validando isolamento multitenant (tenant A nunca consulta notificações de tenant B) e permissões RBAC.
+- [x] Criar `POST /notifications/manual`:
+  - Envio de comunicados manuais gerais e ministeriais com agendamento opcional e validação RBAC.
+- Critério de validação da etapa: Testes unitários do serviço cobrindo isolamento multitenant, RBAC, paginação, agregação de métricas e reenvio de falhas (21 testes passando).
 
 #### Etapa 6 - Tela de Listagem da Central de Notificações (Frontend ODS)
 Status: planejado

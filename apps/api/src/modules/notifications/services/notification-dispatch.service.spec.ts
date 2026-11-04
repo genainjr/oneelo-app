@@ -8,7 +8,11 @@ import {
   RecipientDeliveryStatus,
   Prisma,
 } from '@prisma/client';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 describe('NotificationDispatchService', () => {
   let service: NotificationDispatchService;
@@ -19,13 +23,22 @@ describe('NotificationDispatchService', () => {
       notification: {
         findUnique: jest.fn(),
         findFirst: jest.fn(),
+        findMany: jest.fn(),
+        count: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+      },
+      notificationRecipient: {
+        findMany: jest.fn(),
+        count: jest.fn(),
+        groupBy: jest.fn(),
+        updateMany: jest.fn(),
       },
       user: {
         findMany: jest.fn(),
       },
       ministerioMembro: {
+        findFirst: jest.fn(),
         findMany: jest.fn(),
       },
       pushSubscription: {
@@ -287,6 +300,247 @@ describe('NotificationDispatchService', () => {
       await expect(service.cancelNotification('notif-inexistente', 'tenant-1')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('listNotifications', () => {
+    it('deve listar notificações paginadas com filtros e métricas do tenant', async () => {
+      prisma.notification.count.mockResolvedValue(1);
+      prisma.notification.findMany.mockResolvedValue([
+        {
+          id: 'notif-1',
+          tenantId: 'tenant-1',
+          titulo: 'Alerta Geral',
+          mensagem: 'Culto hoje',
+          scheduledAt: new Date(),
+          status: 'COMPLETED',
+          recipients: [
+            { status: 'SENT' },
+            { status: 'FAILED_RETRYABLE' },
+            { status: 'NO_SUBSCRIPTION' },
+          ],
+        },
+      ]);
+      prisma.notificationRecipient.groupBy.mockResolvedValue([
+        { status: 'SENT', _count: { status: 10 } },
+        { status: 'PENDING', _count: { status: 2 } },
+        { status: 'FAILED_RETRYABLE', _count: { status: 3 } },
+        { status: 'NO_SUBSCRIPTION', _count: { status: 5 } },
+      ]);
+
+      const result = await service.listNotifications('tenant-1', {
+        page: 1,
+        limit: 10,
+        status: NotificationStatus.COMPLETED,
+        search: 'Culto',
+      });
+
+      expect(prisma.notification.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: 'tenant-1',
+            status: NotificationStatus.COMPLETED,
+          }),
+          skip: 0,
+          take: 10,
+        }),
+      );
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].deliveryStats).toEqual({
+        total: 3,
+        sent: 1,
+        pending: 0,
+        failed: 1,
+        noSubscription: 1,
+      });
+      expect(result.metrics).toEqual({
+        totalSent: 10,
+        totalPending: 2,
+        totalFailed: 3,
+        totalNoSubscription: 5,
+      });
+      expect(result.meta).toEqual({
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
+    });
+  });
+
+  describe('getNotificationById', () => {
+    it('deve retornar detalhes da notificação com destinatários paginados', async () => {
+      prisma.notification.findFirst.mockResolvedValue({
+        id: 'notif-1',
+        tenantId: 'tenant-1',
+        titulo: 'Aviso',
+      });
+      prisma.notificationRecipient.count.mockResolvedValue(1);
+      prisma.notificationRecipient.findMany.mockResolvedValue([
+        {
+          id: 'recip-1',
+          userId: 'user-1',
+          status: 'SENT',
+          tentativas: 1,
+          ultimoErro: null,
+          enviadoEm: new Date(),
+          createdAt: new Date(),
+          user: {
+            id: 'user-1',
+            nome: 'Carlos',
+            email: 'carlos@teste.com',
+            membro: { nome: 'Carlos Membro', nomeExibicao: 'Carlinhos' },
+          },
+        },
+      ]);
+      prisma.notificationRecipient.groupBy.mockResolvedValue([
+        { status: 'SENT', _count: { status: 1 } },
+      ]);
+
+      const result = await service.getNotificationById('tenant-1', 'notif-1', {
+        page: 1,
+        limit: 20,
+      });
+
+      expect(result.notification.id).toBe('notif-1');
+      expect(result.stats.sent).toBe(1);
+      expect(result.recipients.data[0].userName).toBe('Carlinhos');
+      expect(result.recipients.data[0].userEmail).toBe('carlos@teste.com');
+    });
+
+    it('deve lançar NotFoundException se notificação pertencer a outro tenant', async () => {
+      prisma.notification.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.getNotificationById('tenant-outro', 'notif-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('retryFailedRecipients', () => {
+    it('deve resetar apenas destinatários em falha e reagendar notificação', async () => {
+      prisma.notification.findFirst.mockResolvedValue({
+        id: 'notif-1',
+        tenantId: 'tenant-1',
+      });
+      prisma.notificationRecipient.updateMany.mockResolvedValue({ count: 2 });
+      prisma.notification.update.mockResolvedValue({ id: 'notif-1' });
+
+      const result = await service.retryFailedRecipients('tenant-1', 'notif-1');
+
+      expect(prisma.notificationRecipient.updateMany).toHaveBeenCalledWith({
+        where: {
+          notificationId: 'notif-1',
+          status: {
+            in: [
+              RecipientDeliveryStatus.FAILED_RETRYABLE,
+              RecipientDeliveryStatus.FAILED_PERMANENT,
+            ],
+          },
+        },
+        data: {
+          status: RecipientDeliveryStatus.PENDING,
+          tentativas: 0,
+          lockedUntil: null,
+          ultimoErro: null,
+        },
+      });
+      expect(prisma.notification.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'notif-1' },
+          data: expect.objectContaining({ status: NotificationStatus.PENDING }),
+        }),
+      );
+      expect(result).toEqual({ success: true, retriedCount: 2 });
+    });
+  });
+
+  describe('createManualNotification', () => {
+    const adminUser = {
+      sub: 'admin-id',
+      email: 'admin@oneelo.com',
+      role: 'ADMIN' as any,
+      tenantId: 'tenant-1',
+    };
+
+    const basicUser = {
+      sub: 'basic-id',
+      email: 'basic@oneelo.com',
+      role: 'BASIC' as any,
+      tenantId: 'tenant-1',
+    };
+
+    it('deve permitir ADMIN criar comunicado geral ALL_MEMBERS', async () => {
+      jest.spyOn(service, 'createNotification').mockResolvedValue({ id: 'notif-manual' } as any);
+
+      const result = await service.createManualNotification('tenant-1', adminUser, {
+        titulo: 'Aviso importante',
+        mensagem: 'Reunião geral',
+        tipoPublico: NotificationAudienceType.ALL_MEMBERS,
+      });
+
+      expect(service.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          origem: NotificationOrigin.COMMUNICATION_GENERAL,
+          tipoPublico: NotificationAudienceType.ALL_MEMBERS,
+          criadoPorId: 'admin-id',
+        }),
+      );
+      expect(result.id).toBe('notif-manual');
+    });
+
+    it('deve rejeitar se BASIC tentar criar comunicado ALL_MEMBERS', async () => {
+      await expect(
+        service.createManualNotification('tenant-1', basicUser, {
+          titulo: 'Aviso geral',
+          mensagem: 'Olá a todos',
+          tipoPublico: NotificationAudienceType.ALL_MEMBERS,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('deve rejeitar público MINISTRY sem ministerioId', async () => {
+      await expect(
+        service.createManualNotification('tenant-1', adminUser, {
+          titulo: 'Aviso ministério',
+          mensagem: 'Treinamento',
+          tipoPublico: NotificationAudienceType.MINISTRY,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve permitir líder ministerial criar comunicado para seu ministério', async () => {
+      prisma.ministerioMembro.findFirst.mockResolvedValue({ id: 'mm-lead' });
+      jest.spyOn(service, 'createNotification').mockResolvedValue({ id: 'notif-min' } as any);
+
+      const result = await service.createManualNotification('tenant-1', basicUser, {
+        titulo: 'Aviso Louvor',
+        mensagem: 'Ensaio quinta',
+        tipoPublico: NotificationAudienceType.MINISTRY,
+        ministerioId: 'min-1',
+      });
+
+      expect(service.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          origem: NotificationOrigin.COMMUNICATION_MINISTRY,
+          ministerioId: 'min-1',
+        }),
+      );
+      expect(result.id).toBe('notif-min');
+    });
+
+    it('deve bloquear membro que não lidera o ministério', async () => {
+      prisma.ministerioMembro.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.createManualNotification('tenant-1', basicUser, {
+          titulo: 'Aviso Louvor',
+          mensagem: 'Ensaio quinta',
+          tipoPublico: NotificationAudienceType.MINISTRY,
+          ministerioId: 'min-1',
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });
