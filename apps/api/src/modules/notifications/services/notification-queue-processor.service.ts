@@ -250,9 +250,23 @@ export class NotificationQueueProcessorService {
   }
 
   /**
-   * Método envelopado de envio para permitir mocks limpos em testes unitários.
+   * Método envelopado de envio com trava de segurança para ambientes de desenvolvimento/teste.
    */
   async sendPush(subscription: PushSubscription, payload: string) {
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production' ||
+      process.env.NODE_ENV === 'production';
+    const forceRealPush =
+      this.configService.get<string>('ENABLE_REAL_PUSH_DISPATCH') === 'true';
+
+    // Trava de segurança: se não for produção e não estiver forçado explicitamente via env, simula o envio
+    if (!isProduction && !forceRealPush) {
+      this.logger.log(
+        `[SIMULAÇÃO PUSH LOCAL] Notificação simulada com sucesso para endpoint: ${subscription.endpoint.slice(0, 45)}...`,
+      );
+      return;
+    }
+
     return webPush.sendNotification(
       {
         endpoint: subscription.endpoint,

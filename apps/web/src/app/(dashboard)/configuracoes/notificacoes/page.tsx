@@ -182,9 +182,9 @@ export default function CentralNotificacoesPage() {
     },
   });
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const query = buildQuery({
         page: currentPage,
         limit: 15,
@@ -205,13 +205,28 @@ export default function CentralNotificacoesPage() {
     } catch (error) {
       console.error("Erro ao carregar notificações:", error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [currentPage, appliedFilters]);
 
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
+
+  // Polling automático suave enquanto houver notificações em processamento ou pendentes
+  useEffect(() => {
+    const hasActiveItems = items.some(
+      (item) => item.status === "PENDING" || item.status === "PROCESSING"
+    );
+
+    if (!hasActiveItems) return;
+
+    const interval = setInterval(() => {
+      loadNotifications(true);
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [items, loadNotifications]);
 
   const loadMinisterios = useCallback(async () => {
     try {
@@ -238,6 +253,34 @@ export default function CentralNotificacoesPage() {
       setLoadingDetail(false);
     }
   };
+
+  const refreshDetailModal = useCallback(async (id: string, page = 1) => {
+    try {
+      const res = await api.get<NotificationDetailResponse>(
+        `/api/notifications/${id}?page=${page}&limit=10`,
+      );
+      setDetailData(res);
+    } catch (error) {
+      console.error("Erro ao atualizar detalhes da notificação:", error);
+    }
+  }, []);
+
+  // Polling suave no modal de auditoria se houver destinatários sendo processados
+  useEffect(() => {
+    if (!detailModalOpen || !selectedNotificationId || !detailData) return;
+    const isOngoing =
+      detailData.notification.status === "PENDING" ||
+      detailData.notification.status === "PROCESSING" ||
+      detailData.stats.pending > 0;
+
+    if (!isOngoing) return;
+
+    const interval = setInterval(() => {
+      refreshDetailModal(selectedNotificationId, recipientPage);
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [detailModalOpen, selectedNotificationId, detailData, recipientPage, refreshDetailModal]);
 
   const handleRetryFailed = async () => {
     if (!selectedNotificationId) return;
