@@ -539,7 +539,7 @@ export default function CentralNotificacoesPage() {
     },
     {
       key: "entregas",
-      header: "Entregas Web Push",
+      header: "Entregas",
       render: (item) => {
         const stats = item.deliveryStats || {
           total: 0,
@@ -637,7 +637,7 @@ export default function CentralNotificacoesPage() {
     <div className="p-6 space-y-6">
       <PageHeader
         title="Central de Notificações"
-        description="Histórico, auditoria de entregas e envio de notificações Web Push."
+        description="Histórico, auditoria de entregas e envio de notificações."
         stackActionsOnMobile
         action={
           <button
@@ -671,7 +671,7 @@ export default function CentralNotificacoesPage() {
           icon={<AlertTriangle className="w-5 h-5" />}
         />
         <StatCard
-          title="Sem Inscrição Web Push"
+          title="Sem Inscrição"
           value={metrics.totalNoSubscription}
           color="amber"
           icon={<BellOff className="w-5 h-5" />}
@@ -1049,7 +1049,7 @@ export default function CentralNotificacoesPage() {
           setCreateModalOpen(false);
           setEditingId(null);
         }}
-        title={editingId ? "Editar Notificação Agendada" : "Nova Notificação Web Push"}
+        title={editingId ? "Editar Notificação Agendada" : "Nova Notificação"}
         description={
           editingId
             ? "Atualize o conteúdo e a data/hora programada desta notificação"
