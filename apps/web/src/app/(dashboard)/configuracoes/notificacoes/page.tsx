@@ -446,14 +446,15 @@ export default function CentralNotificacoesPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <PageHeader
         title="Central de Notificações"
         description="Histórico, auditoria de entregas e comunicados manuais com Web Push."
+        stackActionsOnMobile
         action={
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
           >
             <Plus className="w-4 h-4" />
             <span>Novo Comunicado</span>
