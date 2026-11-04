@@ -179,16 +179,16 @@ Status: concluído
 - Critério de validação da etapa: Testes unitários do `NotificationDispatchService` executando com 100% de sucesso (`npm.cmd test -- notifications.service`).
 
 #### Etapa 2 - Processador de Fila em Lotes com Lease Atômico
-Status: planejado
+Status: concluído
 
-- [ ] Criar `NotificationQueueProcessorService` com job cron recorrente (ex: a cada 30 segundos).
-- [ ] Implementar claim atômico via query segura:
+- [x] Criar `NotificationQueueProcessorService` com job cron recorrente (ex: a cada 30 segundos).
+- [x] Implementar claim atômico via query segura:
   - Seleciona até 50 destinatários com `status = PENDING` e `scheduledAt <= NOW()` utilizando lock atômico (`lockedUntil = NOW() + 2min`).
-- [ ] Disparar envios Web Push individuais tratando respostas HTTP do provedor:
+- [x] Disparar envios Web Push individuais tratando respostas HTTP do provedor:
   - Sucesso (`201`): Marca `SENT` e preenche `enviadoEm`.
   - Assinatura expirada (`404` / `410 Gone`): Marca `FAILED_PERMANENT` e desativa o `PushSubscription` no banco.
   - Erro temporário (`429` / `5xx`): Incrementa `tentativas`, agenda retry com backoff exponencial ou marca `FAILED_PERMANENT` se exceder 3 tentativas.
-- [ ] Atualizar status mestre de `Notification` para `COMPLETED` ou `FAILED` quando todos os destinatários forem finalizados.
+- [x] Atualizar status mestre de `Notification` para `COMPLETED` ou `FAILED` quando todos os destinatários forem finalizados.
 - Critério de validação da etapa: Teste de integração simulando envio, recuperação após lease expirado e desativação automática de assinatura 410.
 
 #### Etapa 3 - Migração do Lembrete de Eventos (Fim da Janela de 1 Minuto)
