@@ -27,8 +27,8 @@ Este plano visa:
 ## 2. Status do Projeto
 
 - **Branch de trabalho**: `feature/tenant-plan-limits`
-- **Etapa atual**: Etapa 3 concluída (Aguardando aprovação para Etapa 4)
-- **Status geral**: Em andamento
+- **Etapa atual**: Concluída (Todas as etapas concluídas e validadas)
+- **Status geral**: Concluído
 
 ---
 
@@ -87,12 +87,12 @@ Status: concluído
 - Critério de validação da etapa: Testes do Super Admin passando e criação/edição de tenant gerando limites coerentes com o plano.
 
 ### Etapa 4 - Validação Integrada, Documentação e Build Final
-Status: planejado
+Status: concluído
 
-- [ ] Executar build de produção (`npm run build -w apps/api` e `npm run build -w apps/web`).
-- [ ] Executar suite completa de testes do backend (`npm test -w apps/api`).
-- [ ] Testar fluxo manual de criação de membro em tenant `PROFISSIONAL`.
-- [ ] Atualizar documentação em `ai-context/`.
+- [x] Executar build de produção (`npm run build -w apps/api` e `npm run build -w apps/web`).
+- [x] Executar suite completa de testes do backend (`npm test -w apps/api`).
+- [x] Testar fluxo manual de criação de membro em tenant `PROFISSIONAL`.
+- [x] Atualizar documentação em `ai-context/`.
 - Critério de validação da etapa: Build e testes passando com 0 erros, sem regressões em multitenancy.
 
 ---

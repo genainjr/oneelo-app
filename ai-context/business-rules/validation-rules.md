@@ -63,21 +63,24 @@ Regras de seguranca para lider/co-lider:
 
 ## 2. Limitacao de Membros Ativos por Plano
 
-Para controle de uso do SaaS, a insercao de membros respeita `Tenant.limiteMembros`.
+Para controle de uso do SaaS, a insercao de novos membros respeita as regras oficiais de plano do Tenant centralizadas em `src/common/utils/tenant-plan.ts`.
 
-Regra:
+Limites oficiais por plano:
+- `GRATUITO`: padrao de **50 membros** ativos.
+- `BASICO`: padrao de **200 membros** ativos.
+- `PROFISSIONAL`: membros **ilimitados** (nunca bloqueia novos cadastros).
 
-```txt
-totalAtivos < limiteMembros
-```
+Overrides contratuais:
+- Para planos `GRATUITO` e `BASICO`, caso `Tenant.limiteMembros` possua um valor superior ao teto padrao do plano, o valor maior prevalece (`getEffectiveMemberLimit`).
+- Para o plano `PROFISSIONAL`, o limite efetivo e sempre `null` (ilimitado), independentemente de qualquer valor numerico residual no banco.
 
-Fluxo:
-
+Fluxo de validacao (`canAddMember`):
 1. Buscar o tenant autenticado.
-2. Contar membros ativos do tenant, respeitando `deletedAt: null`.
-3. Se o limite foi atingido, retornar `403 Forbidden`.
+2. Contar membros com status `ATIVO` do tenant (`deletedAt: null`).
+3. Se `isUnlimitedMembers(tenant.plano)` for verdadeiro, autorizar imediatamente.
+4. Caso contrario, se `totalAtivos >= limiteEfetivo`, retornar `400 Bad Request` com mensagem descritiva orientando o upgrade de plano.
 
-A quota bloqueia criacao de novos membros, mas nao deve bloquear atualizacao de membros existentes.
+A quota bloqueia apenas a criacao de novos membros, nunca bloqueando atualizacao ou inativacao de membros existentes.
 
 ---
 
