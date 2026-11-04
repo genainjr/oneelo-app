@@ -47,7 +47,7 @@ export default function EscalasVisualizacaoPage() {
   const [tenantName, setTenantName] = useState('OneElo');
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt] = useState(() => new Date());
-  const [escalasMinimizadas, setEscalasMinimizadas] = useState<Set<string>>(
+  const [escalasExpandidas, setEscalasExpandidas] = useState<Set<string>>(
     () => new Set(),
   );
   const { escalas, loading, error, filter, applyFilter, refetch } = useEscalasVisualizacao({
@@ -83,28 +83,58 @@ export default function EscalasVisualizacaoPage() {
   });
 
   useEffect(() => {
-    api.get<Ministerio[]>('/api/ministerios')
-      .then((data) => setMinisterios(Array.isArray(data) ? data : []))
-      .catch(() => setMinisterios([]));
+    let isMounted = true;
 
-    api.get<AuthUser>('/api/auth/me')
-      .then((user) => {
+    Promise.all([
+      api.get<Ministerio[]>('/api/ministerios').catch(() => [] as Ministerio[]),
+      api.get<AuthUser>('/api/auth/me').catch(() => null),
+    ]).then(([minList, user]) => {
+      if (!isMounted) return;
+
+      if (user) {
         setTenantName(user.tenant?.nome || 'OneElo');
         setTenantLogoUrl(user.tenant?.logoUrl ?? null);
-        if (user.role === 'BASIC' && user.membro?.ministerios?.length) {
-          const userMinistries = user.membro.ministerios
-            .map((m) => m.ministerio)
-            .filter((m): m is NonNullable<typeof m> => Boolean(m && m.usaEscalas !== false))
-            .map((m) => ({ id: m.id, nome: m.nome } as Ministerio));
-          if (userMinistries.length > 0) {
-            setMinisterios((current) => current.length > 0 ? current : userMinistries);
+      }
+
+      const map = new Map<string, Ministerio>();
+
+      if (Array.isArray(minList)) {
+        for (const m of minList) {
+          if (m && m.id) {
+            map.set(m.id, m);
           }
         }
-      })
-      .catch(() => {
-        setTenantName('OneElo');
-        setTenantLogoUrl(null);
-      });
+      }
+
+      if (user?.membro?.ministerios?.length) {
+        for (const item of user.membro.ministerios) {
+          if (item?.ministerio?.id) {
+            const existing = map.get(item.ministerio.id);
+            if (!existing) {
+              map.set(item.ministerio.id, {
+                id: item.ministerio.id,
+                tenantId: '',
+                nome: item.ministerio.nome,
+                ativo: true,
+                usaEscalas: item.ministerio.usaEscalas ?? true,
+                createdAt: '',
+                updatedAt: '',
+              } as Ministerio);
+            }
+          }
+        }
+      }
+
+      setMinisterios(Array.from(map.values()));
+    }).catch(() => {
+      if (!isMounted) return;
+      setTenantName('OneElo');
+      setTenantLogoUrl(null);
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -115,7 +145,15 @@ export default function EscalasVisualizacaoPage() {
         for (const escala of escalas) {
           if (escala.ministerioId && escala.ministerio?.nome && !existingIds.has(escala.ministerioId)) {
             existingIds.add(escala.ministerioId);
-            toAdd.push({ id: escala.ministerioId, nome: escala.ministerio.nome } as Ministerio);
+            toAdd.push({
+              id: escala.ministerioId,
+              tenantId: '',
+              nome: escala.ministerio.nome,
+              ativo: true,
+              usaEscalas: true,
+              createdAt: '',
+              updatedAt: '',
+            } as Ministerio);
           }
         }
         return toAdd.length > 0 ? [...current, ...toAdd] : current;
@@ -181,7 +219,7 @@ export default function EscalasVisualizacaoPage() {
   }, [escalas]);
 
   function toggleEscalaMinimizada(escalaId: string) {
-    setEscalasMinimizadas((current) => {
+    setEscalasExpandidas((current) => {
       const next = new Set(current);
       if (next.has(escalaId)) {
         next.delete(escalaId);
@@ -259,7 +297,7 @@ export default function EscalasVisualizacaoPage() {
           >
             <option value="">Todos</option>
             {ministerios
-              .filter((ministerio) => ministerio.ativo && ministerio.usaEscalas)
+              .filter((ministerio) => ministerio.ativo !== false && ministerio.usaEscalas !== false)
               .map((ministerio) => (
                 <option key={ministerio.id} value={ministerio.id}>{ministerio.nome}</option>
               ))}
@@ -320,7 +358,7 @@ export default function EscalasVisualizacaoPage() {
       ) : (
         <div className="space-y-4">
           {escalas.map((escala) => {
-            const minimizada = escalasMinimizadas.has(escala.id);
+            const minimizada = !escalasExpandidas.has(escala.id);
 
             return (
               <div
