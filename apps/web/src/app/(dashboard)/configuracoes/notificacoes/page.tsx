@@ -596,25 +596,13 @@ export default function CentralNotificacoesPage() {
         description="Histórico, auditoria de entregas e envio de notificações Web Push."
         stackActionsOnMobile
         action={
-          <div className="flex items-center gap-2 max-sm:w-full">
-            <button
-              type="button"
-              onClick={() => loadNotifications(false)}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl shadow-sm transition disabled:opacity-60"
-              title="Atualizar lista"
-            >
-              <RotateCcw className={`w-4 h-4 text-gray-500 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Atualizar</span>
-            </button>
-            <button
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nova Notificação</span>
-            </button>
-          </div>
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nova Notificação</span>
+          </button>
         }
       />
 
