@@ -177,8 +177,8 @@ export class NotificationQueueProcessorService {
       title: item.title,
       body: item.message,
       url: item.target_url ?? '/minhas-escalas',
-      icon: '/icon.svg',
-      badge: '/icon.svg',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
     });
 
     let atLeastOneSuccess = false;
