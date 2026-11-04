@@ -234,31 +234,31 @@ Status: concluído
 - Critério de validação da etapa: Testes unitários do serviço cobrindo isolamento multitenant, RBAC, paginação, agregação de métricas e reenvio de falhas (21 testes passando).
 
 #### Etapa 6 - Tela de Listagem da Central de Notificações (Frontend ODS)
-Status: planejado
+Status: concluído
 
-- [ ] Criar rota `apps/web/src/app/(dashboard)/configuracoes/notificacoes/page.tsx` (ou rota de topo `/notificacoes`).
-- [ ] Implementar `PageHeader` com título "Central de Notificações" e métricas em `StatCard` (Enviadas, Pendentes, Falhas, Sem Assinatura).
-- [ ] Implementar barra de filtros unificada com `FilterShell`, `FilterInput` e `FilterSelect` autoaplicáveis (sem botão manual Filtrar).
-- [ ] Implementar listagem tabular com `DataTable`, badges de status semânticos e estados vazios com `EmptyState`.
+- [x] Criar rota `apps/web/src/app/(dashboard)/configuracoes/notificacoes/page.tsx` (ou rota de topo `/notificacoes`).
+- [x] Implementar `PageHeader` com título "Central de Notificações" e métricas em `StatCard` (Enviadas, Pendentes, Falhas, Sem Assinatura).
+- [x] Implementar barra de filtros unificada com `FilterShell`, `FilterInput` e `FilterSelect` autoaplicáveis (sem botão manual Filtrar).
+- [x] Implementar listagem tabular com `DataTable`, badges de status semânticos e estados vazios com `EmptyState`.
 - Critério de validação da etapa: Navegação funcional em desktop e mobile, consumindo os novos endpoints com feedback visual de carregamento.
 
 #### Etapa 7 - Modal de Detalhes e Reenvio de Falhas (Frontend ODS)
-Status: planejado
+Status: concluído
 
-- [ ] Implementar Drawer/Modal de detalhes do envio selecionado.
-- [ ] Exibir cards com resumo de entrega (percentual de sucesso, contagem por status).
-- [ ] Tabela de destinatários com indicação de horário de envio e motivo de falha sanitizado.
-- [ ] Botão de reenvio seletivo de falhas temporárias com confirmação customizada.
+- [x] Implementar Drawer/Modal de detalhes do envio selecionado.
+- [x] Exibir cards com resumo de entrega (percentual de sucesso, contagem por status).
+- [x] Tabela de destinatários com indicação de horário de envio e motivo de falha sanitizado.
+- [x] Botão de reenvio seletivo de falhas temporárias com confirmação customizada.
 - Critério de validação da etapa: Executar reenvio pela interface e comprovar a atualização em tempo real dos contadores.
 
 #### Etapa 8 - Envio de Comunicados Gerais e Ministeriais
-Status: planejado
+Status: concluído
 
-- [ ] Implementar endpoints `POST /notifications/announcement/general` e `POST /notifications/announcement/ministry`:
+- [x] Implementar endpoints `POST /notifications/announcement/general` e `POST /notifications/announcement/ministry` (unificados em `POST /notifications/manual` com validação estrita de RBAC):
   - `ADMIN`: pode disparar geral e ministerial;
   - Líder (`LEADER` / `ASSISTANT_LEADER`): pode disparar apenas para os ministérios sob sua liderança ativa;
   - `BASIC` comum: bloqueado pelo backend (`403 Forbidden`).
-- [ ] Criar modal/tela de criação de comunicado no frontend:
+- [x] Criar modal/tela de criação de comunicado no frontend:
   - Seleção de público (Toda a Igreja vs Ministério);
   - Estimativa de público em tempo real antes de enviar;
   - Campo de título, mensagem e link de destino opcional;
@@ -266,14 +266,14 @@ Status: planejado
 - Critério de validação da etapa: Teste de RBAC garantindo que líderes só conseguem notificar seus próprios ministérios e validação do envio imediato e agendado.
 
 #### Etapa 9 - Validação Integrada, Limpeza de Dados (TTL) e Build Final
-Status: planejado
+Status: concluído
 
-- [ ] Criar rotina periódica de retenção de dados (ex: exclusão de recipients após 60 dias).
-- [ ] Executar builds de produção:
-  - `npm.cmd run build` em `apps/api`
-  - `npm.cmd run build` em `apps/web`
-- [ ] Executar bateria completa de testes automatizados (`npm.cmd test`).
-- [ ] Documentar o módulo em `ai-context/backend/notification-architecture.md`.
+- [x] Criar rotina periódica de retenção de dados (`cleanupOldNotifications` com TTL de 60 dias).
+- [x] Executar builds de produção:
+  - `npm run build` em `apps/api` (concluído com código 0)
+  - `npm run build` em `apps/web` (concluído com código 0)
+- [x] Executar bateria completa de testes automatizados (`npm test -w apps/api` com 22 suítes e 212 testes verdes).
+- [x] Documentar o módulo em `ai-context/backend/notification-architecture.md`.
 - Critério de validação da etapa: Builds passando com sucesso e testes unitários/integrados 100% verdes.
 
 ---

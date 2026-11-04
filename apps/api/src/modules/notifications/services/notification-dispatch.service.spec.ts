@@ -314,7 +314,7 @@ describe('NotificationDispatchService', () => {
           mensagem: 'Culto hoje',
           scheduledAt: new Date(),
           status: 'COMPLETED',
-          recipients: [
+          destinatarios: [
             { status: 'SENT' },
             { status: 'FAILED_RETRYABLE' },
             { status: 'NO_SUBSCRIPTION' },
@@ -448,7 +448,7 @@ describe('NotificationDispatchService', () => {
       expect(prisma.notification.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'notif-1' },
-          data: expect.objectContaining({ status: NotificationStatus.PENDING }),
+          data: expect.objectContaining({ status: NotificationStatus.SCHEDULED }),
         }),
       );
       expect(result).toEqual({ success: true, retriedCount: 2 });

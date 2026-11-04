@@ -296,4 +296,37 @@ export class NotificationQueueProcessorService {
       data: { status: finalStatus },
     });
   }
+
+  /**
+   * Limpeza periódica de histórico antigo (TTL de 60 dias) aos domingos às 03:00.
+   */
+  @Cron('0 3 * * 0', {
+    name: 'notification-history-retention-cleanup',
+    timeZone: 'America/Sao_Paulo',
+  })
+  async cleanupOldNotifications(days = 60) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const deleted = await this.prisma.notification.deleteMany({
+      where: {
+        createdAt: { lt: cutoffDate },
+        status: {
+          in: [
+            NotificationStatus.COMPLETED,
+            NotificationStatus.FAILED,
+            NotificationStatus.CANCELED,
+          ],
+        },
+      },
+    });
+
+    if (deleted.count > 0) {
+      this.logger.log(
+        `Limpeza de histórico de notificações: ${deleted.count} notificações antigas removidas (TTL: ${days} dias).`,
+      );
+    }
+
+    return deleted.count;
+  }
 }

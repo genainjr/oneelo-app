@@ -38,6 +38,11 @@ const ICONS = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  notifications: (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+    </svg>
+  ),
   integrations: (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -294,6 +299,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       : []),
     { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupFuture' },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
+    { href: '/configuracoes/notificacoes', label: 'Notificações', icon: ICONS.notifications, adminOnly: true },
     { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile, groupStart: 'groupAccount' },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
@@ -353,6 +359,9 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             { href: '/financeiro/exportacao', label: t('export'), icon: ICONS.export },
           ],
         }]
+      : []),
+    ...(basicHasLeadership
+      ? [{ href: '/configuracoes/notificacoes', label: 'Notificações', icon: ICONS.notifications }]
       : []),
     { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile },
   ];

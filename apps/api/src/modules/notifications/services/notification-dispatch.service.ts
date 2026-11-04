@@ -326,7 +326,7 @@ export class NotificationDispatchService {
         include: {
           ministerio: { select: { id: true, nome: true } },
           criadoPor: { select: { id: true, nome: true, email: true } },
-          recipients: {
+          destinatarios: {
             select: {
               status: true,
             },
@@ -367,14 +367,14 @@ export class NotificationDispatchService {
 
     const data = items.map((item) => {
       const counts = {
-        total: item.recipients.length,
+        total: item.destinatarios.length,
         sent: 0,
         pending: 0,
         failed: 0,
         noSubscription: 0,
       };
 
-      for (const r of item.recipients) {
+      for (const r of item.destinatarios) {
         if (r.status === RecipientDeliveryStatus.SENT) {
           counts.sent += 1;
         } else if (
@@ -392,7 +392,7 @@ export class NotificationDispatchService {
         }
       }
 
-      const { recipients, ...rest } = item;
+      const { destinatarios, ...rest } = item;
       return {
         ...rest,
         deliveryStats: counts,
@@ -567,7 +567,7 @@ export class NotificationDispatchService {
       await this.prisma.notification.update({
         where: { id },
         data: {
-          status: NotificationStatus.PENDING,
+          status: NotificationStatus.SCHEDULED,
           scheduledAt: new Date(),
         },
       });
@@ -587,7 +587,7 @@ export class NotificationDispatchService {
     user: JwtPayload,
     dto: CreateManualNotificationDto,
   ) {
-    let origem = NotificationOrigin.COMMUNICATION_GENERAL;
+    let origem: NotificationOrigin = NotificationOrigin.COMMUNICATION_GENERAL;
 
     if (dto.tipoPublico === NotificationAudienceType.MINISTRY) {
       if (!dto.ministerioId) {
@@ -606,7 +606,7 @@ export class NotificationDispatchService {
             role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
             membro: {
               tenantId,
-              userId: user.sub,
+              user: { id: user.sub },
               deletedAt: null,
               status: StatusMembro.ATIVO,
             },

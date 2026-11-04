@@ -30,6 +30,7 @@ describe('NotificationQueueProcessorService', () => {
       },
       notification: {
         update: jest.fn(),
+        deleteMany: jest.fn(),
       },
     };
 
@@ -240,6 +241,28 @@ describe('NotificationQueueProcessorService', () => {
         where: { id: 'notif-2' },
         data: { status: NotificationStatus.FAILED },
       });
+    });
+  });
+
+  describe('cleanupOldNotifications', () => {
+    it('deve remover notificações com mais de 60 dias com status final', async () => {
+      prisma.notification.deleteMany.mockResolvedValue({ count: 12 });
+
+      const deletedCount = await service.cleanupOldNotifications(60);
+
+      expect(prisma.notification.deleteMany).toHaveBeenCalledWith({
+        where: {
+          createdAt: { lt: expect.any(Date) },
+          status: {
+            in: [
+              NotificationStatus.COMPLETED,
+              NotificationStatus.FAILED,
+              NotificationStatus.CANCELED,
+            ],
+          },
+        },
+      });
+      expect(deletedCount).toBe(12);
     });
   });
 });

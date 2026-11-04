@@ -437,3 +437,101 @@ export interface CompatibilidadeRegra {
     };
   };
 }
+
+// ─── Notificações ────────────────────────────────────────────────────────────
+
+export type NotificationStatus =
+  | 'PENDING'
+  | 'SCHEDULED'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELED';
+
+export type NotificationOrigin =
+  | 'SYSTEM_AUTOMATION'
+  | 'COMMUNICATION_GENERAL'
+  | 'COMMUNICATION_MINISTRY';
+
+export type NotificationAudienceType =
+  | 'ALL_MEMBERS'
+  | 'MINISTRY'
+  | 'SPECIFIC_USERS';
+
+export type RecipientDeliveryStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SENT'
+  | 'FAILED_RETRYABLE'
+  | 'FAILED_PERMANENT'
+  | 'NO_SUBSCRIPTION';
+
+export interface NotificationDeliveryStats {
+  total: number;
+  sent: number;
+  pending: number;
+  failed: number;
+  noSubscription: number;
+}
+
+export interface NotificationItem {
+  id: string;
+  tenantId: string;
+  origem: NotificationOrigin;
+  tipoPublico: NotificationAudienceType;
+  titulo: string;
+  mensagem: string;
+  urlDestino?: string | null;
+  status: NotificationStatus;
+  scheduledAt: string;
+  enviadoEm?: string | null;
+  createdAt: string;
+  ministerioId?: string | null;
+  ministerio?: { id: string; nome: string } | null;
+  criadoPor?: { id: string; nome: string; email: string } | null;
+  deliveryStats: NotificationDeliveryStats;
+}
+
+export interface NotificationMetrics {
+  totalSent: number;
+  totalPending: number;
+  totalFailed: number;
+  totalNoSubscription: number;
+}
+
+export interface NotificationRecipientItem {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  status: RecipientDeliveryStatus;
+  tentativas: number;
+  ultimoErro?: string | null;
+  enviadoEm?: string | null;
+  createdAt: string;
+}
+
+export interface NotificationDetailResponse {
+  notification: NotificationItem;
+  stats: NotificationDeliveryStats;
+  recipients: {
+    data: NotificationRecipientItem[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+}
+
+export interface NotificationListResponse {
+  data: NotificationItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  metrics: NotificationMetrics;
+}
