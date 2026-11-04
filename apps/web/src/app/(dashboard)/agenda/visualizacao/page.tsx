@@ -264,9 +264,11 @@ export default function AgendaVisualizacaoPage() {
           onSubmit={handleFilterSubmit}
           actions={
             <FilterActions
-              submitLabel={t('filter.apply')}
               clearLabel={t('filter.clear')}
+              reloadLabel="Recarregar"
               onClear={() => handleClearFilters(emptyFilter)}
+              onReload={refetch}
+              loading={loading}
             />
           }
         >

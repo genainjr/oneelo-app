@@ -29,9 +29,10 @@ Se houver alteracoes locais nao relacionadas, preservar o trabalho existente e u
 Antes de implementar uma feature relevante:
 
 1. Verificar se existe plano em `ai-context/plans`.
-2. Se nao existir, criar um plano seguindo o padrao dos planos existentes.
-3. Manter checklist com etapas pequenas e verificaveis.
-4. Atualizar o checklist durante o desenvolvimento, nao apenas no final.
+2. Se não existir, criar um plano seguindo estritamente o template oficial em `ai-context/plans/PLAN_TEMPLATE.md`.
+3. É **obrigatório** estruturar a seção `## Etapas de Desenvolvimento` em subseções numeradas sequencialmente (`### Etapa 0 - ...`, `### Etapa 1 - ...`), cada uma com status, checklist (`- [ ]`) com etapas pequenas e verificáveis e critério de validação. É proibido usar agrupamentos genéricos que não permitam a parada para autorização.
+4. Manter checklist com etapas pequenas e verificaveis.
+5. Atualizar o checklist durante o desenvolvimento, nao apenas no final.
 
 Planos sao documentos vivos. Eles devem refletir decisoes tomadas durante a implementacao.
 

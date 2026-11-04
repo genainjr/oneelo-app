@@ -76,6 +76,7 @@ export default function MembrosPage() {
     loading,
     error,
     applyFilter,
+    refetch,
     createMembro,
     updateMembro,
     deleteMembro,
@@ -132,6 +133,7 @@ export default function MembrosPage() {
     setField: setFilterField,
     handleClear: handleClearFilters,
     handleSubmit: handleFilterSubmit,
+    isDebouncing,
   } = useFilterState({
     initialState: {
       nome: '',
@@ -140,6 +142,8 @@ export default function MembrosPage() {
       tags: [] as string[],
       operacao: 'OR' as 'AND' | 'OR',
     },
+    debounceFields: ['nome', 'whatsapp'],
+    debounceMs: 350,
     onApply: (filters) => {
       setCurrentPage(1);
       applyFilter({
@@ -399,16 +403,19 @@ export default function MembrosPage() {
           onSubmit={handleFilterSubmit}
           actions={
             <FilterActions
-              submitLabel={t('filter.apply')}
               clearLabel={t('filter.clear')}
+              reloadLabel={t('reload', { defaultValue: 'Recarregar' }) || 'Recarregar'}
               onClear={() => handleClearFilters()}
+              onReload={refetch}
+              loading={loading}
+              isDebouncing={isDebouncing}
             />
           }
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FilterInput
               id="search-nome"
-              type="text"
+              type="search"
               label={t('filter.nameLabel')}
               value={filterState.nome}
               onChange={(e) => setFilterField('nome', e.target.value)}
@@ -489,13 +496,6 @@ export default function MembrosPage() {
                   type="button"
                   onClick={() => {
                     setFilterField('operacao', 'AND');
-                    applyFilter({
-                      nome: filterState.nome || undefined,
-                      whatsapp: filterState.whatsapp || undefined,
-                      status: filterState.status || undefined,
-                      tags: filterState.tags.join(',') || undefined,
-                      operacao: 'AND',
-                    });
                   }}
                   className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'AND' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
                 >
@@ -505,13 +505,6 @@ export default function MembrosPage() {
                   type="button"
                   onClick={() => {
                     setFilterField('operacao', 'OR');
-                    applyFilter({
-                      nome: filterState.nome || undefined,
-                      whatsapp: filterState.whatsapp || undefined,
-                      status: filterState.status || undefined,
-                      tags: filterState.tags.join(',') || undefined,
-                      operacao: 'OR',
-                    });
                   }}
                   className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'OR' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
                 >

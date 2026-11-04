@@ -18,3 +18,4 @@ Rules:
 - Always read both directories before proposing architectural or code changes.
 - Follow repository conventions before introducing new patterns.
 - Before any implementation, confirm the work is starting from `development`, update it if needed, and create a descriptive feature branch. Do not edit code before that check.
+- When creating or updating development plans in ./ai-context/plans/, strictly follow the official schema in ./ai-context/plans/PLAN_TEMPLATE.md, mandating the "## Etapas de Desenvolvimento" section with numbered sequential stages (Etapa 0, Etapa 1...), verifiable checklists (- [ ]), and stage validation criteria.

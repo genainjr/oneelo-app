@@ -60,6 +60,7 @@ export default function EscalasVisualizacaoPage() {
     setField: setFilterField,
     handleClear: handleClearFilters,
     handleSubmit: handleFilterSubmit,
+    isDebouncing,
   } = useFilterState({
     initialState: {
       ministerioId: '',
@@ -68,6 +69,8 @@ export default function EscalasVisualizacaoPage() {
       ano: String(now.getFullYear()),
       pendentesApenas: false,
     },
+    debounceFields: ['ano'],
+    debounceMs: 350,
     onApply: (filters) => {
       applyFilter({
         ministerioId: filters.ministerioId || undefined,
@@ -239,9 +242,12 @@ export default function EscalasVisualizacaoPage() {
         onSubmit={handleFilterSubmit}
         actions={
           <FilterActions
-            submitLabel="Filtrar"
             clearLabel="Limpar"
+            reloadLabel="Recarregar"
             onClear={() => handleClearFilters()}
+            onReload={refetch}
+            loading={loading}
+            isDebouncing={isDebouncing}
           />
         }
       >
@@ -252,9 +258,11 @@ export default function EscalasVisualizacaoPage() {
             onChange={(event) => setFilterField('ministerioId', event.target.value)}
           >
             <option value="">Todos</option>
-            {ministerios.map((ministerio) => (
-              <option key={ministerio.id} value={ministerio.id}>{ministerio.nome}</option>
-            ))}
+            {ministerios
+              .filter((ministerio) => ministerio.ativo && ministerio.usaEscalas)
+              .map((ministerio) => (
+                <option key={ministerio.id} value={ministerio.id}>{ministerio.nome}</option>
+              ))}
           </FilterSelect>
           <FilterSelect
             label="Status"

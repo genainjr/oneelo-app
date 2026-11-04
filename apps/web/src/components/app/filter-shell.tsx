@@ -1,3 +1,5 @@
+'use client';
+
 import { RotateCcw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,7 +25,7 @@ export function FilterShell({ children, onSubmit, className, actions }: FilterSh
       className={cn('mb-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm', className)}
     >
       {children}
-      {actions && <div className="mt-4 flex flex-wrap gap-3">{actions}</div>}
+      {actions && <div className="mt-4 flex flex-wrap items-center gap-3">{actions}</div>}
     </form>
   );
 }
@@ -35,6 +37,8 @@ interface FilterActionsProps {
   onClear?: () => void;
   onReload?: () => void;
   loading?: boolean;
+  isDebouncing?: boolean;
+  showSubmit?: boolean;
 }
 
 export function FilterActions({
@@ -44,22 +48,28 @@ export function FilterActions({
   onClear,
   onReload,
   loading = false,
+  isDebouncing = false,
+  showSubmit = false,
 }: FilterActionsProps) {
+  const isLoadingOrDebouncing = loading || isDebouncing;
+
   return (
     <>
-      <button
-        type="submit"
-        disabled={loading}
-        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
-      >
-        <Search className="h-4 w-4" />
-        {submitLabel}
-      </button>
+      {showSubmit && (
+        <button
+          type="submit"
+          disabled={isLoadingOrDebouncing}
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
+        >
+          <Search className="h-4 w-4" />
+          {submitLabel}
+        </button>
+      )}
       {onClear && (
         <button
           type="button"
           onClick={onClear}
-          disabled={loading}
+          disabled={isLoadingOrDebouncing}
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
         >
           <X className="h-4 w-4" />
@@ -70,14 +80,13 @@ export function FilterActions({
         <button
           type="button"
           onClick={onReload}
-          disabled={loading}
+          disabled={isLoadingOrDebouncing}
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
         >
-          <RotateCcw className="h-4 w-4" />
+          <RotateCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
           {reloadLabel}
         </button>
       )}
     </>
   );
 }
-

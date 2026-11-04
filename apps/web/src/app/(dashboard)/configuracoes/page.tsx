@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/app/skeleton";
 import { DataTable, Column, SortState } from "@/components/app/data-table";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
 import { FilterInput, FilterSelect } from "@/components/app/filter-field";
+import { useFilterState } from "@/hooks/use-filter-state";
 import { StatusBadge } from "@/components/app/status-badge";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { UsuarioModal } from "@/components/app/usuario-modal";
@@ -132,12 +133,39 @@ export default function ConfiguracoesPage() {
   const auditLogsTopRef = useRef<HTMLElement | null>(null);
 
   const [userPage, setUserPage] = useState(1);
-  const [userFilterDraft, setUserFilterDraft] = useState<UserFilterState>(EMPTY_USER_FILTERS);
   const [userFilters, setUserFilters] = useState<UserFilterState>(EMPTY_USER_FILTERS);
+  const {
+    formState: userFilterState,
+    setField: setUserFilterField,
+    handleClear: handleClearUserFilters,
+    handleSubmit: handleUserFilterSubmit,
+    isDebouncing: isUserDebouncing,
+  } = useFilterState<UserFilterState>({
+    initialState: EMPTY_USER_FILTERS,
+    debounceFields: ["search"],
+    debounceMs: 350,
+    onApply: (filters) => {
+      setUserFilters(filters);
+      setUserPage(1);
+    },
+  });
+
   const [auditPage, setAuditPage] = useState(1);
-  const [auditActionFilter, setAuditActionFilter] = useState("");
-  const [auditResourceFilter, setAuditResourceFilter] = useState("");
-  const [auditOperatorFilter, setAuditOperatorFilter] = useState("");
+  const {
+    formState: auditFilterState,
+    setField: setAuditFilterField,
+    handleClear: handleClearAuditFilters,
+    handleSubmit: handleAuditFilterSubmit,
+  } = useFilterState({
+    initialState: {
+      acao: "",
+      entidade: "",
+      operador: "",
+    },
+    onApply: () => {
+      setAuditPage(1);
+    },
+  });
   const [userSort, setUserSort] = useState<SortState>({
     key: "nome",
     direction: "asc",
@@ -215,17 +243,7 @@ export default function ConfiguracoesPage() {
       .map((user) => ({ value: user.id, label: user.nome })),
   ];
 
-  function applyUserFilters(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setUserFilters({ ...userFilterDraft });
-    setUserPage(1);
-  }
 
-  function clearUserFilters() {
-    setUserFilterDraft({ ...EMPTY_USER_FILTERS });
-    setUserFilters({ ...EMPTY_USER_FILTERS });
-    setUserPage(1);
-  }
 
   const loadUsers = useCallback(async () => {
     if (!isAdmin) return;
@@ -250,9 +268,9 @@ export default function ConfiguracoesPage() {
         const query = buildQuery({
           page,
           limit: itemsPerPage,
-          acao: auditActionFilter || undefined,
-          entidade: auditResourceFilter || undefined,
-          operador: auditOperatorFilter || undefined,
+          acao: auditFilterState.acao || undefined,
+          entidade: auditFilterState.entidade || undefined,
+          operador: auditFilterState.operador || undefined,
         });
         const data = await api.get<
           PaginatedItemsResponse<AuditLog> | AuditLog[]
@@ -271,7 +289,7 @@ export default function ConfiguracoesPage() {
         setAuditLoading(false);
       }
     },
-    [auditActionFilter, auditOperatorFilter, auditResourceFilter, isAdmin, t],
+    [auditFilterState.acao, auditFilterState.operador, auditFilterState.entidade, isAdmin, t],
   );
 
   const reloadActiveData = useCallback(() => {
@@ -1066,22 +1084,25 @@ export default function ConfiguracoesPage() {
         )}
 
       {activeTab === "audit" && (
-        <section
-          ref={auditLogsTopRef}
-          className="rounded-2xl border border-gray-100 bg-white p-4 shadow-2xs"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-3">
-            <label className="space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                {t("audit.filters.operation")}
-              </span>
-              <select
-                value={auditActionFilter}
-                onChange={(event) => {
-                  setAuditActionFilter(event.target.value);
-                  setAuditPage(1);
-                }}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-all focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+        <div ref={auditLogsTopRef as any}>
+          <FilterShell
+            onSubmit={handleAuditFilterSubmit}
+            actions={
+              <FilterActions
+                clearLabel={t("users.filters.clear")}
+                reloadLabel={tCommon("reload")}
+                onClear={() => handleClearAuditFilters()}
+                onReload={() => loadAuditLogs(auditPage)}
+                loading={auditLoading}
+              />
+            }
+          >
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <FilterSelect
+                id="audit-action"
+                label={t("audit.filters.operation")}
+                value={auditFilterState.acao}
+                onChange={(event) => setAuditFilterField("acao", event.target.value)}
               >
                 {auditActionOptions.map((option) => (
                   <option
@@ -1091,20 +1112,13 @@ export default function ConfiguracoesPage() {
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </label>
+              </FilterSelect>
 
-            <label className="space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                {t("audit.filters.resource")}
-              </span>
-              <select
-                value={auditResourceFilter}
-                onChange={(event) => {
-                  setAuditResourceFilter(event.target.value);
-                  setAuditPage(1);
-                }}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-all focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+              <FilterSelect
+                id="audit-resource"
+                label={t("audit.filters.resource")}
+                value={auditFilterState.entidade}
+                onChange={(event) => setAuditFilterField("entidade", event.target.value)}
               >
                 {auditResourceOptions.map((option) => (
                   <option
@@ -1114,20 +1128,13 @@ export default function ConfiguracoesPage() {
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </label>
+              </FilterSelect>
 
-            <label className="space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                {t("audit.filters.operator")}
-              </span>
-              <select
-                value={auditOperatorFilter}
-                onChange={(event) => {
-                  setAuditOperatorFilter(event.target.value);
-                  setAuditPage(1);
-                }}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none transition-all focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50"
+              <FilterSelect
+                id="audit-operator"
+                label={t("audit.filters.operator")}
+                value={auditFilterState.operador}
+                onChange={(event) => setAuditFilterField("operador", event.target.value)}
               >
                 {auditOperatorOptions.map((option) => (
                   <option
@@ -1137,21 +1144,23 @@ export default function ConfiguracoesPage() {
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </label>
-          </div>
-        </section>
+              </FilterSelect>
+            </div>
+          </FilterShell>
+        </div>
       )}
 
       {activeTab === "usuarios" && (
         <FilterShell
-          onSubmit={applyUserFilters}
+          onSubmit={handleUserFilterSubmit}
           actions={
             <FilterActions
-              submitLabel={t("users.filters.apply")}
               clearLabel={t("users.filters.clear")}
-              onClear={clearUserFilters}
+              reloadLabel={tCommon("reload")}
+              onClear={() => handleClearUserFilters()}
+              onReload={loadUsers}
               loading={usersLoading}
+              isDebouncing={isUserDebouncing}
             />
           }
         >
@@ -1160,15 +1169,15 @@ export default function ConfiguracoesPage() {
               id="user-search"
               type="search"
               label={t("users.filters.searchLabel")}
-              value={userFilterDraft.search}
-              onChange={(event) => setUserFilterDraft((current) => ({ ...current, search: event.target.value }))}
+              value={userFilterState.search}
+              onChange={(event) => setUserFilterField("search", event.target.value)}
               placeholder={t("users.filters.searchPlaceholder")}
             />
             <FilterSelect
               id="user-role"
               label={t("users.filters.roleLabel")}
-              value={userFilterDraft.role}
-              onChange={(event) => setUserFilterDraft((current) => ({ ...current, role: event.target.value as UserFilterState["role"] }))}
+              value={userFilterState.role}
+              onChange={(event) => setUserFilterField("role", event.target.value as UserFilterState["role"])}
             >
               <option value="">{t("users.filters.allRoles")}</option>
               <option value="ADMIN">{tCommon("roles.ADMIN")}</option>
@@ -1178,8 +1187,8 @@ export default function ConfiguracoesPage() {
             <FilterSelect
               id="user-status"
               label={t("users.filters.statusLabel")}
-              value={userFilterDraft.status}
-              onChange={(event) => setUserFilterDraft((current) => ({ ...current, status: event.target.value as UserFilterState["status"] }))}
+              value={userFilterState.status}
+              onChange={(event) => setUserFilterField("status", event.target.value as UserFilterState["status"])}
             >
               <option value="">{t("users.filters.allStatuses")}</option>
               <option value="PENDING">{t("users.status.pending")}</option>

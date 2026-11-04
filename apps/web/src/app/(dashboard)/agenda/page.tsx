@@ -428,7 +428,15 @@ export default function AgendaPage() {
       {/* Filters */}
       <FilterShell
         onSubmit={handleFilterSubmit}
-        actions={<FilterActions submitLabel={t('filter.apply')} clearLabel={t('filter.clear')} onClear={() => handleClearFilters()} />}
+        actions={
+          <FilterActions
+            clearLabel={t('filter.clear')}
+            reloadLabel={t('reload', { defaultValue: 'Recarregar' }) || 'Recarregar'}
+            onClear={() => handleClearFilters()}
+            onReload={refetch}
+            loading={loading}
+          />
+        }
       >
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <FilterSelect

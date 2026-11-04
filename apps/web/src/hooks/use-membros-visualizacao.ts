@@ -41,9 +41,8 @@ export function useMembrosVisualizacao(initialFilter: FilterMembrosVisualizacao 
   }, []);
 
   function applyFilter(newFilter: FilterMembrosVisualizacao) {
-    const merged = { ...filter, ...newFilter };
-    setFilter(merged);
-    fetchMembros(merged);
+    setFilter(newFilter);
+    fetchMembros(newFilter);
   }
 
   return {

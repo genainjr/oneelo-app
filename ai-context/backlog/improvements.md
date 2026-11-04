@@ -90,7 +90,7 @@
 
 ### IMP-007 Autoaplicar filtros na visualizacao de membros
 
-- **Status**: pendente
+- **Status**: concluído
 - **Prioridade**: media
 - **Categoria**: UX
 - **Contexto**: A tela `/membros/visualizacao` ainda depende do botao `FILTRAR`, o que gera friccao na busca e abre margem para a primeira carga do dashboard chegar sem `aniversarioMes` aplicado antes da resposta inicial da API.

@@ -161,3 +161,15 @@ Telas de visualização read-only com dados periódicos (`/escalas/visualizacao`
 ```
 
 O controle deve ser sempre mediado por `<ExportShareDialog />` e pelo hook `useDocumentShare`.
+
+---
+
+## Padrão Universal de Filtros (Filtros Autoaplicáveis Reativos)
+
+Telas de visualização e gerenciamento do OneElo devem adotar obrigatoriamente a reatividade unificada em filtros:
+
+- **Sem Botão "Filtrar"**: O botão manual de submit ("Filtrar" / "Aplicar") é dispensado em todas as barras de filtros.
+- **Debounce em Texto**: Campos textuais abertos (`FilterInput` para busca por nome/descrição) usam debounce de 350ms (`debounceFields: ['nome']` no `useFilterState`).
+- **Reatividade Imediata**: Selects (`FilterSelect`), checkboxes, datepickers e ordenação disparam aplicação instantânea.
+- **Submissão com Enter**: Pressionar `Enter` em qualquer input cancela o tempo restante de debounce e aplica os filtros imediatamente sem recarregar a página.
+- **Ações Padronizadas (`FilterActions`)**: Mantém apenas botões de "Limpar" (`onClear`) e "Recarregar" (`onReload`), com estado visual de loading/debouncing.

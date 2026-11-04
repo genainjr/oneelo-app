@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Banknote, CircleDollarSign, Landmark } from "lucide-react";
 import { api } from "@/lib/api";
+import { includesNormalizedText } from "@/lib/utils";
 import { FinanceRole, type StatusEvento } from "@/types";
 
 export type FinancePermissionSummary = {
@@ -165,6 +166,37 @@ export function getTransactionDisplayTitle(transaction: FinancialTransaction) {
   if (counterpartyName) return counterpartyName;
   return `${TRANSACTION_TYPE_LABELS[transaction.type]} - ${transaction.category.name}`;
 }
+
+export function matchTransactionSearch(
+  transaction: FinancialTransaction,
+  search: string,
+): boolean {
+  const query = search.trim();
+  if (!query) return true;
+
+  const displayTitle = getTransactionDisplayTitle(transaction);
+  const paymentLabel = transaction.paymentMethod
+    ? PAYMENT_METHOD_LABELS[transaction.paymentMethod] ?? transaction.paymentMethod
+    : null;
+  const typeLabel = TRANSACTION_TYPE_LABELS[transaction.type];
+
+  const searchable = [
+    displayTitle,
+    transaction.description,
+    typeLabel,
+    transaction.category?.name,
+    transaction.account?.name,
+    transaction.counterpartyName,
+    transaction.evento?.titulo,
+    transaction.member?.nome,
+    paymentLabel,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return includesNormalizedText(searchable, query);
+}
+
 
 export function todayInputValue() {
   return new Date().toISOString().slice(0, 10);

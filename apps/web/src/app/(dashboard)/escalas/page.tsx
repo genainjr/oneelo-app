@@ -510,11 +510,11 @@ export default function EscalasPage() {
         onSubmit={handleFilterSubmit}
         actions={
           <FilterActions
-            submitLabel="Filtrar"
             clearLabel="Limpar"
             reloadLabel="Recarregar"
             onClear={() => handleClearFilters()}
             onReload={refetch}
+            loading={loading}
           />
         }
       >
@@ -542,7 +542,7 @@ export default function EscalasPage() {
             onChange={(e) => setFilterField('ministerioId', e.target.value)}
           >
             <option value="">{t('filter.all')}</option>
-            {ministerios.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+            {ministerios.filter((m) => m.ativo && m.usaEscalas).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </FilterSelect>
         </div>
       </FilterShell>
