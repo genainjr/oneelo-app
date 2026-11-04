@@ -1018,7 +1018,7 @@ export default function CentralNotificacoesPage() {
               {creating
                 ? "Salvando..."
                 : editingId
-                  ? "Salvar Alterações"
+                  ? "Salvar"
                   : createForm.isScheduled
                     ? "Agendar Comunicado"
                     : "Disparar Comunicado"}
