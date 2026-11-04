@@ -167,15 +167,15 @@ Status: concluído
 - Critério de validação da etapa: `npx.cmd prisma validate` executado com sucesso e migration aplicada sem conflitos no banco local.
 
 #### Etapa 1 - Serviço de Comando e Materialização de Destinatários
-Status: planejado
+Status: concluído
 
-- [ ] Criar `NotificationDispatchService` em `apps/api/src/modules/notifications/services/notification-dispatch.service.ts`.
-- [ ] Implementar método `createNotification`:
+- [x] Criar `NotificationDispatchService` em `apps/api/src/modules/notifications/services/notification-dispatch.service.ts`.
+- [x] Implementar método `createNotification`:
   - Recebe dados da notificação e lista de `userIds` ou regra de público;
   - Valida e insere registro `Notification` com `idempotencyKey` exclusivo;
   - Se a chave já existir, retorna o registro existente sem recriar (idempotência transparente);
   - Materializa os destinatários na tabela `NotificationRecipient` com status `PENDING` (ou `NO_SUBSCRIPTION` se o usuário não possuir assinatura de push ativa).
-- [ ] Adicionar testes unitários cobrindo idempotência e materialização de destinatários.
+- [x] Adicionar testes unitários cobrindo idempotência e materialização de destinatários.
 - Critério de validação da etapa: Testes unitários do `NotificationDispatchService` executando com 100% de sucesso (`npm.cmd test -- notifications.service`).
 
 #### Etapa 2 - Processador de Fila em Lotes com Lease Atômico
