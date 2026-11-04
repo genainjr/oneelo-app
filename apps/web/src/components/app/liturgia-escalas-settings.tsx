@@ -13,7 +13,8 @@ import {
   Sparkles,
   Loader2,
 } from 'lucide-react';
-import { SearchInput } from '@/components/app/search-input';
+import { FilterShell, FilterActions } from '@/components/app/filter-shell';
+import { FilterInput } from '@/components/app/filter-field';
 import { ModalShell, ModalFooter } from '@/components/app/modal-shell';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { EmptyState } from '@/components/app/empty-state';
@@ -571,11 +572,29 @@ export function LiturgiaEscalasSettings() {
         </div>
 
         {/* Busca na Matriz */}
-        <SearchInput
-          value={ruleSearch}
-          onChange={setRuleSearch}
-          placeholder={t('liturgia.matrix.searchPlaceholder')}
-        />
+        {/* Busca na Matriz */}
+        <FilterShell
+          className="mb-0 bg-gray-50/60 p-4 border-gray-100"
+          actions={
+            ruleSearch ? (
+              <FilterActions
+                clearLabel={tCommon('clear', { defaultValue: 'Limpar' }) || 'Limpar'}
+                onClear={() => setRuleSearch('')}
+              />
+            ) : undefined
+          }
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FilterInput
+              id="matriz-search"
+              type="search"
+              label={tCommon('search', { defaultValue: 'Buscar' }) || 'Buscar'}
+              value={ruleSearch}
+              onChange={(e) => setRuleSearch(e.target.value)}
+              placeholder={t('liturgia.matrix.searchPlaceholder')}
+            />
+          </div>
+        </FilterShell>
 
         {compatibilidades.length === 0 ? (
           <EmptyState

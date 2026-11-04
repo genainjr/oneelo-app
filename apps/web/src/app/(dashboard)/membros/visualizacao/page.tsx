@@ -35,14 +35,38 @@ const MESES = [
   { value: '12', label: 'Dezembro' },
 ];
 
+function getInitialFilter() {
+  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const aniversarioMes = params?.get('aniversarioMes') || '';
+  const ordenacao = (params?.get('ordenacao') as 'nome' | 'dataNascimento') || (aniversarioMes ? 'dataNascimento' : 'nome');
+  return {
+    nome: params?.get('nome') || '',
+    status: params?.get('status') || '',
+    ministerioId: params?.get('ministerioId') || '',
+    aniversarioMes,
+    semTelefone: params?.get('semTelefone') === 'true',
+    ordenacao,
+  };
+}
+
 export default function MembrosVisualizacaoPage() {
+  const initialFilterState = useMemo(() => getInitialFilter(), []);
+  const initialApiFilter = useMemo(() => ({
+    nome: initialFilterState.nome || undefined,
+    status: initialFilterState.status || undefined,
+    ministerioId: initialFilterState.ministerioId || undefined,
+    aniversarioMes: initialFilterState.aniversarioMes || undefined,
+    semTelefone: initialFilterState.semTelefone ? 'true' : undefined,
+    ordenacao: initialFilterState.ordenacao,
+  }), [initialFilterState]);
+
   const {
     membros,
     loading,
     error,
     applyFilter,
     refetch,
-  } = useMembrosVisualizacao();
+  } = useMembrosVisualizacao(initialApiFilter);
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [selected, setSelected] = useState<MembroVisualizacao | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -53,15 +77,11 @@ export default function MembrosVisualizacaoPage() {
     setField: setFilterField,
     handleClear: handleClearFilters,
     handleSubmit: handleFilterSubmit,
+    isDebouncing,
   } = useFilterState({
-    initialState: {
-      nome: '',
-      status: '',
-      ministerioId: '',
-      aniversarioMes: '',
-      semTelefone: false,
-      ordenacao: 'nome' as 'nome' | 'dataNascimento',
-    },
+    initialState: initialFilterState,
+    debounceFields: ['nome'],
+    debounceMs: 350,
     onApply: (filters) => {
       setCurrentPage(1);
       applyFilter({
@@ -79,15 +99,6 @@ export default function MembrosVisualizacaoPage() {
     api.get<Ministerio[]>('/api/ministerios')
       .then((data) => setMinisterios(Array.isArray(data) ? data : []))
       .catch(() => setMinisterios([]));
-
-    const params = new URLSearchParams(window.location.search);
-    const aniversarioMes = params.get('aniversarioMes');
-    if (aniversarioMes) {
-      setFilterField('aniversarioMes', aniversarioMes);
-      setFilterField('ordenacao', 'dataNascimento');
-      setCurrentPage(1);
-      applyFilter({ aniversarioMes, ordenacao: 'dataNascimento' });
-    }
   }, []);
 
   const sortedMembros = useMemo(() => {
@@ -231,20 +242,22 @@ export default function MembrosVisualizacaoPage() {
           onSubmit={handleFilterSubmit}
           actions={
             <FilterActions
-              submitLabel="Filtrar"
               clearLabel="Limpar"
               reloadLabel="Recarregar"
               onClear={() => handleClearFilters()}
               onReload={refetch}
+              loading={loading}
+              isDebouncing={isDebouncing}
             />
           }
         >
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-6 items-end">
           <FilterInput
+            type="search"
             label="Nome"
             value={filterState.nome}
             onChange={(event) => setFilterField('nome', event.target.value)}
-            placeholder="Buscar por nome"
+            placeholder="Buscar por nome..."
           />
           <FilterSelect
             label="Status"

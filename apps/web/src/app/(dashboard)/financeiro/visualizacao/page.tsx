@@ -28,6 +28,7 @@ import {
   dateFormatter,
   financeiroEventosPath,
   getTransactionDisplayTitle,
+  matchTransactionSearch,
   useFinanceiroData,
 } from "../financeiro-shared";
 
@@ -96,8 +97,11 @@ export default function FinanceiroVisualizacaoPage() {
     setField: setTransactionFilterField,
     handleClear: handleClearTransactionFilters,
     handleSubmit: handleTransactionFilterSubmit,
+    isDebouncing: isTransactionDebouncing,
   } = useFilterState({
     initialState: initialTransactionFilters,
+    debounceFields: ["description"],
+    debounceMs: 350,
     onApply: setAppliedTransactionFilters,
   });
 
@@ -155,17 +159,7 @@ export default function FinanceiroVisualizacaoPage() {
 
   const filteredTransactions = useMemo(
     () => transactions.filter((transaction) => {
-      const descriptionSearch = appliedTransactionFilters.description.trim().toLowerCase();
-      if (descriptionSearch) {
-        const searchable = [
-          transaction.description,
-          transaction.counterpartyName,
-          transaction.paymentMethod,
-          transaction.account.name,
-          transaction.category.name,
-        ].filter(Boolean).join(" ").toLowerCase();
-        if (!searchable.includes(descriptionSearch)) return false;
-      }
+      if (!matchTransactionSearch(transaction, appliedTransactionFilters.description)) return false;
       if (appliedTransactionFilters.status !== "all" && transaction.status !== appliedTransactionFilters.status) return false;
       if (appliedTransactionFilters.type !== "all" && transaction.type !== appliedTransactionFilters.type) return false;
       if (appliedTransactionFilters.eventoId && transaction.eventoId !== appliedTransactionFilters.eventoId) return false;
@@ -284,7 +278,16 @@ export default function FinanceiroVisualizacaoPage() {
       <section className="space-y-4">
         <FilterShell
           onSubmit={handleTransactionFilterSubmit}
-          actions={<FilterActions submitLabel="Filtrar" clearLabel="Limpar" onClear={clearTransactionFilters} />}
+          actions={
+            <FilterActions
+              clearLabel="Limpar"
+              reloadLabel="Recarregar"
+              onClear={clearTransactionFilters}
+              onReload={() => void reloadData()}
+              loading={loadingData}
+              isDebouncing={isTransactionDebouncing}
+            />
+          }
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
             <FilterSelect label="Status" value={transactionFilterState.status} onChange={(event) => setTransactionFilterField("status", event.target.value as TransactionFilterState["status"])}>
@@ -296,7 +299,7 @@ export default function FinanceiroVisualizacaoPage() {
               <option value="INCOME">Entradas</option>
               <option value="EXPENSE">Despesas</option>
             </FilterSelect>
-            <FilterInput label="Descrição" value={transactionFilterState.description} onChange={(event) => setTransactionFilterField("description", event.target.value)} placeholder="Buscar" />
+            <FilterInput type="search" label="Descrição" value={transactionFilterState.description} onChange={(event) => setTransactionFilterField("description", event.target.value)} placeholder="Buscar por descrição..." />
             <EventoSearchCombobox
               label="Evento"
               optionalLabel="opcional"

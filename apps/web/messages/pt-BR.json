@@ -296,7 +296,7 @@
       "pageDescription": "Consulte os ministérios em leitura rápida, com líderes, funções e resumo operacional.",
       "filter": {
         "nameLabel": "Nome do ministério",
-        "namePlaceholder": "Buscar ministério pelo nome",
+        "namePlaceholder": "Buscar por nome...",
         "structureLabel": "Composição",
         "structureAll": "Todos",
         "structureLeaders": "Com liderança",
@@ -717,6 +717,7 @@
     "description": "Gerencie as configurações da sua conta e do sistema.",
     "errorLoading": "Erro ao carregar dados de configurações.",
     "retry": "Tentar Novamente",
+    "reload": "Recarregar",
     "pwa": {
       "title": "Aplicativo da igreja",
       "description": "Defina como o aplicativo será identificado quando for instalado no celular. A logo institucional e o ícone do app são arquivos independentes.",

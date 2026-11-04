@@ -296,7 +296,7 @@
       "pageDescription": "Consulte os ministérios em leitura rápida, com líderes, funções e resumo operacional.",
       "filter": {
         "nameLabel": "Nome do ministério",
-        "namePlaceholder": "Pesquisar ministério pelo nome",
+        "namePlaceholder": "Pesquisar por nome...",
         "structureLabel": "Composição",
         "structureAll": "Todos",
         "structureLeaders": "Com liderança",
@@ -717,6 +717,7 @@
     "description": "Gira as definições da sua conta e do sistema.",
     "errorLoading": "Erro ao carregar dados de configurações.",
     "retry": "Tentar novamente",
+    "reload": "Recarregar",
     "pwa": {
       "title": "Aplicação da igreja",
       "description": "Defina como a aplicação será identificada quando for instalada no telemóvel. O logótipo institucional e o ícone da aplicação são ficheiros independentes.",
