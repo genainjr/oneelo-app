@@ -18,6 +18,7 @@ import {
   validateImageUpload,
 } from '../../common/storage/image-upload';
 import { includesNormalizedText } from '../../common/utils/search-text';
+import { canAddMember, getEffectiveMemberLimit } from '../../common/utils/tenant-plan';
 
 const memberListInclude = {
   tags: {
