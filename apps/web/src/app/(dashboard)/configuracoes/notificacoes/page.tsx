@@ -28,6 +28,7 @@ import { useFilterState } from "@/hooks/use-filter-state";
 import { StatusBadge } from "@/components/app/status-badge";
 import { EmptyState } from "@/components/app/empty-state";
 import { ModalShell, ModalError } from "@/components/app/modal-shell";
+import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { InputField, SelectField, TextareaField } from "@/components/app/form-field";
 import { useAuthUser } from "@/contexts/auth-user-context";
 import { api, buildQuery } from "@/lib/api";
@@ -167,6 +168,10 @@ export default function CentralNotificacoesPage() {
     scheduledAt: "",
   });
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Diálogo de Confirmação de Cancelamento
+  const [cancelingItem, setCancelingItem] = useState<{ id: string; titulo: string } | null>(null);
+  const [cancelingLoading, setCancelingLoading] = useState(false);
 
   const [appliedFilters, setAppliedFilters] = useState<NotificationFilterState>(EMPTY_FILTERS);
 
@@ -343,16 +348,25 @@ export default function CentralNotificacoesPage() {
     setCreateModalOpen(true);
   };
 
-  const handleCancelNotification = async (id: string) => {
-    if (!window.confirm("Deseja realmente cancelar esta notificação agendada?")) {
-      return;
-    }
+  const requestCancelNotification = (id: string, titulo: string) => {
+    setCancelingItem({ id, titulo });
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelingItem) return;
     try {
-      await api.post(`/api/notifications/${id}/cancel`);
+      setCancelingLoading(true);
+      await api.post(`/api/notifications/${cancelingItem.id}/cancel`);
+      setCancelingItem(null);
+      if (detailModalOpen && selectedNotificationId === cancelingItem.id) {
+        setDetailModalOpen(false);
+      }
       await loadNotifications(true);
     } catch (err: any) {
       const msg = err?.data?.message || err?.message || "Erro ao cancelar notificação.";
       alert(Array.isArray(msg) ? msg.join(", ") : msg);
+    } finally {
+      setCancelingLoading(false);
     }
   };
 
@@ -550,7 +564,7 @@ export default function CentralNotificacoesPage() {
                 <span className="hidden sm:inline">Editar</span>
               </button>
               <button
-                onClick={() => handleCancelNotification(item.id)}
+                onClick={() => requestCancelNotification(item.id, item.titulo)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition"
                 title="Cancelar agendamento"
               >
@@ -757,33 +771,6 @@ export default function CentralNotificacoesPage() {
             >
               Fechar
             </button>
-            {detailData && detailData.notification.status === "SCHEDULED" && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const item = items.find((i) => i.id === detailData.notification.id);
-                    setDetailModalOpen(false);
-                    if (item) openEditModal(item);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition-all"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  Editar Agendamento
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await handleCancelNotification(detailData.notification.id);
-                    setDetailModalOpen(false);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition-all"
-                >
-                  <Ban className="w-4 h-4" />
-                  Cancelar Agendamento
-                </button>
-              </>
-            )}
             {detailData && detailData.stats.failed > 0 && (
               <button
                 type="button"
@@ -1162,6 +1149,23 @@ export default function CentralNotificacoesPage() {
           </div>
         </form>
       </ModalShell>
+
+      {/* Modal Padrão de Confirmação de Cancelamento */}
+      <ConfirmDialog
+        isOpen={Boolean(cancelingItem)}
+        title="Cancelar Notificação Agendada"
+        description={
+          cancelingItem
+            ? `Tem certeza que deseja cancelar o envio do comunicado "${cancelingItem.titulo}"? O disparo programado será cancelado na fila e não poderá ser desfeito.`
+            : ""
+        }
+        confirmLabel="Sim, Cancelar Envio"
+        cancelLabel="Voltar"
+        variant="danger"
+        loading={cancelingLoading}
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setCancelingItem(null)}
+      />
     </div>
   );
 }
