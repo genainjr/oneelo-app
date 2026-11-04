@@ -45,6 +45,13 @@ export class NotificationsController {
     return this.notificationDispatch.listNotifications(tenantId, query);
   }
 
+  @Get('recipients/available')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  getAvailableRecipients(@Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    return this.notificationDispatch.getAvailableRecipients(tenantId);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.STAFF)
   findOne(

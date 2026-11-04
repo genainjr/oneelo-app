@@ -129,6 +129,13 @@ const RECIPIENT_STATUS_CONFIG: Record<
   },
 };
 
+interface AvailableRecipient {
+  id: string;
+  nome: string;
+  email: string | null;
+  hasPush: boolean;
+}
+
 export default function CentralNotificacoesPage() {
   const router = useRouter();
   const { user } = useAuthUser();
@@ -158,12 +165,16 @@ export default function CentralNotificacoesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [ministerios, setMinisterios] = useState<Array<{ id: string; nome: string }>>([]);
+  const [availableUsers, setAvailableUsers] = useState<AvailableRecipient[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
   const [createForm, setCreateForm] = useState({
     titulo: "",
     mensagem: "",
     urlDestino: "/personal-panel",
     tipoPublico: "ALL_MEMBERS" as NotificationAudienceType,
     ministerioId: "",
+    userIds: [] as string[],
     isScheduled: false,
     scheduledAt: "",
   });
@@ -251,6 +262,18 @@ export default function CentralNotificacoesPage() {
     }
   }, []);
 
+  const loadAvailableUsers = useCallback(async () => {
+    try {
+      setLoadingUsers(true);
+      const res = await api.get<AvailableRecipient[]>("/api/notifications/recipients/available");
+      setAvailableUsers(res);
+    } catch {
+      // Ignora erro ao carregar usuários
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, []);
+
   const openDetailModal = async (id: string, page = 1) => {
     setSelectedNotificationId(id);
     setRecipientPage(page);
@@ -318,12 +341,15 @@ export default function CentralNotificacoesPage() {
       urlDestino: "/personal-panel",
       tipoPublico: "ALL_MEMBERS",
       ministerioId: "",
+      userIds: [],
       isScheduled: false,
       scheduledAt: "",
     });
+    setUserSearch("");
     setCreateError(null);
     setCreateModalOpen(true);
     loadMinisterios();
+    loadAvailableUsers();
   };
 
   const openEditModal = (item: NotificationItem) => {
@@ -341,6 +367,7 @@ export default function CentralNotificacoesPage() {
       urlDestino: item.urlDestino || "/personal-panel",
       tipoPublico: item.tipoPublico,
       ministerioId: item.ministerio?.id || "",
+      userIds: [],
       isScheduled: Boolean(item.scheduledAt),
       scheduledAt: schedDate,
     });
@@ -386,6 +413,10 @@ export default function CentralNotificacoesPage() {
       setCreateError("Selecione o ministério de destino.");
       return;
     }
+    if (!editingId && createForm.tipoPublico === "SPECIFIC_USERS" && createForm.userIds.length === 0) {
+      setCreateError("Selecione pelo menos um usuário destinatário.");
+      return;
+    }
     if (createForm.isScheduled && !createForm.scheduledAt) {
       setCreateError("Selecione a data e hora do agendamento.");
       return;
@@ -414,6 +445,10 @@ export default function CentralNotificacoesPage() {
             createForm.tipoPublico === "MINISTRY"
               ? createForm.ministerioId
               : undefined,
+          userIds:
+            createForm.tipoPublico === "SPECIFIC_USERS"
+              ? createForm.userIds
+              : undefined,
           scheduledAt:
             createForm.isScheduled && createForm.scheduledAt
               ? new Date(createForm.scheduledAt).toISOString()
@@ -434,6 +469,15 @@ export default function CentralNotificacoesPage() {
       setCreating(false);
     }
   };
+
+  const filteredUsers = availableUsers.filter((u) => {
+    if (!userSearch.trim()) return true;
+    const term = userSearch.toLowerCase();
+    return (
+      u.nome.toLowerCase().includes(term) ||
+      (u.email ? u.email.toLowerCase().includes(term) : false)
+    );
+  });
 
   const columns: Column<NotificationItem>[] = [
     {
@@ -1103,6 +1147,7 @@ export default function CentralNotificacoesPage() {
               >
                 <option value="ALL_MEMBERS">Toda a Igreja (Todos os Membros)</option>
                 <option value="MINISTRY">Membros de um Ministério</option>
+                <option value="SPECIFIC_USERS">Usuários Específicos</option>
               </SelectField>
 
               {createForm.tipoPublico === "MINISTRY" && (
@@ -1125,6 +1170,111 @@ export default function CentralNotificacoesPage() {
                     </option>
                   ))}
                 </SelectField>
+              )}
+
+              {createForm.tipoPublico === "SPECIFIC_USERS" && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <label className="font-semibold text-gray-700">
+                      Selecionar Usuários ({createForm.userIds.length} selecionado{createForm.userIds.length !== 1 ? "s" : ""})
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allWithPush = availableUsers.filter((u) => u.hasPush).map((u) => u.id);
+                          setCreateForm((prev) => ({
+                            ...prev,
+                            userIds: Array.from(new Set([...prev.userIds, ...allWithPush])),
+                          }));
+                        }}
+                        className="text-xs font-medium text-indigo-600 hover:underline"
+                      >
+                        Com push ({availableUsers.filter((u) => u.hasPush).length})
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setCreateForm((prev) => ({ ...prev, userIds: [] }))}
+                        className="text-xs text-gray-500 hover:underline"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Filtrar por nome ou e-mail..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
+
+                  {loadingUsers ? (
+                    <div className="py-6 text-center text-xs text-gray-400">
+                      Carregando usuários disponíveis...
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto divide-y divide-gray-100 rounded-xl border border-gray-200 bg-gray-50/50 p-1">
+                      {filteredUsers.length === 0 ? (
+                        <div className="p-3 text-center text-xs text-gray-400">
+                          Nenhum usuário encontrado.
+                        </div>
+                      ) : (
+                        filteredUsers.map((u) => {
+                          const isSelected = createForm.userIds.includes(u.id);
+                          return (
+                            <label
+                              key={u.id}
+                              className="flex items-center justify-between p-2 hover:bg-white rounded-lg cursor-pointer transition text-xs"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCreateForm((prev) => ({
+                                        ...prev,
+                                        userIds: [...prev.userIds, u.id],
+                                      }));
+                                    } else {
+                                      setCreateForm((prev) => ({
+                                        ...prev,
+                                        userIds: prev.userIds.filter((id) => id !== u.id),
+                                      }));
+                                    }
+                                  }}
+                                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 truncate">
+                                    {u.nome}
+                                  </p>
+                                  {u.email && (
+                                    <p className="text-[10px] text-gray-400 truncate">
+                                      {u.email}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ml-2 ${
+                                  u.hasPush
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-gray-100 text-gray-400"
+                                }`}
+                              >
+                                {u.hasPush ? "Push ativo" : "Sem push"}
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </>
           )}

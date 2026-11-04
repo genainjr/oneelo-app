@@ -702,4 +702,43 @@ export class NotificationDispatchService {
       userIds: dto.userIds,
     });
   }
+
+  /**
+   * Lista usuários ativos do tenant para seleção em notificações direcionadas.
+   */
+  async getAvailableRecipients(tenantId: string) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        tenantId,
+        ativo: true,
+        status: UserStatus.ACTIVE,
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        membro: {
+          select: {
+            nome: true,
+            nomeExibicao: true,
+          },
+        },
+        _count: {
+          select: {
+            pushSubscriptions: {
+              where: { ativo: true },
+            },
+          },
+        },
+      },
+      orderBy: { nome: 'asc' },
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      nome: u.membro?.nomeExibicao || u.membro?.nome || u.nome,
+      email: u.email,
+      hasPush: u._count.pushSubscriptions > 0,
+    }));
+  }
 }
