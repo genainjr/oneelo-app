@@ -744,7 +744,7 @@ describe('EscalasService - visualizacao scope', () => {
     return { service, prisma };
   }
 
-  it('restringe BASIC aos ministerios em que e lider ou co-lider', async () => {
+  it('restringe BASIC aos ministerios em que participa', async () => {
     const { service, prisma } = createService([{ ministerioId }]);
 
     await service.findVisualizacao(tenantId, {}, basicUser);
@@ -752,7 +752,10 @@ describe('EscalasService - visualizacao scope', () => {
     expect(prisma.ministerioMembro.findMany).toHaveBeenCalledWith({
       where: expect.objectContaining({
         membroId: basicUser.memberId,
-        role: { in: ['LEADER', 'ASSISTANT_LEADER'] },
+        ministerio: {
+          ativo: true,
+          escalas: { some: {} },
+        },
       }),
       select: { ministerioId: true },
     });
@@ -766,7 +769,7 @@ describe('EscalasService - visualizacao scope', () => {
     );
   });
 
-  it('nao consulta escalas quando BASIC nao lidera nenhum ministerio', async () => {
+  it('nao consulta escalas quando BASIC nao participa de nenhum ministerio com escalas', async () => {
     const { service, prisma } = createService([]);
 
     await expect(
