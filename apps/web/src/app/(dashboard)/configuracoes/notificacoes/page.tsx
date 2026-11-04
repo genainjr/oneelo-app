@@ -16,6 +16,8 @@ import {
   Users,
   Building,
   RotateCcw,
+  Edit2,
+  Ban,
 } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { StatCard } from "@/components/app/stat-card";
@@ -150,8 +152,9 @@ export default function CentralNotificacoesPage() {
   const [retrying, setRetrying] = useState(false);
   const [recipientPage, setRecipientPage] = useState(1);
 
-  // Modal de Criação Manual
+  // Modal de Criação / Edição Manual
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [ministerios, setMinisterios] = useState<Array<{ id: string; nome: string }>>([]);
   const [createForm, setCreateForm] = useState({
@@ -213,11 +216,17 @@ export default function CentralNotificacoesPage() {
     loadNotifications();
   }, [loadNotifications]);
 
-  // Polling automático suave enquanto houver notificações em processamento ou pendentes
+  // Polling automático suave enquanto houver notificações em processamento, pendentes ou agendadas prontas para envio
   useEffect(() => {
-    const hasActiveItems = items.some(
-      (item) => item.status === "PENDING" || item.status === "PROCESSING"
-    );
+    const now = Date.now();
+    const hasActiveItems = items.some((item) => {
+      if (item.status === "PENDING" || item.status === "PROCESSING") return true;
+      if (item.status === "SCHEDULED") {
+        const schedTime = new Date(item.scheduledAt).getTime();
+        return schedTime <= now + 60000;
+      }
+      return false;
+    });
 
     if (!hasActiveItems) return;
 
@@ -297,6 +306,7 @@ export default function CentralNotificacoesPage() {
   };
 
   const openCreateModal = () => {
+    setEditingId(null);
     setCreateForm({
       titulo: "",
       mensagem: "",
@@ -311,6 +321,41 @@ export default function CentralNotificacoesPage() {
     loadMinisterios();
   };
 
+  const openEditModal = (item: NotificationItem) => {
+    setEditingId(item.id);
+    let schedDate = "";
+    if (item.scheduledAt) {
+      const d = new Date(item.scheduledAt);
+      // Ajuste local para datetime-local (YYYY-MM-DDTHH:mm)
+      const tzOffset = d.getTimezoneOffset() * 60000;
+      schedDate = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+    }
+    setCreateForm({
+      titulo: item.titulo,
+      mensagem: item.mensagem,
+      urlDestino: item.urlDestino || "/personal-panel",
+      tipoPublico: item.tipoPublico,
+      ministerioId: item.ministerio?.id || "",
+      isScheduled: Boolean(item.scheduledAt),
+      scheduledAt: schedDate,
+    });
+    setCreateError(null);
+    setCreateModalOpen(true);
+  };
+
+  const handleCancelNotification = async (id: string) => {
+    if (!window.confirm("Deseja realmente cancelar esta notificação agendada?")) {
+      return;
+    }
+    try {
+      await api.post(`/api/notifications/${id}/cancel`);
+      await loadNotifications(true);
+    } catch (err: any) {
+      const msg = err?.data?.message || err?.message || "Erro ao cancelar notificação.";
+      alert(Array.isArray(msg) ? msg.join(", ") : msg);
+    }
+  };
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
@@ -323,7 +368,7 @@ export default function CentralNotificacoesPage() {
       setCreateError("A mensagem é obrigatória.");
       return;
     }
-    if (createForm.tipoPublico === "MINISTRY" && !createForm.ministerioId) {
+    if (!editingId && createForm.tipoPublico === "MINISTRY" && !createForm.ministerioId) {
       setCreateError("Selecione o ministério de destino.");
       return;
     }
@@ -334,25 +379,42 @@ export default function CentralNotificacoesPage() {
 
     try {
       setCreating(true);
-      await api.post("/api/notifications/manual", {
-        titulo: createForm.titulo.trim(),
-        mensagem: createForm.mensagem.trim(),
-        urlDestino: createForm.urlDestino?.trim() || "/personal-panel",
-        tipoPublico: createForm.tipoPublico,
-        ministerioId:
-          createForm.tipoPublico === "MINISTRY"
-            ? createForm.ministerioId
-            : undefined,
-        scheduledAt:
-          createForm.isScheduled && createForm.scheduledAt
-            ? new Date(createForm.scheduledAt).toISOString()
-            : undefined,
-      });
+
+      if (editingId) {
+        await api.patch(`/api/notifications/${editingId}`, {
+          titulo: createForm.titulo.trim(),
+          mensagem: createForm.mensagem.trim(),
+          urlDestino: createForm.urlDestino?.trim() || "/personal-panel",
+          scheduledAt:
+            createForm.isScheduled && createForm.scheduledAt
+              ? new Date(createForm.scheduledAt).toISOString()
+              : undefined,
+        });
+      } else {
+        await api.post("/api/notifications/manual", {
+          titulo: createForm.titulo.trim(),
+          mensagem: createForm.mensagem.trim(),
+          urlDestino: createForm.urlDestino?.trim() || "/personal-panel",
+          tipoPublico: createForm.tipoPublico,
+          ministerioId:
+            createForm.tipoPublico === "MINISTRY"
+              ? createForm.ministerioId
+              : undefined,
+          scheduledAt:
+            createForm.isScheduled && createForm.scheduledAt
+              ? new Date(createForm.scheduledAt).toISOString()
+              : undefined,
+        });
+      }
 
       setCreateModalOpen(false);
+      setEditingId(null);
       await loadNotifications();
     } catch (err: any) {
-      const msg = err?.data?.message || err?.message || "Erro ao criar comunicado.";
+      const msg =
+        err?.data?.message ||
+        err?.message ||
+        (editingId ? "Erro ao atualizar comunicado." : "Erro ao criar comunicado.");
       setCreateError(Array.isArray(msg) ? msg.join(", ") : msg);
     } finally {
       setCreating(false);
@@ -476,14 +538,36 @@ export default function CentralNotificacoesPage() {
       header: "",
       className: "text-right",
       render: (item) => (
-        <button
-          onClick={() => openDetailModal(item.id)}
-          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition"
-          title="Ver detalhes de entrega"
-        >
-          <Eye className="w-3.5 h-3.5 text-gray-500" />
-          <span>Detalhes</span>
-        </button>
+        <div className="flex items-center justify-end gap-1.5">
+          {item.status === "SCHEDULED" && (
+            <>
+              <button
+                onClick={() => openEditModal(item)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition"
+                title="Editar agendamento"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Editar</span>
+              </button>
+              <button
+                onClick={() => handleCancelNotification(item.id)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition"
+                title="Cancelar agendamento"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cancelar</span>
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => openDetailModal(item.id)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition"
+            title="Ver detalhes de entrega"
+          >
+            <Eye className="w-3.5 h-3.5 text-gray-500" />
+            <span>Detalhes</span>
+          </button>
+        </div>
       ),
     },
   ];
@@ -495,13 +579,25 @@ export default function CentralNotificacoesPage() {
         description="Histórico, auditoria de entregas e comunicados manuais com Web Push."
         stackActionsOnMobile
         action={
-          <button
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Novo Comunicado</span>
-          </button>
+          <div className="flex items-center gap-2 max-sm:w-full">
+            <button
+              type="button"
+              onClick={() => loadNotifications(false)}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl shadow-sm transition disabled:opacity-60"
+              title="Atualizar lista"
+            >
+              <RotateCcw className={`w-4 h-4 text-gray-500 ${loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
+            <button
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo Comunicado</span>
+            </button>
+          </div>
         }
       />
 
@@ -641,7 +737,10 @@ export default function CentralNotificacoesPage() {
       {/* Modal de Detalhes e Auditoria */}
       <ModalShell
         isOpen={detailModalOpen}
-        onClose={() => setDetailModalOpen(false)}
+        onClose={() => {
+          setDetailModalOpen(false);
+          loadNotifications(true);
+        }}
         title="Detalhes da Notificação"
         description="Auditoria de envio e entrega por destinatário"
         size="lg"
@@ -650,11 +749,41 @@ export default function CentralNotificacoesPage() {
           <>
             <button
               type="button"
-              onClick={() => setDetailModalOpen(false)}
+              onClick={() => {
+                setDetailModalOpen(false);
+                loadNotifications(true);
+              }}
               className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
             >
               Fechar
             </button>
+            {detailData && detailData.notification.status === "SCHEDULED" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const item = items.find((i) => i.id === detailData.notification.id);
+                    setDetailModalOpen(false);
+                    if (item) openEditModal(item);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition-all"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Editar Agendamento
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleCancelNotification(detailData.notification.id);
+                    setDetailModalOpen(false);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition-all"
+                >
+                  <Ban className="w-4 h-4" />
+                  Cancelar Agendamento
+                </button>
+              </>
+            )}
             {detailData && detailData.stats.failed > 0 && (
               <button
                 type="button"
@@ -865,19 +994,29 @@ export default function CentralNotificacoesPage() {
         ) : null}
       </ModalShell>
 
-      {/* Modal de Criação de Comunicado Manual */}
+      {/* Modal de Criação / Edição de Comunicado */}
       <ModalShell
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        title="Novo Comunicado Web Push"
-        description="Envie um comunicado para toda a igreja ou um ministério específico"
+        onClose={() => {
+          setCreateModalOpen(false);
+          setEditingId(null);
+        }}
+        title={editingId ? "Editar Comunicado Agendado" : "Novo Comunicado Web Push"}
+        description={
+          editingId
+            ? "Atualize o conteúdo e a data/hora programada deste comunicado"
+            : "Envie um comunicado para toda a igreja ou um ministério específico"
+        }
         size="md"
         bodyClassName="p-6"
         footer={
           <>
             <button
               type="button"
-              onClick={() => setCreateModalOpen(false)}
+              onClick={() => {
+                setCreateModalOpen(false);
+                setEditingId(null);
+              }}
               disabled={creating}
               className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-60"
             >
@@ -889,7 +1028,13 @@ export default function CentralNotificacoesPage() {
               disabled={creating}
               className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
             >
-              {creating ? "Disparando..." : "Disparar Comunicado"}
+              {creating
+                ? "Salvando..."
+                : editingId
+                  ? "Salvar Alterações"
+                  : createForm.isScheduled
+                    ? "Agendar Comunicado"
+                    : "Disparar Comunicado"}
             </button>
           </>
         }
@@ -938,65 +1083,71 @@ export default function CentralNotificacoesPage() {
             }
           />
 
-          <SelectField
-            id="tipoPublico"
-            label="Público Alvo"
-            required
-            value={createForm.tipoPublico}
-            onChange={(e) =>
-              setCreateForm((prev) => ({
-                ...prev,
-                tipoPublico: e.target.value as NotificationAudienceType,
-              }))
-            }
-          >
-            <option value="ALL_MEMBERS">Toda a Igreja (Todos os Membros)</option>
-            <option value="MINISTRY">Membros de um Ministério</option>
-          </SelectField>
+          {!editingId && (
+            <>
+              <SelectField
+                id="tipoPublico"
+                label="Público Alvo"
+                required
+                value={createForm.tipoPublico}
+                onChange={(e) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    tipoPublico: e.target.value as NotificationAudienceType,
+                  }))
+                }
+              >
+                <option value="ALL_MEMBERS">Toda a Igreja (Todos os Membros)</option>
+                <option value="MINISTRY">Membros de um Ministério</option>
+              </SelectField>
 
-          {createForm.tipoPublico === "MINISTRY" && (
-            <SelectField
-              id="ministerioId"
-              label="Selecione o Ministério"
-              required
-              value={createForm.ministerioId}
-              onChange={(e) =>
-                setCreateForm((prev) => ({
-                  ...prev,
-                  ministerioId: e.target.value,
-                }))
-              }
-            >
-              <option value="">Selecione um ministério...</option>
-              {ministerios.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nome}
-                </option>
-              ))}
-            </SelectField>
+              {createForm.tipoPublico === "MINISTRY" && (
+                <SelectField
+                  id="ministerioId"
+                  label="Selecione o Ministério"
+                  required
+                  value={createForm.ministerioId}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      ministerioId: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Selecione um ministério...</option>
+                  {ministerios.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </SelectField>
+              )}
+            </>
           )}
 
           {/* Agendamento */}
           <div className="pt-2 border-t border-gray-100 space-y-3">
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={createForm.isScheduled}
-                onChange={(e) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    isScheduled: e.target.checked,
-                  }))
-                }
-                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="font-medium">Agendar envio para data e hora futura</span>
-            </label>
+            {!editingId && (
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={createForm.isScheduled}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      isScheduled: e.target.checked,
+                    }))
+                  }
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="font-medium">Agendar envio para data e hora futura</span>
+              </label>
+            )}
 
-            {createForm.isScheduled && (
+            {(createForm.isScheduled || editingId) && (
               <InputField
                 id="scheduledAt"
-                label="Data e Hora do Disparo"
+                label={editingId ? "Nova Data e Hora do Disparo" : "Data e Hora do Disparo"}
                 type="datetime-local"
                 required
                 value={createForm.scheduledAt}

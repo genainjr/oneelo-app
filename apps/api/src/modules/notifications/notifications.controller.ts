@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -21,6 +22,7 @@ import {
 import { FilterNotificationsDto } from './dto/filter-notifications.dto';
 import { FilterRecipientsDto } from './dto/filter-recipients.dto';
 import { CreateManualNotificationDto } from './dto/create-manual-notification.dto';
+import { UpdateScheduledNotificationDto } from './dto/update-scheduled-notification.dto';
 import { NotificationsService } from './notifications.service';
 import { NotificationDispatchService } from './services/notification-dispatch.service';
 
@@ -59,6 +61,24 @@ export class NotificationsController {
   retry(@Param('id') id: string, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.notificationDispatch.retryFailedRecipients(tenantId, id);
+  }
+
+  @Post(':id/cancel')
+  @Roles(Role.ADMIN, Role.STAFF)
+  cancel(@Param('id') id: string, @Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    return this.notificationDispatch.cancelNotification(id, tenantId);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.STAFF)
+  updateScheduled(
+    @Param('id') id: string,
+    @Body() dto: UpdateScheduledNotificationDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    return this.notificationDispatch.updateScheduledNotification(tenantId, id, dto);
   }
 
   @Post('manual')

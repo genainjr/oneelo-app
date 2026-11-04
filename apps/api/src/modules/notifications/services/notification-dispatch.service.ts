@@ -21,6 +21,7 @@ import type { JwtPayload } from '../../../common/types/jwt-payload.interface';
 import { FilterNotificationsDto } from '../dto/filter-notifications.dto';
 import { FilterRecipientsDto } from '../dto/filter-recipients.dto';
 import { CreateManualNotificationDto } from '../dto/create-manual-notification.dto';
+import { UpdateScheduledNotificationDto } from '../dto/update-scheduled-notification.dto';
 
 export interface CreateNotificationInput {
   tenantId: string;
@@ -176,6 +177,51 @@ export class NotificationDispatchService {
       where: { id },
       data: {
         status: NotificationStatus.CANCELED,
+      },
+    });
+  }
+
+  /**
+   * Atualiza dados de uma notificação agendada que ainda não foi disparada.
+   */
+  async updateScheduledNotification(
+    tenantId: string,
+    id: string,
+    dto: UpdateScheduledNotificationDto,
+  ) {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!notification) {
+      throw new NotFoundException('Notificação não encontrada.');
+    }
+
+    if (notification.status !== NotificationStatus.SCHEDULED) {
+      throw new BadRequestException(
+        'Apenas notificações com status "Agendada" podem ser editadas.',
+      );
+    }
+
+    if (dto.scheduledAt) {
+      const scheduledDate = new Date(dto.scheduledAt);
+      if (isNaN(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
+        throw new BadRequestException('A nova data/hora de agendamento deve ser no futuro.');
+      }
+    }
+
+    return this.prisma.notification.update({
+      where: { id },
+      data: {
+        titulo: dto.titulo?.trim() || notification.titulo,
+        mensagem: dto.mensagem?.trim() || notification.mensagem,
+        urlDestino:
+          dto.urlDestino !== undefined
+            ? dto.urlDestino.trim() || '/personal-panel'
+            : notification.urlDestino,
+        scheduledAt: dto.scheduledAt
+          ? new Date(dto.scheduledAt)
+          : notification.scheduledAt,
       },
     });
   }
