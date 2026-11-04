@@ -16,8 +16,8 @@ import {
   Users,
   Building,
   RotateCcw,
-  Edit2,
-  Ban,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { StatCard } from "@/components/app/stat-card";
@@ -556,30 +556,33 @@ export default function CentralNotificacoesPage() {
           {item.status === "SCHEDULED" && (
             <>
               <button
+                type="button"
                 onClick={() => openEditModal(item)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition"
-                title="Editar agendamento"
+                className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+                title="Editar notificação"
+                aria-label="Editar notificação"
               >
-                <Edit2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Editar</span>
+                <Pencil className="w-4 h-4 text-indigo-500" />
               </button>
               <button
+                type="button"
                 onClick={() => requestCancelNotification(item.id, item.titulo)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition"
-                title="Cancelar agendamento"
+                className="p-2 border border-red-100 hover:bg-red-50 rounded-xl text-red-500 bg-white transition-all flex items-center justify-center"
+                title="Cancelar notificação"
+                aria-label="Cancelar notificação"
               >
-                <Ban className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Cancelar</span>
+                <Trash2 className="w-4 h-4 text-red-500" />
               </button>
             </>
           )}
           <button
+            type="button"
             onClick={() => openDetailModal(item.id)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition"
+            className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
             title="Ver detalhes de entrega"
+            aria-label="Ver detalhes de entrega"
           >
-            <Eye className="w-3.5 h-3.5 text-gray-500" />
-            <span>Detalhes</span>
+            <Eye className="w-4 h-4 text-gray-500" />
           </button>
         </div>
       ),
@@ -736,13 +739,39 @@ export default function CentralNotificacoesPage() {
             </div>
             <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-50">
               <span>{formatDateTime(new Date(item.scheduledAt))}</span>
-              <button
-                onClick={() => openDetailModal(item.id)}
-                className="text-indigo-600 font-medium hover:underline flex items-center gap-1"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                Detalhes
-              </button>
+              <div className="flex items-center gap-1.5">
+                {item.status === "SCHEDULED" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(item)}
+                      className="p-1.5 border border-gray-200 hover:border-gray-300 rounded-lg text-gray-600 bg-white transition-all flex items-center justify-center"
+                      title="Editar notificação"
+                      aria-label="Editar notificação"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-indigo-500" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => requestCancelNotification(item.id, item.titulo)}
+                      className="p-1.5 border border-red-100 hover:bg-red-50 rounded-lg text-red-500 bg-white transition-all flex items-center justify-center"
+                      title="Cancelar notificação"
+                      aria-label="Cancelar notificação"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => openDetailModal(item.id)}
+                  className="p-1.5 border border-gray-200 hover:border-gray-300 rounded-lg text-gray-600 bg-white transition-all flex items-center justify-center"
+                  title="Ver detalhes de entrega"
+                  aria-label="Ver detalhes de entrega"
+                >
+                  <Eye className="w-3.5 h-3.5 text-gray-500" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1153,13 +1182,13 @@ export default function CentralNotificacoesPage() {
       {/* Modal Padrão de Confirmação de Cancelamento */}
       <ConfirmDialog
         isOpen={Boolean(cancelingItem)}
-        title="Cancelar Notificação Agendada"
+        title="Cancelar notificação"
         description={
           cancelingItem
-            ? `Tem certeza que deseja cancelar o envio do comunicado "${cancelingItem.titulo}"? O disparo programado será cancelado na fila e não poderá ser desfeito.`
+            ? `Tem certeza que deseja cancelar o envio da notificação "${cancelingItem.titulo}"? Esta ação não pode ser desfeita.`
             : ""
         }
-        confirmLabel="Sim, Cancelar Envio"
+        confirmLabel="Cancelar notificação"
         cancelLabel="Voltar"
         variant="danger"
         loading={cancelingLoading}
