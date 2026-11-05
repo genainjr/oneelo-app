@@ -82,7 +82,7 @@ export function middleware(request: NextRequest) {
       '/grupos',
       '/integracoes',
     ];
-    const allowedBasicPaths = ['/membros/visualizacao'];
+    const allowedBasicPaths = ['/membros/visualizacao', '/configuracoes/notificacoes'];
 
     if (allowedBasicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
       return NextResponse.next();
