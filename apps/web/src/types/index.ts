@@ -535,3 +535,33 @@ export interface NotificationListResponse {
   };
   metrics: NotificationMetrics;
 }
+
+export type NotificationAutomationType =
+  | 'BIRTHDAY_PERSONAL'
+  | 'BIRTHDAY_COMMUNITY'
+  | 'SCHEDULE_DAY_REMINDER'
+  | 'SCHEDULE_CONFIRMATION_24H'
+  | 'EVENT_REMINDER_BEFORE';
+
+export interface NotificationAutomationRule {
+  id: string | null;
+  tipo: NotificationAutomationType;
+  nome: string;
+  descricao: string;
+  ativo: boolean;
+  horario: string | null;
+  antecedenciaHoras: number | null;
+  titulo: string;
+  mensagem: string;
+  isCustom: boolean;
+  variaveisDisponiveis: string[];
+  updatedAt?: string | null;
+}
+
+export interface UserNotificationPreference {
+  userId: string;
+  tenantId: string;
+  notifyBirthdays: boolean;
+  notifyEvents: boolean;
+  notifySchedules: boolean;
+}

@@ -18,8 +18,10 @@ import {
   RotateCcw,
   Pencil,
   Trash2,
+  Sliders,
 } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
+import { NotificationAutomationRulesPanel } from "@/components/app/notification-automation-rules-panel";
 import { StatCard } from "@/components/app/stat-card";
 import { DataTable, Column } from "@/components/app/data-table";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
@@ -141,6 +143,7 @@ export default function CentralNotificacoesPage() {
   const { user } = useAuthUser();
   const { formatDateTime } = useDateFormatter();
 
+  const [activeTab, setActiveTab] = useState<"envios" | "regras">("envios");
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -640,17 +643,53 @@ export default function CentralNotificacoesPage() {
         description="Histórico, auditoria de entregas e envio de notificações."
         stackActionsOnMobile
         action={
-          <button
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nova Notificação</span>
-          </button>
+          activeTab === "envios" ? (
+            <button
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nova Notificação</span>
+            </button>
+          ) : undefined
         }
       />
 
-      {/* Métricas Globais */}
+      {/* Abas */}
+      <div className="border-b border-gray-200">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab("envios")}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
+              activeTab === "envios"
+                ? "bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600"
+                : "text-gray-500 hover:text-gray-700 sm:border-transparent"
+            }`}
+          >
+            <Bell className="w-4 h-4 shrink-0" />
+            <span>Notificações e Envios</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("regras")}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
+              activeTab === "regras"
+                ? "bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600"
+                : "text-gray-500 hover:text-gray-700 sm:border-transparent"
+            }`}
+          >
+            <Sliders className="w-4 h-4 shrink-0" />
+            <span>Regras Automáticas</span>
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "regras" ? (
+        <NotificationAutomationRulesPanel />
+      ) : (
+        <>
+          {/* Métricas Globais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Enviadas com Sucesso"
@@ -808,6 +847,8 @@ export default function CentralNotificacoesPage() {
           </div>
         )}
       />
+    </>
+  )}
 
       {/* Modal de Detalhes e Auditoria */}
       <ModalShell

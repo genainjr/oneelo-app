@@ -108,12 +108,12 @@ Status: concluido
 - Critério de validação da etapa: Testes unitários passando com `npm test -w apps/api`.
 
 ### Etapa 4 - Interface de Regras Automáticas na Central de Notificações (Frontend)
-Status: planejado
+Status: concluido
 
-- [ ] Adicionar sistema de abas na tela `Central de Notificações`: `Envios e Histórico` vs `Regras Automáticas`.
-- [ ] Criar cartões configuráveis para cada tipo de automação com toggles, horários, seletores de antecedência e campos de título e mensagem.
-- [ ] Exibir guia de variáveis dinâmicas disponíveis (`{nome}`, `{ministerio}`, etc.) com botões de clique rápido para inserção.
-- [ ] Botão de "Restaurar Padrão" para cada regra.
+- [x] Adicionar sistema de abas na tela `Central de Notificações`: `Envios e Histórico` vs `Regras Automáticas`.
+- [x] Criar cartões configuráveis para cada tipo de automação com toggles, horários, seletores de antecedência e campos de título e mensagem.
+- [x] Exibir guia de variáveis dinâmicas disponíveis (`{nome}`, `{ministerio}`, etc.) com botões de clique rápido para inserção.
+- [x] Botão de "Restaurar Padrão" para cada regra.
 - Critério de validação da etapa: Build do Next.js sem erros com `npm run build -w apps/web`.
 
 ### Etapa 5 - Interface de Notificações no Meu Perfil (Frontend)
