@@ -42,7 +42,10 @@ describe('NotificationDispatchService', () => {
         findMany: jest.fn(),
       },
       pushSubscription: {
-        findMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      userNotificationPreference: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
     };
 
@@ -240,6 +243,58 @@ describe('NotificationDispatchService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             status: NotificationStatus.COMPLETED,
+          }),
+        }),
+      );
+    });
+
+    it('deve excluir destinatários que desativaram a categoria nas preferências pessoais', async () => {
+      prisma.notification.findUnique.mockResolvedValue(null);
+      prisma.user.findMany.mockResolvedValue([
+        { id: 'user-comum' },
+        { id: 'user-que-desativou-aniversarios' },
+      ]);
+      prisma.userNotificationPreference.findMany.mockResolvedValue([
+        { userId: 'user-que-desativou-aniversarios' },
+      ]);
+      prisma.pushSubscription.findMany.mockResolvedValue([
+        { userId: 'user-comum' },
+      ]);
+      prisma.notification.create.mockImplementation(({ data }: any) => ({
+        id: 'notif-filtered',
+        ...data,
+      }));
+
+      await service.createNotification({
+        tenantId: 'tenant-1',
+        titulo: 'Aniversariantes',
+        mensagem: 'Parabéns aos aniversariantes',
+        origem: NotificationOrigin.SYSTEM_AUTOMATION,
+        tipoPublico: NotificationAudienceType.ALL_MEMBERS,
+        idempotencyKey: 'tenant:tenant-1:birthday-community:2026-11-04',
+      });
+
+      expect(prisma.userNotificationPreference.findMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          tenantId: 'tenant-1',
+          OR: [{ notifyBirthdays: false }],
+        }),
+        select: expect.any(Object),
+      });
+
+      expect(prisma.notification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            destinatarios: {
+              createMany: {
+                data: [
+                  {
+                    userId: 'user-comum',
+                    status: RecipientDeliveryStatus.PENDING,
+                  },
+                ],
+              },
+            },
           }),
         }),
       );

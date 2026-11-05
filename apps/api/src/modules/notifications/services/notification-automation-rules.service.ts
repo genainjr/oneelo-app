@@ -247,4 +247,68 @@ export class NotificationAutomationRulesService {
 
     return this.getRules(tenantId);
   }
+
+  async getUserPreferences(userId: string, tenantId: string) {
+    const pref = await this.prisma.userNotificationPreference.findUnique({
+      where: { userId },
+    });
+
+    if (!pref) {
+      return {
+        userId,
+        tenantId,
+        notifyBirthdays: true,
+        notifyEvents: true,
+        notifySchedules: true,
+      };
+    }
+
+    return {
+      userId: pref.userId,
+      tenantId: pref.tenantId,
+      notifyBirthdays: pref.notifyBirthdays,
+      notifyEvents: pref.notifyEvents,
+      notifySchedules: pref.notifySchedules,
+    };
+  }
+
+  async updateUserPreferences(
+    userId: string,
+    tenantId: string,
+    dto: {
+      notifyBirthdays?: boolean;
+      notifyEvents?: boolean;
+      notifySchedules?: boolean;
+    },
+  ) {
+    const updated = await this.prisma.userNotificationPreference.upsert({
+      where: { userId },
+      create: {
+        userId,
+        tenantId,
+        notifyBirthdays: dto.notifyBirthdays ?? true,
+        notifyEvents: dto.notifyEvents ?? true,
+        notifySchedules: dto.notifySchedules ?? true,
+      },
+      update: {
+        ...(dto.notifyBirthdays !== undefined && {
+          notifyBirthdays: dto.notifyBirthdays,
+        }),
+        ...(dto.notifyEvents !== undefined && {
+          notifyEvents: dto.notifyEvents,
+        }),
+        ...(dto.notifySchedules !== undefined && {
+          notifySchedules: dto.notifySchedules,
+        }),
+      },
+    });
+
+    return {
+      userId: updated.userId,
+      tenantId: updated.tenantId,
+      notifyBirthdays: updated.notifyBirthdays,
+      notifyEvents: updated.notifyEvents,
+      notifySchedules: updated.notifySchedules,
+    };
+  }
 }

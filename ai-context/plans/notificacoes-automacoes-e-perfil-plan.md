@@ -100,11 +100,11 @@ Status: concluido
 - Critério de validação da etapa: Testes do módulo de notificações e eventos passando com `npm test -w apps/api`.
 
 ### Etapa 3 - Endpoints e Filtro de Preferências do Usuário (Backend)
-Status: planejado
+Status: concluido
 
-- [ ] Criar endpoints `GET /api/users/me/notification-preferences` e `PATCH /api/users/me/notification-preferences`.
-- [ ] Integrar o filtro de preferências no `NotificationDispatchService` (evitar incluir destinatários que desativaram notificações de aniversários da comunidade ou eventos gerais).
-- [ ] Testes unitários para garantir isolamento por usuário e respeito aos toggles.
+- [x] Criar endpoints `GET /api/users/me/notification-preferences` e `PATCH /api/users/me/notification-preferences`.
+- [x] Integrar o filtro de preferências no `NotificationDispatchService` (evitar incluir destinatários que desativaram notificações de aniversários da comunidade ou eventos gerais).
+- [x] Testes unitários para garantir isolamento por usuário e respeito aos toggles.
 - Critério de validação da etapa: Testes unitários passando com `npm test -w apps/api`.
 
 ### Etapa 4 - Interface de Regras Automáticas na Central de Notificações (Frontend)

@@ -16,6 +16,10 @@ describe('NotificationAutomationRulesService', () => {
       upsert: jest.Mock;
       deleteMany: jest.Mock;
     };
+    userNotificationPreference: {
+      findUnique: jest.Mock;
+      upsert: jest.Mock;
+    };
     $transaction: jest.Mock;
   };
 
@@ -28,6 +32,20 @@ describe('NotificationAutomationRulesService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
         upsert: jest.fn().mockImplementation(({ create }) => Promise.resolve(create)),
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      userNotificationPreference: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        upsert: jest.fn().mockImplementation(({ create, update }) =>
+          Promise.resolve({
+            userId: 'user-1',
+            tenantId,
+            notifyBirthdays: true,
+            notifyEvents: true,
+            notifySchedules: true,
+            ...create,
+            ...update,
+          }),
+        ),
       },
       $transaction: jest.fn().mockImplementation((promises) => Promise.all(promises)),
     };
@@ -186,6 +204,45 @@ describe('NotificationAutomationRulesService', () => {
           tipo: NotificationAutomationType.BIRTHDAY_PERSONAL,
         },
       });
+    });
+  });
+
+  describe('getUserPreferences', () => {
+    it('should return all true defaults when user has no preference record', async () => {
+      prisma.userNotificationPreference.findUnique.mockResolvedValue(null);
+
+      const prefs = await service.getUserPreferences('user-1', tenantId);
+
+      expect(prefs.notifyBirthdays).toBe(true);
+      expect(prefs.notifyEvents).toBe(true);
+      expect(prefs.notifySchedules).toBe(true);
+    });
+
+    it('should return saved preferences when record exists', async () => {
+      prisma.userNotificationPreference.findUnique.mockResolvedValue({
+        userId: 'user-1',
+        tenantId,
+        notifyBirthdays: false,
+        notifyEvents: true,
+        notifySchedules: false,
+      });
+
+      const prefs = await service.getUserPreferences('user-1', tenantId);
+
+      expect(prefs.notifyBirthdays).toBe(false);
+      expect(prefs.notifyEvents).toBe(true);
+      expect(prefs.notifySchedules).toBe(false);
+    });
+  });
+
+  describe('updateUserPreferences', () => {
+    it('should upsert user preferences and return updated values', async () => {
+      const result = await service.updateUserPreferences('user-1', tenantId, {
+        notifyBirthdays: false,
+      });
+
+      expect(prisma.userNotificationPreference.upsert).toHaveBeenCalled();
+      expect(result.notifyBirthdays).toBe(false);
     });
   });
 });

@@ -69,7 +69,12 @@ export class NotificationDispatchService {
     }
 
     // 2. Resolução de destinatários (userIds)
-    const targetUserIds = await this.resolveTargetUserIds(input);
+    const resolvedUserIds = await this.resolveTargetUserIds(input);
+    const targetUserIds = await this.filterUserIdsByPreferences(
+      input.tenantId,
+      resolvedUserIds,
+      input,
+    );
 
     // 3. Verificação de assinaturas ativas de push para definir status inicial
     const usersWithPush = await this.getUsersWithActivePush(input.tenantId, targetUserIds);
@@ -297,6 +302,51 @@ export class NotificationDispatchService {
     }
 
     return [];
+  }
+
+  /**
+   * Filtra os IDs de usuários de acordo com suas preferências individuais de notificação.
+   */
+  private async filterUserIdsByPreferences(
+    tenantId: string,
+    userIds: string[],
+    input: CreateNotificationInput,
+  ): Promise<string[]> {
+    if (userIds.length === 0) return [];
+
+    const isBirthdayCommunity = Boolean(
+      input.idempotencyKey?.includes('birthday-community'),
+    );
+    const isEvent = Boolean(
+      input.idempotencyKey?.includes(':evento:') ||
+        input.urlDestino === '/agenda/visualizacao',
+    );
+    const isSchedule = Boolean(
+      input.idempotencyKey?.includes('escala') ||
+        input.urlDestino?.includes('escalas'),
+    );
+
+    if (!isBirthdayCommunity && !isEvent && !isSchedule) {
+      return userIds;
+    }
+
+    const disabledPrefs = await this.prisma.userNotificationPreference.findMany({
+      where: {
+        tenantId,
+        userId: { in: userIds },
+        OR: [
+          ...(isBirthdayCommunity ? [{ notifyBirthdays: false }] : []),
+          ...(isEvent ? [{ notifyEvents: false }] : []),
+          ...(isSchedule ? [{ notifySchedules: false }] : []),
+        ],
+      },
+      select: { userId: true },
+    });
+
+    if (disabledPrefs.length === 0) return userIds;
+
+    const disabledUserIds = new Set(disabledPrefs.map((p) => p.userId));
+    return userIds.filter((id) => !disabledUserIds.has(id));
   }
 
   /**

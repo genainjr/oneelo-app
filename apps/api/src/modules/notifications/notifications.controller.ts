@@ -28,6 +28,7 @@ import {
   ResetAutomationRuleDto,
   UpdateAutomationRulesDto,
 } from './dto/automation-rule.dto';
+import { UpdateUserNotificationPreferenceDto } from './dto/user-notification-preference.dto';
 import { NotificationsService } from './notifications.service';
 import { NotificationDispatchService } from './services/notification-dispatch.service';
 import { NotificationAutomationRulesService } from './services/notification-automation-rules.service';
@@ -84,6 +85,29 @@ export class NotificationsController {
   ) {
     const tenantId = req['tenantId'] as string;
     return this.automationRulesService.resetRule(tenantId, dto.tipo);
+  }
+
+  @Get('preferences')
+  getMyPreferences(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const tenantId = (req['tenantId'] as string) || user.tenantId!;
+    return this.automationRulesService.getUserPreferences(user.sub, tenantId);
+  }
+
+  @Patch('preferences')
+  updateMyPreferences(
+    @Body() dto: UpdateUserNotificationPreferenceDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const tenantId = (req['tenantId'] as string) || user.tenantId!;
+    return this.automationRulesService.updateUserPreferences(
+      user.sub,
+      tenantId,
+      dto,
+    );
   }
 
   @Get(':id')
