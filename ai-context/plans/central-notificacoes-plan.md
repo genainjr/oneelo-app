@@ -281,12 +281,12 @@ Status: concluído
 ### FATIA 3: Caixa de Entrada In-App (Sino no Cabeçalho) e Confirmação de Leitura
 
 #### Etapa 10 - Modelagem do Campo de Leitura (`read_at`) e Migrations
-Status: planejado
+Status: concluído
 
-- [ ] Adicionar campo `lidoEm DateTime? @map("read_at")` em `NotificationRecipient` no `apps/api/prisma/schema.prisma`.
-- [ ] Adicionar índice `@@index([userId, lidoEm])` em `NotificationRecipient` para otimização de consultas de notificações não lidas.
-- [ ] Gerar migração com `npx prisma migrate dev --name add_notification_read_receipts`.
-- [ ] Executar `npx prisma generate` e validar tipos TypeScript gerados.
+- [x] Adicionar campo `lidoEm DateTime? @map("read_at")` em `NotificationRecipient` no `apps/api/prisma/schema.prisma`.
+- [x] Adicionar índice `@@index([userId, lidoEm])` em `NotificationRecipient` para otimização de consultas de notificações não lidas.
+- [x] Gerar migração com `npx prisma migrate dev --name add_notification_read_receipts`.
+- [x] Executar `npx prisma generate` e validar tipos TypeScript gerados.
 - Critério de validação da etapa: `npx prisma validate` e migration aplicada com sucesso sem quebra de integridade no banco local.
 
 #### Etapa 11 - Endpoints da Caixa de Entrada do Usuário (Inbox API)
