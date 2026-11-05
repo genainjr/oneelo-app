@@ -45,7 +45,7 @@ async function main() {
       slug: 'Resgatando Vidas',
       plano: Plano.PROFISSIONAL,
       statusAssinatura: StatusAssinatura.ATIVA,
-      limiteMembros: 100,
+      limiteMembros: 999999,
       ativo: true,
     },
   });
