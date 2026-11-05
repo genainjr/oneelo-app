@@ -223,7 +223,15 @@ export function NotificationBellInbox() {
         onClick={handleToggleOpen}
         aria-label="Notificações"
         aria-expanded={isOpen}
-        title={unreadCount > 0 ? `${unreadCount} notificação(ões) não lida(s)` : 'Notificações'}
+        title={
+          unreadCount > 0
+            ? `${unreadCount} notificação(ões) não lida(s) • Push no aparelho: ${
+                pushStatus === 'enabled' ? 'Ativo' : 'Desativado'
+              }`
+            : `Notificações • Push no aparelho: ${
+                pushStatus === 'enabled' ? 'Ativo' : 'Desativado'
+              }`
+        }
         className={`relative inline-flex items-center justify-center p-2 rounded-xl border transition-all ${
           isOpen
             ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-xs'
@@ -232,7 +240,19 @@ export function NotificationBellInbox() {
             : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900'
         }`}
       >
-        <Bell className="w-4 h-4 shrink-0" />
+        <div className="relative">
+          <Bell className="w-4 h-4 shrink-0" />
+          {/* Ponto indicador de status do Push (Verde = Ativo, Cinza = Inativo) */}
+          <span
+            className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border-2 border-white transition-colors ${
+              pushStatus === 'enabled'
+                ? 'bg-emerald-500 shadow-2xs'
+                : 'bg-gray-300'
+            }`}
+          />
+        </div>
+
+        {/* Badge vermelho no canto do botão para notificações não lidas */}
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-xs animate-in zoom-in-75">
             {unreadCount > 9 ? '9+' : unreadCount}
