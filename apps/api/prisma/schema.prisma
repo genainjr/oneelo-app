@@ -209,6 +209,16 @@ enum RecipientDeliveryStatus {
   @@map("recipient_delivery_status")
 }
 
+enum NotificationAutomationType {
+  BIRTHDAY_PERSONAL
+  BIRTHDAY_COMMUNITY
+  SCHEDULE_DAY_REMINDER
+  SCHEDULE_CONFIRMATION_24H
+  EVENT_REMINDER_BEFORE
+
+  @@map("notification_automation_type")
+}
+
 model Tenant {
   id               String           @id @default(uuid())
   nome             String           @map("name")
@@ -244,6 +254,8 @@ model Tenant {
   segmentosCulto        SegmentoCulto[]
   compatibilidadesFuncao CompatibilidadeFuncao[]
   notifications         Notification[]
+  notificationAutomationRules NotificationAutomationRule[]
+  userNotificationPreferences UserNotificationPreference[]
 
   @@map("tb_tenant")
 }
@@ -280,6 +292,7 @@ model User {
   financialTransactionsCancelled FinancialTransaction[] @relation("FinancialTransactionCancelledBy")
   notificationsCreated          Notification[]          @relation("NotificationAuthor")
   notificationRecipients        NotificationRecipient[]
+  notificationPreference        UserNotificationPreference?
 
   @@index([tenantId])
   @@index([status])
@@ -790,4 +803,40 @@ model NotificationRecipient {
   @@index([notificationId, status])
   @@index([userId])
   @@map("tb_notification_recipient")
+}
+
+model NotificationAutomationRule {
+  id                String                     @id @default(uuid())
+  tenantId          String                     @map("tenant_id")
+  tipo              NotificationAutomationType @map("type")
+  ativo             Boolean                    @default(true) @map("is_active")
+  horario           String?                    @map("schedule_time")
+  antecedenciaHoras Int?                       @map("lead_time_hours")
+  titulo            String                     @map("title")
+  mensagem          String                     @map("message")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, tipo])
+  @@index([tenantId])
+  @@map("tb_notification_automation_rule")
+}
+
+model UserNotificationPreference {
+  id              String   @id @default(uuid())
+  tenantId        String   @map("tenant_id")
+  userId          String   @unique @map("user_id")
+  notifyBirthdays Boolean  @default(true) @map("notify_birthdays")
+  notifyEvents    Boolean  @default(true) @map("notify_events")
+  notifySchedules Boolean  @default(true) @map("notify_schedules")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("tb_user_notification_preference")
 }
