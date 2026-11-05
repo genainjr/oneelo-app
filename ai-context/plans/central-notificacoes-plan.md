@@ -318,21 +318,21 @@ Status: concluído
 - Critério de validação da etapa: Usuário clica no sino, visualiza as notificações recebidas, o clique marca como lida, diminui o contador no sino e navega para o destino.
 
 #### Etapa 13 - Auditoria de Leitura na Central de Notificações (Visão do Admin/Líder)
-Status: planejado
+Status: concluído
 
-- [ ] Atualizar `GET /notifications/:id` para incluir estatísticas de leitura (`totalRead` e porcentagem de lidas).
-- [ ] No Modal de Detalhes da notificação (`CentralNotificacoesPage`):
+- [x] Atualizar `GET /notifications/:id` para incluir estatísticas de leitura (`totalRead` e porcentagem de lidas).
+- [x] No Modal de Detalhes da notificação (`CentralNotificacoesPage`):
   - Adicionar card de métrica de "Lidas" junto às entregues, na fila e falhas.
   - Na tabela de auditoria de destinatários, exibir coluna indicando o status de leitura (`Lido em DD/MM às HH:mm` ou `Não lido`).
 - Critério de validação da etapa: Ao abrir os detalhes de um envio na Central, o administrador consegue ver quantos e quais membros já leram a mensagem.
 
 #### Etapa 14 - Validação Integrada, Testes e Build Final
-Status: planejado
+Status: concluído
 
-- [ ] Testar fluxo ponta a ponta: membro sem push habilitado recebe notificação no sino, clica, a mensagem é marcada como lida e o admin vê o horário de leitura no relatório.
-- [ ] Executar bateria completa de testes automatizados (`npm test -w apps/api`).
-- [ ] Validar builds de produção (`npm run build -w apps/api` e `npm run build -w apps/web`).
-- [ ] Atualizar documentação de arquitetura em `ai-context/backend/notification-architecture.md`.
+- [x] Testar fluxo ponta a ponta: membro sem push habilitado recebe notificação no sino, clica, a mensagem é marcada como lida e o admin vê o horário de leitura no relatório.
+- [x] Executar bateria completa de testes automatizados (`npm test -w apps/api` com 23 suítes e 239 testes passando).
+- [x] Validar builds de produção (`npm run build -w apps/api` e `npm run build -w apps/web` ambos código 0).
+- [x] Atualizar documentação de arquitetura em `ai-context/backend/notification-architecture.md`.
 - Critério de validação da etapa: Builds passando com código 0 e todos os testes automatizados verdes.
 
 ---

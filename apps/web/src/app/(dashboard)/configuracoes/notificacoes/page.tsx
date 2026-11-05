@@ -19,6 +19,7 @@ import {
   Pencil,
   Trash2,
   Sliders,
+  CheckCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { NotificationAutomationRulesPanel } from "@/components/app/notification-automation-rules-panel";
@@ -1063,12 +1064,21 @@ export default function CentralNotificacoesPage() {
               </div>
             </div>
 
-            {/* Cards de Entrega */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* Cards de Entrega e Leitura */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
                 <p className="text-xs text-emerald-600 font-medium">Entregues</p>
                 <p className="text-lg font-bold text-emerald-700">
                   {detailData.stats.sent}
+                </p>
+              </div>
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-indigo-600 font-medium">Lidas no App</p>
+                <p className="text-lg font-bold text-indigo-700">
+                  {detailData.stats.read ?? 0}{" "}
+                  <span className="text-xs font-normal text-indigo-500">
+                    ({detailData.stats.readPercentage ?? 0}%)
+                  </span>
                 </p>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
@@ -1083,8 +1093,8 @@ export default function CentralNotificacoesPage() {
                   {detailData.stats.failed}
                 </p>
               </div>
-              <div className="bg-gray-100 border border-gray-200 rounded-lg p-3 text-center">
-                <p className="text-xs text-gray-500 font-medium">Sem Inscrição</p>
+              <div className="bg-gray-100 border border-gray-200 rounded-lg p-3 text-center col-span-2 sm:col-span-1">
+                <p className="text-xs text-gray-500 font-medium">Sem Push</p>
                 <p className="text-lg font-bold text-gray-700">
                   {detailData.stats.noSubscription}
                 </p>
@@ -1097,20 +1107,21 @@ export default function CentralNotificacoesPage() {
                 Destinatários ({detailData.recipients.meta.total})
               </h4>
               <div className="border border-gray-200 rounded-xl overflow-x-auto">
-                <table className="w-full text-left text-xs min-w-[420px]">
+                <table className="w-full text-left text-xs min-w-[520px]">
                   <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
                     <tr>
                       <th className="py-2.5 px-3">Nome / Usuário</th>
-                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3">Status Push</th>
                       <th className="py-2.5 px-3">Tentativas</th>
                       <th className="py-2.5 px-3">Enviado em</th>
+                      <th className="py-2.5 px-3">Leitura no App</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {detailData.recipients.data.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="py-6 text-center text-gray-400"
                         >
                           Nenhum destinatário registrado para este envio.
@@ -1150,6 +1161,18 @@ export default function CentralNotificacoesPage() {
                               {r.enviadoEm
                                 ? formatDateTime(new Date(r.enviadoEm))
                                 : "—"}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {r.lidoEm ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md">
+                                  <CheckCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span>{formatDateTime(new Date(r.lidoEm))}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-gray-400">
+                                  Não lido
+                                </span>
+                              )}
                             </td>
                           </tr>
                         );

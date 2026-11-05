@@ -499,6 +499,8 @@ describe('NotificationDispatchService', () => {
 
       expect(result.notification.id).toBe('notif-1');
       expect(result.stats.sent).toBe(1);
+      expect(result.stats.read).toBeDefined();
+      expect(result.stats.readPercentage).toBeDefined();
       expect(result.recipients.data[0].userName).toBe('Carlinhos');
       expect(result.recipients.data[0].userEmail).toBe('carlos@teste.com');
     });

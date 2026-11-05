@@ -94,3 +94,31 @@ WHERE id IN (:claimedIds);
 
 - Rotina agendada semanalmente aos domingos às 03:00 (`cleanupOldNotifications`).
 - Exclui notificações e destinatários finalizados (`COMPLETED`, `FAILED`, `CANCELED`) com mais de 60 dias de criação, prevenindo crescimento descontrolado das tabelas.
+
+---
+
+## 7. Caixa de Entrada In-App e Confirmação de Leitura
+
+Para garantir que 100% dos usuários recebam notificações — independentemente de possuírem Web Push ativado ou navegadores compatíveis —, o sistema dispõe de uma **Caixa de Entrada In-App (Notification Center)** diretamente no cabeçalho do sistema:
+
+### 7.1 Modelo de Dados de Leitura
+- O modelo `NotificationRecipient` possui o campo `lidoEm DateTime? @map("read_at")` indexado por `[userId, lidoEm]`.
+- Quando uma notificação é criada, todos os destinatários elegíveis recebem uma linha com `lidoEm = null`.
+
+### 7.2 Endpoints do Usuário Autenticado
+- `GET /notifications/inbox`: Lista as últimas notificações recebidas pelo usuário logado com a contagem de não lidas (`unreadCount`).
+- `PATCH /notifications/inbox/:id/read`: Marca uma notificação individual como lida (`lidoEm = NOW()`).
+- `POST /notifications/inbox/read-all`: Marca em lote todas as notificações não lidas do usuário como lidas.
+
+### 7.3 Componente `NotificationBellInbox` (Frontend)
+- Substitui o botão isolado de push por um sino com badge dinâmico de não lidas.
+- Abre um popover acessível exibindo as mensagens recentes, tempo relativo, status de leitura e link direto de navegação (`urlDestino`).
+- Incorpora na barra de rodapé o controle de permissão e ativação rápida do Web Push no dispositivo.
+
+---
+
+## 8. Métricas de Leitura e Auditoria para Administradores
+
+No endpoint `GET /notifications/:id` e no Modal de Detalhes da Central de Notificações:
+- A liderança tem acesso à métrica de leitura agregada (`stats.read` e `stats.readPercentage`).
+- Na auditoria individual de destinatários, cada membro exibe o carimbo de data e hora em que a mensagem foi lida (`lidoEm`), permitindo saber com precisão quem tomou ciência do comunicado.
