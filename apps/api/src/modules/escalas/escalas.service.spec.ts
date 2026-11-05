@@ -777,4 +777,109 @@ describe('EscalasService - visualizacao scope', () => {
     ).resolves.toEqual([]);
     expect(prisma.escala.findMany).not.toHaveBeenCalled();
   });
+
+  describe('Notificações de Escalas via NotificationDispatchService', () => {
+    it('enfileira notificação de escala publicada via NotificationDispatchService com chave determinística', async () => {
+      const escalaId = 'escala-pub-1';
+      const notificationDispatch = {
+        createNotification: jest.fn().mockResolvedValue({ id: 'notif-1' }),
+      };
+
+      const prisma = {
+        escala: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: escalaId,
+            tenantId,
+            ministerioId,
+            ministerio: { nome: 'Louvor' },
+            dias: [
+              {
+                itens: [
+                  {
+                    membro: {
+                      user: { id: 'user-alocado-1', ativo: true },
+                    },
+                    funcao: { nome: 'Vocal' },
+                  },
+                ],
+              },
+            ],
+          }),
+        },
+      };
+
+      const service = new EscalasService(
+        prisma as any,
+        { sendToUsers: jest.fn() } as any,
+        { render: jest.fn() } as any,
+        notificationDispatch as any,
+      );
+
+      // Invocamos notifyEscalaPublished via método privado para validação
+      await (service as any).notifyEscalaPublished(tenantId, escalaId);
+
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId,
+          origem: 'SYSTEM_AUTOMATION',
+          titulo: 'Você foi escalado',
+          idempotencyKey: `tenant:${tenantId}:escala:${escalaId}:published:user-alocado-1`,
+          userIds: ['user-alocado-1'],
+        }),
+      );
+    });
+
+    it('enfileira resposta de confirmação para a liderança via NotificationDispatchService', async () => {
+      const notificationDispatch = {
+        createNotification: jest.fn().mockResolvedValue({ id: 'notif-lead' }),
+      };
+
+      const prisma = {
+        ministerioMembro: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              membro: {
+                user: { id: 'leader-user-1' },
+              },
+            },
+          ]),
+        },
+      };
+
+      const service = new EscalasService(
+        prisma as any,
+        { sendToUsers: jest.fn() } as any,
+        { render: jest.fn() } as any,
+        notificationDispatch as any,
+      );
+
+      const item = {
+        id: 'item-conf-1',
+        membro: { nome: 'Lucas Teclado' },
+        funcao: { nome: 'Tecladista' },
+        escalaDia: {
+          escala: {
+            ministerioId,
+            ministerio: { nome: 'Louvor' },
+          },
+        },
+      };
+
+      await (service as any).notifyLeadershipAboutConfirmationResponse(
+        tenantId,
+        item,
+        'CONFIRMADO',
+        'membro-actor-id',
+      );
+
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId,
+          origem: 'SYSTEM_AUTOMATION',
+          titulo: 'Lucas Teclado confirmou presença',
+          userIds: ['leader-user-1'],
+        }),
+      );
+    });
+  });
 });

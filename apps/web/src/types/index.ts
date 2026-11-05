@@ -438,3 +438,153 @@ export interface CompatibilidadeRegra {
     };
   };
 }
+
+// ─── Notificações ────────────────────────────────────────────────────────────
+
+export type NotificationStatus =
+  | 'PENDING'
+  | 'SCHEDULED'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELED';
+
+export type NotificationOrigin =
+  | 'SYSTEM_AUTOMATION'
+  | 'COMMUNICATION_GENERAL'
+  | 'COMMUNICATION_MINISTRY';
+
+export type NotificationAudienceType =
+  | 'ALL_MEMBERS'
+  | 'MINISTRY'
+  | 'SPECIFIC_USERS';
+
+export type RecipientDeliveryStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SENT'
+  | 'FAILED_RETRYABLE'
+  | 'FAILED_PERMANENT'
+  | 'NO_SUBSCRIPTION';
+
+export interface NotificationDeliveryStats {
+  total: number;
+  sent: number;
+  pending: number;
+  failed: number;
+  noSubscription: number;
+  read?: number;
+  readPercentage?: number;
+}
+
+export interface NotificationItem {
+  id: string;
+  tenantId: string;
+  origem: NotificationOrigin;
+  tipoPublico: NotificationAudienceType;
+  titulo: string;
+  mensagem: string;
+  urlDestino?: string | null;
+  status: NotificationStatus;
+  scheduledAt: string;
+  enviadoEm?: string | null;
+  createdAt: string;
+  ministerioId?: string | null;
+  ministerio?: { id: string; nome: string } | null;
+  criadoPor?: { id: string; nome: string; email: string } | null;
+  deliveryStats: NotificationDeliveryStats;
+}
+
+export interface NotificationMetrics {
+  totalSent: number;
+  totalPending: number;
+  totalFailed: number;
+  totalNoSubscription: number;
+}
+
+export interface NotificationRecipientItem {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  status: RecipientDeliveryStatus;
+  tentativas: number;
+  ultimoErro?: string | null;
+  enviadoEm?: string | null;
+  lidoEm?: string | null;
+  createdAt: string;
+}
+
+export interface UserInboxItem {
+  id: string;
+  notificationId: string;
+  titulo: string;
+  mensagem: string;
+  urlDestino: string | null;
+  origem: NotificationOrigin;
+  scheduledAt: string;
+  createdAt: string;
+  enviadoEm: string | null;
+  lidoEm: string | null;
+  isRead: boolean;
+}
+
+export interface UserInboxResponse {
+  unreadCount: number;
+  data: UserInboxItem[];
+}
+
+export interface NotificationDetailResponse {
+  notification: NotificationItem;
+  stats: NotificationDeliveryStats;
+  recipients: {
+    data: NotificationRecipientItem[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+}
+
+export interface NotificationListResponse {
+  data: NotificationItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  metrics: NotificationMetrics;
+}
+
+export type NotificationAutomationType =
+  | 'BIRTHDAY_PERSONAL'
+  | 'BIRTHDAY_COMMUNITY'
+  | 'SCHEDULE_DAY_REMINDER'
+  | 'SCHEDULE_CONFIRMATION_24H'
+  | 'EVENT_REMINDER_BEFORE';
+
+export interface NotificationAutomationRule {
+  id: string | null;
+  tipo: NotificationAutomationType;
+  nome: string;
+  descricao: string;
+  ativo: boolean;
+  horario: string | null;
+  antecedenciaHoras: number | null;
+  titulo: string;
+  mensagem: string;
+  isCustom: boolean;
+  variaveisDisponiveis: string[];
+  updatedAt?: string | null;
+}
+
+export interface UserNotificationPreference {
+  userId: string;
+  tenantId: string;
+  notifyBirthdays: boolean;
+  notifyEvents: boolean;
+  notifySchedules: boolean;
+}

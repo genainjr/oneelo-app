@@ -29,6 +29,8 @@ import type {
 import {
   AcaoAuditoria,
   MinistryRole,
+  NotificationAudienceType,
+  NotificationOrigin,
   Prisma,
   Role,
   StatusConfirmacao,
@@ -38,6 +40,7 @@ import {
 } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationDispatchService } from '../notifications/services/notification-dispatch.service';
 import {
   validarConflitosEscala,
   NovaAlocacao,
@@ -50,6 +53,7 @@ export class EscalasService {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly escalaDocumentRenderer: EscalaDocumentRendererService,
+    private readonly notificationDispatch?: NotificationDispatchService,
   ) {}
 
   private appendDiaFilter(where: any, diaFilter: any) {
@@ -1042,6 +1046,26 @@ export class EscalasService {
 
     if (notificationsByUser.size === 0) return;
 
+    if (this.notificationDispatch) {
+      await Promise.all(
+        Array.from(notificationsByUser.entries()).map(
+          ([userId, notification]) =>
+            this.notificationDispatch!.createNotification({
+              tenantId,
+              origem: NotificationOrigin.SYSTEM_AUTOMATION,
+              titulo: 'Você foi escalado',
+              mensagem: `Você servirá no ministério de ${escala.ministerio.nome} como ${notification.funcaoNome}. Confirme sua presença.`,
+              urlDestino: '/minhas-escalas?pendentesApenas=true',
+              tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+              userIds: [userId],
+              ministerioId: escala.ministerioId,
+              idempotencyKey: `tenant:${tenantId}:escala:${escalaId}:published:${userId}`,
+            }),
+        ),
+      );
+      return;
+    }
+
     await Promise.all(
       Array.from(notificationsByUser.entries()).map(([userId, notification]) =>
         this.notificationsService.sendToUsers(tenantId, [userId], {
@@ -1138,6 +1162,30 @@ export class EscalasService {
 
     const membroNome = this.getMembroDisplayName(item.membro);
     const ministerioNome = item.escalaDia.escala.ministerio.nome;
+    const isConfirmado = statusConfirmacao === StatusConfirmacao.CONFIRMADO;
+    const titulo = isConfirmado
+      ? `${membroNome} confirmou presença`
+      : `${membroNome} não poderá servir`;
+    const mensagem = isConfirmado
+      ? `Escala de ${ministerioNome} atualizada.`
+      : `A escala de ${ministerioNome} precisa de atenção.`;
+
+    if (this.notificationDispatch) {
+      const timestampMinute = Math.floor(Date.now() / 60000);
+      const itemId = (item as any).id || 'item';
+      await this.notificationDispatch.createNotification({
+        tenantId,
+        origem: NotificationOrigin.SYSTEM_AUTOMATION,
+        titulo,
+        mensagem,
+        urlDestino: '/escalas',
+        tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+        userIds,
+        ministerioId: item.escalaDia.escala.ministerioId,
+        idempotencyKey: `tenant:${tenantId}:escala-item:${itemId}:resp:${statusConfirmacao}:${timestampMinute}`,
+      });
+      return;
+    }
 
     if (statusConfirmacao === StatusConfirmacao.CONFIRMADO) {
       await this.notificationsService.sendToUsers(tenantId, userIds, {

@@ -10,6 +10,7 @@ import { InternationalPhoneInput } from '@/components/app/international-phone-in
 import { InfoItem } from '@/components/app/info-item';
 import { StatusBadge } from '@/components/app/status-badge';
 import { ImageUploadPanel } from '@/components/app/image-upload-panel';
+import { ProfileNotificationSettings } from '@/components/app/profile-notification-settings';
 import { api } from '@/lib/api';
 import { buildImageFormData, IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
@@ -650,6 +651,8 @@ export default function MeuPerfilPage() {
               )}
             </div>
           </section>
+
+          <ProfileNotificationSettings />
 
           {user.membro ? (
             <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
