@@ -1,8 +1,8 @@
 # Plano - Autonomia de Notificações: Regras por Igreja e Preferências no Perfil
 
-Status geral: planejado  
+Status geral: concluido  
 Data de criação: 2026-11-04  
-Branch sugerida para implementação: feature/central-notificacoes (ou feature/notificacoes-automacoes-e-perfil)  
+Branch sugerida para implementação: feature/central-notificacoes  
 
 ## Planos e Referências Relacionados
 
@@ -126,11 +126,11 @@ Status: concluido
 - Critério de validação da etapa: Build do Next.js e verificação responsiva (desktop e mobile).
 
 ### Etapa 6 - Validação Integrada, Documentação e Fechamento
-Status: planejado
+Status: concluido
 
-- [ ] Testes ponta a ponta: alteração de regra pelo admin -> disparo respeitando o novo template -> perfil do membro silenciando categoria -> verificação de não envio.
-- [ ] Bateria completa de testes automatizados (`npm test -w apps/api`).
-- [ ] Build de produção de todo o monorepo (`npm run build`).
+- [x] Testes ponta a ponta: alteração de regra pelo admin -> disparo respeitando o novo template -> perfil do membro silenciando categoria -> verificação de não envio.
+- [x] Bateria completa de testes automatizados (`npm test -w apps/api`).
+- [x] Build de produção de todo o monorepo (`npm run build`).
 - Critério de validação da etapa: 100% dos testes passando e compilação limpa.
 
 ---
