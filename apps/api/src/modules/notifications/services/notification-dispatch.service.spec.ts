@@ -6,6 +6,7 @@ import {
   NotificationAudienceType,
   NotificationStatus,
   RecipientDeliveryStatus,
+  Role,
   Prisma,
 } from '@prisma/client';
 import {
@@ -421,6 +422,43 @@ describe('NotificationDispatchService', () => {
         totalPages: 1,
       });
     });
+
+    it('deve restringir listagem aos ministérios do líder quando user for BASIC', async () => {
+      prisma.ministerioMembro.findMany.mockResolvedValue([
+        { ministerioId: 'min-lider-1' },
+      ]);
+      prisma.notification.count.mockResolvedValue(1);
+      prisma.notification.findMany.mockResolvedValue([]);
+      prisma.notificationRecipient.groupBy.mockResolvedValue([]);
+
+      await service.listNotifications(
+        'tenant-1',
+        { page: 1, limit: 10 },
+        { sub: 'user-leader-1', role: Role.BASIC, tenantId: 'tenant-1' },
+      );
+
+      expect(prisma.notification.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: 'tenant-1',
+            ministerioId: { in: ['min-lider-1'] },
+          }),
+        }),
+      );
+    });
+
+    it('deve retornar lista vazia se líder BASIC não tiver ministérios', async () => {
+      prisma.ministerioMembro.findMany.mockResolvedValue([]);
+
+      const result = await service.listNotifications(
+        'tenant-1',
+        {},
+        { sub: 'user-basic-sem-lideranca', role: Role.BASIC, tenantId: 'tenant-1' },
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.meta.total).toBe(0);
+    });
   });
 
   describe('getNotificationById', () => {
@@ -469,6 +507,26 @@ describe('NotificationDispatchService', () => {
       await expect(
         service.getNotificationById('tenant-outro', 'notif-1'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar ForbiddenException se líder BASIC tentar ver notificação de ministério alheio', async () => {
+      prisma.notification.findFirst.mockResolvedValue({
+        id: 'notif-1',
+        tenantId: 'tenant-1',
+        ministerioId: 'min-outro',
+      });
+      prisma.ministerioMembro.findMany.mockResolvedValue([
+        { ministerioId: 'meu-min' },
+      ]);
+
+      await expect(
+        service.getNotificationById(
+          'tenant-1',
+          'notif-1',
+          {},
+          { sub: 'user-lider', role: Role.BASIC, tenantId: 'tenant-1' },
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

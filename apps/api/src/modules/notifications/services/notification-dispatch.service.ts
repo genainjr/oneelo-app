@@ -165,13 +165,20 @@ export class NotificationDispatchService {
   /**
    * Cancela uma notificação agendada.
    */
-  async cancelNotification(id: string, tenantId: string) {
+  async cancelNotification(id: string, tenantId: string, user?: JwtPayload) {
     const notification = await this.prisma.notification.findFirst({
       where: { id, tenantId },
     });
 
     if (!notification) {
       throw new NotFoundException('Notificação não encontrada.');
+    }
+
+    if (user && user.role === Role.BASIC) {
+      const leaderMinistryIds = await this.getLeaderMinistryIds(tenantId, user.sub);
+      if (!notification.ministerioId || !leaderMinistryIds.includes(notification.ministerioId)) {
+        throw new ForbiddenException('Você não tem permissão para cancelar esta notificação.');
+      }
     }
 
     if (notification.status === NotificationStatus.COMPLETED) {
@@ -193,6 +200,7 @@ export class NotificationDispatchService {
     tenantId: string,
     id: string,
     dto: UpdateScheduledNotificationDto,
+    user?: JwtPayload,
   ) {
     const notification = await this.prisma.notification.findFirst({
       where: { id, tenantId },
@@ -200,6 +208,13 @@ export class NotificationDispatchService {
 
     if (!notification) {
       throw new NotFoundException('Notificação não encontrada.');
+    }
+
+    if (user && user.role === Role.BASIC) {
+      const leaderMinistryIds = await this.getLeaderMinistryIds(tenantId, user.sub);
+      if (!notification.ministerioId || !leaderMinistryIds.includes(notification.ministerioId)) {
+        throw new ForbiddenException('Você não tem permissão para editar esta notificação.');
+      }
     }
 
     if (notification.status !== NotificationStatus.SCHEDULED) {
@@ -373,14 +388,72 @@ export class NotificationDispatchService {
   }
 
   /**
+   * Obtém os IDs dos ministérios em que o usuário atua como líder ou vice-líder.
+   */
+  async getLeaderMinistryIds(tenantId: string, userId: string): Promise<string[]> {
+    const memberships = await this.prisma.ministerioMembro.findMany({
+      where: {
+        role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+        ministerio: { ativo: true },
+        membro: {
+          tenantId,
+          user: { id: userId },
+          deletedAt: null,
+          status: StatusMembro.ATIVO,
+        },
+      },
+      select: { ministerioId: true },
+    });
+    return memberships.map((m) => m.ministerioId);
+  }
+
+  /**
    * Lista notificações com filtros e paginação para o painel administrativo.
    */
-  async listNotifications(tenantId: string, query: FilterNotificationsDto) {
+  async listNotifications(
+    tenantId: string,
+    query: FilterNotificationsDto,
+    user?: JwtPayload,
+  ) {
     const page = query.page && query.page > 0 ? query.page : 1;
     const limit = query.limit && query.limit > 0 ? query.limit : 20;
     const skip = (page - 1) * limit;
 
     const where: Prisma.NotificationWhereInput = { tenantId };
+
+    if (user && user.role === Role.BASIC) {
+      const leaderMinistryIds = await this.getLeaderMinistryIds(tenantId, user.sub);
+      if (leaderMinistryIds.length === 0) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 1,
+          },
+          metrics: {
+            totalSent: 0,
+            totalPending: 0,
+            totalFailed: 0,
+            totalNoSubscription: 0,
+          },
+        };
+      }
+
+      if (query.ministerioId) {
+        if (!leaderMinistryIds.includes(query.ministerioId)) {
+          throw new ForbiddenException(
+            'Você não tem permissão para visualizar notificações deste ministério.',
+          );
+        }
+        where.ministerioId = query.ministerioId;
+      } else {
+        where.ministerioId = { in: leaderMinistryIds };
+      }
+    } else if (query.ministerioId) {
+      where.ministerioId = query.ministerioId;
+    }
 
     if (query.status) {
       where.status = query.status;
@@ -390,9 +463,6 @@ export class NotificationDispatchService {
     }
     if (query.tipoPublico) {
       where.tipoPublico = query.tipoPublico;
-    }
-    if (query.ministerioId) {
-      where.ministerioId = query.ministerioId;
     }
 
     if (query.dataInicio || query.dataFim) {
@@ -431,7 +501,12 @@ export class NotificationDispatchService {
       }),
       this.prisma.notificationRecipient.groupBy({
         by: ['status'],
-        where: { notification: { tenantId } },
+        where: {
+          notification: {
+            tenantId,
+            ...(where.ministerioId ? { ministerioId: where.ministerioId } : {}),
+          },
+        },
         _count: { status: true },
       }),
     ]);
@@ -514,6 +589,7 @@ export class NotificationDispatchService {
     tenantId: string,
     id: string,
     query?: FilterRecipientsDto,
+    user?: JwtPayload,
   ) {
     const notification = await this.prisma.notification.findFirst({
       where: { id, tenantId },
@@ -525,6 +601,13 @@ export class NotificationDispatchService {
 
     if (!notification) {
       throw new NotFoundException('Notificação não encontrada.');
+    }
+
+    if (user && user.role === Role.BASIC) {
+      const leaderMinistryIds = await this.getLeaderMinistryIds(tenantId, user.sub);
+      if (!notification.ministerioId || !leaderMinistryIds.includes(notification.ministerioId)) {
+        throw new ForbiddenException('Você não tem permissão para visualizar esta notificação.');
+      }
     }
 
     const page = query?.page && query.page > 0 ? query.page : 1;
@@ -632,13 +715,20 @@ export class NotificationDispatchService {
   /**
    * Reprocessa destinatários que falharam em uma notificação.
    */
-  async retryFailedRecipients(tenantId: string, id: string) {
+  async retryFailedRecipients(tenantId: string, id: string, user?: JwtPayload) {
     const notification = await this.prisma.notification.findFirst({
       where: { id, tenantId },
     });
 
     if (!notification) {
       throw new NotFoundException('Notificação não encontrada.');
+    }
+
+    if (user && user.role === Role.BASIC) {
+      const leaderMinistryIds = await this.getLeaderMinistryIds(tenantId, user.sub);
+      if (!notification.ministerioId || !leaderMinistryIds.includes(notification.ministerioId)) {
+        throw new ForbiddenException('Você não tem permissão para reenviar esta notificação.');
+      }
     }
 
     const updated = await this.prisma.notificationRecipient.updateMany({

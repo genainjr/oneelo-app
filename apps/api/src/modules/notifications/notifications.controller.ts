@@ -47,10 +47,14 @@ export class NotificationsController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.STAFF)
-  findAll(@Query() query: FilterNotificationsDto, @Req() req: Request) {
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  findAll(
+    @Query() query: FilterNotificationsDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
     const tenantId = req['tenantId'] as string;
-    return this.notificationDispatch.listNotifications(tenantId, query);
+    return this.notificationDispatch.listNotifications(tenantId, query, user);
   }
 
   @Get('recipients/available')
@@ -111,39 +115,49 @@ export class NotificationsController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   findOne(
     @Param('id') id: string,
     @Query() query: FilterRecipientsDto,
+    @CurrentUser() user: JwtPayload,
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
-    return this.notificationDispatch.getNotificationById(tenantId, id, query);
+    return this.notificationDispatch.getNotificationById(tenantId, id, query, user);
   }
 
   @Post(':id/retry')
-  @Roles(Role.ADMIN, Role.STAFF)
-  retry(@Param('id') id: string, @Req() req: Request) {
-    const tenantId = req['tenantId'] as string;
-    return this.notificationDispatch.retryFailedRecipients(tenantId, id);
-  }
-
-  @Post(':id/cancel')
-  @Roles(Role.ADMIN, Role.STAFF)
-  cancel(@Param('id') id: string, @Req() req: Request) {
-    const tenantId = req['tenantId'] as string;
-    return this.notificationDispatch.cancelNotification(id, tenantId);
-  }
-
-  @Patch(':id')
-  @Roles(Role.ADMIN, Role.STAFF)
-  updateScheduled(
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  retry(
     @Param('id') id: string,
-    @Body() dto: UpdateScheduledNotificationDto,
+    @CurrentUser() user: JwtPayload,
     @Req() req: Request,
   ) {
     const tenantId = req['tenantId'] as string;
-    return this.notificationDispatch.updateScheduledNotification(tenantId, id, dto);
+    return this.notificationDispatch.retryFailedRecipients(tenantId, id, user);
+  }
+
+  @Post(':id/cancel')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    return this.notificationDispatch.cancelNotification(id, tenantId, user);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  updateScheduled(
+    @Param('id') id: string,
+    @Body() dto: UpdateScheduledNotificationDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    return this.notificationDispatch.updateScheduledNotification(tenantId, id, dto, user);
   }
 
   @Post('manual')

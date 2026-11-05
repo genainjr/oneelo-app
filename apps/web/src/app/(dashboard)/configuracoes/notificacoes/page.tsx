@@ -145,6 +145,14 @@ export default function CentralNotificacoesPage() {
 
   const [activeTab, setActiveTab] = useState<"envios" | "regras">("envios");
   const canManageRules = user?.role === "ADMIN" || user?.role === "STAFF";
+  const isBasicLeader =
+    user?.role === "BASIC" &&
+    (user.membro?.ministerios?.some(
+      (m) => m.role === "LEADER" || m.role === "ASSISTANT_LEADER",
+    ) ?? false);
+  const isManagement = user?.role === "ADMIN" || user?.role === "STAFF";
+  const canAccess = isManagement || isBasicLeader;
+
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -176,7 +184,7 @@ export default function CentralNotificacoesPage() {
     titulo: "",
     mensagem: "",
     urlDestino: "/personal-panel",
-    tipoPublico: "ALL_MEMBERS" as NotificationAudienceType,
+    tipoPublico: (user?.role === "BASIC" ? "MINISTRY" : "ALL_MEMBERS") as NotificationAudienceType,
     ministerioId: "",
     userIds: [] as string[],
     isScheduled: false,
@@ -261,6 +269,12 @@ export default function CentralNotificacoesPage() {
     try {
       const res = await api.get<Array<{ id: string; nome: string }>>("/api/ministerios");
       setMinisterios(res);
+      if (res.length === 1) {
+        setCreateForm((prev) => ({
+          ...prev,
+          ministerioId: prev.ministerioId || res[0].id,
+        }));
+      }
     } catch {
       // Ignora erro ao carregar ministérios
     }
@@ -339,12 +353,14 @@ export default function CentralNotificacoesPage() {
 
   const openCreateModal = () => {
     setEditingId(null);
+    const defaultTipo: NotificationAudienceType =
+      user?.role === "BASIC" ? "MINISTRY" : "ALL_MEMBERS";
     setCreateForm({
       titulo: "",
       mensagem: "",
       urlDestino: "/personal-panel",
-      tipoPublico: "ALL_MEMBERS",
-      ministerioId: "",
+      tipoPublico: defaultTipo,
+      ministerioId: ministerios.length === 1 ? ministerios[0].id : "",
       userIds: [],
       isScheduled: false,
       scheduledAt: "",
@@ -353,7 +369,9 @@ export default function CentralNotificacoesPage() {
     setCreateError(null);
     setCreateModalOpen(true);
     loadMinisterios();
-    loadAvailableUsers();
+    if (user?.role !== "BASIC") {
+      loadAvailableUsers();
+    }
   };
 
   const openEditModal = (item: NotificationItem) => {
@@ -636,6 +654,24 @@ export default function CentralNotificacoesPage() {
       ),
     },
   ];
+
+  if (user && user.role === "BASIC" && !isBasicLeader) {
+    return (
+      <div className="p-6 space-y-6">
+        <PageHeader
+          title="Central de Notificações"
+          description="Histórico, auditoria de entregas e envio de notificações."
+        />
+        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+          <AlertTriangle className="mx-auto h-12 w-12 text-amber-500 mb-3" />
+          <h3 className="text-lg font-semibold text-gray-900">Acesso Restrito</h3>
+          <p className="mt-1 text-sm text-gray-500 max-w-md mx-auto">
+            A Central de Notificações está disponível apenas para a liderança e equipe de gestão da igreja. Para gerenciar suas preferências pessoais de recebimento, acesse Meu Perfil.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -1177,24 +1213,33 @@ export default function CentralNotificacoesPage() {
 
           {!editingId && (
             <>
-              <SelectField
-                id="tipoPublico"
-                label="Público Alvo"
-                required
-                value={createForm.tipoPublico}
-                onChange={(e) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    tipoPublico: e.target.value as NotificationAudienceType,
-                  }))
-                }
-              >
-                <option value="ALL_MEMBERS">Toda a Igreja (Todos os Membros)</option>
-                <option value="MINISTRY">Membros de um Ministério</option>
-                <option value="SPECIFIC_USERS">Usuários Específicos</option>
-              </SelectField>
+              {user?.role === "BASIC" ? (
+                <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 text-xs text-indigo-800">
+                  <p className="font-semibold">Comunicado para o Ministério</p>
+                  <p className="mt-0.5 text-indigo-600">
+                    Como líder, seu comunicado será entregue a todos os membros ativos do ministério selecionado.
+                  </p>
+                </div>
+              ) : (
+                <SelectField
+                  id="tipoPublico"
+                  label="Público Alvo"
+                  required
+                  value={createForm.tipoPublico}
+                  onChange={(e) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      tipoPublico: e.target.value as NotificationAudienceType,
+                    }))
+                  }
+                >
+                  <option value="ALL_MEMBERS">Toda a Igreja (Todos os Membros)</option>
+                  <option value="MINISTRY">Membros de um Ministério</option>
+                  <option value="SPECIFIC_USERS">Usuários Específicos</option>
+                </SelectField>
+              )}
 
-              {createForm.tipoPublico === "MINISTRY" && (
+              {(createForm.tipoPublico === "MINISTRY" || user?.role === "BASIC") && (
                 <SelectField
                   id="ministerioId"
                   label="Selecione o Ministério"

@@ -189,7 +189,12 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   } | null>(null);
   const [basicHasEscalas, setBasicHasEscalas] = useState(false);
   const [basicHasEscalasVisualizacao, setBasicHasEscalasVisualizacao] = useState(false);
-  const [basicHasLeadership, setBasicHasLeadership] = useState(false);
+  const basicHasLeadership =
+    user?.role === 'BASIC' &&
+    (user.membro?.ministerios?.some(
+      (membership) =>
+        membership.role === 'LEADER' || membership.role === 'ASSISTANT_LEADER',
+    ) ?? false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const tenantName = user?.tenant?.pwaShortName || user?.tenant?.nome || 'One Elo';
@@ -206,17 +211,11 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     if (user?.role !== 'BASIC') {
       setBasicHasEscalas(false);
       setBasicHasEscalasVisualizacao(false);
-      setBasicHasLeadership(false);
       return;
     }
 
-    const hasLeadership = user.membro?.ministerios?.some(
-      (membership) => membership.role === 'LEADER' || membership.role === 'ASSISTANT_LEADER',
-    ) ?? false;
-
     setBasicHasEscalas(minhasEscalas.length > 0);
     setBasicHasEscalasVisualizacao(escalasVisualizacao.length > 0);
-    setBasicHasLeadership(hasLeadership);
   }, [escalasVisualizacao, minhasEscalas, user]);
 
   useEffect(() => {
@@ -312,7 +311,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupFuture' },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
     { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile, groupStart: 'groupAccount' },
-    { href: '/configuracoes/notificacoes', label: 'Notificações', icon: ICONS.notifications, adminOnly: true },
+    { href: '/configuracoes/notificacoes', label: 'Notificações', icon: ICONS.notifications },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },
   ];
 
