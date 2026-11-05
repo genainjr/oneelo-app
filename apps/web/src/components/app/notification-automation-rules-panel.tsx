@@ -10,7 +10,6 @@ import {
   RotateCcw,
   Check,
   AlertCircle,
-  Save,
   Sparkles,
 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -193,14 +192,12 @@ export function NotificationAutomationRulesPanel() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 rounded-xl shadow-xs transition shrink-0 max-sm:w-full max-sm:justify-center"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 rounded-xl shadow-xs transition shrink-0 max-sm:w-full"
         >
-          {saving ? (
+          {saving && (
             <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
           )}
-          <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
+          <span>{saving ? 'Salvando...' : 'Salvar'}</span>
         </button>
       </div>
 
@@ -453,23 +450,6 @@ export function NotificationAutomationRulesPanel() {
             </div>
           );
         })}
-      </div>
-
-      {/* Bottom Save Action */}
-      <div className="flex justify-end pt-2 pb-6">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
-        >
-          {saving ? (
-            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          <span>{saving ? 'Salvando alterações...' : 'Salvar Alterações'}</span>
-        </button>
       </div>
     </div>
   );
