@@ -117,12 +117,12 @@ Status: concluido
 - Critério de validação da etapa: Build do Next.js sem erros com `npm run build -w apps/web`.
 
 ### Etapa 5 - Interface de Notificações no Meu Perfil (Frontend)
-Status: planejado
+Status: concluido
 
-- [ ] Adicionar seção `Notificações e Avisos` em `/meu-perfil`.
-- [ ] Exibir status atual do dispositivo (Push ativado / desativado / não suportado) com botão de ativação/desativação integrado a `push-notifications.ts`.
-- [ ] Exibir toggles de preferências pessoais (Avisos de aniversários da comunidade, Lembretes de eventos gerais).
-- [ ] Feedback visual de salvamento e estado de carregamento.
+- [x] Adicionar seção `Notificações e Avisos` em `/meu-perfil`.
+- [x] Exibir status atual do dispositivo (Push ativado / desativado / não suportado) com botão de ativação/desativação integrado a `push-notifications.ts`.
+- [x] Exibir toggles de preferências pessoais (Avisos de aniversários da comunidade, Lembretes de eventos gerais).
+- [x] Feedback visual de salvamento e estado de carregamento.
 - Critério de validação da etapa: Build do Next.js e verificação responsiva (desktop e mobile).
 
 ### Etapa 6 - Validação Integrada, Documentação e Fechamento
