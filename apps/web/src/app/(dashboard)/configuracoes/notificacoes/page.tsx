@@ -50,6 +50,7 @@ interface NotificationFilterState {
   status: "" | NotificationStatus;
   origem: "" | NotificationOrigin;
   tipoPublico: "" | NotificationAudienceType;
+  ministerioId: string;
 }
 
 const EMPTY_FILTERS: NotificationFilterState = {
@@ -57,6 +58,7 @@ const EMPTY_FILTERS: NotificationFilterState = {
   status: "",
   origem: "",
   tipoPublico: "",
+  ministerioId: "",
 };
 
 const STATUS_CONFIG: Record<
@@ -90,9 +92,9 @@ const STATUS_CONFIG: Record<
 };
 
 const ORIGIN_LABELS: Record<NotificationOrigin, string> = {
-  SYSTEM_AUTOMATION: "Automação do Sistema",
-  COMMUNICATION_GENERAL: "Notificação Geral",
-  COMMUNICATION_MINISTRY: "Notificação Ministerial",
+  SYSTEM_AUTOMATION: "Automação",
+  COMMUNICATION_GENERAL: "Geral",
+  COMMUNICATION_MINISTRY: "Ministério",
 };
 
 const AUDIENCE_LABELS: Record<NotificationAudienceType, string> = {
@@ -223,6 +225,7 @@ export default function CentralNotificacoesPage() {
         status: appliedFilters.status || undefined,
         origem: appliedFilters.origem || undefined,
         tipoPublico: appliedFilters.tipoPublico || undefined,
+        ministerioId: appliedFilters.ministerioId || undefined,
       });
 
       const response = await api.get<NotificationListResponse>(
@@ -279,6 +282,10 @@ export default function CentralNotificacoesPage() {
       // Ignora erro ao carregar ministérios
     }
   }, []);
+
+  useEffect(() => {
+    loadMinisterios();
+  }, [loadMinisterios]);
 
   const loadAvailableUsers = useCallback(async () => {
     try {
@@ -793,30 +800,49 @@ export default function CentralNotificacoesPage() {
         </FilterSelect>
         <FilterSelect
           id="origem"
-          label="Origem"
+          label="Tipo"
           value={formState.origem}
           onChange={(e) =>
             setField("origem", e.target.value as NotificationOrigin)
           }
         >
-          <option value="">Todas as origens</option>
-          <option value="SYSTEM_AUTOMATION">Automação do Sistema</option>
-          <option value="COMMUNICATION_GENERAL">Notificação Geral</option>
-          <option value="COMMUNICATION_MINISTRY">Notificação Ministerial</option>
+          <option value="">Todos os tipos</option>
+          {isManagement && (
+            <option value="COMMUNICATION_GENERAL">Geral</option>
+          )}
+          <option value="COMMUNICATION_MINISTRY">Ministério</option>
+          <option value="SYSTEM_AUTOMATION">Automação</option>
         </FilterSelect>
-        <FilterSelect
-          id="tipoPublico"
-          label="Público"
-          value={formState.tipoPublico}
-          onChange={(e) =>
-            setField("tipoPublico", e.target.value as NotificationAudienceType)
-          }
-        >
-          <option value="">Todos os públicos</option>
-          <option value="ALL_MEMBERS">Todos os Membros</option>
-          <option value="MINISTRY">Ministério</option>
-          <option value="SPECIFIC_USERS">Usuários Específicos</option>
-        </FilterSelect>
+        {isManagement && (
+          <FilterSelect
+            id="tipoPublico"
+            label="Público"
+            value={formState.tipoPublico}
+            onChange={(e) =>
+              setField("tipoPublico", e.target.value as NotificationAudienceType)
+            }
+          >
+            <option value="">Todos os públicos</option>
+            <option value="ALL_MEMBERS">Todos os Membros</option>
+            <option value="MINISTRY">Ministério</option>
+            <option value="SPECIFIC_USERS">Usuários Específicos</option>
+          </FilterSelect>
+        )}
+        {ministerios.length > 1 && (
+          <FilterSelect
+            id="ministerioId"
+            label="Ministério"
+            value={formState.ministerioId}
+            onChange={(e) => setField("ministerioId", e.target.value)}
+          >
+            <option value="">Todos os ministérios</option>
+            {ministerios.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome}
+              </option>
+            ))}
+          </FilterSelect>
+        )}
       </FilterShell>
 
       {/* Listagem */}
