@@ -304,9 +304,9 @@ Status: concluído
 - Critério de validação da etapa: Testes unitários do inbox executados com 100% de aprovação (`npm test -w apps/api -- notifications.service`).
 
 #### Etapa 12 - Componente `NotificationBellInbox` no Cabeçalho (Frontend ODS)
-Status: planejado
+Status: concluído
 
-- [ ] Criar o componente `NotificationBellInbox` substituindo a exibição direta de `PushNotificationButton` no `Header`:
+- [x] Criar o componente `NotificationBellInbox` substituindo a exibição direta de `PushNotificationButton` no `Header`:
   - Ícone de sino (`Bell`) com badge vermelho dinâmico contendo o número de notificações não lidas (ou apenas bolinha caso > 9).
   - Popover/Dropdown responsivo que abre ao clicar no sino:
     - Cabeçalho com título "Notificações", contagem de não lidas e botão "Marcar todas como lidas".
@@ -314,7 +314,7 @@ Status: planejado
     - Clique na notificação marca-a como lida e redireciona para a `urlDestino` correspondente.
     - Estado vazio amigável (`EmptyState`) quando não houver notificações.
     - Barra de rodapé elegante mostrando o status do Web Push no dispositivo atual com link rápido para ativar/desativar permissão.
-- [ ] Suporte completo a mobile (popover adaptado para tela cheia ou drawer em telas pequenas).
+- [x] Suporte completo a mobile (popover adaptado para tela cheia ou drawer em telas pequenas).
 - Critério de validação da etapa: Usuário clica no sino, visualiza as notificações recebidas, o clique marca como lida, diminui o contador no sino e navega para o destino.
 
 #### Etapa 13 - Auditoria de Leitura na Central de Notificações (Visão do Admin/Líder)

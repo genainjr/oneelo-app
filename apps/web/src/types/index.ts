@@ -472,6 +472,8 @@ export interface NotificationDeliveryStats {
   pending: number;
   failed: number;
   noSubscription: number;
+  read?: number;
+  readPercentage?: number;
 }
 
 export interface NotificationItem {
@@ -508,7 +510,27 @@ export interface NotificationRecipientItem {
   tentativas: number;
   ultimoErro?: string | null;
   enviadoEm?: string | null;
+  lidoEm?: string | null;
   createdAt: string;
+}
+
+export interface UserInboxItem {
+  id: string;
+  notificationId: string;
+  titulo: string;
+  mensagem: string;
+  urlDestino: string | null;
+  origem: NotificationOrigin;
+  scheduledAt: string;
+  createdAt: string;
+  enviadoEm: string | null;
+  lidoEm: string | null;
+  isRead: boolean;
+}
+
+export interface UserInboxResponse {
+  unreadCount: number;
+  data: UserInboxItem[];
 }
 
 export interface NotificationDetailResponse {
