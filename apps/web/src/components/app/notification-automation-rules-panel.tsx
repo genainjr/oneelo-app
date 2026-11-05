@@ -255,30 +255,53 @@ export function NotificationAutomationRulesPanel() {
                   </div>
                 </div>
 
-                {/* Toggle Active / Inactive */}
-                <div className="flex items-center gap-3 self-end sm:self-center">
-                  <span
-                    className={`text-xs font-semibold ${
-                      rule.ativo ? 'text-indigo-600' : 'text-gray-400'
-                    }`}
-                  >
-                    {rule.ativo ? 'Ativada' : 'Desativada'}
-                  </span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={rule.ativo}
-                    onClick={() => handleFieldChange(rule.tipo, 'ativo', !rule.ativo)}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                      rule.ativo ? 'bg-indigo-600' : 'bg-gray-200'
-                    }`}
-                  >
+                {/* Actions: Reset & Toggle Active / Inactive */}
+                <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
+                  {rule.isCustom ? (
+                    <button
+                      type="button"
+                      onClick={() => handleReset(rule.tipo)}
+                      disabled={isResetting}
+                      title="Voltar aos textos e horários de fábrica desta automação"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+                      <span>{isResetting ? 'Restaurando...' : 'Restaurar Padrão de Fábrica'}</span>
+                    </button>
+                  ) : (
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        rule.ativo ? 'translate-x-5' : 'translate-x-0'
+                      title="Esta regra já está utilizando a mensagem e configuração original de fábrica"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-lg select-none"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Padrão de Fábrica</span>
+                    </span>
+                  )}
+
+                  <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
+                    <span
+                      className={`text-xs font-semibold ${
+                        rule.ativo ? 'text-indigo-600' : 'text-gray-400'
                       }`}
-                    />
-                  </button>
+                    >
+                      {rule.ativo ? 'Ativada' : 'Desativada'}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={rule.ativo}
+                      onClick={() => handleFieldChange(rule.tipo, 'ativo', !rule.ativo)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                        rule.ativo ? 'bg-indigo-600' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          rule.ativo ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -386,24 +409,45 @@ export function NotificationAutomationRulesPanel() {
                     </p>
                   </div>
 
-                  {/* Footer with Reset button */}
-                  <div className="flex justify-end pt-2">
-                    {rule.isCustom && (
+                  {/* Footer with Reset status */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-gray-100 text-xs">
+                    <p className="text-[11px] text-gray-500">
+                      {rule.isCustom
+                        ? 'Esta regra possui personalizações da igreja. Você pode restaurar os textos originais a qualquer momento.'
+                        : 'Esta regra está operando com as mensagens e horários recomendados de fábrica.'}
+                    </p>
+                    {rule.isCustom ? (
                       <button
                         type="button"
                         onClick={() => handleReset(rule.tipo)}
                         disabled={isResetting}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-100 rounded-lg transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition shrink-0"
                       >
                         <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
-                        <span>Restaurar padrão</span>
+                        <span>Restaurar padrão de fábrica</span>
                       </button>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-lg shrink-0 select-none">
+                        <RotateCcw className="w-3 h-3 text-gray-400" />
+                        <span>Padrão de fábrica ativo</span>
+                      </span>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="p-5 text-center text-xs text-gray-400 bg-gray-50/50 rounded-b-2xl">
-                  Esta regra de notificação está desativada. Nenhuma mensagem deste tipo será enviada pela automação.
+                <div className="p-4 bg-gray-50/70 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-gray-500 rounded-b-2xl">
+                  <span>Esta regra está desativada. Nenhuma mensagem deste tipo será enviada pela automação.</span>
+                  {rule.isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => handleReset(rule.tipo)}
+                      disabled={isResetting}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition shrink-0 self-end sm:self-center"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+                      <span>Restaurar padrão</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
