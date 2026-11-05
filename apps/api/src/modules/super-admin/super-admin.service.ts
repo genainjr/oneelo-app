@@ -156,7 +156,11 @@ export class SuperAdminService {
     let newLimiteMembros = dto.limiteMembros;
     if (newLimiteMembros === undefined && dto.plano !== undefined && dto.plano !== tenant.plano) {
       const newPlanDefault = getDefaultStoredMemberLimit(dto.plano);
-      if (dto.plano === Plano.PROFISSIONAL || tenant.limiteMembros <= newPlanDefault) {
+      if (
+        dto.plano === Plano.PROFISSIONAL ||
+        tenant.plano === Plano.PROFISSIONAL ||
+        tenant.limiteMembros <= newPlanDefault
+      ) {
         newLimiteMembros = newPlanDefault;
       }
     }
