@@ -107,6 +107,32 @@ describe('NotificationAutomationRulesService', () => {
       );
     });
 
+    it('should return isCustom: false when database records have factory default values', async () => {
+      prisma.notificationAutomationRule.findMany.mockResolvedValue([
+        {
+          id: 'rule-default',
+          tenantId,
+          tipo: NotificationAutomationType.BIRTHDAY_PERSONAL,
+          ativo: true,
+          horario: '08:00',
+          antecedenciaHoras: null,
+          titulo:
+            DEFAULT_AUTOMATION_RULES[NotificationAutomationType.BIRTHDAY_PERSONAL]
+              .titulo,
+          mensagem:
+            DEFAULT_AUTOMATION_RULES[NotificationAutomationType.BIRTHDAY_PERSONAL]
+              .mensagem,
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const rules = await service.getRules(tenantId);
+      const birthday = rules.find(
+        (r) => r.tipo === NotificationAutomationType.BIRTHDAY_PERSONAL,
+      );
+      expect(birthday?.isCustom).toBe(false);
+    });
+
     it('should return custom values when database records exist', async () => {
       prisma.notificationAutomationRule.findMany.mockResolvedValue([
         {
@@ -172,7 +198,7 @@ describe('NotificationAutomationRulesService', () => {
   });
 
   describe('updateRules', () => {
-    it('should upsert rules and return updated catalog', async () => {
+    it('should upsert rules when custom values are provided', async () => {
       await service.updateRules(tenantId, {
         regras: [
           {
@@ -188,6 +214,32 @@ describe('NotificationAutomationRulesService', () => {
 
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.notificationAutomationRule.upsert).toHaveBeenCalledTimes(1);
+    });
+
+    it('should delete rule from db when values match factory defaults', async () => {
+      const defaultBirthday =
+        DEFAULT_AUTOMATION_RULES[NotificationAutomationType.BIRTHDAY_PERSONAL];
+
+      await service.updateRules(tenantId, {
+        regras: [
+          {
+            tipo: NotificationAutomationType.BIRTHDAY_PERSONAL,
+            ativo: defaultBirthday.ativo,
+            horario: defaultBirthday.horario,
+            antecedenciaHoras: defaultBirthday.antecedenciaHoras,
+            titulo: defaultBirthday.titulo,
+            mensagem: defaultBirthday.mensagem,
+          },
+        ],
+      });
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.notificationAutomationRule.deleteMany).toHaveBeenCalledWith({
+        where: {
+          tenantId,
+          tipo: NotificationAutomationType.BIRTHDAY_PERSONAL,
+        },
+      });
     });
   });
 

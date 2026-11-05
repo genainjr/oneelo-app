@@ -99,6 +99,28 @@ export function renderTemplate(
   });
 }
 
+export function isRuleCustom(
+  current: {
+    ativo?: boolean;
+    horario?: string | null;
+    antecedenciaHoras?: number | null;
+    titulo?: string;
+    mensagem?: string;
+  },
+  defaultRule: AutomationRuleDefinition,
+): boolean {
+  const normalize = (s?: string | null) => (s ?? '').trim();
+  const titleDiff = normalize(current.titulo) !== normalize(defaultRule.titulo);
+  const msgDiff = normalize(current.mensagem) !== normalize(defaultRule.mensagem);
+  const timeDiff = normalize(current.horario) !== normalize(defaultRule.horario);
+  const antDiff =
+    (current.antecedenciaHoras ?? null) !== (defaultRule.antecedenciaHoras ?? null);
+  const activeDiff =
+    current.ativo !== undefined && current.ativo !== defaultRule.ativo;
+
+  return titleDiff || msgDiff || timeDiff || antDiff || activeDiff;
+}
+
 @Injectable()
 export class NotificationAutomationRulesService {
   private readonly logger = new Logger(NotificationAutomationRulesService.name);
@@ -129,7 +151,7 @@ export class NotificationAutomationRulesService {
           antecedenciaHoras: saved.antecedenciaHoras,
           titulo: saved.titulo,
           mensagem: saved.mensagem,
-          isCustom: true,
+          isCustom: isRuleCustom(saved, defaultRule),
           variaveisDisponiveis: defaultRule.variaveisDisponiveis,
           updatedAt: saved.updatedAt,
         };
@@ -195,8 +217,19 @@ export class NotificationAutomationRulesService {
   }
 
   async updateRules(tenantId: string, dto: UpdateAutomationRulesDto) {
-    const upserts = dto.regras.map((rule) => {
+    const operations = dto.regras.map((rule) => {
       const defaultRule = DEFAULT_AUTOMATION_RULES[rule.tipo];
+      const isCustom = isRuleCustom(rule, defaultRule);
+
+      if (!isCustom) {
+        return this.prisma.notificationAutomationRule.deleteMany({
+          where: {
+            tenantId,
+            tipo: rule.tipo,
+          },
+        });
+      }
+
       return this.prisma.notificationAutomationRule.upsert({
         where: {
           tenantId_tipo: {
@@ -225,7 +258,7 @@ export class NotificationAutomationRulesService {
       });
     });
 
-    await this.prisma.$transaction(upserts);
+    await this.prisma.$transaction(operations);
     this.logger.log(
       `Regras de automação atualizadas para o tenant ${tenantId}: ${dto.regras.length} regras`,
     );

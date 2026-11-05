@@ -76,7 +76,9 @@ export function NotificationAutomationRulesPanel() {
     value: any,
   ) => {
     setRules((prev) =>
-      prev.map((r) => (r.tipo === tipo ? { ...r, [field]: value } : r)),
+      prev.map((r) =>
+        r.tipo === tipo ? { ...r, [field]: value, isCustom: true } : r,
+      ),
     );
     setSaveSuccess(false);
   };
@@ -90,6 +92,7 @@ export function NotificationAutomationRulesPanel() {
         return {
           ...r,
           mensagem: `${currentMsg}${separator}${variableTag}`,
+          isCustom: true,
         };
       }),
     );
