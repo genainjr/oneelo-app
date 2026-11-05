@@ -71,4 +71,243 @@ describe('NotificationsService birthday job', () => {
     expect(result.communityNotifications).toBe(1);
     expect(result.sent).toBe(2);
   });
+
+  it('enfileira notificacao via NotificationDispatchService quando disponivel', async () => {
+    const prisma = {
+      membro: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            tenantId: 'tenant-1',
+            nome: 'Joao da Silva',
+            nomeExibicao: 'Joao',
+            dataNascimento: new Date('1990-07-16T00:00:00.000Z'),
+            tenant: { nome: 'Igreja Esperanca' },
+            user: {
+              id: 'birthday-user',
+              ativo: true,
+              status: UserStatus.ACTIVE,
+            },
+          },
+        ]),
+      },
+      user: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'birthday-user' }, { id: 'other-user' }]),
+      },
+    };
+    const config = { get: jest.fn() };
+    const notificationDispatch = {
+      createNotification: jest.fn().mockResolvedValue({ id: 'notif-1' }),
+    };
+
+    const service = new NotificationsService(
+      prisma as never,
+      config as never,
+      notificationDispatch as never,
+    );
+
+    const result = await service.runBirthdayNotificationJob(
+      new Date('2026-07-16T11:00:00.000Z'),
+    );
+
+    expect(notificationDispatch.createNotification).toHaveBeenCalledTimes(2);
+    expect(notificationDispatch.createNotification).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        origem: 'SYSTEM_AUTOMATION',
+        idempotencyKey: 'tenant:tenant-1:membro:birthday-user:birthday-personal:2026',
+        userIds: ['birthday-user'],
+      }),
+    );
+    expect(result.personalNotifications).toBe(1);
+    expect(result.communityNotifications).toBe(1);
+  });
+
+  describe('runPendingConfirmationReminderJob', () => {
+    it('enfileira lembrete de confirmacao 24h via NotificationDispatchService', async () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const prisma = {
+        escalaItem: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'item-1',
+              membro: { user: { id: 'user-1', ativo: true } },
+              escalaDia: {
+                data: tomorrow,
+                escala: {
+                  tenantId: 'tenant-1',
+                  ministerio: { nome: 'Louvor' },
+                },
+              },
+            },
+          ]),
+        },
+      };
+      const notificationDispatch = {
+        createNotification: jest.fn().mockResolvedValue({ id: 'notif-1' }),
+      };
+
+      const service = new NotificationsService(
+        prisma as never,
+        { get: jest.fn() } as never,
+        notificationDispatch as never,
+      );
+
+      const result = await service.runPendingConfirmationReminderJob();
+
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          origem: 'SYSTEM_AUTOMATION',
+          userIds: ['user-1'],
+        }),
+      );
+      expect(result.sent).toBe(1);
+    });
+
+    it('nao envia notificacao se a regra estiver desativada pelo tenant', async () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const prisma = {
+        escalaItem: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'item-1',
+              membro: { user: { id: 'user-1', ativo: true } },
+              escalaDia: {
+                data: tomorrow,
+                escala: {
+                  tenantId: 'tenant-1',
+                  ministerio: { nome: 'Louvor' },
+                },
+              },
+            },
+          ]),
+        },
+      };
+      const notificationDispatch = {
+        createNotification: jest.fn().mockResolvedValue({ id: 'notif-1' }),
+      };
+      const automationRules = {
+        getRuleByType: jest.fn().mockResolvedValue({
+          ativo: false,
+          titulo: 'Ignorado',
+          mensagem: 'Ignorado',
+        }),
+      };
+
+      const service = new NotificationsService(
+        prisma as never,
+        { get: jest.fn() } as never,
+        notificationDispatch as never,
+        automationRules as never,
+      );
+
+      const result = await service.runPendingConfirmationReminderJob();
+
+      expect(notificationDispatch.createNotification).not.toHaveBeenCalled();
+      expect(result.sent).toBe(0);
+    });
+  });
+
+  describe('runScheduleDayReminderJob', () => {
+    it('enfileira lembrete do dia da escala via NotificationDispatchService', async () => {
+      const today = new Date();
+      const prisma = {
+        escalaItem: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'item-2',
+              membro: { user: { id: 'user-2', ativo: true } },
+              escalaDia: {
+                data: today,
+                evento: { dataInicio: today },
+                escala: {
+                  tenantId: 'tenant-1',
+                  ministerio: { nome: 'Midia' },
+                },
+              },
+            },
+          ]),
+        },
+      };
+      const notificationDispatch = {
+        createNotification: jest.fn().mockResolvedValue({ id: 'notif-2' }),
+      };
+
+      const service = new NotificationsService(
+        prisma as never,
+        { get: jest.fn() } as never,
+        notificationDispatch as never,
+      );
+
+      const result = await service.runScheduleDayReminderJob();
+
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          origem: 'SYSTEM_AUTOMATION',
+          userIds: ['user-2'],
+        }),
+      );
+      expect(result.sent).toBe(1);
+    });
+
+    it('aplica template customizado da regra de escala do dia', async () => {
+      const today = new Date();
+      const prisma = {
+        escalaItem: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'item-2',
+              membro: {
+                nome: 'Lucas Silva',
+                user: { id: 'user-2', ativo: true },
+              },
+              escalaDia: {
+                data: today,
+                evento: { dataInicio: today },
+                escala: {
+                  tenantId: 'tenant-1',
+                  ministerio: { nome: 'Teatro' },
+                },
+              },
+            },
+          ]),
+        },
+      };
+      const notificationDispatch = {
+        createNotification: jest.fn().mockResolvedValue({ id: 'notif-2' }),
+      };
+      const automationRules = {
+        getRuleByType: jest.fn().mockResolvedValue({
+          ativo: true,
+          titulo: 'Atenção, {nome}!',
+          mensagem: 'Lembre-se de sua escala no {ministerio}.',
+        }),
+      };
+
+      const service = new NotificationsService(
+        prisma as never,
+        { get: jest.fn() } as never,
+        notificationDispatch as never,
+        automationRules as never,
+      );
+
+      const result = await service.runScheduleDayReminderJob();
+
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          titulo: 'Atenção, Lucas Silva!',
+          mensagem: 'Lembre-se de sua escala no Teatro.',
+        }),
+      );
+      expect(result.sent).toBe(1);
+    });
+  });
 });
