@@ -688,6 +688,20 @@ describe('NotificationDispatchService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].titulo).toBe('Sua escala é hoje');
       expect(result.data[0].isRead).toBe(false);
+      expect(prisma.notificationRecipient.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: 'user-1',
+            notification: expect.objectContaining({
+              tenantId: 'tenant-1',
+              scheduledAt: { lte: expect.any(Date) },
+              status: {
+                notIn: [NotificationStatus.CANCELED, NotificationStatus.DRAFT],
+              },
+            }),
+          }),
+        }),
+      );
     });
   });
 
@@ -752,7 +766,13 @@ describe('NotificationDispatchService', () => {
         where: {
           userId: 'user-1',
           lidoEm: null,
-          notification: { tenantId: 'tenant-1' },
+          notification: {
+            tenantId: 'tenant-1',
+            scheduledAt: { lte: expect.any(Date) },
+            status: {
+              notIn: [NotificationStatus.CANCELED, NotificationStatus.DRAFT],
+            },
+          },
         },
         data: expect.objectContaining({ lidoEm: expect.any(Date) }),
       });
