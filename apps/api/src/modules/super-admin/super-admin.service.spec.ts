@@ -201,6 +201,28 @@ describe('SuperAdminService', () => {
       });
     });
 
+    it('deve sincronizar limiteMembros para 50 ao alterar plano de BASICO para GRATUITO', async () => {
+      prisma.tenant.findUnique.mockResolvedValue({
+        id: 't-basico',
+        nome: 'Igreja',
+        plano: Plano.BASICO,
+        limiteMembros: 200,
+        ativo: true,
+      });
+      prisma.tenant.update.mockResolvedValue({ id: 't-basico' });
+
+      await service.updateTenant('t-basico', { plano: Plano.GRATUITO }, adminId);
+
+      expect(prisma.tenant.update).toHaveBeenCalledWith({
+        where: { id: 't-basico' },
+        data: expect.objectContaining({
+          plano: Plano.GRATUITO,
+          limiteMembros: 50,
+        }),
+        select: expect.any(Object),
+      });
+    });
+
     it('deve sincronizar limiteMembros para 50 ao alterar plano de PROFISSIONAL para GRATUITO', async () => {
       prisma.tenant.findUnique.mockResolvedValue({
         id: 't-pro',
