@@ -256,7 +256,7 @@ export function NotificationAutomationRulesPanel() {
                 </div>
 
                 {/* Actions: Reset & Toggle Active / Inactive */}
-                <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
+                <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
                   <button
                     type="button"
                     onClick={() => handleReset(rule.tipo)}
