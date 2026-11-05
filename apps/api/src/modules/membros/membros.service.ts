@@ -18,6 +18,7 @@ import {
   validateImageUpload,
 } from '../../common/storage/image-upload';
 import { includesNormalizedText } from '../../common/utils/search-text';
+import { canAddMember, getEffectiveMemberLimit } from '../../common/utils/tenant-plan';
 
 const memberListInclude = {
   tags: {
@@ -173,9 +174,10 @@ export class MembrosService {
       where: { tenantId },
     });
 
-    if (totalAtivos >= tenant.limiteMembros) {
+    if (!canAddMember(tenant, totalAtivos)) {
+      const effectiveLimit = getEffectiveMemberLimit(tenant);
       throw new ForbiddenException(
-        `Limite de membros (${tenant.limiteMembros}) atingido para o plano ${tenant.plano}. Faça um upgrade.`,
+        `Limite de membros (${effectiveLimit}) atingido para o plano ${tenant.plano}. Faça um upgrade.`,
       );
     }
 

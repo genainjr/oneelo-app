@@ -21,6 +21,7 @@ export interface Tenant {
   nome: string;
   slug: string;
   plano: Plano;
+  limiteMembros?: number;
   statusAssinatura: string;
   ativo: boolean;
   email?: string;

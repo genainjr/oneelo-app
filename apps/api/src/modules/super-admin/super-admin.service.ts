@@ -13,7 +13,8 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
-import { Role, AcaoAuditoria, FinanceRole, UserStatus } from '@prisma/client';
+import { Role, AcaoAuditoria, FinanceRole, UserStatus, Plano } from '@prisma/client';
+import { getDefaultStoredMemberLimit } from '../../common/utils/tenant-plan';
 import * as bcrypt from 'bcryptjs';
 import type { Multer } from 'multer';
 
@@ -68,6 +69,7 @@ export class SuperAdminService {
         nome: true,
         slug: true,
         plano: true,
+        limiteMembros: true,
         statusAssinatura: true,
         ativo: true,
         email: true,
@@ -89,12 +91,16 @@ export class SuperAdminService {
     const emailExists = await this.prisma.user.findFirst({ where: { email: dto.adminEmail } });
     if (emailExists) throw new ConflictException('E-mail do administrador já está em uso.');
 
+    const plano = dto.plano ?? Plano.GRATUITO;
+    const limiteMembros = dto.limiteMembros ?? getDefaultStoredMemberLimit(plano);
+
     const result = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
           nome: dto.nome,
           slug: dto.slug,
-          plano: dto.plano ?? 'GRATUITO',
+          plano,
+          limiteMembros,
           email: dto.email,
           telefone: dto.telefone,
           idioma: dto.idioma,
@@ -133,7 +139,7 @@ export class SuperAdminService {
           entidadeId: tenant.id,
           acao: AcaoAuditoria.CRIAR,
           ipAddress: ip ?? null,
-          payloadAfter: { nome: dto.nome, slug: dto.slug, plano: dto.plano },
+          payloadAfter: { nome: dto.nome, slug: dto.slug, plano, limiteMembros },
         },
       });
 
@@ -147,11 +153,17 @@ export class SuperAdminService {
     const tenant = await this.prisma.tenant.findUnique({ where: { id } });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
 
+    let newLimiteMembros = dto.limiteMembros;
+    if (newLimiteMembros === undefined && dto.plano !== undefined && dto.plano !== tenant.plano) {
+      newLimiteMembros = getDefaultStoredMemberLimit(dto.plano);
+    }
+
     const updated = await this.prisma.tenant.update({
       where: { id },
       data: {
         ...(dto.nome !== undefined && { nome: dto.nome }),
         ...(dto.plano !== undefined && { plano: dto.plano }),
+        ...(newLimiteMembros !== undefined && { limiteMembros: newLimiteMembros }),
         ...(dto.ativo !== undefined && { ativo: dto.ativo }),
         ...(dto.email !== undefined && { email: dto.email }),
         ...(dto.telefone !== undefined && { telefone: dto.telefone }),
@@ -162,6 +174,7 @@ export class SuperAdminService {
         nome: true,
         slug: true,
         plano: true,
+        limiteMembros: true,
         statusAssinatura: true,
         ativo: true,
         email: true,
@@ -181,8 +194,16 @@ export class SuperAdminService {
         entidadeId: id,
         acao: AcaoAuditoria.ATUALIZAR,
         ipAddress: ip ?? null,
-        payloadBefore: { nome: tenant.nome, plano: tenant.plano, ativo: tenant.ativo },
-        payloadAfter: dto as any,
+        payloadBefore: {
+          nome: tenant.nome,
+          plano: tenant.plano,
+          limiteMembros: tenant.limiteMembros,
+          ativo: tenant.ativo,
+        },
+        payloadAfter: {
+          ...dto,
+          ...(newLimiteMembros !== undefined ? { limiteMembros: newLimiteMembros } : {}),
+        } as any,
       },
     });
 

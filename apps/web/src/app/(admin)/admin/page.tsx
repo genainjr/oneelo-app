@@ -165,9 +165,9 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
 
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Plano" value={form.plano} onChange={(e) => set('plano', e.target.value as Plano)}>
-              <option value="GRATUITO">Gratuito</option>
-              <option value="BASICO">Básico</option>
-              <option value="PROFISSIONAL">Profissional</option>
+              <option value="GRATUITO">Gratuito (até 50 membros)</option>
+              <option value="BASICO">Básico (até 200 membros)</option>
+              <option value="PROFISSIONAL">Profissional (ilimitado)</option>
             </SelectField>
             <SelectField label="Idioma padrão" value={form.idioma} onChange={(e) => set('idioma', e.target.value)}>
               <option value="pt-BR">Português (Brasil)</option>
@@ -336,9 +336,9 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
 
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Plano" value={form.plano} onChange={(e) => set('plano', e.target.value as Plano)}>
-              <option value="GRATUITO">Gratuito</option>
-              <option value="BASICO">Básico</option>
-              <option value="PROFISSIONAL">Profissional</option>
+              <option value="GRATUITO">Gratuito (até 50 membros)</option>
+              <option value="BASICO">Básico (até 200 membros)</option>
+              <option value="PROFISSIONAL">Profissional (ilimitado)</option>
             </SelectField>
             <SelectField label="Idioma padrão" value={form.idioma} onChange={(e) => set('idioma', e.target.value)}>
               <option value="pt-BR">Português (Brasil)</option>
@@ -455,7 +455,16 @@ export default function AdminTenantsPage() {
     {
       key: 'plano',
       header: 'Plano',
-      render: (t) => <Badge label={PLANO_LABELS[t.plano]} color={PLANO_COLORS[t.plano]} />,
+      render: (t) => (
+        <div>
+          <Badge label={PLANO_LABELS[t.plano]} color={PLANO_COLORS[t.plano]} />
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            {t.plano === 'PROFISSIONAL'
+              ? 'Ilimitado'
+              : `Até ${t.limiteMembros ?? (t.plano === 'BASICO' ? 200 : 50)} membros`}
+          </p>
+        </div>
+      ),
     },
     {
       key: 'ativo',

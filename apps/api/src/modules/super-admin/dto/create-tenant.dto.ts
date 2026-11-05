@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsEnum, IsInt, IsOptional, IsString, MinLength, Matches, Min } from 'class-validator';
 import { Plano } from '@prisma/client';
 
 export class CreateTenantDto {
@@ -12,6 +12,11 @@ export class CreateTenantDto {
   @IsOptional()
   @IsEnum(Plano)
   plano?: Plano;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  limiteMembros?: number;
 
   @IsOptional()
   @IsEmail()
