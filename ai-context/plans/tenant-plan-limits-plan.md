@@ -42,7 +42,7 @@ Este plano visa:
 - `apps/api/src/modules/super-admin/super-admin.service.spec.ts` (testes unitários do Super Admin)
 - `apps/api/src/modules/super-admin/dto/create-tenant.dto.ts` (suporte a limiteMembros opcional)
 - `apps/api/src/modules/super-admin/dto/update-tenant.dto.ts` (suporte a limiteMembros opcional)
-- `apps/api/prisma/migrations/20261104170000_align_tenant_member_limits/migration.sql` (migração de alinhamento de limites)
+- `apps/api/prisma/migrations/20261105140000_align_tenant_member_limits/migration.sql` (migração de alinhamento de limites)
 - `apps/api/scripts/backfill-tenant-limits.ts` (script de backfill)
 - `apps/web/src/types/index.ts` (adição de limiteMembros na interface Tenant)
 - `apps/web/src/hooks/use-admin.ts` (suporte a limiteMembros nos payloads)
