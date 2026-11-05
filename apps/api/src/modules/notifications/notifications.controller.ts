@@ -64,6 +64,49 @@ export class NotificationsController {
     return this.notificationDispatch.getAvailableRecipients(tenantId);
   }
 
+  @Get('inbox')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  getUserInbox(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Query('limit') limit?: string,
+  ) {
+    const tenantId = (req['tenantId'] as string) || user.tenantId!;
+    return this.notificationDispatch.getUserInbox(
+      tenantId,
+      user.sub,
+      limit ? parseInt(limit, 10) : 20,
+    );
+  }
+
+  @Patch('inbox/:id/read')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  markNotificationAsRead(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const tenantId = (req['tenantId'] as string) || user.tenantId!;
+    return this.notificationDispatch.markNotificationAsRead(
+      tenantId,
+      user.sub,
+      id,
+    );
+  }
+
+  @Post('inbox/read-all')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  markAllNotificationsAsRead(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    const tenantId = (req['tenantId'] as string) || user.tenantId!;
+    return this.notificationDispatch.markAllNotificationsAsRead(
+      tenantId,
+      user.sub,
+    );
+  }
+
   @Get('automation-rules')
   @Roles(Role.ADMIN, Role.STAFF)
   getAutomationRules(@Req() req: Request) {

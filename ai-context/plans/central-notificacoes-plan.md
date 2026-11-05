@@ -290,17 +290,17 @@ Status: concluído
 - Critério de validação da etapa: `npx prisma validate` e migration aplicada com sucesso sem quebra de integridade no banco local.
 
 #### Etapa 11 - Endpoints da Caixa de Entrada do Usuário (Inbox API)
-Status: planejado
+Status: concluído
 
-- [ ] Implementar `GET /notifications/inbox` no `NotificationsController`:
+- [x] Implementar `GET /notifications/inbox` no `NotificationsController`:
   - Retorna as notificações mais recentes do usuário autenticado (`userId`), ordenadas por data de criação decrescente;
   - Inclui a contagem total de notificações não lidas (`unreadCount`).
-- [ ] Implementar `PATCH /notifications/inbox/:id/read` no `NotificationsController`:
+- [x] Implementar `PATCH /notifications/inbox/:id/read` no `NotificationsController`:
   - Valida que o registro `NotificationRecipient` pertence ao usuário autenticado (`userId`);
   - Registra `lidoEm = new Date()` e retorna o item atualizado.
-- [ ] Implementar `POST /notifications/inbox/read-all` no `NotificationsController`:
+- [x] Implementar `POST /notifications/inbox/read-all` no `NotificationsController`:
   - Marca todas as notificações pendentes de leitura do usuário autenticado como lidas em lote.
-- [ ] Adicionar testes unitários no `NotificationsService` cobrindo listagem do inbox, cálculo de `unreadCount`, isolamento por usuário/tenant e confirmação de leitura.
+- [x] Adicionar testes unitários no `NotificationsService` cobrindo listagem do inbox, cálculo de `unreadCount`, isolamento por usuário/tenant e confirmação de leitura.
 - Critério de validação da etapa: Testes unitários do inbox executados com 100% de aprovação (`npm test -w apps/api -- notifications.service`).
 
 #### Etapa 12 - Componente `NotificationBellInbox` no Cabeçalho (Frontend ODS)

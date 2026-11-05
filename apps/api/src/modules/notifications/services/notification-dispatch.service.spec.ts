@@ -31,8 +31,10 @@ describe('NotificationDispatchService', () => {
       },
       notificationRecipient: {
         findMany: jest.fn(),
+        findFirst: jest.fn(),
         count: jest.fn(),
         groupBy: jest.fn(),
+        update: jest.fn(),
         updateMany: jest.fn(),
       },
       user: {
@@ -654,6 +656,104 @@ describe('NotificationDispatchService', () => {
           ministerioId: 'min-1',
         }),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getUserInbox', () => {
+    it('deve listar notificações do usuário e retornar unreadCount', async () => {
+      prisma.notificationRecipient.count.mockResolvedValue(2);
+      prisma.notificationRecipient.findMany.mockResolvedValue([
+        {
+          id: 'rec-1',
+          notificationId: 'notif-1',
+          enviadoEm: new Date('2026-11-05T10:00:00Z'),
+          lidoEm: null,
+          notification: {
+            id: 'notif-1',
+            titulo: 'Sua escala é hoje',
+            mensagem: 'Louvor às 19:30',
+            urlDestino: '/minhas-escalas',
+            origem: NotificationOrigin.SYSTEM_AUTOMATION,
+            scheduledAt: new Date('2026-11-05T09:00:00Z'),
+            createdAt: new Date('2026-11-05T09:00:00Z'),
+          },
+        },
+      ]);
+
+      const result = await service.getUserInbox('tenant-1', 'user-1', 20);
+
+      expect(result.unreadCount).toBe(2);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].titulo).toBe('Sua escala é hoje');
+      expect(result.data[0].isRead).toBe(false);
+    });
+  });
+
+  describe('markNotificationAsRead', () => {
+    it('deve marcar notificação como lida', async () => {
+      prisma.notificationRecipient.findFirst.mockResolvedValue({
+        id: 'rec-1',
+        userId: 'user-1',
+        lidoEm: null,
+      });
+      const now = new Date();
+      prisma.notificationRecipient.update.mockResolvedValue({
+        id: 'rec-1',
+        lidoEm: now,
+      });
+
+      const result = await service.markNotificationAsRead('tenant-1', 'user-1', 'rec-1');
+
+      expect(result.success).toBe(true);
+      expect(result.lidoEm).toEqual(now);
+      expect(prisma.notificationRecipient.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'rec-1' },
+          data: expect.objectContaining({ lidoEm: expect.any(Date) }),
+        }),
+      );
+    });
+
+    it('deve retornar lidoEm existente se a notificação já estiver lida', async () => {
+      const alreadyReadDate = new Date('2026-11-05T10:00:00Z');
+      prisma.notificationRecipient.findFirst.mockResolvedValue({
+        id: 'rec-1',
+        userId: 'user-1',
+        lidoEm: alreadyReadDate,
+      });
+
+      const result = await service.markNotificationAsRead('tenant-1', 'user-1', 'rec-1');
+
+      expect(result.success).toBe(true);
+      expect(result.lidoEm).toEqual(alreadyReadDate);
+      expect(prisma.notificationRecipient.update).not.toHaveBeenCalled();
+    });
+
+    it('deve lançar NotFoundException se a notificação não existir para o usuário', async () => {
+      prisma.notificationRecipient.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.markNotificationAsRead('tenant-1', 'user-1', 'rec-inexistente'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('markAllNotificationsAsRead', () => {
+    it('deve marcar todas como lidas em lote', async () => {
+      prisma.notificationRecipient.updateMany.mockResolvedValue({ count: 5 });
+
+      const result = await service.markAllNotificationsAsRead('tenant-1', 'user-1');
+
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(5);
+      expect(prisma.notificationRecipient.updateMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          lidoEm: null,
+          notification: { tenantId: 'tenant-1' },
+        },
+        data: expect.objectContaining({ lidoEm: expect.any(Date) }),
+      });
     });
   });
 });

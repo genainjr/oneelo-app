@@ -621,7 +621,7 @@ export class NotificationDispatchService {
       recipientWhere.status = query.status;
     }
 
-    const [totalRecipients, recipientsRaw, statusGroups] = await Promise.all([
+    const [totalRecipients, recipientsRaw, statusGroups, readCount] = await Promise.all([
       this.prisma.notificationRecipient.count({ where: recipientWhere }),
       this.prisma.notificationRecipient.findMany({
         where: recipientWhere,
@@ -649,6 +649,9 @@ export class NotificationDispatchService {
         where: { notificationId: id },
         _count: { status: true },
       }),
+      this.prisma.notificationRecipient.count({
+        where: { notificationId: id, lidoEm: { not: null } },
+      }),
     ]);
 
     const stats = {
@@ -657,6 +660,8 @@ export class NotificationDispatchService {
       pending: 0,
       failed: 0,
       noSubscription: 0,
+      read: readCount,
+      readPercentage: 0,
     };
 
     for (const group of statusGroups) {
@@ -678,6 +683,9 @@ export class NotificationDispatchService {
       }
     }
 
+    stats.readPercentage =
+      stats.total > 0 ? Math.round((stats.read / stats.total) * 100) : 0;
+
     const recipients = recipientsRaw.map((r) => {
       const userDisplay =
         r.user.membro?.nomeExibicao ||
@@ -693,6 +701,7 @@ export class NotificationDispatchService {
         tentativas: r.tentativas,
         ultimoErro: r.ultimoErro,
         enviadoEm: r.enviadoEm,
+        lidoEm: r.lidoEm,
         createdAt: r.createdAt,
       };
     });
@@ -880,5 +889,113 @@ export class NotificationDispatchService {
       email: u.email,
       hasPush: u._count.pushSubscriptions > 0,
     }));
+  }
+
+  /**
+   * Retorna a caixa de entrada (inbox) de notificações do usuário autenticado.
+   */
+  async getUserInbox(tenantId: string, userId: string, limit = 20) {
+    const take = Math.min(Math.max(Number(limit) || 20, 1), 50);
+
+    const [unreadCount, items] = await Promise.all([
+      this.prisma.notificationRecipient.count({
+        where: {
+          userId,
+          lidoEm: null,
+          notification: { tenantId },
+        },
+      }),
+      this.prisma.notificationRecipient.findMany({
+        where: {
+          userId,
+          notification: { tenantId },
+        },
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          notification: {
+            select: {
+              id: true,
+              titulo: true,
+              mensagem: true,
+              urlDestino: true,
+              origem: true,
+              scheduledAt: true,
+              createdAt: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const data = items.map((r) => ({
+      id: r.id,
+      notificationId: r.notificationId,
+      titulo: r.notification.titulo,
+      mensagem: r.notification.mensagem,
+      urlDestino: r.notification.urlDestino,
+      origem: r.notification.origem,
+      scheduledAt: r.notification.scheduledAt,
+      createdAt: r.notification.createdAt,
+      enviadoEm: r.enviadoEm,
+      lidoEm: r.lidoEm,
+      isRead: Boolean(r.lidoEm),
+    }));
+
+    return {
+      unreadCount,
+      data,
+    };
+  }
+
+  /**
+   * Marca uma notificação do usuário como lida.
+   */
+  async markNotificationAsRead(
+    tenantId: string,
+    userId: string,
+    recipientId: string,
+  ) {
+    const recipient = await this.prisma.notificationRecipient.findFirst({
+      where: {
+        id: recipientId,
+        userId,
+        notification: { tenantId },
+      },
+    });
+
+    if (!recipient) {
+      throw new NotFoundException('Notificação não encontrada.');
+    }
+
+    if (recipient.lidoEm) {
+      return { success: true, lidoEm: recipient.lidoEm };
+    }
+
+    const updated = await this.prisma.notificationRecipient.update({
+      where: { id: recipientId },
+      data: { lidoEm: new Date() },
+      select: { id: true, lidoEm: true },
+    });
+
+    return { success: true, lidoEm: updated.lidoEm };
+  }
+
+  /**
+   * Marca todas as notificações não lidas do usuário como lidas em lote.
+   */
+  async markAllNotificationsAsRead(tenantId: string, userId: string) {
+    const result = await this.prisma.notificationRecipient.updateMany({
+      where: {
+        userId,
+        lidoEm: null,
+        notification: { tenantId },
+      },
+      data: {
+        lidoEm: new Date(),
+      },
+    });
+
+    return { success: true, count: result.count };
   }
 }
