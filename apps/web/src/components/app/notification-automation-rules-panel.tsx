@@ -134,11 +134,15 @@ export function NotificationAutomationRulesPanel() {
   const handleReset = async (tipo: NotificationAutomationType) => {
     try {
       setResettingTipo(tipo);
-      const updated = await api.post<NotificationAutomationRule[]>(
+      const response = await api.post<NotificationAutomationRule[]>(
         '/api/notifications/automation-rules/reset',
         { tipo },
       );
-      setRules(updated);
+      const resetRuleData = response.find((r) => r.tipo === tipo);
+
+      setRules((prev) =>
+        prev.map((r) => (r.tipo === tipo ? (resetRuleData ?? r) : r)),
+      );
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {

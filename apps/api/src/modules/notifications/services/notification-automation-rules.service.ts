@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { NotificationAutomationType } from '@prisma/client';
 import {
@@ -267,6 +272,10 @@ export class NotificationAutomationRulesService {
   }
 
   async resetRule(tenantId: string, tipo: NotificationAutomationType) {
+    if (!tipo) {
+      throw new BadRequestException('Tipo de regra é obrigatório para restauração.');
+    }
+
     await this.prisma.notificationAutomationRule.deleteMany({
       where: {
         tenantId,

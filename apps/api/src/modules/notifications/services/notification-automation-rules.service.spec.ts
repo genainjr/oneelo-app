@@ -244,6 +244,12 @@ describe('NotificationAutomationRulesService', () => {
   });
 
   describe('resetRule', () => {
+    it('should throw BadRequestException when tipo is missing', async () => {
+      await expect(
+        service.resetRule(tenantId, '' as any),
+      ).rejects.toThrow();
+    });
+
     it('should delete custom rule and return rules catalog', async () => {
       await service.resetRule(
         tenantId,
