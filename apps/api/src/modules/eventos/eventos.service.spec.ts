@@ -57,6 +57,9 @@ describe('EventosService', () => {
         findFirst: jest.fn().mockResolvedValue(null),
         findMany: jest.fn().mockResolvedValue([]),
       },
+      notification: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
       $transaction: jest.fn(
         (operation: (tx: typeof transactionClient) => Promise<unknown>) =>
           operation(transactionClient),
@@ -70,14 +73,22 @@ describe('EventosService', () => {
             candidate.role === Role.ADMIN || candidate.role === Role.STAFF,
         ),
     };
+    const notificationDispatch = {
+      createNotification: jest.fn().mockResolvedValue({ id: 'notif-1' }),
+      rescheduleNotification: jest.fn().mockResolvedValue({ id: 'notif-1' }),
+      cancelNotification: jest.fn().mockResolvedValue({ id: 'notif-1' }),
+    };
 
     return {
       service: new EventosService(
         prisma as unknown as PrismaService,
         authorization as unknown as AuthorizationService,
+        undefined,
+        notificationDispatch as any,
       ),
       prisma,
       transactionClient,
+      notificationDispatch,
       getCreateArgs: () => createArgs,
       getCreateManyArgs: () => createManyArgs,
     };
@@ -435,5 +446,136 @@ describe('EventosService', () => {
       ),
     ).rejects.toMatchObject({ status: 409 });
     expect(transactionClient.evento.update).not.toHaveBeenCalled();
+  });
+
+  describe('Lembretes de Eventos 2h via NotificationDispatchService', () => {
+    it('deve agendar notificação com scheduledAt 2h antes ao criar evento futuro', async () => {
+      const { service, notificationDispatch, prisma } = createService();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      prisma.evento.create.mockResolvedValue({
+        id: 'evento-futuro-1',
+        tenantId,
+        titulo: 'Vigília de Oração',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureDate,
+        status: 'AGENDADO',
+      });
+
+      await service.create(
+        tenantId,
+        {
+          titulo: 'Vigília de Oração',
+          dataInicio: futureDate.toISOString(),
+          tipo: EventoTipo.GERAL,
+        },
+        user,
+      );
+
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId,
+          titulo: 'Evento em 2 horas',
+          idempotencyKey: `tenant:${tenantId}:evento:evento-futuro-1:reminder-2h`,
+          origem: 'SYSTEM_AUTOMATION',
+          tipoPublico: 'ALL_MEMBERS',
+        }),
+      );
+    });
+
+    it('não deve agendar notificação se o evento já estiver no passado', async () => {
+      const { service, notificationDispatch, prisma } = createService();
+      const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      prisma.evento.create.mockResolvedValue({
+        id: 'evento-passado-1',
+        tenantId,
+        titulo: 'Culto Passado',
+        tipo: EventoTipo.GERAL,
+        dataInicio: pastDate,
+        status: 'AGENDADO',
+      });
+
+      await service.create(
+        tenantId,
+        {
+          titulo: 'Culto Passado',
+          dataInicio: pastDate.toISOString(),
+          tipo: EventoTipo.GERAL,
+        },
+        user,
+      );
+
+      expect(notificationDispatch.createNotification).not.toHaveBeenCalled();
+    });
+
+    it('deve cancelar notificação se o evento for cancelado no update', async () => {
+      const { service, notificationDispatch, prisma, transactionClient } = createService();
+      const eventId = 'evento-cancelar-1';
+
+      prisma.evento.findFirst.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        titulo: 'Conferência',
+        tipo: EventoTipo.GERAL,
+        dataInicio: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+
+      transactionClient.evento.findFirst.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        titulo: 'Conferência',
+        tipo: EventoTipo.GERAL,
+        dataInicio: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        status: 'CANCELADO',
+        ministerios: [],
+      });
+
+      (prisma as any).notification = {
+        findUnique: jest.fn().mockResolvedValue({ id: 'notif-canc-1' }),
+      };
+
+      await service.update(
+        tenantId,
+        eventId,
+        { status: 'CANCELADO' as any },
+        user,
+      );
+
+      expect(notificationDispatch.cancelNotification).toHaveBeenCalledWith(
+        'notif-canc-1',
+        tenantId,
+      );
+    });
+
+    it('deve cancelar notificação se o evento for removido', async () => {
+      const { service, notificationDispatch, prisma } = createService();
+      const eventId = 'evento-remover-1';
+
+      prisma.evento.findFirst.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        titulo: 'Evento Removido',
+        tipo: EventoTipo.GERAL,
+        dataInicio: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+
+      (prisma as any).evento.delete = jest.fn().mockResolvedValue({ id: eventId });
+      (prisma as any).notification = {
+        findUnique: jest.fn().mockResolvedValue({ id: 'notif-rem-1' }),
+      };
+
+      await service.remove(tenantId, eventId, user);
+
+      expect(notificationDispatch.cancelNotification).toHaveBeenCalledWith(
+        'notif-rem-1',
+        tenantId,
+      );
+      expect((prisma as any).evento.delete).toHaveBeenCalledWith({ where: { id: eventId } });
+    });
   });
 });

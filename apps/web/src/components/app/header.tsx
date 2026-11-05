@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { PushNotificationButton } from './push-notification-button';
+import { NotificationBellInbox } from './notification-bell-inbox';
 import { useAuthUser } from '@/contexts/auth-user-context';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -30,6 +30,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/grupos': 'Grupos',
   '/integracoes': 'Integrações',
   '/configuracoes': 'Configurações',
+  '/configuracoes/notificacoes': 'Central de Notificações',
   '/meu-perfil': 'Meu Perfil',
   '/onboarding': 'Primeiros Passos',
 };
@@ -79,7 +80,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         )}
       </div>
 
-      <PushNotificationButton />
+      <NotificationBellInbox />
     </header>
   );
 }
