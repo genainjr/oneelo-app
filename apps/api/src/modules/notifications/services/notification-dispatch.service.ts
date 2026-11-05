@@ -893,25 +893,39 @@ export class NotificationDispatchService {
 
   /**
    * Retorna a caixa de entrada (inbox) de notificações do usuário autenticado.
+   * Filtra apenas notificações que já atingiram seu horário agendado (scheduledAt <= now)
+   * e que não estejam canceladas ou em rascunho.
    */
   async getUserInbox(tenantId: string, userId: string, limit = 20) {
     const take = Math.min(Math.max(Number(limit) || 20, 1), 50);
+    const now = new Date();
+
+    const baseWhere = {
+      userId,
+      notification: {
+        tenantId,
+        scheduledAt: { lte: now },
+        status: {
+          notIn: [NotificationStatus.CANCELED, NotificationStatus.DRAFT],
+        },
+      },
+    };
 
     const [unreadCount, items] = await Promise.all([
       this.prisma.notificationRecipient.count({
         where: {
-          userId,
+          ...baseWhere,
           lidoEm: null,
-          notification: { tenantId },
         },
       }),
       this.prisma.notificationRecipient.findMany({
-        where: {
-          userId,
-          notification: { tenantId },
-        },
+        where: baseWhere,
         take,
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          notification: {
+            scheduledAt: 'desc',
+          },
+        },
         include: {
           notification: {
             select: {
@@ -956,11 +970,18 @@ export class NotificationDispatchService {
     userId: string,
     recipientId: string,
   ) {
+    const now = new Date();
     const recipient = await this.prisma.notificationRecipient.findFirst({
       where: {
         id: recipientId,
         userId,
-        notification: { tenantId },
+        notification: {
+          tenantId,
+          scheduledAt: { lte: now },
+          status: {
+            notIn: [NotificationStatus.CANCELED, NotificationStatus.DRAFT],
+          },
+        },
       },
     });
 
@@ -985,11 +1006,18 @@ export class NotificationDispatchService {
    * Marca todas as notificações não lidas do usuário como lidas em lote.
    */
   async markAllNotificationsAsRead(tenantId: string, userId: string) {
+    const now = new Date();
     const result = await this.prisma.notificationRecipient.updateMany({
       where: {
         userId,
         lidoEm: null,
-        notification: { tenantId },
+        notification: {
+          tenantId,
+          scheduledAt: { lte: now },
+          status: {
+            notIn: [NotificationStatus.CANCELED, NotificationStatus.DRAFT],
+          },
+        },
       },
       data: {
         lidoEm: new Date(),
