@@ -91,12 +91,12 @@ Status: concluido
 - Critério de validação da etapa: Testes unitários passando com `npm test -w apps/api` e requisições HTTP retornando 200 OK.
 
 ### Etapa 2 - Integração das Regras nos Crons e Gatilhos de Notificação
-Status: planejado
+Status: concluido
 
-- [ ] Atualizar `runBirthdayNotificationJob` para respeitar se `BIRTHDAY_PERSONAL` e `BIRTHDAY_COMMUNITY` estão ativos, aplicando os horários e textos configurados.
-- [ ] Atualizar `runPendingConfirmationReminderJob` para respeitar ativação, horários e template configurados.
-- [ ] Atualizar `runScheduleDayReminderJob` para respeitar ativação, horário e template configurados.
-- [ ] Atualizar `scheduleEventReminder` em `EventosService` para usar a antecedência configurada pelo tenant (ex: 1h, 2h, 3h ou 24h) e o template customizado.
+- [x] Atualizar `runBirthdayNotificationJob` para respeitar se `BIRTHDAY_PERSONAL` e `BIRTHDAY_COMMUNITY` estão ativos, aplicando os horários e textos configurados.
+- [x] Atualizar `runPendingConfirmationReminderJob` para respeitar ativação, horários e template configurados.
+- [x] Atualizar `runScheduleDayReminderJob` para respeitar ativação, horário e template configurados.
+- [x] Atualizar `scheduleEventReminder` em `EventosService` para usar a antecedência configurada pelo tenant (ex: 1h, 2h, 3h ou 24h) e o template customizado.
 - Critério de validação da etapa: Testes do módulo de notificações e eventos passando com `npm test -w apps/api`.
 
 ### Etapa 3 - Endpoints e Filtro de Preferências do Usuário (Backend)

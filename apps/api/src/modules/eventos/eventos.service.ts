@@ -5,12 +5,14 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
   EventoTipo,
   MinistryRole,
   NotificationAudienceType,
+  NotificationAutomationType,
   NotificationOrigin,
   Prisma,
   Role,
@@ -19,6 +21,10 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { NotificationDispatchService } from '../notifications/services/notification-dispatch.service';
+import {
+  NotificationAutomationRulesService,
+  renderTemplate,
+} from '../notifications/services/notification-automation-rules.service';
 import { AuthorizationService } from '../../common/authorization/authorization.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
@@ -58,7 +64,10 @@ export class EventosService {
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
     private readonly eventoDocumentRenderer: EventoDocumentRendererService = new EventoDocumentRendererService(),
+    @Optional()
     private readonly notificationDispatch?: NotificationDispatchService,
+    @Optional()
+    private readonly automationRulesService?: NotificationAutomationRulesService,
   ) {}
 
   private uniqueIds(ids?: string[]) {
@@ -901,7 +910,25 @@ export class EventosService {
       return;
     }
 
-    const scheduledAt = new Date(dataInicioDate.getTime() - 2 * 60 * 60 * 1000);
+    const rule = (await this.automationRulesService?.getRuleByType(
+      evento.tenantId,
+      NotificationAutomationType.EVENT_REMINDER_BEFORE,
+    )) ?? {
+      ativo: true,
+      horario: null,
+      antecedenciaHoras: 2,
+      titulo: 'Evento em {antecedencia}',
+      mensagem: '{evento} começa às {horario}. Esperamos você!',
+    };
+
+    if (!rule.ativo) {
+      return;
+    }
+
+    const leadHours = rule.antecedenciaHoras ?? 2;
+    const scheduledAt = new Date(
+      dataInicioDate.getTime() - leadHours * 60 * 60 * 1000,
+    );
     const effectiveScheduledAt = scheduledAt.getTime() < now.getTime() ? now : scheduledAt;
 
     const horario = new Intl.DateTimeFormat('pt-BR', {
@@ -909,6 +936,18 @@ export class EventosService {
       minute: '2-digit',
       timeZone: 'America/Sao_Paulo',
     }).format(dataInicioDate);
+
+    const leadHoursText = leadHours === 1 ? '1 hora' : `${leadHours} horas`;
+    const title = renderTemplate(rule.titulo, {
+      evento: evento.titulo,
+      horario,
+      antecedencia: leadHoursText,
+    });
+    const message = renderTemplate(rule.mensagem, {
+      evento: evento.titulo,
+      horario,
+      antecedencia: leadHoursText,
+    });
 
     const idempotencyKey = this.getEventReminderIdempotencyKey(evento.tenantId, evento.id);
 
@@ -951,8 +990,8 @@ export class EventosService {
 
     await this.notificationDispatch.createNotification({
       tenantId: evento.tenantId,
-      titulo: 'Evento em 2 horas',
-      mensagem: `${evento.titulo} começa às ${horario}. Esperamos você!`,
+      titulo: title,
+      mensagem: message,
       urlDestino: '/agenda/visualizacao',
       origem: NotificationOrigin.SYSTEM_AUTOMATION,
       tipoPublico:
@@ -977,14 +1016,31 @@ export class EventosService {
   }) {
     if (!this.notificationDispatch || !this.prisma.notification) return;
 
+    const rule = (await this.automationRulesService?.getRuleByType(
+      evento.tenantId,
+      NotificationAutomationType.EVENT_REMINDER_BEFORE,
+    )) ?? {
+      ativo: true,
+      horario: null,
+      antecedenciaHoras: 2,
+      titulo: 'Evento em {antecedencia}',
+      mensagem: '{evento} começa às {horario}. Esperamos você!',
+    };
+
+    if (!rule.ativo) {
+      await this.cancelEventReminder(evento.tenantId, evento.id);
+      return;
+    }
+
     const idempotencyKey = this.getEventReminderIdempotencyKey(evento.tenantId, evento.id);
     const existing = await this.prisma.notification.findUnique({
       where: { idempotencyKey },
     });
 
     if (existing) {
+      const leadHours = rule.antecedenciaHoras ?? 2;
       const dataInicioDate = new Date(evento.dataInicio);
-      const newScheduledAt = new Date(dataInicioDate.getTime() - 2 * 60 * 60 * 1000);
+      const newScheduledAt = new Date(dataInicioDate.getTime() - leadHours * 60 * 60 * 1000);
       await this.notificationDispatch.rescheduleNotification(
         existing.id,
         evento.tenantId,

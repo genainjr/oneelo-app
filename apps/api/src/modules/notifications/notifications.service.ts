@@ -4,6 +4,7 @@ import {
   AcaoAuditoria,
   EventoTipo,
   NotificationAudienceType,
+  NotificationAutomationType,
   NotificationOrigin,
   StatusConfirmacao,
   StatusEscala,
@@ -16,6 +17,10 @@ import webPush from 'web-push';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { NotificationDispatchService } from './services/notification-dispatch.service';
+import {
+  NotificationAutomationRulesService,
+  renderTemplate,
+} from './services/notification-automation-rules.service';
 import {
   DeletePushSubscriptionDto,
   SendTestNotificationDto,
@@ -39,6 +44,8 @@ export class NotificationsService {
     private readonly configService: ConfigService,
     @Optional()
     private readonly notificationDispatch?: NotificationDispatchService,
+    @Optional()
+    private readonly automationRulesService?: NotificationAutomationRulesService,
   ) {
     this.configureWebPush();
   }
@@ -426,42 +433,70 @@ export class NotificationsService {
         )
         .map((member) => member.user!.id);
 
-      for (const celebrant of celebrants) {
-        if (
-          !celebrant.user?.ativo ||
-          celebrant.user.status !== UserStatus.ACTIVE
-        )
-          continue;
+      const personalRule = (await this.automationRulesService?.getRuleByType(
+        tenantId,
+        NotificationAutomationType.BIRTHDAY_PERSONAL,
+      )) ?? {
+        ativo: true,
+        titulo: 'Hoje é o seu dia, {nome}! 🎂',
+        mensagem: `Feliz aniversário! Que este novo ciclo seja cheio de fé, alegria e boas histórias ao lado da família {igreja}.`,
+      };
 
-        const displayName = celebrant.nomeExibicao || celebrant.nome;
-        const title = `Hoje é o seu dia, ${this.getFirstName(displayName)}! 🎂`;
-        const body = `Feliz aniversário! Que este novo ciclo seja cheio de fé, alegria e boas histórias ao lado da família ${tenantName}.`;
+      const communityRule = (await this.automationRulesService?.getRuleByType(
+        tenantId,
+        NotificationAutomationType.BIRTHDAY_COMMUNITY,
+      )) ?? {
+        ativo: true,
+        titulo: 'Hoje tem aniversário na {igreja}! 🎉',
+        mensagem:
+          '{nome} está celebrando mais um ano de vida. Que tal enviar uma mensagem especial?',
+      };
 
-        if (this.notificationDispatch) {
-          const ano = referenceDate.getFullYear();
-          await this.notificationDispatch.createNotification({
-            tenantId,
-            origem: NotificationOrigin.SYSTEM_AUTOMATION,
-            titulo: title,
-            mensagem: body,
-            urlDestino: '/personal-panel',
-            tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
-            userIds: [celebrant.user.id],
-            idempotencyKey: `tenant:${tenantId}:membro:${celebrant.user.id}:birthday-personal:${ano}`,
+      if (personalRule.ativo) {
+        for (const celebrant of celebrants) {
+          if (
+            !celebrant.user?.ativo ||
+            celebrant.user.status !== UserStatus.ACTIVE
+          )
+            continue;
+
+          const displayName = celebrant.nomeExibicao || celebrant.nome;
+          const firstName = this.getFirstName(displayName);
+          const title = renderTemplate(personalRule.titulo, {
+            nome: firstName,
+            igreja: tenantName,
           });
-          personalNotifications += 1;
-          sent += 1;
-        } else {
-          const result = await this.sendToUsers(tenantId, [celebrant.user.id], {
-            title,
-            body,
-            url: '/personal-panel',
+          const body = renderTemplate(personalRule.mensagem, {
+            nome: firstName,
+            igreja: tenantName,
           });
 
-          personalNotifications += 1;
-          sent += result.sent;
-          failed += result.failed;
-          totalSubscriptions += result.total;
+          if (this.notificationDispatch) {
+            const ano = referenceDate.getFullYear();
+            await this.notificationDispatch.createNotification({
+              tenantId,
+              origem: NotificationOrigin.SYSTEM_AUTOMATION,
+              titulo: title,
+              mensagem: body,
+              urlDestino: '/personal-panel',
+              tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+              userIds: [celebrant.user.id],
+              idempotencyKey: `tenant:${tenantId}:membro:${celebrant.user.id}:birthday-personal:${ano}`,
+            });
+            personalNotifications += 1;
+            sent += 1;
+          } else {
+            const result = await this.sendToUsers(tenantId, [celebrant.user.id], {
+              title,
+              body,
+              url: '/personal-panel',
+            });
+
+            personalNotifications += 1;
+            sent += result.sent;
+            failed += result.failed;
+            totalSubscriptions += result.total;
+          }
         }
       }
 
@@ -470,17 +505,25 @@ export class NotificationsService {
         (userId) => !celebrantUserIds.includes(userId),
       );
 
-      if (otherUserIds.length > 0) {
+      if (communityRule.ativo && otherUserIds.length > 0) {
         const names = celebrants.map(
           (member) => member.nomeExibicao || member.nome,
         );
+        const formattedNames = this.formatBirthdayNames(names);
         const multiple = names.length > 1;
-        const title = multiple
+        const defaultTitle = multiple
           ? `Hoje temos aniversariantes na ${tenantName}! 🎉`
           : `Hoje tem aniversário na ${tenantName}! 🎉`;
-        const body = multiple
-          ? `Hoje é dia de celebrar ${this.formatBirthdayNames(names)}. Vamos tornar o dia deles ainda mais especial!`
-          : `${names[0]} está celebrando mais um ano de vida. Que tal enviar uma mensagem especial?`;
+        const title = communityRule.titulo.includes('{nome}') || communityRule.titulo.includes('{igreja}')
+          ? renderTemplate(communityRule.titulo, {
+              nome: formattedNames,
+              igreja: tenantName,
+            })
+          : defaultTitle;
+        const body = renderTemplate(communityRule.mensagem, {
+          nome: formattedNames,
+          igreja: tenantName,
+        });
 
         if (this.notificationDispatch) {
           const refYmd = referenceDate.toISOString().split('T')[0];
@@ -588,27 +631,50 @@ export class NotificationsService {
       const userId = item.membro.user?.id;
       if (!userId) continue;
 
+      const tenantId = item.escalaDia.escala.tenantId;
+      const rule = (await this.automationRulesService?.getRuleByType(
+        tenantId,
+        NotificationAutomationType.SCHEDULE_CONFIRMATION_24H,
+      )) ?? {
+        ativo: true,
+        titulo: 'Confirmação pendente',
+        mensagem:
+          'Sua escala de amanhã ainda aguarda confirmação. Toque para confirmar ou informar indisponibilidade.',
+      };
+
+      if (!rule.ativo) continue;
+
+      const title = renderTemplate(rule.titulo, {
+        nome: item.membro.nomeExibicao || item.membro.nome,
+        ministerio: item.escalaDia.escala.ministerio.nome,
+        igreja: item.escalaDia.escala.ministerio.nome,
+      });
+      const body = renderTemplate(rule.mensagem, {
+        nome: item.membro.nomeExibicao || item.membro.nome,
+        ministerio: item.escalaDia.escala.ministerio.nome,
+        igreja: item.escalaDia.escala.ministerio.nome,
+      });
+
       if (this.notificationDispatch) {
         const diaYmd = item.escalaDia.data.toISOString().split('T')[0];
         await this.notificationDispatch.createNotification({
-          tenantId: item.escalaDia.escala.tenantId,
+          tenantId,
           origem: NotificationOrigin.SYSTEM_AUTOMATION,
-          titulo: 'Confirmação pendente',
-          mensagem:
-            'Sua escala de amanhã ainda aguarda confirmação. Toque para confirmar ou informar indisponibilidade.',
+          titulo: title,
+          mensagem: body,
           urlDestino: '/minhas-escalas?pendentesApenas=true',
           tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
           userIds: [userId],
-          idempotencyKey: `tenant:${item.escalaDia.escala.tenantId}:escala-item:${item.id}:pending-reminder:${diaYmd}`,
+          idempotencyKey: `tenant:${tenantId}:escala-item:${item.id}:pending-reminder:${diaYmd}`,
         });
         sent += 1;
       } else {
         const result = await this.sendToUsers(
-          item.escalaDia.escala.tenantId,
+          tenantId,
           [userId],
           {
-            title: 'Confirmação pendente',
-            body: 'Sua escala de amanhã ainda aguarda confirmação. Toque para confirmar ou informar indisponibilidade.',
+            title,
+            body,
             url: '/minhas-escalas?pendentesApenas=true',
           },
         );
@@ -706,29 +772,52 @@ export class NotificationsService {
       const userId = item.membro.user?.id;
       if (!userId) continue;
 
+      const tenantId = item.escalaDia.escala.tenantId;
+      const rule = (await this.automationRulesService?.getRuleByType(
+        tenantId,
+        NotificationAutomationType.SCHEDULE_DAY_REMINDER,
+      )) ?? {
+        ativo: true,
+        titulo: 'Sua escala é hoje',
+        mensagem:
+          'Hoje você servirá no ministério de {ministerio} às {horario}. Veja os detalhes.',
+      };
+
+      if (!rule.ativo) continue;
+
       const horario = this.formatNotificationTime(
         item.escalaDia.evento?.dataInicio ?? item.escalaDia.data,
       );
-      const title = 'Sua escala é hoje';
-      const body = `Hoje você servirá no ministério de ${item.escalaDia.escala.ministerio.nome} às ${horario}. Veja os detalhes.`;
+      const title = renderTemplate(rule.titulo, {
+        nome: item.membro.nomeExibicao || item.membro.nome,
+        ministerio: item.escalaDia.escala.ministerio.nome,
+        horario,
+        igreja: item.escalaDia.escala.ministerio.nome,
+      });
+      const body = renderTemplate(rule.mensagem, {
+        nome: item.membro.nomeExibicao || item.membro.nome,
+        ministerio: item.escalaDia.escala.ministerio.nome,
+        horario,
+        igreja: item.escalaDia.escala.ministerio.nome,
+      });
       const url = '/minhas-escalas';
 
       if (this.notificationDispatch) {
         const diaYmd = item.escalaDia.data.toISOString().split('T')[0];
         await this.notificationDispatch.createNotification({
-          tenantId: item.escalaDia.escala.tenantId,
+          tenantId,
           origem: NotificationOrigin.SYSTEM_AUTOMATION,
           titulo: title,
           mensagem: body,
           urlDestino: url,
           tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
           userIds: [userId],
-          idempotencyKey: `tenant:${item.escalaDia.escala.tenantId}:escala-item:${item.id}:day-reminder:${diaYmd}`,
+          idempotencyKey: `tenant:${tenantId}:escala-item:${item.id}:day-reminder:${diaYmd}`,
         });
         sent += 1;
       } else {
         const result = await this.sendToUsers(
-          item.escalaDia.escala.tenantId,
+          tenantId,
           [userId],
           {
             title,
