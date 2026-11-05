@@ -82,12 +82,12 @@ Status: concluido
 - Critério de validação da etapa: `npx prisma validate` com sucesso e geração dos tipos sem conflito.
 
 ### Etapa 1 - Endpoints e Serviços de Regras de Automação (Backend)
-Status: planejado
+Status: concluido
 
-- [ ] Implementar `NotificationAutomationRulesService` com obtenção de regras ativas e salvamento com validação de horários/tags.
-- [ ] Fornecer catálogo padrão de regras (default seeds) caso o tenant ainda não tenha alterado.
-- [ ] Criar endpoints `GET /api/notifications/automation-rules` e `PUT /api/notifications/automation-rules`.
-- [ ] Adicionar testes unitários para resolução de templates e regras em `apps/api`.
+- [x] Implementar `NotificationAutomationRulesService` com obtenção de regras ativas e salvamento com validação de horários/tags.
+- [x] Fornecer catálogo padrão de regras (default seeds) caso o tenant ainda não tenha alterado.
+- [x] Criar endpoints `GET /api/notifications/automation-rules` e `PUT /api/notifications/automation-rules`.
+- [x] Adicionar testes unitários para resolução de templates e regras em `apps/api`.
 - Critério de validação da etapa: Testes unitários passando com `npm test -w apps/api` e requisições HTTP retornando 200 OK.
 
 ### Etapa 2 - Integração das Regras nos Crons e Gatilhos de Notificação
