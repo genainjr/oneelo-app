@@ -129,14 +129,14 @@ Status: concluído
 - Critério de validação da etapa: Testes unitários do módulo de notificações passando 100% (`npm test -w apps/api -- notification`).
 
 ### Etapa 2 - Endpoint Interno Assíncrono para Acionamento de Crons Críticos (Ponto 7)
-Status: planejado
+Status: concluído
 
-- [ ] Documentar variável `INTERNAL_CRON_API_KEY` no `.env.example` de `apps/api`.
-- [ ] Criar endpoint `POST /api/internal/crons/lembretes` em `NotificationsController`:
+- [x] Documentar variável `INTERNAL_CRON_API_KEY` no `.env.example` de `apps/api`.
+- [x] Criar endpoint `POST /api/internal/crons/lembretes` em `NotificationsController`:
   - Decorado com `@Public()` e `@HttpCode(200)`;
   - Validar header `x-internal-cron-key` com `crypto.timingSafeEqual` contra `ConfigService.get('INTERNAL_CRON_API_KEY')` (retornando `401 Unauthorized` se ausente, inválido ou não configurado);
   - Suportar filtro opcional `job` (`all` | `birthdays` | `confirmations-24h` | `schedule-day` | `queue`), materializando as notificações de forma idempotente e disparando `triggerImmediateProcessing()` em background para resposta rápida ao `cron-job.org`.
-- [ ] Criar testes unitários em `notifications.service.spec.ts` / controller validando autenticação da chave secreta (`401` vs `200`) e execução idempotente dos jobs.
+- [x] Criar testes unitários em `notifications.service.spec.ts` / controller validando autenticação da chave secreta (`401` vs `200`) e execução idempotente dos jobs.
 - Critério de validação da etapa: Testes unitários do módulo de notificações passando 100%.
 
 ### Etapa 3 - Otimização do Dashboard via Endpoint Agregado Único com Paridade de Negócio (Ponto 6)

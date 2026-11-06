@@ -310,4 +310,128 @@ describe('NotificationsService birthday job', () => {
       expect(result.sent).toBe(1);
     });
   });
+
+  describe('executeInternalCron', () => {
+    const validKey = 'super-secret-cron-token-12345';
+
+    it('lanca UnauthorizedException se a chave nao estiver configurada ou header for nulo', async () => {
+      const config = { get: jest.fn().mockReturnValue(undefined) };
+      const service = new NotificationsService({} as never, config as never);
+
+      await expect(service.executeInternalCron(undefined)).rejects.toThrow(
+        'Chave de API interna inválida ou não configurada.',
+      );
+      await expect(service.executeInternalCron('any-key')).rejects.toThrow(
+        'Chave de API interna inválida ou não configurada.',
+      );
+    });
+
+    it('lanca UnauthorizedException se o header for incorreto ou tiver tamanho diferente', async () => {
+      const config = {
+        get: jest.fn((key: string) =>
+          key === 'INTERNAL_CRON_API_KEY' ? validKey : undefined,
+        ),
+      };
+      const service = new NotificationsService({} as never, config as never);
+
+      await expect(service.executeInternalCron('wrong-key')).rejects.toThrow(
+        'Chave de API interna inválida ou não configurada.',
+      );
+      await expect(
+        service.executeInternalCron('super-secret-cron-token-12349'),
+      ).rejects.toThrow('Chave de API interna inválida ou não configurada.');
+    });
+
+    it('executa todos os jobs e aciona queueProcessor quando job for "all"', async () => {
+      const config = {
+        get: jest.fn((key: string) =>
+          key === 'INTERNAL_CRON_API_KEY' ? validKey : undefined,
+        ),
+      };
+      const queueProcessor = { triggerImmediateProcessing: jest.fn() };
+      const service = new NotificationsService(
+        {} as never,
+        config as never,
+        undefined,
+        undefined,
+        queueProcessor as never,
+      );
+
+      jest
+        .spyOn(service, 'runBirthdayNotificationJob')
+        .mockResolvedValue({ birthdays: 1 } as never);
+      jest
+        .spyOn(service, 'runPendingConfirmationReminderJob')
+        .mockResolvedValue({ confirmations: 2 } as never);
+      jest
+        .spyOn(service, 'runScheduleDayReminderJob')
+        .mockResolvedValue({ schedule: 3 } as never);
+
+      const result = await service.executeInternalCron(validKey, 'all');
+
+      expect(result.success).toBe(true);
+      expect(result.job).toBe('all');
+      expect(result.results.birthdays).toEqual({ birthdays: 1 });
+      expect(result.results.confirmations24h).toEqual({ confirmations: 2 });
+      expect(result.results.scheduleDay).toEqual({ schedule: 3 });
+      expect(queueProcessor.triggerImmediateProcessing).toHaveBeenCalledTimes(1);
+    });
+
+    it('executa apenas birthdays quando job for "birthdays"', async () => {
+      const config = {
+        get: jest.fn((key: string) =>
+          key === 'INTERNAL_CRON_API_KEY' ? validKey : undefined,
+        ),
+      };
+      const queueProcessor = { triggerImmediateProcessing: jest.fn() };
+      const service = new NotificationsService(
+        {} as never,
+        config as never,
+        undefined,
+        undefined,
+        queueProcessor as never,
+      );
+
+      jest
+        .spyOn(service, 'runBirthdayNotificationJob')
+        .mockResolvedValue({ birthdays: 1 } as never);
+      const confSpy = jest.spyOn(service, 'runPendingConfirmationReminderJob');
+      const schedSpy = jest.spyOn(service, 'runScheduleDayReminderJob');
+
+      const result = await service.executeInternalCron(validKey, 'birthdays');
+
+      expect(result.success).toBe(true);
+      expect(result.job).toBe('birthdays');
+      expect(result.results.birthdays).toBeDefined();
+      expect(confSpy).not.toHaveBeenCalled();
+      expect(schedSpy).not.toHaveBeenCalled();
+      expect(queueProcessor.triggerImmediateProcessing).toHaveBeenCalledTimes(1);
+    });
+
+    it('aciona apenas a fila quando job for "queue"', async () => {
+      const config = {
+        get: jest.fn((key: string) =>
+          key === 'INTERNAL_CRON_API_KEY' ? validKey : undefined,
+        ),
+      };
+      const queueProcessor = { triggerImmediateProcessing: jest.fn() };
+      const service = new NotificationsService(
+        {} as never,
+        config as never,
+        undefined,
+        undefined,
+        queueProcessor as never,
+      );
+
+      const bdaySpy = jest.spyOn(service, 'runBirthdayNotificationJob');
+
+      const result = await service.executeInternalCron(validKey, 'queue');
+
+      expect(result.success).toBe(true);
+      expect(result.job).toBe('queue');
+      expect(result.results.queue).toEqual({ triggered: true });
+      expect(bdaySpy).not.toHaveBeenCalled();
+      expect(queueProcessor.triggerImmediateProcessing).toHaveBeenCalledTimes(1);
+    });
+  });
 });
