@@ -21,6 +21,7 @@ import { useFilterState } from '@/hooks/use-filter-state';
 import { useEscalasVisualizacao } from '@/hooks/use-escalas-visualizacao';
 import { useDocumentShare } from '@/hooks/use-document-share';
 import { buildWeeklyExportOptionsForEscalas } from '@/lib/export-calendar-weeks';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import { api } from '@/lib/api';
 import { STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
 import { AuthUser, Escala, Ministerio } from '@/types';
@@ -43,7 +44,9 @@ const MESES = [
 
 export default function EscalasVisualizacaoPage() {
   const now = new Date();
+  const { user } = useAuthUser();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
+  const [rawMinisterios, setRawMinisterios] = useState<Ministerio[]>([]);
   const [tenantName, setTenantName] = useState('OneElo');
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
   const [printedAt] = useState(() => new Date());
@@ -84,58 +87,57 @@ export default function EscalasVisualizacaoPage() {
 
   useEffect(() => {
     let isMounted = true;
-
-    Promise.all([
-      api.get<Ministerio[]>('/api/ministerios').catch(() => [] as Ministerio[]),
-      api.get<AuthUser>('/api/auth/me').catch(() => null),
-    ]).then(([minList, user]) => {
-      if (!isMounted) return;
-
-      if (user) {
-        setTenantName(user.tenant?.nome || 'OneElo');
-        setTenantLogoUrl(user.tenant?.logoUrl ?? null);
-      }
-
-      const map = new Map<string, Ministerio>();
-
-      if (Array.isArray(minList)) {
-        for (const m of minList) {
-          if (m && m.id) {
-            map.set(m.id, m);
-          }
-        }
-      }
-
-      if (user?.membro?.ministerios?.length) {
-        for (const item of user.membro.ministerios) {
-          if (item?.ministerio?.id) {
-            const existing = map.get(item.ministerio.id);
-            if (!existing) {
-              map.set(item.ministerio.id, {
-                id: item.ministerio.id,
-                tenantId: '',
-                nome: item.ministerio.nome,
-                ativo: true,
-                usaEscalas: item.ministerio.usaEscalas ?? true,
-                createdAt: '',
-                updatedAt: '',
-              } as Ministerio);
-            }
-          }
-        }
-      }
-
-      setMinisterios(Array.from(map.values()));
-    }).catch(() => {
-      if (!isMounted) return;
-      setTenantName('OneElo');
-      setTenantLogoUrl(null);
-    });
-
+    api.get<Ministerio[]>('/api/ministerios')
+      .then((data) => {
+        if (isMounted) setRawMinisterios(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (isMounted) setRawMinisterios([]);
+      });
     return () => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (user?.tenant?.nome) {
+      setTenantName(user.tenant.nome);
+    } else {
+      setTenantName('OneElo');
+    }
+    setTenantLogoUrl(user?.tenant?.logoUrl ?? null);
+
+    const map = new Map<string, Ministerio>();
+
+    if (Array.isArray(rawMinisterios)) {
+      for (const m of rawMinisterios) {
+        if (m && m.id) {
+          map.set(m.id, m);
+        }
+      }
+    }
+
+    if (user?.membro?.ministerios?.length) {
+      for (const item of user.membro.ministerios) {
+        if (item?.ministerio?.id) {
+          const existing = map.get(item.ministerio.id);
+          if (!existing) {
+            map.set(item.ministerio.id, {
+              id: item.ministerio.id,
+              tenantId: '',
+              nome: item.ministerio.nome,
+              ativo: true,
+              usaEscalas: item.ministerio.usaEscalas ?? true,
+              createdAt: '',
+              updatedAt: '',
+            } as Ministerio);
+          }
+        }
+      }
+    }
+
+    setMinisterios(Array.from(map.values()));
+  }, [user, rawMinisterios]);
 
   useEffect(() => {
     if (escalas.length > 0) {

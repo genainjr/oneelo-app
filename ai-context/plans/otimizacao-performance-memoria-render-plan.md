@@ -151,11 +151,11 @@ Status: concluído
 - Critério de validação da etapa: Testes unitários de `DashboardService` passando 100% e página `/dashboard` carregando os 6 indicadores em 1 única requisição HTTP.
 
 ### Etapa 4 - Centralização Segura da Sessão (`/api/auth/me`) e Polling Inteligente no Sininho (Pontos 2 e 3)
-Status: planejado
+Status: concluído
 
-- [ ] Evoluir `apps/web/src/contexts/auth-user-context.tsx` e `apps/web/src/components/app/dashboard-shell.tsx`:
+- [x] Evoluir `apps/web/src/contexts/auth-user-context.tsx` e `apps/web/src/components/app/dashboard-shell.tsx`:
   - Incluir `loadingUser: boolean` e `refreshUser: () => Promise<AuthUser | null>` no contexto (com valores padrão seguros para não quebrar testes isolados).
-- [ ] Refatorar as 12 telas de `apps/web/src/app/(dashboard)/` para consumirem `useAuthUser()` sem race conditions:
+- [x] Refatorar as 12 telas de `apps/web/src/app/(dashboard)/` para consumirem `useAuthUser()` sem race conditions:
   - `dashboard/page.tsx`
   - `personal-panel/page.tsx`
   - `agenda/page.tsx`
@@ -168,7 +168,7 @@ Status: planejado
   - `financeiro/visualizacao/page.tsx`
   - `configuracoes/page.tsx` (acionando `refreshUser` ao atualizar dados/logo da igreja)
   - `meu-perfil/page.tsx` (sincronizando alterações de perfil com `setUser`/`refreshUser`).
-- [ ] Atualizar `apps/web/src/components/app/notification-bell-inbox.tsx`:
+- [x] Atualizar `apps/web/src/components/app/notification-bell-inbox.tsx`:
   - Alterar intervalo do polling de `60000` (60s) para `180000` (180s);
   - Pausar ciclos quando `document.hidden === true`;
   - Adicionar listener `visibilitychange` com throttle de 30s para atualizar ao voltar à aba.

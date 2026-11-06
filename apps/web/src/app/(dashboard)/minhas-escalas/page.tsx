@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/app/empty-state';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { Calendar, AlertTriangle, List } from 'lucide-react';
@@ -15,20 +16,12 @@ import { AuthUser, MinhaEscalaItem } from '@/types';
 
 export default function MinhasEscalasPage() {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const { user, loadingUser } = useAuthUser();
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [proximasMinimizadas, setProximasMinimizadas] = useState(false);
   const [historicoMinimizado, setHistoricoMinimizado] = useState(true);
   const { items, loading, error, refetch } = useMinhasEscalas();
-
-  useEffect(() => {
-    api.get<AuthUser>('/api/auth/me')
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoadingUser(false));
-  }, []);
 
   useEffect(() => {
     if (loadingUser || loading || !user) return;

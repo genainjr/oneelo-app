@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { compareCivilDates, formatDate, formatDateWithWeekday, getCivilDateKey, isCivilDateOnOrAfter } from '@/lib/utils';
 import { useEventos } from '@/hooks/use-eventos';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import type { AuthUser, Evento, MinhaEscalaItem } from '@/types';
 
 type MinisteriosResumo = {
@@ -97,7 +98,7 @@ const QUICK_ACCESS_ICONS = {
 
 export default function PersonalPanelPage() {
   const t = useTranslations('dashboardPersonal');
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user } = useAuthUser();
   const [today, setToday] = useState('');
   const [ministeriosResumo, setMinisteriosResumo] = useState<MinisteriosResumo | null>(null);
   const [escalasProximoMes, setEscalasProximoMes] = useState<EscalaResumo[]>([]);
@@ -126,9 +127,6 @@ export default function PersonalPanelPage() {
 
   useEffect(() => {
     setToday(formatDate(new Date()));
-    api.get<AuthUser>('/api/auth/me')
-      .then(setUser)
-      .catch(() => setUser(null));
   }, []);
 
   useEffect(() => {
