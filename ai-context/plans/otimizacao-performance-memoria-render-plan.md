@@ -140,13 +140,13 @@ Status: concluído
 - Critério de validação da etapa: Testes unitários do módulo de notificações passando 100%.
 
 ### Etapa 3 - Otimização do Dashboard via Endpoint Agregado Único com Paridade de Negócio (Ponto 6)
-Status: planejado
+Status: concluído
 
-- [ ] Atualizar `apps/api/src/modules/dashboard/dashboard.service.ts`:
+- [x] Atualizar `apps/api/src/modules/dashboard/dashboard.service.ts`:
   - Calcular `mesAtual`, `anoAtual`, `inicioDoMes` e `fimDoMes` no timezone `America/Sao_Paulo` para não virar o mês adiantado no servidor UTC;
   - Alinhar `getIndicadores(tenantId)` com as regras de negócio da UI: incluir `eventosDoMes` (contagem no mês corrente), `escalasDoMes` (contagem de `Escala` no mês/ano corrente, mantendo `escalasDaSemana` por compatibilidade) e ajustar `pendenciasConfirmacao` para a mesma regra de `EscalasService.countPendencias`.
-- [ ] Criar/atualizar testes unitários de `DashboardService` (`dashboard.service.spec.ts`) validando todos os contadores retornados e a resolução em fuso brasileiro.
-- [ ] Refatorar `apps/web/src/hooks/use-dashboard.ts`:
+- [x] Criar/atualizar testes unitários de `DashboardService` (`dashboard.service.spec.ts`) validando todos os contadores retornados e a resolução em fuso brasileiro.
+- [x] Refatorar `apps/web/src/hooks/use-dashboard.ts`:
   - Substituir as 5 chamadas paralelas (`Promise.allSettled`) por 1 única chamada a `GET /api/dashboard/indicadores`.
 - Critério de validação da etapa: Testes unitários de `DashboardService` passando 100% e página `/dashboard` carregando os 6 indicadores em 1 única requisição HTTP.
 
