@@ -116,17 +116,17 @@ Status: concluído
 - Critério de validação da etapa: Build da API (`npm run build -w apps/api`) e testes existentes passando sem erros.
 
 ### Etapa 1 - Otimização da Fila de Push: Event-Driven + Cron Espaçado (Ponto 1)
-Status: planejado
+Status: concluído
 
-- [ ] Atualizar `apps/api/src/modules/notifications/services/notification-queue-processor.service.ts`:
+- [x] Atualizar `apps/api/src/modules/notifications/services/notification-queue-processor.service.ts`:
   - Alterar o decorator `@Cron('*/15 * * * * *')` para `@Cron('0 */5 * * * *')` (a cada 5 minutos);
   - Adicionar método `triggerImmediateProcessing(): void` que dispara `handleCron()` de forma assíncrona (`setImmediate`);
   - Implementar flag `private hasPendingTrigger = false` para garantir que notificações enfileiradas durante o envio de um lote em andamento (`this.isProcessing === true`) sejam processadas imediatamente na iteração seguinte do laço `do ... while`.
-- [ ] Atualizar `apps/api/src/modules/notifications/services/notification-dispatch.service.ts`:
+- [x] Atualizar `apps/api/src/modules/notifications/services/notification-dispatch.service.ts`:
   - Injetar `@Optional() private readonly queueProcessor?: NotificationQueueProcessorService`;
-  - Ao final de `createNotification` e `rescheduleNotification`, se `scheduledAt <= new Date()`, invocar `this.queueProcessor?.triggerImmediateProcessing()`.
-- [ ] Atualizar/criar testes unitários em `notification-queue-processor.service.spec.ts` (incluindo teste de gatilho concorrente com `hasPendingTrigger`) e `notification-dispatch.service.spec.ts`.
-- Critério de validação da etapa: Testes unitários do módulo de notificações passando 100% (`npm.cmd test -- notification`).
+  - Ao final de `createNotification`, `rescheduleNotification` e `retryFailedRecipients`, se `scheduledAt <= new Date()`, invocar `this.queueProcessor?.triggerImmediateProcessing()`.
+- [x] Atualizar/criar testes unitários em `notification-queue-processor.service.spec.ts` (incluindo teste de gatilho concorrente com `hasPendingTrigger`) e `notification-dispatch.service.spec.ts`.
+- Critério de validação da etapa: Testes unitários do módulo de notificações passando 100% (`npm test -w apps/api -- notification`).
 
 ### Etapa 2 - Endpoint Interno Assíncrono para Acionamento de Crons Críticos (Ponto 7)
 Status: planejado

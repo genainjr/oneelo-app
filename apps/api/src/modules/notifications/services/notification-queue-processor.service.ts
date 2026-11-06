@@ -25,6 +25,7 @@ export interface ClaimedRecipientRow {
 export class NotificationQueueProcessorService {
   private readonly logger = new Logger(NotificationQueueProcessorService.name);
   private isProcessing = false;
+  private hasPendingTrigger = false;
   readonly batchSize = 50;
 
   constructor(
@@ -47,11 +48,27 @@ export class NotificationQueueProcessorService {
   }
 
   /**
-   * Cron recorrente a cada 15 segundos para drenar itens pendentes na fila.
+   * Acionamento imediato orientado a evento para drenar notificações pendentes.
+   * Não bloqueia a requisição HTTP do chamador (executado via setImmediate).
    */
-  @Cron('*/15 * * * * *')
+  triggerImmediateProcessing(): void {
+    if (this.isProcessing) {
+      this.hasPendingTrigger = true;
+      return;
+    }
+
+    setImmediate(() => {
+      void this.handleCron();
+    });
+  }
+
+  /**
+   * Cron espaçado a cada 5 minutos como varredura de segurança contra falhas ou retries.
+   */
+  @Cron('0 */5 * * * *')
   async handleCron() {
     if (this.isProcessing) {
+      this.hasPendingTrigger = true;
       return;
     }
     this.isProcessing = true;
@@ -59,8 +76,9 @@ export class NotificationQueueProcessorService {
     try {
       let processedInBatch = 0;
       do {
+        this.hasPendingTrigger = false;
         processedInBatch = await this.processBatch();
-      } while (processedInBatch === this.batchSize);
+      } while (processedInBatch === this.batchSize || this.hasPendingTrigger);
     } catch (error) {
       this.logger.error('Erro durante processamento da fila de notificações:', error);
     } finally {

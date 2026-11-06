@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationDispatchService } from './notification-dispatch.service';
+import { NotificationQueueProcessorService } from './notification-queue-processor.service';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import {
   NotificationOrigin,
@@ -18,8 +19,12 @@ import {
 describe('NotificationDispatchService', () => {
   let service: NotificationDispatchService;
   let prisma: any;
+  let queueProcessor: any;
 
   beforeEach(async () => {
+    queueProcessor = {
+      triggerImmediateProcessing: jest.fn(),
+    };
     prisma = {
       notification: {
         findUnique: jest.fn(),
@@ -56,6 +61,7 @@ describe('NotificationDispatchService', () => {
       providers: [
         NotificationDispatchService,
         { provide: PrismaService, useValue: prisma },
+        { provide: NotificationQueueProcessorService, useValue: queueProcessor },
       ],
     }).compile();
 
@@ -323,6 +329,12 @@ describe('NotificationDispatchService', () => {
           status: NotificationStatus.SCHEDULED,
         },
       });
+      // Data no futuro não deve acionar imediatamente
+      expect(queueProcessor.triggerImmediateProcessing).not.toHaveBeenCalled();
+
+      const immediateDate = new Date(Date.now() - 1000);
+      await service.rescheduleNotification('notif-1', 'tenant-1', immediateDate);
+      expect(queueProcessor.triggerImmediateProcessing).toHaveBeenCalledTimes(1);
     });
 
     it('deve cancelar notificação agendada', async () => {
@@ -568,6 +580,7 @@ describe('NotificationDispatchService', () => {
           data: expect.objectContaining({ status: NotificationStatus.SCHEDULED }),
         }),
       );
+      expect(queueProcessor.triggerImmediateProcessing).toHaveBeenCalled();
       expect(result).toEqual({ success: true, retriedCount: 2 });
     });
   });
