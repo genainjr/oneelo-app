@@ -1,6 +1,6 @@
 # Plano - Otimização de Performance, Memória e Consumo de Recursos (Render Free & Frontend)
 
-Status geral: planejado  
+Status geral: concluído  
 Data de criação: 2026-11-06  
 Última atualização: 2026-11-06 (Revisado com blindagens de produção)  
 Branch sugerida para implementação: `perf/otimizacao-recursos-api-web`  
@@ -175,11 +175,11 @@ Status: concluído
 - Critério de validação da etapa: Navegação fluida entre todas as telas sem chamadas repetidas a `/api/auth/me`, sem redirecionamentos falsos no mount e com polling do sininho pausando em segundo plano.
 
 ### Etapa 5 - Validação de Não-Regressão, Testes Automatizados e Build Final
-Status: planejado
+Status: concluído
 
-- [ ] Executar suíte completa de testes unitários no backend (`apps/api`) e no frontend (`apps/web`).
-- [ ] Executar build de produção completo (`npm.cmd run build`) em `apps/api` e `apps/web`.
-- [ ] Revisar status do Git e atualizar checklist final do plano.
+- [x] Executar suíte completa de testes unitários no backend (`apps/api`) e no frontend (`apps/web`).
+- [x] Executar build de produção completo (`npm.cmd run build`) em `apps/api` e `apps/web`.
+- [x] Revisar status do Git e atualizar checklist final do plano.
 - Critério de validação da etapa: Todos os testes e builds passando 100% sem erros de TypeScript ou regressões.
 
 ---
