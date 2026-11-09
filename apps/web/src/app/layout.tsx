@@ -12,7 +12,6 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   applicationName: 'One Elo',
-  manifest: '/manifest.webmanifest',
   title: {
     default: 'One Elo - Gestão para igrejas',
     template: '%s | One Elo',

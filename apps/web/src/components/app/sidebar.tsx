@@ -11,6 +11,7 @@ import { locales, localeLabels, type Locale } from '@/i18n/config';
 import { FlagIcon } from '@/components/app/locale-flags';
 import { StatusBadge } from '@/components/app/status-badge';
 import { useEscalasVisualizacao, useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
+import { clearCachedTenantPwa } from '@/lib/pwa-branding';
 
 const ICONS = {
   dashboard: (
@@ -395,6 +396,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     } catch (e) {
       if (!(e instanceof HttpError)) throw e;
     } finally {
+      clearCachedTenantPwa();
       router.push('/login');
       router.refresh();
     }

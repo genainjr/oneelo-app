@@ -10,7 +10,11 @@ import { api } from '@/lib/api';
 import type { AuthUser } from '@/types';
 import { AuthUserProvider } from '@/contexts/auth-user-context';
 import { isOnboardingEnabled } from '@/lib/auth-redirect';
-import { TENANT_MANIFEST_REVISION } from '@/lib/pwa-branding';
+import {
+  readCachedTenantPwa,
+  saveCachedTenantPwa,
+  syncTenantPwaHead,
+} from '@/lib/pwa-branding';
 
 export function DashboardShell({
   children,
@@ -78,81 +82,22 @@ export function DashboardShell({
 
   // Sincronização dinâmica da identidade PWA da igreja no <head> do cliente
   useEffect(() => {
-    const tenant = user?.tenant;
-    const hasCustomPwa = Boolean(
-      tenant?.pwaShortName &&
-        tenant.pwaIconUrl &&
-        tenant.pwaIconKey &&
-        tenant.pwaUpdatedAt,
-    );
-
-    if (!tenant || !hasCustomPwa) {
+    if (user?.tenant) {
+      saveCachedTenantPwa(user.tenant);
+      syncTenantPwaHead(user.tenant);
       return;
     }
 
-    const version = encodeURIComponent(
-      `${tenant.pwaUpdatedAt!}:${TENANT_MANIFEST_REVISION}`,
-    );
-    const manifestHref = `/api/pwa/${encodeURIComponent(tenant.slug)}/manifest.webmanifest?v=${version}`;
-    const appleIconHref = tenant.pwaIconUrl!.replace(
-      /icon-512\.png$/,
-      'icon-180.png',
-    );
-
-    let manifestLink = document.head.querySelector<HTMLLinkElement>(
-      'link[rel="manifest"]',
-    );
-    if (!manifestLink) {
-      manifestLink = document.createElement('link');
-      manifestLink.rel = 'manifest';
-      document.head.appendChild(manifestLink);
-    }
-    if (manifestLink.getAttribute('href') !== manifestHref) {
-      manifestLink.setAttribute('href', manifestHref);
+    const cachedTenant = readCachedTenantPwa();
+    if (cachedTenant) {
+      syncTenantPwaHead(cachedTenant);
+      return;
     }
 
-    let appleIconLink = document.head.querySelector<HTMLLinkElement>(
-      'link[rel="apple-touch-icon"]',
-    );
-    if (!appleIconLink) {
-      appleIconLink = document.createElement('link');
-      appleIconLink.rel = 'apple-touch-icon';
-      appleIconLink.sizes = '180x180';
-      appleIconLink.type = 'image/png';
-      document.head.appendChild(appleIconLink);
+    if (!loadingUser) {
+      syncTenantPwaHead(null);
     }
-    if (appleIconLink.getAttribute('href') !== appleIconHref) {
-      appleIconLink.setAttribute('href', appleIconHref);
-    }
-
-    let appleTitleMeta = document.head.querySelector<HTMLMetaElement>(
-      'meta[name="apple-mobile-web-app-title"]',
-    );
-    if (!appleTitleMeta) {
-      appleTitleMeta = document.createElement('meta');
-      appleTitleMeta.name = 'apple-mobile-web-app-title';
-      document.head.appendChild(appleTitleMeta);
-    }
-    if (appleTitleMeta.content !== tenant.pwaShortName!) {
-      appleTitleMeta.content = tenant.pwaShortName!;
-    }
-
-    let appNameMeta = document.head.querySelector<HTMLMetaElement>(
-      'meta[name="application-name"]',
-    );
-    if (!appNameMeta) {
-      appNameMeta = document.createElement('meta');
-      appNameMeta.name = 'application-name';
-      document.head.appendChild(appNameMeta);
-    }
-    if (appNameMeta.content !== tenant.pwaShortName!) {
-      appNameMeta.content = tenant.pwaShortName!;
-    }
-
-    if (tenant.nome && !document.title.includes(tenant.nome)) {
-      document.title = `${tenant.nome} | One Elo`;
-    }
-  }, [user?.tenant]);
+  }, [user?.tenant, loadingUser]);
 
   useEffect(() => {
     if (!isOnboardingEnabled() || !user || pathname === '/onboarding') return;

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { api, HttpError } from '@/lib/api';
 import { getPostLoginTarget, isSafeAppRedirect } from '@/lib/auth-redirect';
+import { saveCachedTenantPwa } from '@/lib/pwa-branding';
 import { AuthUser } from '@/types';
 import { InternationalPhoneInput } from '@/components/app/international-phone-input';
 
@@ -35,6 +36,7 @@ function LoginForm() {
         identificador,
         senha,
       });
+      saveCachedTenantPwa(response.user?.tenant);
       const target = getPostLoginTarget(response.user, redirect);
       window.location.href = target;
     } catch (err) {

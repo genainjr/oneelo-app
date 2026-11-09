@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api, HttpError } from '@/lib/api';
 import { getPostLoginTarget } from '@/lib/auth-redirect';
+import { saveCachedTenantPwa } from '@/lib/pwa-branding';
 import { AuthUser } from '@/types';
 
 type ActivationDetails = {
@@ -83,6 +84,7 @@ export default function ActivateAccountPage() {
         `/api/auth/activation/${token}/password`,
         { senha, confirmarSenha },
       );
+      saveCachedTenantPwa(response.user?.tenant);
       window.location.href = getPostLoginTarget(response.user);
     } catch (err) {
       if (err instanceof HttpError) {
