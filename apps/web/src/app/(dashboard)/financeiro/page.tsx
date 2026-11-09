@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -140,7 +140,7 @@ export default function FinanceiroPage() {
     isDebouncing: isTransactionDebouncing,
   } = useFilterState({
     initialState: initialTransactionFilters,
-    debounceFields: ["description"],
+    debounceFields: [],
     debounceMs: 350,
     onApply: setAppliedTransactionFilters,
   });

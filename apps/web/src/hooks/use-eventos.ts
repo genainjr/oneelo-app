@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, buildQuery, HttpError } from '@/lib/api';
 import { Evento, EventoMinisterioInput, EventosEmLoteInput, EventosEmLoteResponse } from '@/types';
 
@@ -23,17 +23,31 @@ export type EventoInput = Partial<Omit<Evento, 'ministerios'>> & {
 
 export function useEventos(initialFilter: FilterEventos = {}, options: UseEventosOptions = {}) {
   const scope = options.scope ?? 'PUBLIC';
-  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [rawEventos, setRawEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterEventos>(initialFilter);
+  const fetchedPeriodRef = useRef<{ dataInicio?: string; dataFim?: string }>({
+    dataInicio: initialFilter.dataInicio,
+    dataFim: initialFilter.dataFim,
+  });
 
   const fetchEventos = useCallback(async (f: FilterEventos = filter) => {
     setLoading(true);
     setError(null);
+    fetchedPeriodRef.current = {
+      dataInicio: f.dataInicio,
+      dataFim: f.dataFim,
+    };
     try {
-      const data = await api.get<Evento[]>(`/api/eventos${buildQuery({ ...f, scope })}`);
-      setEventos(Array.isArray(data) ? data : []);
+      const data = await api.get<Evento[]>(
+        `/api/eventos${buildQuery({
+          dataInicio: f.dataInicio,
+          dataFim: f.dataFim,
+          scope,
+        })}`,
+      );
+      setRawEventos(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Erro ao carregar eventos.');
     } finally {
@@ -48,15 +62,33 @@ export function useEventos(initialFilter: FilterEventos = {}, options: UseEvento
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const eventos = useMemo(() => {
+    return rawEventos.filter((evento) => {
+      if (filter.status && evento.status !== filter.status) {
+        return false;
+      }
+      if (filter.tipo && evento.tipo !== filter.tipo) {
+        return false;
+      }
+      if (filter.ministerioId) {
+        const hasMinisterio = (evento.ministerios || []).some(
+          (item) => item.ministerioId === filter.ministerioId || item.ministerio?.id === filter.ministerioId,
+        );
+        if (!hasMinisterio) return false;
+      }
+      return true;
+    });
+  }, [rawEventos, filter.status, filter.tipo, filter.ministerioId]);
+
   async function createEvento(data: EventoInput) {
     const created = await api.post<Evento>('/api/eventos', data);
-    setEventos((prev) => [created, ...prev]);
+    setRawEventos((prev) => [created, ...prev]);
     return created;
   }
 
   async function createEventosEmLote(data: EventosEmLoteInput) {
     const response = await api.post<EventosEmLoteResponse>('/api/eventos/lote', data);
-    setEventos((prev) => [...response.eventos, ...prev].sort(
+    setRawEventos((prev) => [...response.eventos, ...prev].sort(
       (a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime(),
     ));
     return response;
@@ -64,19 +96,24 @@ export function useEventos(initialFilter: FilterEventos = {}, options: UseEvento
 
   async function updateEvento(id: string, data: EventoInput) {
     const updated = await api.patch<Evento>(`/api/eventos/${id}`, data);
-    setEventos((prev) => prev.map((e) => (e.id === id ? updated : e)));
+    setRawEventos((prev) => prev.map((e) => (e.id === id ? updated : e)));
     return updated;
   }
 
   async function deleteEvento(id: string) {
     await api.delete(`/api/eventos/${id}`);
-    setEventos((prev) => prev.filter((e) => e.id !== id));
+    setRawEventos((prev) => prev.filter((e) => e.id !== id));
   }
 
   function applyFilter(newFilter: FilterEventos) {
     const merged = { ...filter, ...newFilter };
+    const periodChanged =
+      (merged.dataInicio ?? '') !== (fetchedPeriodRef.current.dataInicio ?? '') ||
+      (merged.dataFim ?? '') !== (fetchedPeriodRef.current.dataFim ?? '');
     setFilter(merged);
-    fetchEventos(merged);
+    if (periodChanged) {
+      void fetchEventos(merged);
+    }
   }
 
   return {

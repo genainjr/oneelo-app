@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, buildQuery, HttpError } from '@/lib/api';
 import { Escala, MinhaEscalaItem } from '@/types';
 
@@ -25,14 +25,18 @@ export function useEscalasVisualizacao(
   options: UseEscalasVisualizacaoOptions = {},
 ) {
   const enabled = options.enabled ?? true;
-  const [escalas, setEscalas] = useState<Escala[]>([]);
+  const [rawEscalas, setRawEscalas] = useState<Escala[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterEscalasVisualizacao>(initialFilter);
+  const fetchedPeriodRef = useRef<{ mes?: string; ano?: string }>({
+    mes: initialFilter.mes,
+    ano: initialFilter.ano,
+  });
 
   const fetchEscalas = useCallback(async (f: FilterEscalasVisualizacao = filter) => {
     if (!enabled) {
-      setEscalas([]);
+      setRawEscalas([]);
       setLoading(false);
       setError(null);
       return;
@@ -40,9 +44,12 @@ export function useEscalasVisualizacao(
 
     setLoading(true);
     setError(null);
+    fetchedPeriodRef.current = { mes: f.mes, ano: f.ano };
     try {
-      const data = await api.get<Escala[]>(`/api/escalas/visualizacao${buildQuery(f)}`);
-      setEscalas(Array.isArray(data) ? data : []);
+      const data = await api.get<Escala[]>(
+        `/api/escalas/visualizacao${buildQuery({ mes: f.mes, ano: f.ano })}`,
+      );
+      setRawEscalas(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Erro ao carregar visualizacao de escalas.');
     } finally {
@@ -52,7 +59,7 @@ export function useEscalasVisualizacao(
 
   useEffect(() => {
     if (!enabled) {
-      setEscalas([]);
+      setRawEscalas([]);
       setLoading(false);
       setError(null);
       return;
@@ -61,10 +68,34 @@ export function useEscalasVisualizacao(
     fetchEscalas(initialFilter);
   }, [enabled]);
 
+  const escalas = useMemo(() => {
+    return rawEscalas.filter((escala) => {
+      if (filter.ministerioId && escala.ministerioId !== filter.ministerioId) {
+        return false;
+      }
+      if (filter.status && escala.status !== filter.status) {
+        return false;
+      }
+      if (filter.pendentesApenas === 'true') {
+        if (escala.status !== 'PUBLICADA') return false;
+        const hasPending = (escala.dias || []).some((dia) =>
+          (dia.itens || []).some((item) => item.statusConfirmacao === 'PENDENTE'),
+        );
+        if (!hasPending) return false;
+      }
+      return true;
+    });
+  }, [rawEscalas, filter.ministerioId, filter.status, filter.pendentesApenas]);
+
   function applyFilter(newFilter: FilterEscalasVisualizacao) {
     const merged = { ...filter, ...newFilter };
+    const periodChanged =
+      (merged.mes ?? '') !== (fetchedPeriodRef.current.mes ?? '') ||
+      (merged.ano ?? '') !== (fetchedPeriodRef.current.ano ?? '');
     setFilter(merged);
-    fetchEscalas(merged);
+    if (periodChanged) {
+      void fetchEscalas(merged);
+    }
   }
 
   return {
