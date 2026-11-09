@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { api, buildQuery, HttpError } from '@/lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api, HttpError } from '@/lib/api';
 import { buildImageFormData } from '@/lib/image-upload';
+import { includesNormalizedText } from '@/lib/utils';
 import { Membro } from '@/types';
 
 export interface FilterMembros {
@@ -14,67 +15,96 @@ export interface FilterMembros {
 }
 
 export function useMembros(initialFilter: FilterMembros = {}) {
-  const [membros, setMembros] = useState<Membro[]>([]);
+  const [rawMembros, setRawMembros] = useState<Membro[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterMembros>(initialFilter);
 
-  const fetchMembros = useCallback(async (f: FilterMembros = filter) => {
+  const fetchMembros = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<Membro[]>(`/api/membros${buildQuery(f)}`);
-      setMembros(Array.isArray(data) ? data : []);
+      const data = await api.get<Membro[]>('/api/membros');
+      setRawMembros(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Erro ao carregar membros.');
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
-    fetchMembros(initialFilter);
-  }, []);
+    void fetchMembros();
+  }, [fetchMembros]);
+
+  const membros = useMemo(() => {
+    const tagList = (filter.tags || '')
+      .split(',')
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+
+    return rawMembros.filter((membro) => {
+      if (filter.status && membro.status !== filter.status) {
+        return false;
+      }
+      if (filter.whatsapp && !(membro.whatsapp || '').includes(filter.whatsapp)) {
+        return false;
+      }
+      if (filter.nome && !includesNormalizedText(membro.nome, filter.nome)) {
+        return false;
+      }
+      if (tagList.length > 0) {
+        const memberTagNames = new Set(
+          (membro.tags || [])
+            .map((t) => (t.tag?.nome || '').trim().toLowerCase())
+            .filter(Boolean),
+        );
+        if (filter.operacao === 'AND') {
+          if (!tagList.every((tag) => memberTagNames.has(tag))) return false;
+        } else {
+          if (!tagList.some((tag) => memberTagNames.has(tag))) return false;
+        }
+      }
+      return true;
+    });
+  }, [rawMembros, filter]);
 
   async function createMembro(data: Partial<Membro>) {
     const created = await api.post<Membro>('/api/membros', data);
-    setMembros((prev) => [created, ...prev]);
+    setRawMembros((prev) => [created, ...prev]);
     return created;
   }
 
   async function updateMembro(id: string, data: Partial<Membro>) {
     const updated = await api.patch<Membro>(`/api/membros/${id}`, data);
-    setMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
+    setRawMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
     return updated;
   }
 
   async function deleteMembro(id: string) {
     await api.delete(`/api/membros/${id}`);
-    setMembros((prev) => prev.filter((m) => m.id !== id));
+    setRawMembros((prev) => prev.filter((m) => m.id !== id));
   }
 
   async function uploadMembroFoto(id: string, file: File) {
     const updated = await api.post<Membro>(`/api/membros/${id}/foto`, buildImageFormData(file));
-    setMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
+    setRawMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
     return updated;
   }
 
   async function removeMembroFoto(id: string) {
     const updated = await api.delete<Membro>(`/api/membros/${id}/foto`);
-    setMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
+    setRawMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
     return updated;
   }
 
   async function bulkTag(membrosIds: string[], tagsIds: string[], acao: 'ADD' | 'REMOVE') {
     await api.post('/api/membros/bulk-tag', { membrosIds, tagsIds, acao });
-    // Refetch to get updated tags for members
-    await fetchMembros(filter);
+    await fetchMembros();
   }
 
   function applyFilter(newFilter: FilterMembros) {
-    const merged = { ...filter, ...newFilter };
-    setFilter(merged);
-    fetchMembros(merged);
+    setFilter((prev) => ({ ...prev, ...newFilter }));
   }
 
   return {
@@ -83,7 +113,7 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     error,
     filter,
     applyFilter,
-    refetch: () => fetchMembros(filter),
+    refetch: fetchMembros,
     createMembro,
     updateMembro,
     deleteMembro,
