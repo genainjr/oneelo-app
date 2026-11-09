@@ -230,14 +230,33 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   }, [localeOpen]);
 
   useEffect(() => {
+    setCollapsedSectionOpen(null);
+    setLocaleOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
     if (!collapsedSectionOpen) return;
+    function handleClose() {
+      setCollapsedSectionOpen(null);
+    }
     function handleClickOutside(e: MouseEvent) {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setCollapsedSectionOpen(null);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', handleClose);
+    const navEl = navRef.current;
+    if (navEl) {
+      navEl.addEventListener('scroll', handleClose, { passive: true });
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleClose);
+      if (navEl) {
+        navEl.removeEventListener('scroll', handleClose);
+      }
+    };
   }, [collapsedSectionOpen]);
 
   const isActive = (href: string) => {
@@ -411,7 +430,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       {/* Overlay mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -419,7 +438,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 flex flex-col bg-indigo-950 transition-all duration-300 lg:translate-x-0 lg:static lg:z-auto',
+          'fixed inset-y-0 left-0 z-40 flex flex-col bg-indigo-950 transition-all duration-300 lg:translate-x-0 lg:relative',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'w-16' : 'w-64',
         )}
@@ -521,12 +540,16 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                         type="button"
                         onClick={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
+                          const childrenCount = item.children?.length ?? 3;
+                          const estimatedHeight = childrenCount * 40 + 44;
+                          const maxTop = Math.max(8, window.innerHeight - estimatedHeight - 16);
+                          const adjustedTop = Math.min(rect.top, maxTop);
                           setCollapsedSectionOpen((current) =>
                             current?.href === item.href
                               ? null
                               : {
                                   href: item.href,
-                                  top: rect.top,
+                                  top: adjustedTop,
                                   left: rect.right + 8,
                                 },
                           );
