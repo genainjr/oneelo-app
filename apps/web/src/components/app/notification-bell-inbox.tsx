@@ -104,12 +104,44 @@ export function NotificationBellInbox() {
     loadInbox();
     checkPush();
 
-    // Polling suave a cada 60s
-    const interval = setInterval(() => {
-      loadInbox(true);
-    }, 60000);
+    let lastFetchTime = Date.now();
+    let timer: NodeJS.Timeout | null = null;
 
-    return () => clearInterval(interval);
+    const scheduleNext = () => {
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => {
+        if (!document.hidden) {
+          lastFetchTime = Date.now();
+          loadInbox(true);
+        }
+      }, 180000); // 180s (3 minutos)
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        const now = Date.now();
+        // Se a aba ficou em segundo plano e já faz mais de 30s desde a última busca, atualiza imediatamente
+        if (now - lastFetchTime >= 30000) {
+          lastFetchTime = now;
+          loadInbox(true);
+        }
+        scheduleNext();
+      } else {
+        // Pausa timer quando em segundo plano
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+    };
+
+    scheduleNext();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (timer) clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [loadInbox, checkPush]);
 
   // Fecha popover com clique fora ou tecla ESC

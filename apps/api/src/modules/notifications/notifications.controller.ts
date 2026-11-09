@@ -9,9 +9,13 @@ import {
   Put,
   Query,
   Req,
+  Headers,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
@@ -44,6 +48,18 @@ export class NotificationsController {
   @Get('public-key')
   getPublicKey() {
     return this.notificationsService.getPublicKey();
+  }
+
+  @Public()
+  @Post('internal/crons/lembretes')
+  @HttpCode(HttpStatus.OK)
+  triggerInternalCron(
+    @Headers('x-internal-cron-key') apiKey?: string,
+    @Query('job') queryJob?: string,
+    @Body('job') bodyJob?: string,
+  ) {
+    const job = queryJob || bodyJob || 'all';
+    return this.notificationsService.executeInternalCron(apiKey, job);
   }
 
   @Get()

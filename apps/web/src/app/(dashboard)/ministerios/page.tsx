@@ -15,6 +15,7 @@ import { TabsShell, TabPanel } from '@/components/app/tabs-shell';
 import { InputField, TextareaField, CheckboxField } from '@/components/app/form-field';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { Pencil, Trash2, MapPin } from 'lucide-react';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import { api } from '@/lib/api';
 import {
   Ministerio,
@@ -46,18 +47,12 @@ export default function MinisteriosPage() {
     updateMembroRole,
   } = useMinisterios();
 
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const { user: currentUser } = useAuthUser();
   const [selectedMinisterio, setSelectedMinisterio] = useState<Ministerio | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [pendingArchiveMinisterio, setPendingArchiveMinisterio] = useState<Ministerio | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-
-  useEffect(() => {
-    api.get<AuthUser>('/api/auth/me')
-      .then(setCurrentUser)
-      .catch(() => setCurrentUser(null));
-  }, []);
 
   const canManage = currentUser?.role === 'ADMIN' || currentUser?.role === 'STAFF';
   const canManageSelectedMinisterio =

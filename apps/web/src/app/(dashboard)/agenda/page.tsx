@@ -18,6 +18,7 @@ import { InputField, SelectField, TextareaField } from '@/components/app/form-fi
 import { WEEKDAY_OPTIONS, WeekdaySelector } from '@/components/app/weekday-selector';
 import { CreationModeSelector } from '@/components/app/creation-mode-selector';
 import { SearchCombobox } from '@/components/app/search-combobox';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import { api, HttpError } from '@/lib/api';
 import { Evento, AuthUser, EventoMinisterioInput, EventoTipo, StatusEvento, Ministerio } from '@/types';
 import { formatDate } from '@/lib/utils';
@@ -93,7 +94,7 @@ export default function AgendaPage() {
   const { eventos, loading, error, refetch, applyFilter, createEvento, createEventosEmLote, updateEvento, deleteEvento } = useEventos(initialFilter, { scope: 'MANAGE' });
   const { ministerios, loading: ministeriosLoading } = useMinisterios();
 
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const { user: currentUser } = useAuthUser();
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -137,13 +138,6 @@ export default function AgendaPage() {
   const [pendingDeleteEvento, setPendingDeleteEvento] = useState<Evento | null>(null);
   const [pendingStatusEvento, setPendingStatusEvento] = useState<Evento | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-
-  useEffect(() => {
-    api
-      .get<AuthUser>('/api/auth/me')
-      .then(setCurrentUser)
-      .catch(() => setCurrentUser(null));
-  }, []);
 
   const basicHasLeadership =
     currentUser?.role === 'BASIC' &&

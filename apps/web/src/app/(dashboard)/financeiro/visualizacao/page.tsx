@@ -14,6 +14,7 @@ import { PrintDocumentHeader, PrintScheduleFooter } from "@/components/app/print
 import { Skeleton } from "@/components/app/skeleton";
 import { StatCard } from "@/components/app/stat-card";
 import { useFilterState } from "@/hooks/use-filter-state";
+import { useAuthUser } from "@/contexts/auth-user-context";
 import { api } from "@/lib/api";
 import type { AuthUser } from "@/types";
 import {
@@ -105,17 +106,16 @@ export default function FinanceiroVisualizacaoPage() {
     onApply: setAppliedTransactionFilters,
   });
 
+  const { user: currentUser } = useAuthUser();
+
   useEffect(() => {
-    api.get<AuthUser>("/api/auth/me")
-      .then((currentUser) => {
-        setTenantName(currentUser.tenant?.nome || "One Elo");
-        setTenantLogoUrl(currentUser.tenant?.logoUrl ?? null);
-      })
-      .catch(() => {
-        setTenantName("One Elo");
-        setTenantLogoUrl(null);
-      });
-  }, []);
+    if (currentUser?.tenant?.nome) {
+      setTenantName(currentUser.tenant.nome);
+    } else {
+      setTenantName("One Elo");
+    }
+    setTenantLogoUrl(currentUser?.tenant?.logoUrl ?? null);
+  }, [currentUser]);
 
   useEffect(() => {
     if (!summary?.role) return;

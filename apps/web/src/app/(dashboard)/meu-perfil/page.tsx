@@ -37,15 +37,19 @@ function buildProfileForm(user: AuthUser): ProfileFormState {
 }
 
 export default function MeuPerfilPage() {
-  const { setUser: setLayoutUser } = useAuthUser();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user: contextUser, refreshUser, setUser: setLayoutUser } = useAuthUser();
+  const [user, setUser] = useState<AuthUser | null>(contextUser);
+  const [loading, setLoading] = useState(!contextUser);
   const [error, setError] = useState('');
-  const [profileForm, setProfileForm] = useState<ProfileFormState>({
-    nome: '',
-    nomeExibicao: '',
-    whatsapp: '',
-  });
+  const [profileForm, setProfileForm] = useState<ProfileFormState>(() =>
+    contextUser
+      ? buildProfileForm(contextUser)
+      : {
+          nome: '',
+          nomeExibicao: '',
+          whatsapp: '',
+        },
+  );
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
@@ -73,15 +77,24 @@ export default function MeuPerfilPage() {
   const hasPassword = user?.hasPassword !== false;
 
   useEffect(() => {
-    api.get<AuthUser>('/api/auth/me')
+    if (contextUser) {
+      setUser(contextUser);
+      setProfileForm(buildProfileForm(contextUser));
+      setLoginPhone(contextUser.telefoneLogin ?? '');
+      setLoading(false);
+      return;
+    }
+    refreshUser()
       .then((data) => {
-        setUser(data);
-        setProfileForm(buildProfileForm(data));
-        setLoginPhone(data.telefoneLogin ?? '');
+        if (data) {
+          setUser(data);
+          setProfileForm(buildProfileForm(data));
+          setLoginPhone(data.telefoneLogin ?? '');
+        }
       })
       .catch(() => setError('Nao foi possivel carregar seu perfil.'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [contextUser, refreshUser]);
 
   function handleProfileFieldChange(field: keyof ProfileFormState, value: string) {
     setProfileForm((current) => ({

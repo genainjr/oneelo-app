@@ -3,8 +3,14 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import sharp from 'sharp';
 
 async function bootstrap() {
+  // Otimização de memória para ambientes restritos (Render Free 512 MB):
+  // Desativa cache em memória e limita concorrência do Sharp a 1 thread.
+  sharp.cache(false);
+  sharp.concurrency(1);
+
   const app = await NestFactory.create(AppModule);
 
   // Necessario para detectar HTTPS corretamente atras de proxy/load balancer.
@@ -56,21 +62,25 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'If-None-Match'],
   });
 
-  // Configuração do Swagger
-  const config = new DocumentBuilder()
-    .setTitle('Church Management API')
-    .setDescription('API para gerenciamento de membros, ministérios, escalas e eventos.')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Configuração do Swagger apenas fora de produção para economizar memória (heap/metadados)
+  if (isDevelopment) {
+    const config = new DocumentBuilder()
+      .setTitle('Church Management API')
+      .setDescription('API para gerenciamento de membros, ministérios, escalas e eventos.')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 
   console.log(`🚀 Church Management API rodando em: http://localhost:${port}/api`);
-  console.log(`📖 Documentação Swagger disponível em: http://localhost:${port}/api/docs`);
+  if (isDevelopment) {
+    console.log(`📖 Documentação Swagger disponível em: http://localhost:${port}/api/docs`);
+  }
 }
 
 bootstrap();

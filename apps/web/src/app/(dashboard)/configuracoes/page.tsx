@@ -97,9 +97,7 @@ export default function ConfiguracoesPage() {
   const tCommon = useTranslations("common");
   const router = useRouter();
   const { formatDateTime } = useDateFormatter();
-  const { setUser: setShellUser } = useAuthUser();
-
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const { user: currentUser, setUser: setShellUser } = useAuthUser();
   const [activeTab, setActiveTab] = useState<"liturgia" | "usuarios" | "audit">("liturgia");
 
   const [users, setUsers] = useState<User[]>([]);
@@ -201,12 +199,6 @@ export default function ConfiguracoesPage() {
       sortedUsers.slice((userPage - 1) * itemsPerPage, userPage * itemsPerPage),
     [sortedUsers, userPage],
   );
-  useEffect(() => {
-    api
-      .get<AuthUser>("/api/auth/me")
-      .then(setCurrentUser)
-      .catch(() => setCurrentUser(null));
-  }, []);
 
   const isAdmin = currentUser?.role === "ADMIN";
   const logoPreview = currentUser?.tenant?.logoUrl ?? null;
@@ -385,17 +377,6 @@ export default function ConfiguracoesPage() {
   }
 
   function updateTenantLogoState(tenant: TenantLogoPayload) {
-    setCurrentUser((current) =>
-      current
-        ? {
-            ...current,
-            tenant: {
-              ...current.tenant!,
-              ...tenant,
-            },
-          }
-        : current,
-    );
     setShellUser((current) => current ? { ...current, tenant: { ...current.tenant!, ...tenant } } : current);
     router.refresh();
   }
