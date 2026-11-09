@@ -244,6 +244,48 @@ describe('NotificationQueueProcessorService', () => {
     });
   });
 
+  describe('handleCron e triggerImmediateProcessing', () => {
+    it('deve processar lotes e parar quando o lote for menor que batchSize', async () => {
+      const processBatchSpy = jest
+        .spyOn(service, 'processBatch')
+        .mockResolvedValueOnce(50)
+        .mockResolvedValueOnce(12);
+
+      await service.handleCron();
+
+      expect(processBatchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('deve agendar processamento assíncrono via triggerImmediateProcessing', async () => {
+      const handleCronSpy = jest
+        .spyOn(service, 'handleCron')
+        .mockImplementation(async () => {});
+
+      service.triggerImmediateProcessing();
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(handleCronSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve marcar hasPendingTrigger e processar nova rodada se gatilho concorrente chegar enquanto isProcessing for true', async () => {
+      let callCount = 0;
+      jest.spyOn(service, 'processBatch').mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) {
+          // Simula novo gatilho concorrente chegando enquanto o lote 1 está sendo executado
+          service.triggerImmediateProcessing();
+          return 10; // Menor que batchSize (50), mas hasPendingTrigger deve forçar segunda rodada
+        }
+        return 0;
+      });
+
+      await service.handleCron();
+
+      expect(callCount).toBe(2);
+    });
+  });
+
   describe('cleanupOldNotifications', () => {
     it('deve remover notificações com mais de 60 dias com status final', async () => {
       prisma.notification.deleteMany.mockResolvedValue({ count: 12 });

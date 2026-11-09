@@ -48,7 +48,7 @@ function getReadableTextColor(hexColor?: string | null) {
 export default function MembrosPage() {
   const t = useTranslations('members');
   const router = useRouter();
-  const { setUser: setAuthUser } = useAuthUser();
+  const { user, loadingUser, setUser: setAuthUser } = useAuthUser();
 
   function syncAuthenticatedMemberPhoto(memberId: string, member: Membro) {
     setAuthUser((current) => {
@@ -66,10 +66,9 @@ export default function MembrosPage() {
   }
 
   useEffect(() => {
-    api.get<AuthUser>('/api/auth/me').then((me) => {
-      if (me.role === 'BASIC') router.replace('/personal-panel');
-    }).catch(() => {});
-  }, [router]);
+    if (loadingUser || !user) return;
+    if (user.role === 'BASIC') router.replace('/personal-panel');
+  }, [loadingUser, user, router]);
 
   const {
     membros,

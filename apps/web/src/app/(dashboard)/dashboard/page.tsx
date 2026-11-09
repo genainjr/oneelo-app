@@ -3,8 +3,7 @@
 import { useDashboard } from '@/hooks/use-dashboard';
 import { StatCard } from '@/components/app/stat-card';
 import { PageHeader } from '@/components/app/page-header';
-import { api } from '@/lib/api';
-import { AuthUser } from '@/types';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import { formatDate } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
@@ -12,15 +11,12 @@ import { useTranslations } from 'next-intl';
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const { stats, loading, error } = useDashboard();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user } = useAuthUser();
   const [today, setToday] = useState('');
   const currentMonth = new Date().getMonth() + 1;
 
   useEffect(() => {
     setToday(formatDate(new Date()));
-    api.get<AuthUser>('/api/auth/me')
-      .then(setUser)
-      .catch(() => setUser(null));
   }, []);
 
   const statsConfig = [

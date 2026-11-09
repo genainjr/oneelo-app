@@ -30,6 +30,7 @@ import {
   ExportSharePreparedBanner,
   ExportShareErrorBanner,
 } from '@/components/app/export-share-dialog';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import { api } from '@/lib/api';
 import { formatDate, STATUS_EVENTO_LABEL } from '@/lib/utils';
 import type { AuthUser, Evento, EventoTipo, StatusEvento } from '@/types';
@@ -93,18 +94,16 @@ export default function AgendaVisualizacaoPage() {
 
   const { eventos, loading, error, filter, applyFilter, refetch } = useEventos(initialFilter);
   const { ministerios } = useMinisterios();
+  const { user } = useAuthUser();
 
   useEffect(() => {
-    api.get<AuthUser>('/api/auth/me')
-      .then((user) => {
-        setTenantName(user.tenant?.nome || 'OneElo');
-        setTenantLogoUrl(user.tenant?.logoUrl ?? null);
-      })
-      .catch(() => {
-        setTenantName('OneElo');
-        setTenantLogoUrl(null);
-      });
-  }, []);
+    if (user?.tenant?.nome) {
+      setTenantName(user.tenant.nome);
+    } else {
+      setTenantName('OneElo');
+    }
+    setTenantLogoUrl(user?.tenant?.logoUrl ?? null);
+  }, [user]);
 
   const {
     formState: filterState,

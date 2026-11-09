@@ -13,6 +13,13 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 - Cada etapa deve conter seu checklist (`- [ ]`) com itens verificáveis e o critério de validação.
 - Não é permitido substituir a estrutura de etapas por agrupamentos genéricos que impeçam o workflow de parada para autorização do usuário entre etapas.
 
+## Novembro de 2026
+
+| Criação | Documento | Assunto |
+|---|---|---|
+| 06/11/2026 | [otimizacao-performance-memoria-render-plan.md](otimizacao-performance-memoria-render-plan.md) | Otimização de performance, memória, crons, fila de push e sessão (Render Free & Frontend) |
+| 05/11/2026 | [adicionar-escalas-google-agenda-plan.md](adicionar-escalas-google-agenda-plan.md) | Adicionar Escalas e Eventos da Igreja ao Google Agenda, Calendários e Notificações (FT-002) |
+
 ## Outubro de 2026
 
 | Criação | Documento | Assunto |

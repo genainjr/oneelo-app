@@ -1,13 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { endOfMonth, getMonth, getYear, startOfMonth } from 'date-fns';
 import { api } from '@/lib/api';
-import { DashboardStats, Membro, Escala, Ministerio, Evento } from '@/types';
+import { DashboardStats } from '@/types';
 
-function toDateInputValue(date: Date) {
-  const tzOffset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
+interface IndicadoresApiResponse {
+  totalMembrosAtivos: number;
+  ministeriosAtivos: number;
+  eventosDoMes: number;
+  escalasDoMes: number;
+  escalasDaSemana?: number;
+  escalasNaSemana?: number;
+  pendenciasConfirmacao: number;
+  aniversariantesMes?: number;
+  aniversariantesDoMes?: number;
 }
 
 export function useDashboard() {
@@ -20,52 +26,22 @@ export function useDashboard() {
       setLoading(true);
       setError(null);
       try {
-        const now = new Date();
-        const currentMonth = getMonth(now) + 1;
-        const currentYear = getYear(now);
-        const monthStart = toDateInputValue(startOfMonth(now));
-        const monthEnd = toDateInputValue(endOfMonth(now));
-
-        const [membros, escalasResp, eventosResp, ministeriosResp, pendenciasResp] = await Promise.allSettled([
-          api.get<Membro[]>('/api/membros?status=ATIVO'),
-          api.get<Escala[]>(`/api/escalas?mes=${currentMonth}&ano=${currentYear}`),
-          api.get<Evento[]>(`/api/eventos?dataInicio=${monthStart}&dataFim=${monthEnd}`),
-          api.get<Ministerio[]>('/api/ministerios?ativo=true'),
-          api.get<number>('/api/escalas/pendencias/count'),
-        ]);
-
-        // Calcula aniversariantes do mês a partir da lista de membros ativos
-        let aniversariantes = 0;
-        if (membros.status === 'fulfilled' && Array.isArray(membros.value)) {
-          aniversariantes = membros.value.filter((m) => {
-            if (!m.dataNascimento) return false;
-            const d = new Date(m.dataNascimento);
-            return d.getMonth() + 1 === currentMonth;
-          }).length;
-        }
+        const data = await api.get<IndicadoresApiResponse>(
+          '/api/dashboard/indicadores',
+        );
 
         setStats({
-          totalMembrosAtivos:
-            membros.status === 'fulfilled' && Array.isArray(membros.value)
-              ? membros.value.length
-              : 0,
+          totalMembrosAtivos: data.totalMembrosAtivos ?? 0,
           escalasNaSemana:
-            escalasResp.status === 'fulfilled' && Array.isArray(escalasResp.value)
-              ? escalasResp.value.length
-              : 0,
-          aniversariantesDoMes: aniversariantes,
-          eventosDoMes:
-            eventosResp.status === 'fulfilled' && Array.isArray(eventosResp.value)
-              ? eventosResp.value.length
-              : 0,
-          ministeriosAtivos:
-            ministeriosResp.status === 'fulfilled' && Array.isArray(ministeriosResp.value)
-              ? ministeriosResp.value.length
-              : 0,
-          pendenciasConfirmacao:
-            pendenciasResp.status === 'fulfilled' && typeof pendenciasResp.value === 'number'
-              ? pendenciasResp.value
-              : 0,
+            data.escalasNaSemana ??
+            data.escalasDoMes ??
+            data.escalasDaSemana ??
+            0,
+          aniversariantesDoMes:
+            data.aniversariantesDoMes ?? data.aniversariantesMes ?? 0,
+          eventosDoMes: data.eventosDoMes ?? 0,
+          ministeriosAtivos: data.ministeriosAtivos ?? 0,
+          pendenciasConfirmacao: data.pendenciasConfirmacao ?? 0,
         });
       } catch {
         setError('Não foi possível carregar os dados do dashboard.');

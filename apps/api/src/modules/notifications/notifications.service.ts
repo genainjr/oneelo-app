@@ -1,5 +1,6 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import crypto from 'crypto';
 import {
   AcaoAuditoria,
   EventoTipo,
@@ -17,6 +18,7 @@ import webPush from 'web-push';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { NotificationDispatchService } from './services/notification-dispatch.service';
+import { NotificationQueueProcessorService } from './services/notification-queue-processor.service';
 import {
   NotificationAutomationRulesService,
   renderTemplate,
@@ -46,6 +48,8 @@ export class NotificationsService {
     private readonly notificationDispatch?: NotificationDispatchService,
     @Optional()
     private readonly automationRulesService?: NotificationAutomationRulesService,
+    @Optional()
+    private readonly queueProcessor?: NotificationQueueProcessorService,
   ) {
     this.configureWebPush();
   }
@@ -937,5 +941,48 @@ export class NotificationsService {
     );
 
     return result;
+  }
+
+  /**
+   * Executa jobs de lembretes e acionamento de fila via chamada externa segura (ex: cron-job.org).
+   * Valida a chave de API interna com timingSafeEqual para evitar timing attacks.
+   */
+  async executeInternalCron(apiKeyHeader?: string, job: string = 'all') {
+    const configuredKey = this.configService.get<string>('INTERNAL_CRON_API_KEY');
+    if (!configuredKey || !apiKeyHeader) {
+      throw new UnauthorizedException('Chave de API interna inválida ou não configurada.');
+    }
+
+    const headerBuf = Buffer.from(apiKeyHeader);
+    const expectedBuf = Buffer.from(configuredKey);
+    if (headerBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(headerBuf, expectedBuf)) {
+      throw new UnauthorizedException('Chave de API interna inválida ou não configurada.');
+    }
+
+    const normalizedJob = (job || 'all').toLowerCase();
+    const results: Record<string, any> = {};
+
+    if (normalizedJob === 'all' || normalizedJob === 'birthdays') {
+      results.birthdays = await this.runBirthdayNotificationJob();
+    }
+    if (normalizedJob === 'all' || normalizedJob === 'confirmations-24h') {
+      results.confirmations24h = await this.runPendingConfirmationReminderJob();
+    }
+    if (normalizedJob === 'all' || normalizedJob === 'schedule-day') {
+      results.scheduleDay = await this.runScheduleDayReminderJob();
+    }
+    if (normalizedJob === 'all' || normalizedJob === 'queue') {
+      this.queueProcessor?.triggerImmediateProcessing();
+      results.queue = { triggered: true };
+    } else {
+      this.queueProcessor?.triggerImmediateProcessing();
+    }
+
+    return {
+      success: true,
+      job: normalizedJob,
+      executedAt: new Date().toISOString(),
+      results,
+    };
   }
 }

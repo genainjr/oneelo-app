@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import {
   Prisma,
@@ -22,6 +23,7 @@ import { FilterNotificationsDto } from '../dto/filter-notifications.dto';
 import { FilterRecipientsDto } from '../dto/filter-recipients.dto';
 import { CreateManualNotificationDto } from '../dto/create-manual-notification.dto';
 import { UpdateScheduledNotificationDto } from '../dto/update-scheduled-notification.dto';
+import { NotificationQueueProcessorService } from './notification-queue-processor.service';
 
 export interface CreateNotificationInput {
   tenantId: string;
@@ -41,7 +43,10 @@ export interface CreateNotificationInput {
 export class NotificationDispatchService {
   private readonly logger = new Logger(NotificationDispatchService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly queueProcessor?: NotificationQueueProcessorService,
+  ) {}
 
   /**
    * Cria uma notificação centralizada de forma idempotente e materializa seus destinatários.
@@ -114,6 +119,13 @@ export class NotificationDispatchService {
         },
       });
 
+      if (
+        notification.status === NotificationStatus.SCHEDULED &&
+        notification.scheduledAt <= new Date()
+      ) {
+        this.queueProcessor?.triggerImmediateProcessing();
+      }
+
       return notification;
     } catch (error) {
       // Tratamento de race condition em idempotencyKey único
@@ -153,13 +165,19 @@ export class NotificationDispatchService {
       return notification;
     }
 
-    return this.prisma.notification.update({
+    const updated = await this.prisma.notification.update({
       where: { id },
       data: {
         scheduledAt: newScheduledAt,
         status: NotificationStatus.SCHEDULED,
       },
     });
+
+    if (newScheduledAt <= new Date()) {
+      this.queueProcessor?.triggerImmediateProcessing();
+    }
+
+    return updated;
   }
 
   /**
@@ -766,6 +784,8 @@ export class NotificationDispatchService {
           scheduledAt: new Date(),
         },
       });
+
+      this.queueProcessor?.triggerImmediateProcessing();
     }
 
     return {

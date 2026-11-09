@@ -12,6 +12,7 @@ import { FilterSelect } from '@/components/app/filter-field';
 import { useFilterState } from '@/hooks/use-filter-state';
 import { ModalShell, ModalFooter, ModalError } from '@/components/app/modal-shell';
 import { SelectField, TextareaField } from '@/components/app/form-field';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import { api, HttpError } from '@/lib/api';
 import {
   Escala,
@@ -71,7 +72,7 @@ export default function EscalasPage() {
     ano: String(hoje.getFullYear()),
   });
 
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const { user: currentUser } = useAuthUser();
   const [ministerios, setMinisterios] = useState<Ministerio[]>([]);
   const [selectedEscala, setSelectedEscala] = useState<Escala | null>(null);
   const [detailedEscala, setDetailedEscala] = useState<Escala | null>(null);
@@ -156,7 +157,6 @@ export default function EscalasPage() {
   }, []);
 
   useEffect(() => {
-    api.get<AuthUser>('/api/auth/me').then(setCurrentUser).catch(() => setCurrentUser(null));
     api.get<Ministerio[]>('/api/ministerios').then(d => setMinisterios(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
 
