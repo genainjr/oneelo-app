@@ -377,7 +377,11 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile },
   ];
 
-  const baseItems = user?.role === 'BASIC' ? basicNavItems : navItems;
+  const baseItems = !user
+    ? []
+    : user.role === 'BASIC'
+      ? basicNavItems
+      : navItems;
   const visibleItems = baseItems.filter((item) => {
     if (item.adminOnly && user?.role !== 'ADMIN') return false;
     if (item.staffOnly && user?.role === 'BASIC') return false;
@@ -473,6 +477,14 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             </button>
           )}
 
+          {!user && !collapsed && (
+            <div className="space-y-2 px-1 py-1" aria-hidden="true">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="h-9 rounded-xl bg-indigo-900/40 animate-pulse" />
+              ))}
+            </div>
+          )}
+
           {visibleItems.map((item) => {
             const hasChildren = item.children && item.children.length > 0;
             const active = isActive(item.href);
@@ -562,6 +574,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                                 )}
                                 <Link
                                   href={child.href}
+                                  prefetch={!child.comingSoon}
                                   onClick={() => {
                                     setCollapsedSectionOpen(null);
                                     onClose();
@@ -596,6 +609,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                           )}
                           <Link
                             href={child.href}
+                            prefetch={!child.comingSoon}
                             onClick={onClose}
                             className={cn(
                               'flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
@@ -624,6 +638,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
               {groupHeader}
               <Link
                 href={item.href}
+                prefetch={!item.comingSoon}
                 onClick={() => {
                   setCollapsedSectionOpen(null);
                   onClose();
