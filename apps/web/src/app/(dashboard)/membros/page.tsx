@@ -141,7 +141,7 @@ export default function MembrosPage() {
       tags: [] as string[],
       operacao: 'OR' as 'AND' | 'OR',
     },
-    debounceFields: ['nome', 'whatsapp'],
+    debounceFields: [],
     debounceMs: 350,
     onApply: (filters) => {
       setCurrentPage(1);

@@ -67,41 +67,36 @@ export function useFilterState<T extends Record<string, any>>({
     value: T[K],
     options?: { immediate?: boolean },
   ) => {
-    setFormState((prev) => {
-      const nextState = { ...prev, [key]: value };
-      latestStateRef.current = nextState;
+    const nextState = { ...latestStateRef.current, [key]: value };
+    latestStateRef.current = nextState;
+    setFormState(nextState);
 
-      if (autoApply) {
-        const isImmediate = options?.immediate === true || (options?.immediate !== false && !debounceFields.includes(key));
-        if (isImmediate) {
-          applyImmediately(nextState);
-        } else {
-          scheduleDebounce(nextState);
-        }
+    if (autoApply) {
+      const isImmediate = options?.immediate === true || (options?.immediate !== false && !debounceFields.includes(key));
+      if (isImmediate) {
+        applyImmediately(nextState);
+      } else {
+        scheduleDebounce(nextState);
       }
-
-      return nextState;
-    });
+    }
   }, [autoApply, debounceFields, applyImmediately, scheduleDebounce]);
 
   const setFormStateCustom = useCallback((
     updater: T | ((prev: T) => T),
     options?: { immediate?: boolean },
   ) => {
-    setFormState((prev) => {
-      const nextState = typeof updater === 'function' ? (updater as (prev: T) => T)(prev) : updater;
-      latestStateRef.current = nextState;
+    const prev = latestStateRef.current;
+    const nextState = typeof updater === 'function' ? (updater as (prev: T) => T)(prev) : updater;
+    latestStateRef.current = nextState;
+    setFormState(nextState);
 
-      if (autoApply) {
-        if (options?.immediate ?? true) {
-          applyImmediately(nextState);
-        } else {
-          scheduleDebounce(nextState);
-        }
+    if (autoApply) {
+      if (options?.immediate ?? true) {
+        applyImmediately(nextState);
+      } else {
+        scheduleDebounce(nextState);
       }
-
-      return nextState;
-    });
+    }
   }, [autoApply, applyImmediately, scheduleDebounce]);
 
   const handleClear = useCallback((defaultClearState: T = initialState) => {

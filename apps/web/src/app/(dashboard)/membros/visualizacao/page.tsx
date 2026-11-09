@@ -80,7 +80,7 @@ export default function MembrosVisualizacaoPage() {
     isDebouncing,
   } = useFilterState({
     initialState: initialFilterState,
-    debounceFields: ['nome'],
+    debounceFields: [],
     debounceMs: 350,
     onApply: (filters) => {
       setCurrentPage(1);

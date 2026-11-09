@@ -140,7 +140,7 @@ export default function ConfiguracoesPage() {
     isDebouncing: isUserDebouncing,
   } = useFilterState<UserFilterState>({
     initialState: EMPTY_USER_FILTERS,
-    debounceFields: ["search"],
+    debounceFields: [],
     debounceMs: 350,
     onApply: (filters) => {
       setUserFilters(filters);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, buildQuery, HttpError } from '@/lib/api';
 import { Escala, EscalaDia, EscalaItem, EventoElegivelEscala, ModoCriacaoEscala } from '@/types';
 
@@ -14,19 +14,41 @@ export interface FilterEscalas {
 }
 
 export function useEscalas(initialFilter: FilterEscalas = {}) {
-  const [escalas, setEscalas] = useState<Escala[]>([]);
+  const [rawEscalas, setRawEscalas] = useState<Escala[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterEscalas>(initialFilter);
+  const fetchedQueryRef = useRef<{
+    mes?: string;
+    ano?: string;
+    pendentesApenas?: string;
+    membroId?: string;
+  }>({
+    mes: initialFilter.mes,
+    ano: initialFilter.ano,
+    pendentesApenas: initialFilter.pendentesApenas,
+    membroId: initialFilter.membroId,
+  });
 
   const fetchEscalas = useCallback(async (f: FilterEscalas = filter) => {
     setLoading(true);
     setError(null);
+    fetchedQueryRef.current = {
+      mes: f.mes,
+      ano: f.ano,
+      pendentesApenas: f.pendentesApenas,
+      membroId: f.membroId,
+    };
     try {
       const data = await api.get<Escala[]>(
-        `/api/escalas${buildQuery(f as Record<string, string | undefined>)}`,
+        `/api/escalas${buildQuery({
+          mes: f.mes,
+          ano: f.ano,
+          pendentesApenas: f.pendentesApenas,
+          membroId: f.membroId,
+        })}`,
       );
-      setEscalas(Array.isArray(data) ? data : []);
+      setRawEscalas(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Erro ao carregar escalas.');
     } finally {
@@ -42,6 +64,18 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const escalas = useMemo(() => {
+    return rawEscalas.filter((escala) => {
+      if (filter.ministerioId && escala.ministerioId !== filter.ministerioId) {
+        return false;
+      }
+      if (filter.status && escala.status !== filter.status) {
+        return false;
+      }
+      return true;
+    });
+  }, [rawEscalas, filter.ministerioId, filter.status]);
+
   async function createEscala(data: {
     mes: number;
     ano: number;
@@ -52,7 +86,7 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
     eventoIds?: string[];
   }) {
     const created = await api.post<Escala>('/api/escalas', data);
-    setEscalas((prev) => [created, ...prev]);
+    setRawEscalas((prev) => [created, ...prev]);
     return created;
   }
 
@@ -72,13 +106,13 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
 
   async function updateEscala(id: string, data: Partial<Escala>) {
     const updated = await api.patch<Escala>(`/api/escalas/${id}`, data);
-    setEscalas((prev) => prev.map((e) => (e.id === id ? updated : e)));
+    setRawEscalas((prev) => prev.map((e) => (e.id === id ? updated : e)));
     return updated;
   }
 
   async function deleteEscala(id: string) {
     await api.delete(`/api/escalas/${id}`);
-    setEscalas((prev) => prev.filter((e) => e.id !== id));
+    setRawEscalas((prev) => prev.filter((e) => e.id !== id));
   }
 
   async function addDia(escalaId: string, data: string, titulo?: string, eventoId?: string) {
@@ -144,8 +178,15 @@ export function useEscalas(initialFilter: FilterEscalas = {}) {
 
   function applyFilter(newFilter: FilterEscalas) {
     const merged = { ...filter, ...newFilter };
+    const serverQueryChanged =
+      (merged.mes ?? '') !== (fetchedQueryRef.current.mes ?? '') ||
+      (merged.ano ?? '') !== (fetchedQueryRef.current.ano ?? '') ||
+      (merged.pendentesApenas ?? '') !== (fetchedQueryRef.current.pendentesApenas ?? '') ||
+      (merged.membroId ?? '') !== (fetchedQueryRef.current.membroId ?? '');
     setFilter(merged);
-    fetchEscalas(merged);
+    if (serverQueryChanged) {
+      void fetchEscalas(merged);
+    }
   }
 
   return {

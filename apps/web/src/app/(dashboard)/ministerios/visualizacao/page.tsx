@@ -79,7 +79,7 @@ export default function MinisteriosVisualizacaoPage() {
       nome: "",
       estrutura: "",
     },
-    debounceFields: ["nome"],
+    debounceFields: [],
     debounceMs: 350,
     onApply: (filters) => {
       setAppliedFilter({
