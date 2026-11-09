@@ -37,7 +37,7 @@ function buildProfileForm(user: AuthUser): ProfileFormState {
 }
 
 export default function MeuPerfilPage() {
-  const { user: contextUser, refreshUser, setUser: setLayoutUser } = useAuthUser();
+  const { user: contextUser, loadingUser, refreshUser, setUser: setLayoutUser } = useAuthUser();
   const [user, setUser] = useState<AuthUser | null>(contextUser);
   const [loading, setLoading] = useState(!contextUser);
   const [error, setError] = useState('');
@@ -84,6 +84,9 @@ export default function MeuPerfilPage() {
       setLoading(false);
       return;
     }
+    if (loadingUser) {
+      return;
+    }
     refreshUser()
       .then((data) => {
         if (data) {
@@ -94,7 +97,7 @@ export default function MeuPerfilPage() {
       })
       .catch(() => setError('Nao foi possivel carregar seu perfil.'))
       .finally(() => setLoading(false));
-  }, [contextUser, refreshUser]);
+  }, [contextUser, loadingUser, refreshUser]);
 
   function handleProfileFieldChange(field: keyof ProfileFormState, value: string) {
     setProfileForm((current) => ({

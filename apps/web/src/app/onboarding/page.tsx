@@ -27,6 +27,11 @@ import {
   getPushStatus,
   type PushSupportStatus,
 } from '@/lib/push-notifications';
+import {
+  readCachedTenantPwa,
+  saveCachedTenantPwa,
+  syncTenantPwaHead,
+} from '@/lib/pwa-branding';
 import type { AuthUser } from '@/types';
 
 type Step = 'install' | 'notifications' | 'profile';
@@ -69,6 +74,8 @@ export default function OnboardingPage() {
   const currentStepIndex = STEPS.findIndex((item) => item.id === step);
 
   useEffect(() => {
+    const cached = readCachedTenantPwa();
+    if (cached) syncTenantPwaHead(cached);
     api.get<AuthUser>('/api/auth/me', { cache: 'no-store' })
       .then((currentUser) => {
         if (!isOnboardingEnabled() || currentUser.onboardingCompletedAt) {
@@ -76,6 +83,12 @@ export default function OnboardingPage() {
           return;
         }
 
+        if (currentUser.tenant) {
+          saveCachedTenantPwa(currentUser.tenant);
+          syncTenantPwaHead(currentUser.tenant);
+        } else {
+          syncTenantPwaHead(null);
+        }
         setUser(currentUser);
       })
       .catch(() => {
