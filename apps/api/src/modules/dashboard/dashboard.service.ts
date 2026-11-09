@@ -86,14 +86,15 @@ export class DashboardService {
         },
       }),
 
-      // 6. Aniversariantes do mês (PostgreSQL: extrai o mês da data de nascimento)
-      this.prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT COUNT(*) as count
-        FROM "Membro"
-        WHERE "tenantId" = ${tenantId}
-          AND "deletedAt" IS NULL
-          AND "dataNascimento" IS NOT NULL
-          AND EXTRACT(MONTH FROM "dataNascimento") = ${mesAtual}
+      // 6. Aniversariantes do mês (PostgreSQL: extrai o mês da data de nascimento de membros ativos)
+      this.prisma.$queryRaw<{ count: number | bigint }[]>`
+        SELECT COUNT(*)::int as count
+        FROM tb_member
+        WHERE tenant_id = ${tenantId}
+          AND deleted_at IS NULL
+          AND member_status = 'ACTIVE'::member_status
+          AND birth_date IS NOT NULL
+          AND EXTRACT(MONTH FROM birth_date) = ${mesAtual}
       `,
     ]);
 
