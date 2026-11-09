@@ -33,7 +33,7 @@ function CloseIcon() {
 
 export function InstallAppPrompt() {
   const t = useTranslations('settings.pwa');
-  const { user } = useAuthUser();
+  const { user, loadingUser } = useAuthUser();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isDismissed, setIsDismissed] = useState(true);
   const [isStandalone, setIsStandalone] = useState(true);
@@ -55,6 +55,7 @@ export function InstallAppPrompt() {
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
+      if (!user) return;
       const standalone = isStandaloneMode();
       setIsDismissed(localStorage.getItem(dismissedKey) === 'true');
       setIsStandalone(standalone);
@@ -93,7 +94,7 @@ export function InstallAppPrompt() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, [brandingVersion, dismissedKey, hasCustomBranding, installedBrandingKey, isIOSManualFlow]);
+  }, [user, brandingVersion, dismissedKey, hasCustomBranding, installedBrandingKey, isIOSManualFlow]);
 
   function postponeReinstallNotice() {
     setNeedsReinstall(false);
@@ -105,6 +106,8 @@ export function InstallAppPrompt() {
     }
     setNeedsReinstall(false);
   }
+
+  if (loadingUser || !user) return null;
 
   if (needsReinstall) {
     const instructions = platform === 'ios'

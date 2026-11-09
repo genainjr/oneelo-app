@@ -47,7 +47,7 @@ export default function MinisteriosPage() {
     updateMembroRole,
   } = useMinisterios();
 
-  const { user: currentUser } = useAuthUser();
+  const { user: currentUser, refreshUser } = useAuthUser();
   const [selectedMinisterio, setSelectedMinisterio] = useState<Ministerio | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
@@ -214,6 +214,7 @@ export default function MinisteriosPage() {
       } else {
         await createMinisterio({ nome, descricao, funcoes: funcoes.filter(Boolean), usaEscalas });
       }
+      void refreshUser();
       setIsModalOpen(false);
       setSelectedMinisterio(null);
     } catch (err: any) {
@@ -276,6 +277,7 @@ export default function MinisteriosPage() {
     setFeedback(null);
     try {
       await deleteMinisterio(pendingArchiveMinisterio.id);
+      void refreshUser();
       setPendingArchiveMinisterio(null);
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || t('errorArchive') });
@@ -304,6 +306,7 @@ export default function MinisteriosPage() {
       setPodeSerEscaladoToAdd(true);
       await fetchDetails(selectedMinisterio.id);
       await loadOptions(selectedMinisterio.id);
+      void refreshUser();
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || t('members.errorAdd') });
     }
@@ -315,6 +318,7 @@ export default function MinisteriosPage() {
     try {
       await removeMembro(selectedMinisterio.id, membroId);
       fetchDetails(selectedMinisterio.id);
+      void refreshUser();
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || t('members.errorRemove') });
     }
@@ -326,6 +330,7 @@ export default function MinisteriosPage() {
     try {
       await updateMembroRole(selectedMinisterio.id, membroId, role, undefined);
       fetchDetails(selectedMinisterio.id);
+      void refreshUser();
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || t('members.errorChangeRole') });
     }

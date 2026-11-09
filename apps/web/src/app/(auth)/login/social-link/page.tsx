@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { getPostLoginTarget } from '@/lib/auth-redirect';
+import { saveCachedTenantPwa } from '@/lib/pwa-branding';
 import type { AuthUser } from '@/types';
 
 interface PendingLink {
@@ -60,6 +61,7 @@ export default function SocialLinkPage() {
 
     try {
       const response = await api.post<ConfirmLinkResponse>('/api/auth/oauth/google/confirm-link');
+      saveCachedTenantPwa(response.user?.tenant);
       window.location.href = getPostLoginTarget(response.user, response.redirectPath);
     } catch (err: any) {
       const label = pending ? providerLabel(pending.provider) : 'o provedor';

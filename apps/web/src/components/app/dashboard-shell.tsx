@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/app/sidebar';
 import { Header } from '@/components/app/header';
@@ -10,6 +10,11 @@ import { api } from '@/lib/api';
 import type { AuthUser } from '@/types';
 import { AuthUserProvider } from '@/contexts/auth-user-context';
 import { isOnboardingEnabled } from '@/lib/auth-redirect';
+import {
+  readCachedTenantPwa,
+  saveCachedTenantPwa,
+  syncTenantPwaHead,
+} from '@/lib/pwa-branding';
 
 export function DashboardShell({
   children,
@@ -23,17 +28,25 @@ export function DashboardShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(initialUser);
   const [loadingUser, setLoadingUser] = useState<boolean>(!initialUser);
+  const hasLoadedUserRef = useRef<boolean>(Boolean(initialUser));
+  const lastUserFetchAtRef = useRef<number>(initialUser ? Date.now() : 0);
 
   const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
     try {
-      setLoadingUser(true);
+      if (!hasLoadedUserRef.current) {
+        setLoadingUser(true);
+      }
+      lastUserFetchAtRef.current = Date.now();
       const data = await api.get<AuthUser>('/api/auth/me', {
         cache: 'no-store',
       });
+      hasLoadedUserRef.current = true;
       setUser(data);
       return data;
     } catch {
-      setUser(null);
+      if (!hasLoadedUserRef.current) {
+        setUser(null);
+      }
       return null;
     } finally {
       setLoadingUser(false);
@@ -42,12 +55,49 @@ export function DashboardShell({
 
   useEffect(() => {
     if (initialUser) {
+      hasLoadedUserRef.current = true;
+      lastUserFetchAtRef.current = Date.now();
       setUser(initialUser);
       setLoadingUser(false);
       return;
     }
-    refreshUser();
+    void refreshUser();
   }, [initialUser, refreshUser]);
+
+  // Revalidação silenciosa em background ao retornar o foco à aba (throttle de 60s)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastUserFetchAtRef.current >= 60_000) {
+        void refreshUser();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshUser]);
+
+  // Sincronização dinâmica da identidade PWA da igreja no <head> do cliente
+  useEffect(() => {
+    if (user?.tenant) {
+      saveCachedTenantPwa(user.tenant);
+      syncTenantPwaHead(user.tenant);
+      return;
+    }
+
+    const cachedTenant = readCachedTenantPwa();
+    if (cachedTenant) {
+      syncTenantPwaHead(cachedTenant);
+      return;
+    }
+
+    if (!loadingUser) {
+      syncTenantPwaHead(null);
+    }
+  }, [user?.tenant, loadingUser]);
 
   useEffect(() => {
     if (!isOnboardingEnabled() || !user || pathname === '/onboarding') return;
