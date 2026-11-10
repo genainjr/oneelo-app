@@ -6,12 +6,11 @@ import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
-import { AddToCalendarButton, CalendarDeepLinkModal } from '@/components/app/add-to-calendar-button';
+import { CalendarDeepLinkModal } from '@/components/app/add-to-calendar-button';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { useAuthUser } from '@/contexts/auth-user-context';
 import { api } from '@/lib/api';
 import {
-  consolidateEscalasToCalendarEvents,
   mapEscalaToCalendarEvent,
   type CalendarEventParams,
 } from '@/lib/calendar-url-builder';
@@ -93,14 +92,6 @@ export default function MinhasEscalasPage() {
     [items, todayDateKey],
   );
 
-  const futurasParaCalendario = useMemo(
-    () =>
-      consolidateEscalasToCalendarEvents(
-        futuras.filter((item) => item.statusConfirmacao !== 'RECUSADO'),
-      ),
-    [futuras],
-  );
-
   async function updateConfirmacao(itemId: string, statusConfirmacao: 'CONFIRMADO' | 'RECUSADO') {
     setUpdatingItemId(itemId);
     setActionError('');
@@ -117,11 +108,9 @@ export default function MinhasEscalasPage() {
     }
   }
 
-  function renderItem(item: MinhaEscalaItem, showActions = false, isFutureOrPending = false) {
+  function renderItem(item: MinhaEscalaItem, showActions = false) {
     const canConfirm = item.escala.status === 'PUBLICADA';
     const { weekday, date } = getDatePartsWithWeekday(item.data, 'dd/MM/yyyy');
-    const canAddToCalendar = isFutureOrPending && item.statusConfirmacao !== 'RECUSADO';
-    const calendarEvent = canAddToCalendar ? mapEscalaToCalendarEvent(item) : null;
 
     return (
       <div key={item.id} className="rounded-lg border border-gray-100 bg-white p-5">
@@ -150,35 +139,22 @@ export default function MinhasEscalasPage() {
           {item.observacoes && <p className="mt-1 text-xs text-gray-500">{item.observacoes}</p>}
         </div>
 
-        {((canConfirm && showActions) || calendarEvent) && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100/80">
-            {canConfirm && showActions ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => updateConfirmacao(item.id, 'CONFIRMADO')}
-                  disabled={updatingItemId === item.id}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-                >
-                  Confirmar
-                </button>
-                <button
-                  onClick={() => updateConfirmacao(item.id, 'RECUSADO')}
-                  disabled={updatingItemId === item.id}
-                  className="rounded-lg border border-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                >
-                  Recusar
-                </button>
-              </div>
-            ) : null}
-
-            {calendarEvent && (
-              <div className="ml-auto flex items-center justify-end shrink-0">
-                <AddToCalendarButton
-                  event={calendarEvent}
-                  variant="secondary"
-                />
-              </div>
-            )}
+        {canConfirm && showActions && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={() => updateConfirmacao(item.id, 'CONFIRMADO')}
+              disabled={updatingItemId === item.id}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              Confirmar
+            </button>
+            <button
+              onClick={() => updateConfirmacao(item.id, 'RECUSADO')}
+              disabled={updatingItemId === item.id}
+              className="rounded-lg border border-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              Recusar
+            </button>
           </div>
         )}
       </div>
@@ -244,7 +220,7 @@ export default function MinhasEscalasPage() {
           <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Pendentes</h2>
             <div className="space-y-3">
-              {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true, true)) : (
+              {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true)) : (
                 <EmptyState compact title="Nenhuma confirmacao pendente." />
               )}
             </div>
@@ -272,7 +248,7 @@ export default function MinhasEscalasPage() {
 
             {(!proximasMinimizadas || futuras.length === 0) && (
               <div className="space-y-3">
-                {futuras.length > 0 ? futuras.map((item) => renderItem(item, false, true)) : (
+                {futuras.length > 0 ? futuras.map((item) => renderItem(item, false)) : (
                   <EmptyState compact title="Nenhuma escala futura." />
                 )}
               </div>
@@ -301,7 +277,7 @@ export default function MinhasEscalasPage() {
 
             {(!historicoMinimizado || passadas.length === 0) && (
               <div className="space-y-3">
-                {passadas.length > 0 ? passadas.map((item) => renderItem(item, false, false)) : (
+                {passadas.length > 0 ? passadas.map((item) => renderItem(item, false)) : (
                   <EmptyState compact title="Nenhuma escala passada." />
                 )}
               </div>
