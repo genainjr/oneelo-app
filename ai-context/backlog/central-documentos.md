@@ -8,7 +8,7 @@
 - **Esforço estimado**: alto
 - **Contexto**: o OneElo possui exportação de Escalas e Agenda geradas sob demanda no backend via Playwright/Chromium, mas a geração síncrona causa lentidão no primeiro acesso e faz com que o menu nativo de compartilhamento do celular (`navigator.share`) falhe por expiração de gesto do usuário. Além disso, os arquivos gerados não ficam persistidos em histórico, geram consumo repetido de memória e não cobrem fluxos em lote ou documentos formais da igreja (carteirinhas).
 - **Ação**: criar a Central de Documentos multitenant integrada ao monólito NestJS para gerenciar requisições assíncronas, armazenar no Supabase Storage, disponibilizar downloads seguros e manter o histórico do tenant. A Fase 1 terá como entregas principais:
-  1. **Evolução do Cadastro de Membros**: Inclusão de dados eclesiásticos e documentais essenciais na tabela `Membro` (`matricula`, `dataBatismo`, `cargo`, `cpf`, `rg`, `congregacao`).
+  1. **Evolução do Cadastro de Membros**: Inclusão de dados eclesiásticos, pessoais e documentais essenciais na tabela `Membro` (`matricula`, `cargo`, `dataBatismo`, `cpf`, `rg`, `sexo`, `estadoCivil`).
   2. **Emissão de Carteirinhas de Membros**: Emissão unitária e em lote (formato cartão CR80 e grade A4 para impressão, mais versão digital PNG para o app do membro).
   3. **Persistência e Cache das Exportações de Escalas e Agenda**: Armazenamento no Supabase Storage indexado pela versão (`updatedAt`) da escala/agenda, mantendo 100% o layout validado do ODS (`ExportShareDialog` e `ExportSharePreparedBanner`) e viabilizando abertura instantânea do menu nativo de compartilhamento no mobile.
 - **Impacto**: viabiliza emissão profissional de carteirinhas de membros para secretarias, resolve definitivamente a falha de compartilhamento nativo no celular, elimina timeouts/repetição de renderização pesada e oferece histórico permanente de documentos por tenant.
@@ -17,14 +17,15 @@
 
 ## 1. Pilares Funcionais da Entrega
 
-### A. Dados Cadastrais e Eclesiásticos dos Membros (Fase 1)
+### A. Dados Cadastrais, Pessoais e Eclesiásticos dos Membros (Fase 1)
 Para que a Carteirinha de Membro nasça completa na sua versão 1, a tabela de membros (`tb_member`) e o formulário de cadastro/edição em `/membros` serão expandidos para contemplar:
 - `matricula`: Número de registro / rol de membros da congregação.
 - `cargo`: Cargo ou função eclesiástica (ex.: Pastor, Presbítero, Diácono, Evangelista, Membro, Cooperador).
 - `dataBatismo`: Data do batismo nas águas.
 - `cpf`: Cadastro de Pessoa Física do membro (com máscara e validação).
 - `rg`: Registro Geral (opcional).
-- `congregacao`: Nome da congregação local / filial (para tenants com congregações).
+- `sexo`: Sexo do membro (`MASCULINO` / `FEMININO`).
+- `estadoCivil`: Estado civil do membro (`SOLTEIRO`, `CASADO`, `VIUVO`, `DIVORCIADO`, `UNIAO_ESTAVEL`).
 
 ### B. Carteirinhas de Membros (Carro-chefe da Secretaria)
 - **Emissão Unitária**: Ação direta na listagem/perfil do membro (`/membros`), permitindo emitir a carteirinha individual em alta resolução (PDF ou imagem PNG).
@@ -81,7 +82,8 @@ Para manter a simplicidade operacional e custo zero adicional de infraestrutura,
 - `dataBatismo`: DateTime? (data de batismo nas águas).
 - `cpf`: String? (CPF formatado).
 - `rg`: String? (RG).
-- `congregacao`: String? (congregação/unidade).
+- `sexo`: Enum `SexoMembro` (`MASCULINO`, `FEMININO`).
+- `estadoCivil`: Enum `EstadoCivil` (`SOLTEIRO`, `CASADO`, `VIUVO`, `DIVORCIADO`, `UNIAO_ESTAVEL`).
 
 ### Novo Modelo `DocumentJob` (`tb_document_job`)
 - `id`: UUID (chave primária).
