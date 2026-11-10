@@ -145,7 +145,10 @@ export function CarteirinhaModal({
       const job = await api.post<{ id: string; status: string; downloadUrl?: string }>('/api/documents/jobs', {
         tipoDocumento: 'CARTEIRINHA_INDIVIDUAL',
         formato: 'PDF',
-        parametros: { memberId: membro.id },
+        parametros: {
+          memberId: membro.id,
+          validationUrl: validationUrl || (typeof window !== 'undefined' ? `${window.location.origin}/validar-carteirinha/${membro.id}` : undefined),
+        },
       });
 
       let currentJob = job;

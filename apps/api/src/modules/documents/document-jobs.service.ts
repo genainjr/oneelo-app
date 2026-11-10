@@ -52,8 +52,10 @@ export class DocumentJobsService {
       return null;
     }
 
+    const TEMPLATE_VERSION = 'v5-no-shadow-prod-qr-cnh';
     const validadeAno = new Date().getFullYear() + 1;
     const payload = [
+      TEMPLATE_VERSION,
       member.id,
       member.nome,
       member.nomeExibicao ?? '',
@@ -120,6 +122,7 @@ export class DocumentJobsService {
       return null;
     }
 
+    const TEMPLATE_VERSION = 'v5-no-shadow-prod-qr-cnh';
     const validadeAno = new Date().getFullYear() + 1;
     const membersPayload = members
       .map((m: any) =>
@@ -142,6 +145,7 @@ export class DocumentJobsService {
       .join('|');
 
     const fullPayload = [
+      TEMPLATE_VERSION,
       tenant.nome,
       tenant.logoUrl ?? '',
       tenant.updatedAt?.toISOString() ?? '',

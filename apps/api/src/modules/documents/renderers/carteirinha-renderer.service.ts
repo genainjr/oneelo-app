@@ -49,10 +49,13 @@ export class CarteirinhaRendererService {
       this.configService.get<string>('WEB_APP_URL') ||
       this.configService.get<string>('APP_URL') ||
       this.configService.get<string>('FRONTEND_URL');
-    if (configured) return configured.replace(/\/$/, '');
-    return process.env.NODE_ENV === 'production'
-      ? 'https://app.oneelo.com.br'
-      : 'http://localhost:3001';
+    if (configured && !configured.includes('localhost')) {
+      return configured.replace(/\/$/, '');
+    }
+    if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
+      return 'https://app.oneelo.com.br';
+    }
+    return configured ? configured.replace(/\/$/, '') : 'http://localhost:3001';
   }
 
   private formatDatePtBr(date?: Date | null): string {
@@ -118,8 +121,8 @@ export class CarteirinhaRendererService {
     return `${this.webAppUrl}/validar-carteirinha/${memberId}`;
   }
 
-  async generateQrCodeDataUri(memberId: string): Promise<string> {
-    const url = this.getValidationUrl(memberId);
+  async generateQrCodeDataUri(memberId: string, customValidationUrl?: string): Promise<string> {
+    const url = customValidationUrl || this.getValidationUrl(memberId);
     return QRCode.toDataURL(url, {
       margin: 3,
       width: 400,
@@ -344,7 +347,7 @@ export class CarteirinhaRendererService {
           background: #ffffff;
           border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+          box-shadow: none;
           page-break-inside: avoid;
           page-break-after: always;
           display: flex;
@@ -626,12 +629,13 @@ export class CarteirinhaRendererService {
     member: CarteirinhaMemberData,
     tenant: CarteirinhaTenantData,
     _formato?: 'PDF' | 'PNG' | string,
+    customValidationUrl?: string,
   ): Promise<DocumentRenderResult> {
     const tenantLogoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(tenant.logoUrl ?? undefined);
     const memberPhotoDataUri = await this.resolveMemberPhotoDataUri(member.fotoUrl ?? undefined);
-    const qrCodeDataUri = await this.generateQrCodeDataUri(member.id);
+    const qrCodeDataUri = await this.generateQrCodeDataUri(member.id, customValidationUrl);
     const validadeAno = new Date().getFullYear() + 1;
-    const validationUrl = this.getValidationUrl(member.id);
+    const validationUrl = customValidationUrl || this.getValidationUrl(member.id);
 
     const { frontHtml, backHtml } = this.renderCardHtml(
       member,
@@ -694,7 +698,7 @@ export class CarteirinhaRendererService {
                   background: #ffffff;
                 }
                 .cr80-card {
-                  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+                  box-shadow: none !important;
                   border-radius: 16px;
                   border: 1px solid rgba(226, 232, 240, 0.7);
                 }

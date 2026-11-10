@@ -122,6 +122,7 @@ export class DocumentWorkerService implements OnModuleInit, OnModuleDestroy {
           member,
           job.tenant,
           job.formato,
+          job.parametros?.validationUrl,
         );
       },
     });
