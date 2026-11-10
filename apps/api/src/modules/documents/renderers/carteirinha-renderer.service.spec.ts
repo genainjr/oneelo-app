@@ -97,9 +97,29 @@ describe('CarteirinhaRendererService', () => {
     expect(backHtml).toContain('123.456.789-00');
     expect(backHtml).toContain('1234567-SSP');
     expect(backHtml).toContain('Masculino');
-    expect(backHtml).toContain('CASADO');
+    expect(backHtml).toContain('Casado');
     expect(backHtml).toContain('31/12/2027');
     expect(backHtml).toContain(qrDataUri);
+  });
+
+  it('deve flexionar estado civil para o feminino quando o sexo for FEMININO', () => {
+    const qrDataUri = 'data:image/png;base64,fakeqr';
+    const femaleMember = {
+      ...memberMock,
+      sexo: 'FEMININO',
+      estadoCivil: 'CASADO',
+    };
+
+    const { backHtml } = service.renderCardHtml(
+      femaleMember,
+      tenantMock,
+      null,
+      qrDataUri,
+      2027,
+    );
+
+    expect(backHtml).toContain('Feminino');
+    expect(backHtml).toContain('Casada');
   });
 
   it('deve chamar chromiumRenderer.runSerialRender para gerar cartão individual', async () => {

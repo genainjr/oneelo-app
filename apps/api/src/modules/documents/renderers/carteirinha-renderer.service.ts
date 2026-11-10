@@ -70,6 +70,36 @@ export class CarteirinhaRendererService {
     return cpf;
   }
 
+  private formatEstadoCivil(estadoCivil?: string | null, sexo?: string | null): string {
+    if (!estadoCivil) return 'Não informado';
+    const clean = estadoCivil.trim().toUpperCase();
+    const isFeminino = sexo === 'FEMININO';
+
+    switch (clean) {
+      case 'SOLTEIRO':
+      case 'SOLTEIRA':
+        return isFeminino ? 'Solteira' : 'Solteiro';
+      case 'CASADO':
+      case 'CASADA':
+        return isFeminino ? 'Casada' : 'Casado';
+      case 'DIVORCIADO':
+      case 'DIVORCIADA':
+        return isFeminino ? 'Divorciada' : 'Divorciado';
+      case 'VIUVO':
+      case 'VIUVA':
+      case 'VIÚVO':
+      case 'VIÚVA':
+        return isFeminino ? 'Viúva' : 'Viúvo';
+      case 'UNIAO_ESTAVEL':
+      case 'UNIÃO_ESTÁVEL':
+      case 'UNIAO ESTAVEL':
+      case 'UNIÃO ESTÁVEL':
+        return 'União Estável';
+      default:
+        return estadoCivil;
+    }
+  }
+
   private escape(str?: string | null): string {
     if (!str) return '';
     return str
@@ -139,6 +169,7 @@ export class CarteirinhaRendererService {
     const birthDate = this.formatDatePtBr(member.dataNascimento);
     const baptismDate = this.formatDatePtBr(member.dataBatismo);
     const cpfFormatted = this.formatCpf(member.cpf);
+    const estadoCivilFormatted = this.formatEstadoCivil(member.estadoCivil, member.sexo);
     const matricula = member.matricula || `ROL-${member.id.slice(0, 6).toUpperCase()}`;
     const initials = displayName
       .split(' ')
@@ -222,7 +253,7 @@ export class CarteirinhaRendererService {
               </div>
               <div class="detail-row">
                 <span class="detail-label">Estado Civil</span>
-                <strong class="detail-value">${this.escape(member.estadoCivil || 'Não informado')}</strong>
+                <strong class="detail-value">${this.escape(estadoCivilFormatted)}</strong>
               </div>
             </div>
 
@@ -567,7 +598,7 @@ export class CarteirinhaRendererService {
         });
 
         try {
-          // Layout horizontal (deitado) com Frente e Verso lado a lado preenchendo o PDF por completo para exibição em celular
+          // Layout horizontal (deitado) com Frente e Verso lado a lado, com margens confortáveis e sombra idêntica ao PNG
           const fullHtml = `
             <!doctype html>
             <html>
@@ -576,7 +607,7 @@ export class CarteirinhaRendererService {
               ${this.getStyles()}
               <style>
                 @page {
-                  size: 182mm 60mm;
+                  size: 196mm 70mm;
                   margin: 0;
                 }
                 * {
@@ -585,9 +616,9 @@ export class CarteirinhaRendererService {
                 html, body {
                   margin: 0;
                   padding: 0;
-                  width: 182mm;
-                  height: 60mm;
-                  background: #ffffff;
+                  width: 196mm;
+                  height: 70mm;
+                  background: #f8fafc;
                   display: flex;
                   align-items: center;
                   justify-content: center;
@@ -597,18 +628,18 @@ export class CarteirinhaRendererService {
                 #cards-wrapper {
                   display: flex;
                   flex-direction: row;
-                  gap: 5mm;
+                  gap: 8mm;
                   align-items: center;
                   justify-content: center;
-                  width: 182mm;
-                  height: 60mm;
-                  padding: 3mm;
-                  background: #ffffff;
+                  width: 196mm;
+                  height: 70mm;
+                  padding: 8mm;
+                  background: #f8fafc;
                 }
                 .cr80-card {
                   border-radius: 3.5mm;
-                  border: 0.25mm solid #cbd5e1;
-                  box-shadow: none;
+                  border: 0.25mm solid #e2e8f0;
+                  box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
                   margin: 0;
                 }
               </style>
@@ -626,8 +657,8 @@ export class CarteirinhaRendererService {
           await this.chromiumRenderer.waitForImages(page);
 
           const buffer = await page.pdf({
-            width: '182mm',
-            height: '60mm',
+            width: '196mm',
+            height: '70mm',
             printBackground: true,
             margin: { top: '0', right: '0', bottom: '0', left: '0' },
           });

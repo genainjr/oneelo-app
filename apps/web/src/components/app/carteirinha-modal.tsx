@@ -71,6 +71,36 @@ export function CarteirinhaModal({
     }
   }
 
+  function formatEstadoCivil(estadoCivil?: string | null, sexo?: string | null) {
+    if (!estadoCivil) return 'Não informado';
+    const clean = estadoCivil.trim().toUpperCase();
+    const isFeminino = sexo === 'FEMININO';
+
+    switch (clean) {
+      case 'SOLTEIRO':
+      case 'SOLTEIRA':
+        return isFeminino ? 'Solteira' : 'Solteiro';
+      case 'CASADO':
+      case 'CASADA':
+        return isFeminino ? 'Casada' : 'Casado';
+      case 'DIVORCIADO':
+      case 'DIVORCIADA':
+        return isFeminino ? 'Divorciada' : 'Divorciado';
+      case 'VIUVO':
+      case 'VIUVA':
+      case 'VIÚVO':
+      case 'VIÚVA':
+        return isFeminino ? 'Viúva' : 'Viúvo';
+      case 'UNIAO_ESTAVEL':
+      case 'UNIÃO_ESTÁVEL':
+      case 'UNIAO ESTAVEL':
+      case 'UNIÃO ESTÁVEL':
+        return 'União Estável';
+      default:
+        return estadoCivil;
+    }
+  }
+
   async function handleEmitir() {
     if (!membro) return;
     setDownloading(true);
@@ -241,7 +271,7 @@ export function CarteirinhaModal({
                       </div>
                       <div>
                         <span className="text-[9px] text-slate-400 font-bold uppercase block">Estado Civil</span>
-                        <span className="text-slate-700 font-semibold">{membro.estadoCivil || 'Não informado'}</span>
+                        <span className="text-slate-700 font-semibold">{formatEstadoCivil(membro.estadoCivil, membro.sexo)}</span>
                       </div>
                     </div>
                   </div>
