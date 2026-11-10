@@ -6,7 +6,10 @@ import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
-import { CalendarDeepLinkModal } from '@/components/app/add-to-calendar-button';
+import {
+  AddToCalendarButton,
+  CalendarDeepLinkModal,
+} from '@/components/app/add-to-calendar-button';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { useAuthUser } from '@/contexts/auth-user-context';
 import { api } from '@/lib/api';
@@ -108,8 +111,9 @@ export default function MinhasEscalasPage() {
     }
   }
 
-  function renderItem(item: MinhaEscalaItem, showActions = false) {
+  function renderItem(item: MinhaEscalaItem, showActions = false, showAddToCalendar = false) {
     const canConfirm = item.escala.status === 'PUBLICADA';
+    const canAddToCalendar = showAddToCalendar && item.statusConfirmacao !== 'RECUSADO';
     const { weekday, date } = getDatePartsWithWeekday(item.data, 'dd/MM/yyyy');
 
     return (
@@ -155,6 +159,15 @@ export default function MinhasEscalasPage() {
             >
               Recusar
             </button>
+          </div>
+        )}
+
+        {canAddToCalendar && (
+          <div className="mt-4 pt-3 border-t border-gray-100/80 flex items-center justify-end">
+            <AddToCalendarButton
+              event={mapEscalaToCalendarEvent(item)}
+              variant="secondary"
+            />
           </div>
         )}
       </div>
@@ -220,7 +233,7 @@ export default function MinhasEscalasPage() {
           <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Pendentes</h2>
             <div className="space-y-3">
-              {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true)) : (
+              {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true, false)) : (
                 <EmptyState compact title="Nenhuma confirmacao pendente." />
               )}
             </div>
@@ -248,7 +261,7 @@ export default function MinhasEscalasPage() {
 
             {(!proximasMinimizadas || futuras.length === 0) && (
               <div className="space-y-3">
-                {futuras.length > 0 ? futuras.map((item) => renderItem(item, false)) : (
+                {futuras.length > 0 ? futuras.map((item) => renderItem(item, false, true)) : (
                   <EmptyState compact title="Nenhuma escala futura." />
                 )}
               </div>
@@ -277,7 +290,7 @@ export default function MinhasEscalasPage() {
 
             {(!historicoMinimizado || passadas.length === 0) && (
               <div className="space-y-3">
-                {passadas.length > 0 ? passadas.map((item) => renderItem(item, false)) : (
+                {passadas.length > 0 ? passadas.map((item) => renderItem(item, false, false)) : (
                   <EmptyState compact title="Nenhuma escala passada." />
                 )}
               </div>

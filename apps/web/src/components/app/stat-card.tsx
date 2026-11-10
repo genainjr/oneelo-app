@@ -9,6 +9,7 @@ interface StatCardProps {
   color?: 'indigo' | 'emerald' | 'amber' | 'blue' | 'rose';
   loading?: boolean;
   href?: string;
+  action?: React.ReactNode;
 }
 
 const colorMap = {
@@ -27,6 +28,7 @@ export function StatCard({
   color = 'indigo',
   loading = false,
   href,
+  action,
 }: StatCardProps) {
   const content = (
     <div className="flex items-start justify-between">
@@ -46,6 +48,23 @@ export function StatCard({
       </div>
     </div>
   );
+
+  if (action) {
+    return (
+      <div className="flex flex-col justify-between bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        {href ? (
+          <Link href={href} className="block group cursor-pointer focus-visible:outline-none">
+            {content}
+          </Link>
+        ) : (
+          content
+        )}
+        <div className="mt-4 pt-3 border-t border-gray-100/80 flex items-center justify-end">
+          {action}
+        </div>
+      </div>
+    );
+  }
 
   if (href) {
     return (

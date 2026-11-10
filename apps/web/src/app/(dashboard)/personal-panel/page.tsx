@@ -251,6 +251,23 @@ export default function PersonalPanelPage() {
     }] : []),
   ] : [];
 
+  const canSaveNextSchedule = Boolean(nextSchedule && nextSchedule.statusConfirmacao !== 'RECUSADO');
+  const canSaveNextEvent = Boolean(nextEvent && nextEvent.status === 'AGENDADO');
+
+  const nextScheduleAction = canSaveNextSchedule && nextSchedule ? (
+    <AddToCalendarButton
+      event={mapEscalaToCalendarEvent(nextSchedule)}
+      variant="secondary"
+    />
+  ) : undefined;
+
+  const nextEventAction = canSaveNextEvent && nextEvent ? (
+    <AddToCalendarButton
+      event={mapEventoToCalendarEvent(nextEvent)}
+      variant="secondary"
+    />
+  ) : undefined;
+
   const cards = hasLeadership ? [
     {
       key: 'nextSchedule',
@@ -262,6 +279,7 @@ export default function PersonalPanelPage() {
       href: '/minhas-escalas',
       color: 'blue' as const,
       icon: <DashboardIcon />,
+      action: nextScheduleAction,
     },
     {
       key: 'pending',
@@ -280,6 +298,7 @@ export default function PersonalPanelPage() {
       href: '/agenda/visualizacao',
       color: 'emerald' as const,
       icon: <CalendarIcon />,
+      action: nextEventAction,
     },
   ] : hasEscalas ? [
     {
@@ -292,6 +311,7 @@ export default function PersonalPanelPage() {
       href: '/minhas-escalas',
       color: 'blue' as const,
       icon: <DashboardIcon />,
+      action: nextScheduleAction,
     },
     {
       key: 'pending',
@@ -310,6 +330,7 @@ export default function PersonalPanelPage() {
       href: '/agenda/visualizacao',
       color: 'emerald' as const,
       icon: <CalendarIcon />,
+      action: nextEventAction,
     },
   ] : [
     {
@@ -320,6 +341,7 @@ export default function PersonalPanelPage() {
       href: '/agenda/visualizacao',
       color: 'emerald' as const,
       icon: <CalendarIcon />,
+      action: nextEventAction,
     },
   ];
 
@@ -349,9 +371,6 @@ export default function PersonalPanelPage() {
     : hasEscalas
       ? t('subtitle', { date: today })
       : t('noMinistry.subtitle', { date: today });
-
-  const canSaveNextSchedule = nextSchedule && nextSchedule.statusConfirmacao !== 'RECUSADO';
-  const canSaveNextEvent = nextEvent && nextEvent.status === 'AGENDADO';
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -397,47 +416,10 @@ export default function PersonalPanelPage() {
             color={card.color}
             loading={loading}
             href={card.href}
+            action={card.action}
           />
         ))}
       </div>
-
-      {!loading && (canSaveNextSchedule || canSaveNextEvent) && (
-        <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {canSaveNextSchedule && nextSchedule && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
-                  Próxima Escala ({formatDateWithWeekday(nextSchedule.data, 'dd/MM')})
-                </p>
-                <p className="truncate text-sm font-medium text-gray-800">
-                  {nextSchedule.escala.ministerio?.nome ?? 'Ministério'} · {nextSchedule.funcao?.nome ?? 'Função'}
-                </p>
-              </div>
-              <AddToCalendarButton
-                event={mapEscalaToCalendarEvent(nextSchedule)}
-                variant="secondary"
-              />
-            </div>
-          )}
-
-          {canSaveNextEvent && nextEvent && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                  Próximo Evento ({formatDateWithWeekday(nextEvent.dataInicio, 'dd/MM')})
-                </p>
-                <p className="truncate text-sm font-medium text-gray-800">
-                  {nextEvent.titulo}
-                </p>
-              </div>
-              <AddToCalendarButton
-                event={mapEventoToCalendarEvent(nextEvent)}
-                variant="secondary"
-              />
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-4">{t('quickAccess')}</h3>
