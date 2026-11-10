@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildAndroidGoogleCalendarIntentUrl,
   buildGoogleCalendarUrl,
   buildOutlookCalendarUrl,
   buildIcsContent,
@@ -8,6 +9,7 @@ import {
   detectCalendarPlatform,
   mapEscalaToCalendarEvent,
   mapEventoToCalendarEvent,
+  openGoogleCalendar,
   resolveCalendarDateRange,
 } from './calendar-url-builder';
 import type { Evento, MinhaEscalaItem } from '../types';
@@ -267,5 +269,23 @@ describe('calendar-url-builder', () => {
     const platform = detectCalendarPlatform();
     // Em ambiente Node.js / SSR sem browser globals reais, o fallback é 'other'
     assert.ok(['other', 'windows', 'apple', 'android'].includes(platform));
+  });
+
+  it('gera URL de intent Android para Google Agenda nativo prevenindo Chrome Custom Tab órfã', () => {
+    const event = {
+      title: 'Culto de Celebração',
+      startDate: '2026-11-15T22:00:00.000Z',
+      endDate: '2026-11-16T00:00:00.000Z',
+      location: 'Templo Principal',
+      description: 'Chegar 15 minutos antes',
+    };
+
+    const intentUrl = buildAndroidGoogleCalendarIntentUrl(event);
+    assert.ok(intentUrl.startsWith('intent://calendar.google.com/calendar/render?'));
+    assert.ok(intentUrl.includes('action=TEMPLATE'));
+    assert.ok(intentUrl.includes('text=Culto+de+Celebra%C3%A7%C3%A3o'));
+    assert.ok(intentUrl.includes('#Intent;scheme=https;package=com.google.android.calendar;'));
+    assert.ok(intentUrl.includes('S.browser_fallback_url=https%3A%2F%2Fcalendar.google.com%2Fcalendar%2Frender%3F'));
+    assert.ok(intentUrl.endsWith(';end'));
   });
 });

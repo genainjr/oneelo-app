@@ -333,6 +333,47 @@ export function buildGoogleCalendarUrl(params: CalendarEventParams): string {
 }
 
 /**
+ * Gera a URL com esquema Android Intent para o Google Agenda nativo.
+ * Evita a abertura de Chrome Custom Tabs órfãs (tela branca com botão 'X') em PWAs e navegadores Android.
+ */
+export function buildAndroidGoogleCalendarIntentUrl(params: CalendarEventParams): string {
+  const webUrl = buildGoogleCalendarUrl(params);
+  const parsed = new URL(webUrl);
+  const pathAndQuery = `${parsed.pathname.replace(/^\//, '')}${parsed.search}`;
+  const encodedFallback = encodeURIComponent(webUrl);
+  return `intent://${parsed.host}/${pathAndQuery}#Intent;scheme=https;package=com.google.android.calendar;S.browser_fallback_url=${encodedFallback};end`;
+}
+
+/**
+ * Abre o Google Agenda de forma adaptativa para a plataforma do dispositivo:
+ * - No Android: utiliza o Android Intent Scheme na janela atual, despachando direto
+ *   ao app nativo do Google Agenda sem abrir uma Chrome Custom Tab intermediária
+ *   (eliminando a tela branca com o botão 'X').
+ * - No Desktop / iOS / Outros: abre a versão Web em uma nova aba (_blank).
+ */
+export function openGoogleCalendar(
+  params: CalendarEventParams,
+  platformOverride?: CalendarPlatform,
+): void {
+  if (typeof window === 'undefined') return;
+
+  const platform = platformOverride || detectCalendarPlatform();
+
+  if (platform === 'android') {
+    const intentUrl = buildAndroidGoogleCalendarIntentUrl(params);
+    try {
+      window.location.assign(intentUrl);
+    } catch {
+      window.location.href = intentUrl;
+    }
+    return;
+  }
+
+  const webUrl = buildGoogleCalendarUrl(params);
+  window.open(webUrl, '_blank', 'noopener,noreferrer');
+}
+
+/**
  * Gera a URL direta do Microsoft Outlook Web (deeplink de criação de evento).
  */
 export function buildOutlookCalendarUrl(params: CalendarEventParams): string {

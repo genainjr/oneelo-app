@@ -3,10 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CalendarPlus, ChevronDown, ExternalLink, MapPin, X } from 'lucide-react';
 import {
-  buildGoogleCalendarUrl,
   buildOutlookCalendarUrl,
   detectCalendarPlatform,
   downloadIcsFile,
+  openGoogleCalendar,
   type CalendarEventParams,
   type CalendarPlatform,
 } from '@/lib/calendar-url-builder';
@@ -165,14 +165,13 @@ export function AddToCalendarButton({
   if (!event) return null;
 
   const isApple = platform === 'apple';
-  const googleUrl = buildGoogleCalendarUrl(event);
   const outlookUrl = buildOutlookCalendarUrl(event);
   const buttonLabel = label || 'Adicionar à Agenda';
   const resolvedFilename = icsFilename || 'evento-oneelo.ics';
 
   const handleOpenGoogle = () => {
     setIsOpen(false);
-    window.open(googleUrl, '_blank', 'noopener,noreferrer');
+    openGoogleCalendar(event, platform);
   };
 
   const handleOpenApple = () => {
@@ -308,13 +307,12 @@ export function CalendarDeepLinkModal({
   if (!isOpen || !event) return null;
 
   const isApple = platform === 'apple';
-  const googleUrl = buildGoogleCalendarUrl(event);
   const outlookUrl = buildOutlookCalendarUrl(event);
   const resolvedFilename = icsFilename || 'evento-oneelo.ics';
 
   const handleOpenGoogle = () => {
     onClose();
-    window.open(googleUrl, '_blank', 'noopener,noreferrer');
+    openGoogleCalendar(event, platform);
   };
 
   const handleOpenApple = () => {
