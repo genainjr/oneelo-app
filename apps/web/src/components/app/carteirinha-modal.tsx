@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, FileText, Image as ImageIcon, Loader2, QrCode, ShieldCheck, X } from 'lucide-react';
+import QRCode from 'qrcode';
 import { api } from '@/lib/api';
 import { downloadFile } from '@/hooks/use-document-share';
 import type { Membro } from '@/types';
@@ -24,6 +25,23 @@ export function CarteirinhaModal({
   const [downloading, setDownloading] = useState<'pdf' | 'png' | null>(null);
   const [activeSide, setActiveSide] = useState<'front' | 'back'>('front');
   const [error, setError] = useState<string | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!membro?.id) return;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const validationUrl = `${origin}/validar-carteirinha/${membro.id}`;
+    QRCode.toDataURL(validationUrl, {
+      margin: 1,
+      width: 140,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff',
+      },
+    })
+      .then(setQrCodeDataUrl)
+      .catch(() => setQrCodeDataUrl(null));
+  }, [membro?.id]);
 
   if (!isOpen || !membro) return null;
 
@@ -204,7 +222,11 @@ export function CarteirinhaModal({
                   </div>
 
                   <div className="col-span-1 border-l border-dashed border-slate-200 pl-2 flex flex-col items-center justify-center text-center">
-                    <QrCode className="h-12 w-12 text-slate-700" />
+                    {qrCodeDataUrl ? (
+                      <img src={qrCodeDataUrl} alt="QR Code Autenticidade" className="h-14 w-14 object-contain rounded" />
+                    ) : (
+                      <QrCode className="h-12 w-12 text-slate-700" />
+                    )}
                     <span className="mt-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
                       Autenticidade
                     </span>

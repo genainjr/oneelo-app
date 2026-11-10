@@ -40,8 +40,14 @@ export class CarteirinhaRendererService {
   ) {}
 
   private get webAppUrl(): string {
-    const configured = this.configService.get<string>('WEB_APP_URL') || this.configService.get<string>('APP_URL');
-    return (configured || 'https://app.oneelo.com.br').replace(/\/$/, '');
+    const configured =
+      this.configService.get<string>('WEB_APP_URL') ||
+      this.configService.get<string>('APP_URL') ||
+      this.configService.get<string>('FRONTEND_URL');
+    if (configured) return configured.replace(/\/$/, '');
+    return process.env.NODE_ENV === 'production'
+      ? 'https://app.oneelo.com.br'
+      : 'http://localhost:3000';
   }
 
   private formatDatePtBr(date?: Date | null): string {
@@ -91,6 +97,7 @@ export class CarteirinhaRendererService {
     tenantLogoDataUri: string | null,
     qrCodeDataUri: string,
     validadeAno: number,
+    memberPhotoDataUri?: string | null,
   ): { frontHtml: string; backHtml: string } {
     const displayName = member.nomeExibicao || member.nome;
     const roleLabel = member.cargo || 'Membro';
@@ -105,8 +112,9 @@ export class CarteirinhaRendererService {
       .map((n) => n[0].toUpperCase())
       .join('');
 
-    const photoHtml = member.fotoUrl
-      ? `<img src="${this.escape(member.fotoUrl)}" alt="${this.escape(displayName)}" class="member-photo" />`
+    const resolvedPhotoSrc = memberPhotoDataUri || member.fotoUrl;
+    const photoHtml = resolvedPhotoSrc
+      ? `<img src="${this.escape(resolvedPhotoSrc)}" alt="${this.escape(displayName)}" class="member-photo" />`
       : `<div class="member-photo-placeholder">${initials}</div>`;
 
     const churchLogoHtml = tenantLogoDataUri
@@ -229,7 +237,12 @@ export class CarteirinhaRendererService {
 
         .cr80-card {
           width: 85.6mm;
+          min-width: 85.6mm;
+          max-width: 85.6mm;
           height: 53.98mm;
+          min-height: 53.98mm;
+          max-height: 53.98mm;
+          flex-shrink: 0;
           position: relative;
           background: #ffffff;
           border-radius: 3.5mm;
@@ -294,8 +307,8 @@ export class CarteirinhaRendererService {
         }
 
         .photo-container {
-          width: 20mm;
-          height: 25mm;
+          width: 22mm;
+          height: 27mm;
           border-radius: 2mm;
           overflow: hidden;
           background: #e2e8f0;
@@ -310,6 +323,7 @@ export class CarteirinhaRendererService {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          display: block;
         }
 
         .member-photo-placeholder {
@@ -323,6 +337,8 @@ export class CarteirinhaRendererService {
           flex-direction: column;
           gap: 1mm;
           overflow: hidden;
+          flex: 1;
+          min-width: 0;
         }
 
         .member-name {
@@ -330,9 +346,7 @@ export class CarteirinhaRendererService {
           font-weight: 800;
           color: #0f172a;
           line-height: 1.15;
-          max-height: 7mm;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          word-break: break-word;
         }
 
         .member-role {
@@ -438,19 +452,21 @@ export class CarteirinhaRendererService {
         }
 
         .back-qr-col {
-          width: 20mm;
+          width: 21mm;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           border-left: 0.2mm dashed #cbd5e1;
           padding-left: 2mm;
+          flex-shrink: 0;
         }
 
         .qr-code {
-          width: 17mm;
-          height: 17mm;
+          width: 18mm;
+          height: 18mm;
           object-fit: contain;
+          display: block;
         }
 
         .qr-label {
@@ -493,6 +509,7 @@ export class CarteirinhaRendererService {
     formato: 'PDF' | 'PNG',
   ): Promise<DocumentRenderResult> {
     const tenantLogoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(tenant.logoUrl ?? undefined);
+    const memberPhotoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(member.fotoUrl ?? undefined);
     const qrCodeDataUri = await this.generateQrCodeDataUri(member.id);
     const validadeAno = new Date().getFullYear() + 1;
 
@@ -502,6 +519,7 @@ export class CarteirinhaRendererService {
       tenantLogoDataUri,
       qrCodeDataUri,
       validadeAno,
+      memberPhotoDataUri,
     );
 
     const safeMemberName = member.nome
@@ -518,7 +536,7 @@ export class CarteirinhaRendererService {
       },
       async (browser) => {
         const page = await browser.newPage({
-          viewport: { width: 400, height: 600 },
+          viewport: { width: 900, height: 350 },
           deviceScaleFactor: 2,
         });
 
@@ -533,14 +551,17 @@ export class CarteirinhaRendererService {
                 ${this.getStyles()}
                 <style>
                   body {
-                    padding: 8mm;
+                    padding: 6mm;
                     background: transparent;
-                    display: flex;
+                    display: inline-flex;
                     flex-direction: row;
-                    gap: 6mm;
+                    gap: 8mm;
+                    align-items: center;
+                    justify-content: center;
+                    width: fit-content;
                   }
                   .cr80-card {
-                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                    box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.12);
                   }
                 </style>
               </head>
@@ -626,7 +647,8 @@ export class CarteirinhaRendererService {
     const renderedCards = await Promise.all(
       members.map(async (m) => {
         const qrCode = await this.generateQrCodeDataUri(m.id);
-        return this.renderCardHtml(m, tenant, tenantLogoDataUri, qrCode, validadeAno);
+        const memberPhotoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(m.fotoUrl ?? undefined);
+        return this.renderCardHtml(m, tenant, tenantLogoDataUri, qrCode, validadeAno, memberPhotoDataUri);
       }),
     );
 
