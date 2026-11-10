@@ -110,8 +110,12 @@ export class CarteirinhaRendererService {
       .replace(/'/g, '&#39;');
   }
 
+  getValidationUrl(memberId: string): string {
+    return `${this.webAppUrl}/validar-carteirinha/${memberId}`;
+  }
+
   async generateQrCodeDataUri(memberId: string): Promise<string> {
-    const url = `${this.webAppUrl}/validar-carteirinha/${memberId}`;
+    const url = this.getValidationUrl(memberId);
     return QRCode.toDataURL(url, {
       margin: 3,
       width: 400,
@@ -163,6 +167,7 @@ export class CarteirinhaRendererService {
     qrCodeDataUri: string,
     validadeAno: number,
     memberPhotoDataUri?: string | null,
+    validationUrl?: string,
   ): { frontHtml: string; backHtml: string } {
     const displayName = member.nomeExibicao || member.nome;
     const roleLabel = member.cargo || 'Membro';
@@ -171,6 +176,7 @@ export class CarteirinhaRendererService {
     const cpfFormatted = this.formatCpf(member.cpf);
     const estadoCivilFormatted = this.formatEstadoCivil(member.estadoCivil, member.sexo);
     const matricula = member.matricula || `ROL-${member.id.slice(0, 6).toUpperCase()}`;
+    const targetValidationUrl = validationUrl || this.getValidationUrl(member.id);
     const initials = displayName
       .split(' ')
       .filter(Boolean)
@@ -193,7 +199,7 @@ export class CarteirinhaRendererService {
           <div class="header-left">
             ${churchLogoHtml}
           </div>
-          <div class="header-badge">CARTEIRA DE MEMBRO</div>
+          <div class="header-badge">Carteira de Membro</div>
         </div>
 
         <div class="card-body">
@@ -221,56 +227,47 @@ export class CarteirinhaRendererService {
           <div class="back-details">
             <div class="detail-row">
               <span class="detail-label">Nome Completo</span>
-              <strong class="detail-value text-ellipsis">${this.escape(member.nome)}</strong>
+              <strong class="detail-value name-highlight">${this.escape(member.nome)}</strong>
             </div>
 
             <div class="detail-cols-2">
               <div class="detail-row">
                 <span class="detail-label">Nascimento</span>
-                <strong class="detail-value">${birthDate}</strong>
+                <span class="detail-value">${birthDate}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Batismo</span>
-                <strong class="detail-value">${baptismDate}</strong>
+                <span class="detail-value">${baptismDate}</span>
               </div>
             </div>
 
             <div class="detail-cols-2">
               <div class="detail-row">
                 <span class="detail-label">CPF</span>
-                <strong class="detail-value">${this.escape(cpfFormatted)}</strong>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">RG</span>
-                <strong class="detail-value">${this.escape(member.rg || 'Não informado')}</strong>
-              </div>
-            </div>
-
-            <div class="detail-cols-2">
-              <div class="detail-row">
-                <span class="detail-label">Sexo</span>
-                <strong class="detail-value">${member.sexo === 'FEMININO' ? 'Feminino' : member.sexo === 'MASCULINO' ? 'Masculino' : 'Não informado'}</strong>
+                <span class="detail-value">${this.escape(cpfFormatted)}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Estado Civil</span>
-                <strong class="detail-value">${this.escape(estadoCivilFormatted)}</strong>
+                <span class="detail-value">${this.escape(estadoCivilFormatted)}</span>
               </div>
             </div>
 
             <div class="detail-row">
               <span class="detail-label">Validade</span>
-              <strong class="detail-value">31/12/${validadeAno}</strong>
+              <strong class="detail-value date-highlight">31/12/${validadeAno}</strong>
             </div>
           </div>
 
           <div class="back-qr-col">
-            <img src="${qrCodeDataUri}" alt="QR Autenticidade" class="qr-code" />
-            <span class="qr-label">Autenticidade</span>
+            <a href="${targetValidationUrl}" target="_blank" class="qr-link" title="Validar autenticidade da carteirinha">
+              <img src="${qrCodeDataUri}" alt="QR Autenticidade" class="qr-code" />
+              <span class="qr-label">Validar ↗</span>
+            </a>
           </div>
         </div>
 
         <div class="back-footer">
-          Documento eclesiástico emitido por OneElo · lookup.com.br
+          Documento emitido por OneElo • <a href="${targetValidationUrl}" target="_blank" class="footer-link">lookuplabs.com.br</a>
         </div>
       </div>
     `;
@@ -291,7 +288,7 @@ export class CarteirinhaRendererService {
         }
 
         body {
-          background-color: #f8fafc;
+          background-color: #ffffff;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -318,35 +315,41 @@ export class CarteirinhaRendererService {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          border: 0.2mm solid #e2e8f0;
+          border: 0.25mm solid rgba(226, 232, 240, 0.9);
+          padding: 3mm 3.5mm;
         }
 
         /* Frente */
         .card-front {
-          background: linear-gradient(135deg, #ffffff 65%, #f1f5f9 100%);
+          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 60%, rgba(238, 242, 255, 0.45) 100%);
         }
 
         .card-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 3mm 4mm 2mm 4mm;
-          border-bottom: 0.3mm solid #e2e8f0;
-          background: #fafafa;
+          padding-bottom: 1.5mm;
+          border-bottom: 0.25mm solid #f1f5f9;
+        }
+
+        .header-left {
+          display: flex;
+          align-items: center;
+          max-width: 48mm;
         }
 
         .church-logo {
-          max-height: 7mm;
-          max-width: 38mm;
+          max-height: 6mm;
+          max-width: 25mm;
           object-fit: contain;
         }
 
         .church-name-text {
-          font-size: 8pt;
-          font-weight: 800;
+          font-size: 6.5pt;
+          font-weight: 900;
           color: #1e293b;
           text-transform: uppercase;
-          max-width: 45mm;
+          letter-spacing: -0.2px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -355,29 +358,29 @@ export class CarteirinhaRendererService {
         .header-badge {
           background: #4f46e5;
           color: #ffffff;
-          font-size: 5.5pt;
-          font-weight: 800;
+          font-size: 5pt;
+          font-weight: 900;
           letter-spacing: 0.4px;
-          padding: 0.8mm 2.2mm;
-          border-radius: 1.5mm;
+          padding: 0.7mm 1.8mm;
+          border-radius: 1.2mm;
           text-transform: uppercase;
         }
 
         .card-body {
           display: flex;
           align-items: center;
-          gap: 3.5mm;
-          padding: 2.5mm 4mm;
-          flex: 1;
+          gap: 2.8mm;
+          margin-top: auto;
+          margin-bottom: auto;
         }
 
         .photo-container {
-          width: 22mm;
-          height: 27mm;
-          border-radius: 2mm;
+          width: 14mm;
+          height: 16.5mm;
+          border-radius: 2.5mm;
           overflow: hidden;
           background: #e2e8f0;
-          border: 0.3mm solid #cbd5e1;
+          border: 0.25mm solid #cbd5e1;
           flex-shrink: 0;
           display: flex;
           align-items: center;
@@ -392,30 +395,32 @@ export class CarteirinhaRendererService {
         }
 
         .member-photo-placeholder {
-          font-size: 14pt;
+          font-size: 11pt;
           font-weight: 800;
-          color: #64748b;
+          color: #94a3b8;
         }
 
         .member-info {
           display: flex;
           flex-direction: column;
-          gap: 1mm;
+          gap: 0.6mm;
           overflow: hidden;
           flex: 1;
           min-width: 0;
         }
 
         .member-name {
-          font-size: 9.5pt;
+          font-size: 8.5pt;
           font-weight: 800;
           color: #0f172a;
           line-height: 1.15;
-          word-break: break-word;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .member-role {
-          font-size: 7pt;
+          font-size: 6.5pt;
           font-weight: 700;
           color: #4f46e5;
           text-transform: uppercase;
@@ -423,18 +428,19 @@ export class CarteirinhaRendererService {
         }
 
         .info-pill-container {
-          margin-top: 1mm;
+          margin-top: 0.5mm;
         }
 
         .info-pill {
           display: inline-block;
-          background: #e0e7ff;
-          color: #3730a3;
-          font-size: 5.5pt;
+          background: #eef2ff;
+          border: 0.2mm solid #e0e7ff;
+          color: #4338ca;
+          font-size: 5.2pt;
           font-weight: 700;
-          padding: 0.5mm 2mm;
+          padding: 0.4mm 1.6mm;
           border-radius: 1mm;
-          max-width: 50mm;
+          max-width: 48mm;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -444,34 +450,35 @@ export class CarteirinhaRendererService {
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          padding: 2mm 4mm;
-          background: #f8fafc;
-          border-top: 0.2mm solid #e2e8f0;
-          font-size: 6pt;
+          padding-top: 1.5mm;
+          border-top: 0.25mm solid #f1f5f9;
+          font-size: 5.5pt;
           color: #64748b;
         }
 
         .footer-matricula strong {
-          color: #0f172a;
+          color: #1e293b;
+          font-weight: 700;
         }
 
         /* Verso */
         .card-back {
           background: #ffffff;
-          padding: 3mm 4mm 2mm 4mm;
         }
 
         .back-grid {
-          display: flex;
+          display: grid;
+          grid-template-columns: 2fr 1fr;
           gap: 2mm;
-          flex: 1;
+          height: 100%;
         }
 
         .back-details {
-          flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 1mm;
+          justify-content: space-between;
+          padding-top: 0.5mm;
+          padding-bottom: 0.5mm;
         }
 
         .detail-row {
@@ -479,68 +486,88 @@ export class CarteirinhaRendererService {
           flex-direction: column;
         }
 
-        .detail-cols-2 {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 2mm;
-        }
-
         .detail-label {
           font-size: 4.8pt;
-          font-weight: 700;
           color: #94a3b8;
+          font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.2px;
+          line-height: 1;
+          margin-bottom: 0.3mm;
         }
 
         .detail-value {
-          font-size: 6.2pt;
-          font-weight: 700;
-          color: #1e293b;
-          line-height: 1.1;
+          font-size: 6pt;
+          color: #334155;
+          font-weight: 600;
+          line-height: 1.15;
         }
 
-        .text-ellipsis {
+        .detail-value.name-highlight {
+          font-size: 7.2pt;
+          color: #1e293b;
+          font-weight: 800;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 52mm;
+        }
+
+        .detail-value.date-highlight {
+          font-size: 6pt;
+          color: #1e293b;
+          font-weight: 700;
+        }
+
+        .detail-cols-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5mm;
         }
 
         .back-qr-col {
-          width: 23mm;
+          border-left: 0.25mm dashed #e2e8f0;
+          padding-left: 2mm;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          border-left: 0.2mm dashed #cbd5e1;
-          padding-left: 2.5mm;
-          flex-shrink: 0;
+          text-align: center;
+        }
+
+        .qr-link {
+          text-decoration: none;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
 
         .qr-code {
-          width: 19.5mm;
-          height: 19.5mm;
+          width: 16mm;
+          height: 16mm;
           object-fit: contain;
           display: block;
-          image-rendering: pixelated;
         }
 
         .qr-label {
-          font-size: 4.5pt;
-          font-weight: 800;
-          color: #64748b;
+          font-size: 4.8pt;
+          font-weight: 700;
+          color: #4f46e5;
           text-transform: uppercase;
+          letter-spacing: -0.2px;
           margin-top: 0.5mm;
-          letter-spacing: 0.2px;
         }
 
         .back-footer {
-          border-top: 0.2mm solid #f1f5f9;
-          padding-top: 1mm;
-          font-size: 4.5pt;
-          color: #94a3b8;
+          padding-top: 1.5mm;
+          border-top: 0.25mm solid #f1f5f9;
           text-align: center;
+          font-size: 4.8pt;
+          color: #94a3b8;
+        }
+
+        .footer-link {
+          color: #6366f1;
+          text-decoration: none;
+          font-weight: 600;
         }
 
         /* Folha A4 Grade (Impressão em Lote) */
@@ -569,6 +596,7 @@ export class CarteirinhaRendererService {
     const memberPhotoDataUri = await this.resolveMemberPhotoDataUri(member.fotoUrl ?? undefined);
     const qrCodeDataUri = await this.generateQrCodeDataUri(member.id);
     const validadeAno = new Date().getFullYear() + 1;
+    const validationUrl = this.getValidationUrl(member.id);
 
     const { frontHtml, backHtml } = this.renderCardHtml(
       member,
@@ -577,6 +605,7 @@ export class CarteirinhaRendererService {
       qrCodeDataUri,
       validadeAno,
       memberPhotoDataUri,
+      validationUrl,
     );
 
     const safeMemberName = member.nome
@@ -598,7 +627,6 @@ export class CarteirinhaRendererService {
         });
 
         try {
-          // Layout idêntico ao PNG aprovado: fundo branco limpo, sombra suave elegante, sem margens ou fundos cinzas extras
           const fullHtml = `
             <!doctype html>
             <html>
@@ -606,22 +634,32 @@ export class CarteirinhaRendererService {
               <meta charset="utf-8" />
               ${this.getStyles()}
               <style>
+                @page {
+                  size: 188mm 62mm;
+                  margin: 0;
+                }
                 html, body {
                   margin: 0;
                   padding: 0;
+                  width: 188mm;
+                  height: 62mm;
                   background: #ffffff !important;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
                 }
                 #cards-wrapper {
-                  display: inline-flex;
+                  display: flex;
                   flex-direction: row;
                   gap: 8mm;
                   align-items: center;
                   justify-content: center;
-                  padding: 6mm;
                   background: #ffffff;
                 }
                 .cr80-card {
-                  box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.12);
+                  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
                 }
               </style>
             </head>
@@ -637,60 +675,12 @@ export class CarteirinhaRendererService {
           await page.setContent(fullHtml, { waitUntil: 'domcontentloaded' });
           await this.chromiumRenderer.waitForImages(page);
 
-          const wrapper = await page.$('#cards-wrapper');
-          if (!wrapper) {
-            throw new Error('Falha ao localizar elementos dos cartões.');
-          }
-
-          const box = await wrapper.boundingBox();
-          const pngBuffer = await wrapper.screenshot({ type: 'png' });
-          const dataUri = `data:image/png;base64,${pngBuffer.toString('base64')}`;
-
-          const pdfWidth = box ? Math.round(box.width) : 740;
-          const pdfHeight = box ? Math.round(box.height) : 255;
-
-          const pdfPage = await browser.newPage();
-          const pdfHtml = `
-            <!doctype html>
-            <html>
-            <head>
-              <meta charset="utf-8" />
-              <style>
-                @page {
-                  size: ${pdfWidth}px ${pdfHeight}px;
-                  margin: 0;
-                }
-                html, body {
-                  margin: 0;
-                  padding: 0;
-                  background: #ffffff;
-                  overflow: hidden;
-                  width: 100%;
-                  height: 100%;
-                }
-                img {
-                  display: block;
-                  width: 100%;
-                  height: 100%;
-                  object-fit: contain;
-                }
-              </style>
-            </head>
-            <body>
-              <img src="${dataUri}" />
-            </body>
-            </html>
-          `;
-
-          await pdfPage.setContent(pdfHtml, { waitUntil: 'domcontentloaded' });
-          const buffer = await pdfPage.pdf({
-            width: `${pdfWidth}px`,
-            height: `${pdfHeight}px`,
+          const buffer = await page.pdf({
+            width: '188mm',
+            height: '62mm',
             printBackground: true,
             margin: { top: 0, right: 0, bottom: 0, left: 0 },
           });
-
-          await pdfPage.close().catch(() => undefined);
 
           return {
             buffer,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   ChevronLeft,
-  ExternalLink,
+  ChevronRight,
   FileText,
   Loader2,
   QrCode,
@@ -30,7 +30,9 @@ export function CarteirinhaModal({
   onClose,
 }: CarteirinhaModalProps) {
   const [downloading, setDownloading] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<'both' | 'front' | 'back'>('both');
+  const [currentSlide, setCurrentSlide] = useState<number>(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchDeltaX, setTouchDeltaX] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [validationUrl, setValidationUrl] = useState<string>('');
@@ -162,8 +164,15 @@ export function CarteirinhaModal({
   }
 
   const renderFrontCard = () => (
-    <div className="relative w-full max-w-[340px] aspect-[85.6/53.98] rounded-2xl border border-slate-200/90 bg-linear-to-br from-white via-slate-50 to-indigo-50/40 p-3.5 sm:p-4 shadow-md flex flex-col justify-between overflow-hidden text-slate-800 shrink-0">
-      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+    <div
+      style={{
+        width: '330px',
+        height: '208px',
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 60%, rgba(238, 242, 255, 0.45) 100%)',
+      }}
+      className="relative rounded-2xl border border-slate-200/90 p-3.5 shadow-lg flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border"
+    >
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
         <div className="flex items-center gap-2 max-w-[190px]">
           {churchLogoUrl ? (
             <img src={churchLogoUrl} alt={churchName} className="h-6 max-w-[90px] object-contain" />
@@ -189,7 +198,7 @@ export function CarteirinhaModal({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h4 className="text-sm font-extrabold text-slate-900 truncate">{displayName}</h4>
+          <h4 className="text-sm font-extrabold text-slate-900 truncate leading-snug">{displayName}</h4>
           <p className="text-xs font-bold text-indigo-600 uppercase tracking-wide">{roleLabel}</p>
           <div className="mt-1">
             <span className="inline-block bg-indigo-50 border border-indigo-100/60 rounded px-1.5 py-0.5 text-[9.5px] font-bold text-indigo-700 truncate max-w-[180px]">
@@ -199,43 +208,50 @@ export function CarteirinhaModal({
         </div>
       </div>
 
-      <div className="flex items-center pt-2 border-t border-slate-100 text-[10px] text-slate-500">
+      <div className="flex items-center pt-1.5 border-t border-slate-100 text-[10px] text-slate-500">
         <span>Matrícula: <strong className="text-slate-800">{matricula}</strong></span>
       </div>
     </div>
   );
 
   const renderBackCard = () => (
-    <div className="relative w-full max-w-[340px] aspect-[85.6/53.98] rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-md flex flex-col justify-between overflow-hidden text-slate-800 shrink-0">
+    <div
+      style={{
+        width: '330px',
+        height: '208px',
+        backgroundColor: '#ffffff',
+      }}
+      className="relative rounded-2xl border border-slate-200/90 p-3.5 shadow-lg flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border"
+    >
       <div className="grid grid-cols-3 gap-2 h-full text-[10px]">
-        <div className="col-span-2 space-y-1">
+        <div className="col-span-2 flex flex-col justify-between py-0.5">
           <div>
-            <span className="text-[9px] text-slate-400 font-bold uppercase block">Nome Completo</span>
-            <strong className="text-slate-800 text-[11px] truncate block">{membro.nome}</strong>
+            <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Nome Completo</span>
+            <strong className="text-slate-800 text-[10.5px] truncate block leading-tight">{membro.nome}</strong>
           </div>
-          <div className="grid grid-cols-2 gap-1 text-[10px]">
+          <div className="grid grid-cols-2 gap-1 text-[9.5px]">
             <div>
-              <span className="text-[9px] text-slate-400 font-bold uppercase block">Nascimento</span>
+              <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Nascimento</span>
               <span className="text-slate-700 font-semibold">{formatDate(membro.dataNascimento)}</span>
             </div>
             <div>
-              <span className="text-[9px] text-slate-400 font-bold uppercase block">Batismo</span>
+              <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Batismo</span>
               <span className="text-slate-700 font-semibold">{formatDate(membro.dataBatismo)}</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-1 text-[10px]">
+          <div className="grid grid-cols-2 gap-1 text-[9.5px]">
             <div>
-              <span className="text-[9px] text-slate-400 font-bold uppercase block">CPF</span>
+              <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">CPF</span>
               <span className="text-slate-700 font-semibold">{membro.cpf || 'Não informado'}</span>
             </div>
             <div>
-              <span className="text-[9px] text-slate-400 font-bold uppercase block">Estado Civil</span>
+              <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Estado Civil</span>
               <span className="text-slate-700 font-semibold">{formatEstadoCivil(membro.estadoCivil, membro.sexo)}</span>
             </div>
           </div>
           <div>
-            <span className="text-[9px] text-slate-400 font-bold uppercase block">Validade</span>
-            <strong className="text-slate-800 font-bold">31/12/{validadeAno}</strong>
+            <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Validade</span>
+            <strong className="text-slate-800 font-bold text-[10px]">31/12/{validadeAno}</strong>
           </div>
         </div>
 
@@ -269,14 +285,74 @@ export function CarteirinhaModal({
       </div>
 
       <div className="pt-1.5 border-t border-slate-100 text-center text-[8px] text-slate-400">
-        Documento eclesiástico emitido por OneElo • lookup.com.br
+        Documento emitido por OneElo • lookuplabs.com.br
       </div>
     </div>
   );
 
+  const renderQrCard = () => (
+    <div
+      style={{
+        width: '330px',
+        height: '208px',
+        backgroundColor: '#ffffff',
+      }}
+      className="relative rounded-2xl border border-slate-200/90 p-3.5 shadow-lg flex flex-col items-center justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border text-center"
+    >
+      <div className="w-full flex items-center justify-between pb-1.5 border-b border-slate-100">
+        <span className="text-[10px] font-black tracking-wider text-slate-800 uppercase">
+          QR Code de Autenticidade
+        </span>
+        <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-[8.5px] font-black tracking-wider text-white uppercase shadow-2xs">
+          Digital
+        </span>
+      </div>
+
+      <div className="my-auto flex flex-col items-center justify-center">
+        {qrCodeDataUrl ? (
+          <img
+            src={qrCodeDataUrl}
+            alt="QR Code Autenticidade"
+            className="h-28 w-28 object-contain"
+          />
+        ) : (
+          <QrCode className="h-24 w-24 text-slate-700" />
+        )}
+        <span className="mt-1 text-[9px] font-bold text-slate-500 uppercase tracking-tight">
+          Aponte a câmera para validar
+        </span>
+      </div>
+
+      <div className="w-full pt-1.5 border-t border-slate-100 text-center text-[8px] text-slate-400">
+        Documento emitido por OneElo • lookuplabs.com.br
+      </div>
+    </div>
+  );
+
+  function handleTouchStart(e: React.TouchEvent) {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchDeltaX(0);
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (touchStartX === null) return;
+    setTouchDeltaX(e.targetTouches[0].clientX - touchStartX);
+  }
+
+  function handleTouchEnd() {
+    if (touchStartX === null) return;
+    if (touchDeltaX < -40) {
+      setCurrentSlide((prev) => Math.min(prev + 1, 2));
+    } else if (touchDeltaX > 40) {
+      setCurrentSlide((prev) => Math.max(prev - 1, 0));
+    }
+    setTouchStartX(null);
+    setTouchDeltaX(0);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="relative w-full max-w-2xl sm:rounded-3xl bg-slate-900 border-0 sm:border sm:border-slate-800 shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden text-white">
+      <div className="relative w-full max-w-md sm:max-w-lg sm:rounded-3xl bg-slate-900 border-0 sm:border sm:border-slate-800 shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden text-white">
         
         {/* Top Header estilo CNH Digital / CDT */}
         <div className="bg-[#0B192C] px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-800 flex items-center justify-between">
@@ -312,10 +388,10 @@ export function CarteirinhaModal({
           </button>
         </div>
 
-        {/* Banner Informativo de Autenticação */}
+        {/* Banner Informativo */}
         <div className="bg-slate-950/50 px-4 py-2 border-b border-slate-800/60 text-center">
           <p className="text-[11px] text-slate-300 flex items-center justify-center gap-1.5">
-            <span>Aponte a câmera para o QR Code para verificar autenticidade online</span>
+            <span>Deslize para o lado para ver frente, verso e QR Code</span>
           </p>
         </div>
 
@@ -325,103 +401,109 @@ export function CarteirinhaModal({
           </div>
         )}
 
-        {/* Alternador de Modo de Exibição */}
-        <div className="mt-4 flex justify-center px-4">
-          <div className="inline-flex rounded-xl bg-slate-800/90 p-1 border border-slate-700/60">
+        {/* Área Central da Carteirinha Digital com Carrossel estilo CNH Digital */}
+        <div className="my-auto px-4 py-6 flex flex-col items-center justify-center">
+          <div className="relative flex items-center justify-center w-full">
+            {/* Seta Esquerda (Desktop) */}
             <button
               type="button"
-              onClick={() => setViewMode('both')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                viewMode === 'both' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              onClick={() => setCurrentSlide((prev) => Math.max(0, prev - 1))}
+              disabled={currentSlide === 0}
+              className={`hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white transition-all mr-2 ${
+                currentSlide === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'
               }`}
+              aria-label="Anterior"
             >
-              Frente e Verso
+              <ChevronLeft className="h-5 w-5" />
             </button>
+
+            {/* Viewport do Slide */}
+            <div
+              className="relative overflow-hidden w-[340px] py-1 select-none"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div
+                className="flex transition-transform duration-300 ease-out"
+                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              >
+                <div className="w-full shrink-0 flex justify-center">
+                  {renderFrontCard()}
+                </div>
+                <div className="w-full shrink-0 flex justify-center">
+                  {renderBackCard()}
+                </div>
+                <div className="w-full shrink-0 flex justify-center">
+                  {renderQrCard()}
+                </div>
+              </div>
+            </div>
+
+            {/* Seta Direita (Desktop) */}
             <button
               type="button"
-              onClick={() => setViewMode('front')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                viewMode === 'front' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              onClick={() => setCurrentSlide((prev) => Math.min(2, prev + 1))}
+              disabled={currentSlide === 2}
+              className={`hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white transition-all ml-2 ${
+                currentSlide === 2 ? 'opacity-0 pointer-events-none' : 'opacity-100'
               }`}
+              aria-label="Próximo"
             >
-              Frente
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('back')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                viewMode === 'back' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Verso
+              <ChevronRight className="h-5 w-5" />
             </button>
           </div>
-        </div>
-
-        {/* Área Central da Carteirinha Digital */}
-        <div className="my-auto px-4 py-6 flex flex-col items-center justify-center overflow-x-auto">
-          {viewMode === 'both' && (
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 w-full">
-              {renderFrontCard()}
-              {renderBackCard()}
-            </div>
-          )}
-
-          {viewMode === 'front' && (
-            <div className="flex justify-center w-full">
-              {renderFrontCard()}
-            </div>
-          )}
-
-          {viewMode === 'back' && (
-            <div className="flex justify-center w-full">
-              {renderBackCard()}
-            </div>
-          )}
 
           {/* Indicador de Paginação estilo CNH */}
-          <div className="mt-4 flex items-center justify-center gap-1.5">
-            <span
-              onClick={() => setViewMode('both')}
-              className={`h-2 rounded-full cursor-pointer transition-all ${
-                viewMode === 'both' ? 'w-6 bg-indigo-500' : 'w-2 bg-slate-700'
+          <div className="mt-5 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentSlide(0)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
+                currentSlide === 0
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200'
               }`}
-              title="Frente e Verso"
-            />
-            <span
-              onClick={() => setViewMode('front')}
-              className={`h-2 rounded-full cursor-pointer transition-all ${
-                viewMode === 'front' ? 'w-6 bg-indigo-500' : 'w-2 bg-slate-700'
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${currentSlide === 0 ? 'bg-white' : 'bg-slate-500'}`} />
+              Frente
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCurrentSlide(1)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
+                currentSlide === 1
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200'
               }`}
-              title="Frente"
-            />
-            <span
-              onClick={() => setViewMode('back')}
-              className={`h-2 rounded-full cursor-pointer transition-all ${
-                viewMode === 'back' ? 'w-6 bg-indigo-500' : 'w-2 bg-slate-700'
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${currentSlide === 1 ? 'bg-white' : 'bg-slate-500'}`} />
+              Verso
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCurrentSlide(2)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
+                currentSlide === 2
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200'
               }`}
-              title="Verso"
-            />
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${currentSlide === 2 ? 'bg-white' : 'bg-slate-500'}`} />
+              QR Code
+            </button>
           </div>
         </div>
 
-        {/* Barra de Ações Inferior estilo CNH Digital */}
-        <div className="bg-[#0B192C] px-4 py-4 sm:px-6 border-t border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-auto">
-          <a
-            href={validationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition-colors"
-          >
-            <ExternalLink className="h-4 w-4 text-emerald-400" />
-            Testar Validação Digital
-          </a>
-
+        {/* Barra de Ações Inferior */}
+        <div className="bg-[#0B192C] px-4 py-4 sm:px-6 border-t border-slate-800 flex items-center justify-center sm:justify-end gap-3 mt-auto">
           <button
             type="button"
             onClick={handleEmitir}
             disabled={downloading}
-            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-500 disabled:opacity-50 transition-colors w-full sm:w-auto"
           >
             {downloading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

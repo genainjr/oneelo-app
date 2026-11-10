@@ -88,15 +88,15 @@ describe('CarteirinhaRendererService', () => {
     expect(frontHtml).toContain('Presbítero');
     expect(frontHtml).toContain('Igreja Batista Central');
     expect(frontHtml).toContain('ROL-00456');
-    expect(frontHtml).toContain('CARTEIRA DE MEMBRO');
+    expect(frontHtml).toContain('Carteira de Membro');
 
     // Validações do Verso
     expect(backHtml).toContain('Carlos Eduardo Santos');
     expect(backHtml).toContain('15/06/1985');
     expect(backHtml).toContain('20/11/2002');
     expect(backHtml).toContain('123.456.789-00');
-    expect(backHtml).toContain('1234567-SSP');
-    expect(backHtml).toContain('Masculino');
+    expect(backHtml).toContain('lookuplabs.com.br');
+
     expect(backHtml).toContain('Casado');
     expect(backHtml).toContain('31/12/2027');
     expect(backHtml).toContain(qrDataUri);
@@ -118,7 +118,7 @@ describe('CarteirinhaRendererService', () => {
       2027,
     );
 
-    expect(backHtml).toContain('Feminino');
+
     expect(backHtml).toContain('Casada');
   });
 
