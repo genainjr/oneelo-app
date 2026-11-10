@@ -117,7 +117,7 @@ export class DocumentsController {
     return this.jobsService.listJobs(user.tenantId, query);
   }
 
-  @Get(':id/download')
+  @Get([':id/download', 'jobs/:id/download'])
   async getDownloadUrl(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
@@ -146,7 +146,7 @@ export class DocumentsController {
     };
   }
 
-  @Post(':id/retry')
+  @Post([':id/retry', 'jobs/:id/retry'])
   @Roles(Role.ADMIN, Role.STAFF)
   async retryJob(
     @CurrentUser() user: JwtPayload,

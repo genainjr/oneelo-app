@@ -89,7 +89,13 @@ export class SupabaseStorageService {
           id: bucket,
           name: bucket,
           public: isPublic,
-          file_size_limit: 52428800,
+          file_size_limit: 10485760,
+          allowed_mime_types: [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+          ],
         }),
       });
     } catch {

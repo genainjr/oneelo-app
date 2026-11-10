@@ -130,9 +130,47 @@ export class DocumentWorkerService implements OnModuleInit, OnModuleDestroy {
 
       const result = await handler.process(job);
 
-      // Envia arquivo final para o bucket do Supabase Storage
+      // Envia arquivo final para o bucket do Supabase Storage seguindo o padrão oficial tenants/${tenantId}/...
       const extension = job.formato === 'PDF' ? 'pdf' : 'png';
-      const storagePath = `${job.tenantId}/${job.tipoDocumento.toLowerCase()}/${job.id}.${extension}`;
+      const memberId = (job.parametros as any)?.memberId;
+
+      let storagePath: string;
+      if (job.tipoDocumento === 'CARTEIRINHA_INDIVIDUAL' && memberId) {
+        // Limpa carteirinhas anteriores do mesmo membro e formato para não acumular sujeira no storage
+        try {
+          const previousJobs = await this.prisma.client.documentJob.findMany({
+            where: {
+              tenantId: job.tenantId,
+              tipoDocumento: job.tipoDocumento,
+              formato: job.formato,
+              id: { not: job.id },
+              storageKey: { not: null },
+            },
+            select: { id: true, storageKey: true, parametros: true },
+          });
+
+          for (const prev of previousJobs) {
+            const prevMemberId = (prev.parametros as any)?.memberId;
+            if (prevMemberId === memberId && prev.storageKey) {
+              await this.storageService
+                .deleteObject(this.documentsBucket, prev.storageKey)
+                .catch(() => undefined);
+            }
+          }
+        } catch {
+          // Não impede a gravação do novo arquivo se a limpeza falhar
+        }
+
+        storagePath = `tenants/${job.tenantId}/documents/carteirinhas/members/${memberId}/carteirinha-${Date.now()}.${extension}`;
+      } else if (job.tipoDocumento === 'CARTEIRINHAS_LOTE') {
+        storagePath = `tenants/${job.tenantId}/documents/carteirinhas/lotes/lote-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
+      } else if (job.tipoDocumento === 'ESCALA_PDF' || job.tipoDocumento === 'ESCALA_PNG') {
+        storagePath = `tenants/${job.tenantId}/documents/escalas/escala-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
+      } else if (job.tipoDocumento === 'AGENDA_PDF' || job.tipoDocumento === 'AGENDA_PNG') {
+        storagePath = `tenants/${job.tenantId}/documents/agenda/agenda-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
+      } else {
+        storagePath = `tenants/${job.tenantId}/documents/${job.tipoDocumento.toLowerCase()}/${job.id}.${extension}`;
+      }
 
       await this.storageService.uploadPublicObject(
         this.documentsBucket,

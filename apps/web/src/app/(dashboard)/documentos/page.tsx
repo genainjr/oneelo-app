@@ -160,8 +160,16 @@ export default function CentralDocumentosPage() {
       if (selectedStatus !== 'TODOS') params.append('status', selectedStatus);
 
       const query = params.toString() ? `?${params.toString()}` : '';
-      const data = await api.get<DocumentJob[]>(`/api/documents/history${query}`);
-      setJobs(Array.isArray(data) ? data : []);
+      const data = await api.get<{ items: DocumentJob[]; total: number } | DocumentJob[]>(
+        `/api/documents/history${query}`,
+      );
+      if (Array.isArray(data)) {
+        setJobs(data);
+      } else if (data && Array.isArray((data as any).items)) {
+        setJobs((data as any).items);
+      } else {
+        setJobs([]);
+      }
       setError(null);
     } catch (err: any) {
       if (!isPolling) {
@@ -204,7 +212,14 @@ export default function CentralDocumentosPage() {
         `/api/documents/jobs/${job.id}/download`,
       );
       if (data?.downloadUrl) {
-        window.open(data.downloadUrl, '_blank');
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = data.fileName || job.fileName || 'documento';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (err: any) {
       alert(err?.message || 'Não foi possível gerar link de download.');
