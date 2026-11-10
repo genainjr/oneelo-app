@@ -85,11 +85,17 @@ export function CarteirinhaModal({
       }
 
       if (currentJob.status === 'COMPLETED' && currentJob.downloadUrl) {
-        // Baixa o arquivo gerado
-        const res = await fetch(currentJob.downloadUrl);
-        const blob = await res.blob();
+        // Baixa o arquivo gerado via link direto para evitar restrições de CORS no browser
         const extension = formato === 'PDF' ? 'pdf' : 'png';
-        downloadFile(blob, `carteirinha-${membro.nome.toLowerCase().replace(/\s+/g, '-')}.${extension}`);
+        const fileName = `carteirinha-${membro.nome.toLowerCase().replace(/\s+/g, '-')}.${extension}`;
+        const link = document.createElement('a');
+        link.href = currentJob.downloadUrl;
+        link.download = fileName;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       } else {
         throw new Error('Tempo de geração expirou. Consulte a Central de Documentos.');
       }
@@ -184,11 +190,8 @@ export function CarteirinhaModal({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-500">
+                <div className="flex items-center pt-2 border-t border-slate-100 text-[10px] text-slate-500">
                   <span>Matrícula: <strong className="text-slate-800">{matricula}</strong></span>
-                  <span className="rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 font-bold text-emerald-700">
-                    ATIVO
-                  </span>
                 </div>
               </>
             ) : (

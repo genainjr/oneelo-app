@@ -82,10 +82,11 @@ export class CarteirinhaRendererService {
   async generateQrCodeDataUri(memberId: string): Promise<string> {
     const url = `${this.webAppUrl}/validar-carteirinha/${memberId}`;
     return QRCode.toDataURL(url, {
-      margin: 1,
-      width: 140,
+      margin: 3,
+      width: 400,
+      errorCorrectionLevel: 'M',
       color: {
-        dark: '#0f172a',
+        dark: '#000000',
         light: '#ffffff',
       },
     });
@@ -145,7 +146,6 @@ export class CarteirinhaRendererService {
 
         <div class="card-footer">
           <span class="footer-matricula">Matrícula: <strong>${this.escape(matricula)}</strong></span>
-          <span class="footer-status">ATIVO</span>
         </div>
       </div>
     `;
@@ -378,7 +378,7 @@ export class CarteirinhaRendererService {
         .card-footer {
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: flex-start;
           padding: 2mm 4mm;
           background: #f8fafc;
           border-top: 0.2mm solid #e2e8f0;
@@ -388,15 +388,6 @@ export class CarteirinhaRendererService {
 
         .footer-matricula strong {
           color: #0f172a;
-        }
-
-        .footer-status {
-          background: #ecfdf5;
-          color: #059669;
-          font-weight: 800;
-          padding: 0.5mm 1.5mm;
-          border-radius: 1mm;
-          border: 0.2mm solid #a7f3d0;
         }
 
         /* Verso */
@@ -452,21 +443,22 @@ export class CarteirinhaRendererService {
         }
 
         .back-qr-col {
-          width: 21mm;
+          width: 23mm;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           border-left: 0.2mm dashed #cbd5e1;
-          padding-left: 2mm;
+          padding-left: 2.5mm;
           flex-shrink: 0;
         }
 
         .qr-code {
-          width: 18mm;
-          height: 18mm;
+          width: 19.5mm;
+          height: 19.5mm;
           object-fit: contain;
           display: block;
+          image-rendering: pixelated;
         }
 
         .qr-label {
@@ -542,7 +534,7 @@ export class CarteirinhaRendererService {
 
         try {
           if (formato === 'PNG') {
-            // No PNG, renderiza frente e verso lado a lado em alta resolução
+            // No PNG, renderiza frente e verso lado a lado em alta resolução, recortado e centralizado
             const fullHtml = `
               <!doctype html>
               <html>
@@ -550,15 +542,19 @@ export class CarteirinhaRendererService {
                 <meta charset="utf-8" />
                 ${this.getStyles()}
                 <style>
-                  body {
-                    padding: 6mm;
+                  html, body {
+                    margin: 0;
+                    padding: 0;
                     background: transparent;
+                  }
+                  #cards-wrapper {
                     display: inline-flex;
                     flex-direction: row;
                     gap: 8mm;
                     align-items: center;
                     justify-content: center;
-                    width: fit-content;
+                    padding: 6mm;
+                    background: #ffffff;
                   }
                   .cr80-card {
                     box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.12);
@@ -566,8 +562,10 @@ export class CarteirinhaRendererService {
                 </style>
               </head>
               <body>
-                ${frontHtml}
-                ${backHtml}
+                <div id="cards-wrapper">
+                  ${frontHtml}
+                  ${backHtml}
+                </div>
               </body>
               </html>
             `;
@@ -575,7 +573,10 @@ export class CarteirinhaRendererService {
             await page.setContent(fullHtml, { waitUntil: 'domcontentloaded' });
             await this.chromiumRenderer.waitForImages(page);
 
-            const buffer = await page.screenshot({ type: 'png', fullPage: true });
+            const wrapper = await page.$('#cards-wrapper');
+            const buffer = wrapper
+              ? await wrapper.screenshot({ type: 'png' })
+              : await page.screenshot({ type: 'png' });
 
             return {
               buffer,
@@ -595,14 +596,16 @@ export class CarteirinhaRendererService {
                     size: 85.6mm 53.98mm;
                     margin: 0;
                   }
-                  body {
+                  html, body {
                     margin: 0;
                     padding: 0;
+                    background: transparent;
                   }
                   .cr80-card {
-                    border-radius: 0;
+                    border-radius: 3.5mm;
                     box-shadow: none;
-                    border: none;
+                    border: 0.25mm solid #cbd5e1;
+                    overflow: hidden;
                   }
                 </style>
               </head>
