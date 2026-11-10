@@ -170,7 +170,7 @@ export function CarteirinhaModal({
       style={{
         width: '330px',
         height: '208px',
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 60%, rgba(238, 242, 255, 0.45) 100%)',
+        background: 'linear-gradient(135deg, #ffffff 15%, #f1f5f9 45%, #cbd5e1 75%, #94a3b8 100%)',
       }}
       className="relative rounded-2xl border border-slate-200/90 p-3.5 shadow-lg flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border"
     >
