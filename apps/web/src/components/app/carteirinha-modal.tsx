@@ -44,6 +44,10 @@ export function CarteirinhaModal({
   // Estados de orientação mobile (estilo CNH Digital)
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [isCnhMode, setIsCnhMode] = useState<boolean>(true);
+  const [cardDimensions, setCardDimensions] = useState<{ width: number; height: number }>({
+    width: 350,
+    height: 555,
+  });
 
   useEffect(() => {
     function handleResize() {
@@ -53,6 +57,26 @@ export function CarteirinhaModal({
       const isTouchOrNarrow =
         w < 640 || (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && w < 1024);
       setIsMobile(isTouchOrNarrow);
+
+      // Proporcao oficial cartao de credito / CNH: 85.6 mm / 53.98 mm = 1.58577
+      const ratio = 85.6 / 53.98;
+      // No mobile estilo CNH:
+      // A largura ocupa quase toda a largura da tela (deixando apenas ~14px de cada lado)
+      const maxW = Math.min(w - 28, 362);
+      // Altura disponivel verticalmente no viewport entre header e footer
+      const maxH = Math.min(h - 195, 580);
+
+      let cH = Math.min(maxH, maxW * ratio);
+      let cW = cH / ratio;
+      if (cW > maxW) {
+        cW = maxW;
+        cH = cW * ratio;
+      }
+
+      setCardDimensions({
+        width: Math.max(280, Math.round(cW)),
+        height: Math.max(440, Math.round(cH)),
+      });
     }
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -242,7 +266,7 @@ export function CarteirinhaModal({
       style={{
         background: 'linear-gradient(135deg, #ffffff 15%, #f1f5f9 45%, #cbd5e1 75%, #94a3b8 100%)',
       }}
-      className={`h-full w-full rounded-xl border border-slate-200/70 ${
+      className={`h-full w-full rounded-2xl border border-slate-200/80 ${
         isLarge ? 'p-4 sm:p-5' : 'p-3.5'
       } shadow-2xl flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border`}
     >
@@ -323,7 +347,7 @@ export function CarteirinhaModal({
   const renderBackContent = (isLarge: boolean) => (
     <div
       style={{ backgroundColor: '#ffffff' }}
-      className={`h-full w-full rounded-xl border border-slate-200/70 ${
+      className={`h-full w-full rounded-2xl border border-slate-200/80 ${
         isLarge ? 'p-4 sm:p-5' : 'p-3.5'
       } shadow-2xl flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border`}
     >
@@ -418,7 +442,7 @@ export function CarteirinhaModal({
   const renderQrContent = (isLarge: boolean) => (
     <div
       style={{ backgroundColor: '#ffffff' }}
-      className={`h-full w-full rounded-xl border border-slate-200/70 ${
+      className={`h-full w-full rounded-2xl border border-slate-200/80 ${
         isLarge ? 'p-4 sm:p-5' : 'p-3.5'
       } shadow-2xl flex flex-col items-center justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border text-center`}
     >
@@ -545,10 +569,10 @@ export function CarteirinhaModal({
             {isMobileCnhActive ? (
               <div
                 style={{
-                  height: 'clamp(390px, calc(100dvh - 195px), 530px)',
-                  aspectRatio: '54 / 85.6',
+                  width: `${cardDimensions.width}px`,
+                  height: `${cardDimensions.height}px`,
                 }}
-                className="relative overflow-hidden select-none cursor-grab active:cursor-grabbing shadow-2xl rounded-xl"
+                className="relative overflow-hidden select-none cursor-grab active:cursor-grabbing shadow-2xl rounded-2xl mx-auto"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -559,51 +583,69 @@ export function CarteirinhaModal({
               >
                 <div
                   className="flex transition-transform duration-300 ease-out h-full"
-                  style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                  style={{
+                    width: `${cardDimensions.width * 3}px`,
+                    transform: `translateX(-${currentSlide * cardDimensions.width}px)`,
+                  }}
                 >
                   {/* Slide 0: Frente */}
-                  <div className="w-full h-full shrink-0 relative flex items-center justify-center">
+                  <div
+                    style={{
+                      width: `${cardDimensions.width}px`,
+                      height: `${cardDimensions.height}px`,
+                    }}
+                    className="shrink-0 flex items-center justify-center relative overflow-hidden"
+                  >
                     <div
                       style={{
-                        width: 'clamp(390px, calc(100dvh - 195px), 530px)',
-                        height: 'calc(clamp(390px, calc(100dvh - 195px), 530px) * (54 / 85.6))',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%) rotate(90deg)',
+                        width: `${cardDimensions.height}px`,
+                        height: `${cardDimensions.width}px`,
+                        transform: 'rotate(90deg)',
+                        transformOrigin: 'center center',
                       }}
-                      className="absolute"
+                      className="shrink-0"
                     >
                       {renderFrontContent(true)}
                     </div>
                   </div>
 
                   {/* Slide 1: Verso */}
-                  <div className="w-full h-full shrink-0 relative flex items-center justify-center">
+                  <div
+                    style={{
+                      width: `${cardDimensions.width}px`,
+                      height: `${cardDimensions.height}px`,
+                    }}
+                    className="shrink-0 flex items-center justify-center relative overflow-hidden"
+                  >
                     <div
                       style={{
-                        width: 'clamp(390px, calc(100dvh - 195px), 530px)',
-                        height: 'calc(clamp(390px, calc(100dvh - 195px), 530px) * (54 / 85.6))',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%) rotate(90deg)',
+                        width: `${cardDimensions.height}px`,
+                        height: `${cardDimensions.width}px`,
+                        transform: 'rotate(90deg)',
+                        transformOrigin: 'center center',
                       }}
-                      className="absolute"
+                      className="shrink-0"
                     >
                       {renderBackContent(true)}
                     </div>
                   </div>
 
                   {/* Slide 2: QR Code */}
-                  <div className="w-full h-full shrink-0 relative flex items-center justify-center">
+                  <div
+                    style={{
+                      width: `${cardDimensions.width}px`,
+                      height: `${cardDimensions.height}px`,
+                    }}
+                    className="shrink-0 flex items-center justify-center relative overflow-hidden"
+                  >
                     <div
                       style={{
-                        width: 'clamp(390px, calc(100dvh - 195px), 530px)',
-                        height: 'calc(clamp(390px, calc(100dvh - 195px), 530px) * (54 / 85.6))',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%) rotate(90deg)',
+                        width: `${cardDimensions.height}px`,
+                        height: `${cardDimensions.width}px`,
+                        transform: 'rotate(90deg)',
+                        transformOrigin: 'center center',
                       }}
-                      className="absolute"
+                      className="shrink-0"
                     >
                       {renderQrContent(true)}
                     </div>

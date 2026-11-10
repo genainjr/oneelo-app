@@ -8,6 +8,8 @@ import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
 import { AddToCalendarButton } from '@/components/app/add-to-calendar-button';
 import { CarteirinhaModal } from '@/components/app/carteirinha-modal';
+import { CompletarCadastroModal, isCadastroIncompleto } from '@/components/app/completar-cadastro-modal';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
 import { mapEscalaToCalendarEvent, mapEventoToCalendarEvent } from '@/lib/calendar-url-builder';
@@ -106,6 +108,18 @@ export default function PersonalPanelPage() {
   const [ministeriosResumo, setMinisteriosResumo] = useState<MinisteriosResumo | null>(null);
   const [escalasProximoMes, setEscalasProximoMes] = useState<EscalaResumo[]>([]);
   const [carteirinhaOpen, setCarteirinhaOpen] = useState(false);
+  const [completarCadastroOpen, setCompletarCadastroOpen] = useState(false);
+  const [carteirinhaPendingOpen, setCarteirinhaPendingOpen] = useState(false);
+  const cadastroIncompleto = isCadastroIncompleto(user?.membro);
+
+  function handleAbrirCarteirinha() {
+    if (isCadastroIncompleto(user?.membro)) {
+      setCarteirinhaPendingOpen(true);
+      setCompletarCadastroOpen(true);
+    } else {
+      setCarteirinhaOpen(true);
+    }
+  }
   const nextMonthDate = useMemo(() => addMonths(new Date(), 1), []);
   const nextMonthQuery = useMemo(() => ({
     mes: format(nextMonthDate, 'M'),
@@ -383,7 +397,7 @@ export default function PersonalPanelPage() {
           user?.membro ? (
             <button
               type="button"
-              onClick={() => setCarteirinhaOpen(true)}
+              onClick={handleAbrirCarteirinha}
               className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 shadow-2xs transition-all hover:bg-indigo-100"
             >
               <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

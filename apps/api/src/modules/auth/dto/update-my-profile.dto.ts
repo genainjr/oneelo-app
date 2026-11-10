@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { EstadoCivil, SexoMembro } from '@prisma/client';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateMyProfileDto {
   @ApiProperty({
@@ -33,4 +34,66 @@ export class UpdateMyProfileDto {
   @IsOptional()
   @MaxLength(30, { message: 'Telefone deve ter no maximo 30 caracteres.' })
   whatsapp?: string | null;
+
+  @ApiProperty({
+    description: 'CPF do membro',
+    example: '123.456.789-00',
+    required: false,
+    nullable: true,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(20, { message: 'CPF deve ter no maximo 20 caracteres.' })
+  cpf?: string | null;
+
+  @ApiProperty({
+    description: 'RG do membro',
+    example: '12.345.678-9',
+    required: false,
+    nullable: true,
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(30, { message: 'RG deve ter no maximo 30 caracteres.' })
+  rg?: string | null;
+
+  @ApiProperty({
+    description: 'Data de nascimento (formato ISO ou YYYY-MM-DD)',
+    example: '1990-05-15',
+    required: false,
+    nullable: true,
+  })
+  @IsString()
+  @IsOptional()
+  dataNascimento?: string | null;
+
+  @ApiProperty({
+    description: 'Data de batismo (formato ISO ou YYYY-MM-DD)',
+    example: '2005-08-20',
+    required: false,
+    nullable: true,
+  })
+  @IsString()
+  @IsOptional()
+  dataBatismo?: string | null;
+
+  @ApiProperty({
+    description: 'Estado civil do membro',
+    enum: EstadoCivil,
+    required: false,
+    nullable: true,
+  })
+  @IsEnum(EstadoCivil, { message: 'Estado civil invalido.' })
+  @IsOptional()
+  estadoCivil?: EstadoCivil | null;
+
+  @ApiProperty({
+    description: 'Sexo do membro',
+    enum: SexoMembro,
+    required: false,
+    nullable: true,
+  })
+  @IsEnum(SexoMembro, { message: 'Sexo invalido.' })
+  @IsOptional()
+  sexo?: SexoMembro | null;
 }

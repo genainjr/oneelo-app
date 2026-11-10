@@ -5,7 +5,8 @@ import type { FormEvent } from 'react';
 import { PageHeader } from '@/components/app/page-header';
 import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
-import { InputField, PasswordField } from '@/components/app/form-field';
+import { InputField, PasswordField, SelectField } from '@/components/app/form-field';
+import { CompletarCadastroModal, isCadastroIncompleto } from '@/components/app/completar-cadastro-modal';
 import { InternationalPhoneInput } from '@/components/app/international-phone-input';
 import { InfoItem } from '@/components/app/info-item';
 import { StatusBadge } from '@/components/app/status-badge';
@@ -76,6 +77,17 @@ export default function MeuPerfilPage() {
   const [unlinkingProvider, setUnlinkingProvider] = useState<ConnectedAuthProvider['provider'] | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [carteirinhaOpen, setCarteirinhaOpen] = useState(false);
+  const [completarCadastroOpen, setCompletarCadastroOpen] = useState(false);
+  const [carteirinhaPendingOpen, setCarteirinhaPendingOpen] = useState(false);
+
+  function handleAbrirCarteirinha() {
+    if (isCadastroIncompleto(user?.membro)) {
+      setCarteirinhaPendingOpen(true);
+      setCompletarCadastroOpen(true);
+    } else {
+      setCarteirinhaOpen(true);
+    }
+  }
   const hasPassword = user?.hasPassword !== false;
 
   useEffect(() => {
@@ -686,7 +698,7 @@ export default function MeuPerfilPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setCarteirinhaOpen(true)}
+                    onClick={handleAbrirCarteirinha}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs transition-all hover:bg-indigo-100"
                   >
                     <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

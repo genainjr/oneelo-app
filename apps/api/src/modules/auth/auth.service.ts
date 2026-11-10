@@ -649,8 +649,33 @@ export class AuthService {
       'nomeExibicao',
     );
     const hasWhatsapp = Object.prototype.hasOwnProperty.call(dto, 'whatsapp');
+    const hasCpf = Object.prototype.hasOwnProperty.call(dto, 'cpf');
+    const hasRg = Object.prototype.hasOwnProperty.call(dto, 'rg');
+    const hasDataNascimento = Object.prototype.hasOwnProperty.call(
+      dto,
+      'dataNascimento',
+    );
+    const hasDataBatismo = Object.prototype.hasOwnProperty.call(
+      dto,
+      'dataBatismo',
+    );
+    const hasEstadoCivil = Object.prototype.hasOwnProperty.call(
+      dto,
+      'estadoCivil',
+    );
+    const hasSexo = Object.prototype.hasOwnProperty.call(dto, 'sexo');
 
-    if (!hasNome && !hasNomeExibicao && !hasWhatsapp) {
+    if (
+      !hasNome &&
+      !hasNomeExibicao &&
+      !hasWhatsapp &&
+      !hasCpf &&
+      !hasRg &&
+      !hasDataNascimento &&
+      !hasDataBatismo &&
+      !hasEstadoCivil &&
+      !hasSexo
+    ) {
       throw new BadRequestException(
         'Informe ao menos um campo para atualizar.',
       );
@@ -682,6 +707,12 @@ export class AuthService {
             nome: true,
             nomeExibicao: true,
             whatsapp: true,
+            cpf: true,
+            rg: true,
+            dataNascimento: true,
+            dataBatismo: true,
+            estadoCivil: true,
+            sexo: true,
           },
         })
       : null;
@@ -701,16 +732,19 @@ export class AuthService {
       throw new BadRequestException('Nome completo e obrigatorio.');
     }
 
-    const hasMemberFieldValue = (value: string | null | undefined) =>
-      value !== undefined && value !== null && value !== '';
-    const hasNomeExibicaoValue =
-      hasNomeExibicao && hasMemberFieldValue(trimmedNomeExibicao);
-    const hasWhatsappValue =
-      hasWhatsapp && hasMemberFieldValue(trimmedWhatsapp);
+    const hasAnyMemberField =
+      hasNomeExibicao ||
+      hasWhatsapp ||
+      hasCpf ||
+      hasRg ||
+      hasDataNascimento ||
+      hasDataBatismo ||
+      hasEstadoCivil ||
+      hasSexo;
 
-    if (!member && (hasNomeExibicaoValue || hasWhatsappValue)) {
+    if (!member && hasAnyMemberField && !hasNome) {
       throw new ForbiddenException(
-        'Seu usuario nao possui membro vinculado para alterar nome de impressao ou telefone.',
+        'Seu usuario nao possui membro vinculado para alterar dados cadastrais.',
       );
     }
 
@@ -743,6 +777,35 @@ export class AuthService {
           memberData.whatsapp = trimmedWhatsapp || null;
         }
 
+        if (hasCpf) {
+          const rawCpf = dto.cpf ? dto.cpf.replace(/\D/g, '') : null;
+          memberData.cpf = rawCpf || null;
+        }
+
+        if (hasRg) {
+          memberData.rg = dto.rg ? dto.rg.trim() : null;
+        }
+
+        if (hasDataNascimento) {
+          memberData.dataNascimento = dto.dataNascimento
+            ? new Date(dto.dataNascimento)
+            : null;
+        }
+
+        if (hasDataBatismo) {
+          memberData.dataBatismo = dto.dataBatismo
+            ? new Date(dto.dataBatismo)
+            : null;
+        }
+
+        if (hasEstadoCivil) {
+          memberData.estadoCivil = dto.estadoCivil || null;
+        }
+
+        if (hasSexo) {
+          memberData.sexo = dto.sexo || null;
+        }
+
         if (Object.keys(memberData).length > 0) {
           await tx.membro.update({
             where: { id: member.id },
@@ -766,6 +829,12 @@ export class AuthService {
                   nome: member.nome,
                   nomeExibicao: member.nomeExibicao,
                   whatsapp: member.whatsapp,
+                  cpf: member.cpf,
+                  rg: member.rg,
+                  dataNascimento: member.dataNascimento,
+                  dataBatismo: member.dataBatismo,
+                  estadoCivil: member.estadoCivil,
+                  sexo: member.sexo,
                 }
               : null,
           },
@@ -781,6 +850,20 @@ export class AuthService {
                   whatsapp: hasWhatsapp
                     ? trimmedWhatsapp || null
                     : member.whatsapp,
+                  cpf: hasCpf ? (dto.cpf ? dto.cpf.replace(/\D/g, '') : null) : member.cpf,
+                  rg: hasRg ? (dto.rg ? dto.rg.trim() : null) : member.rg,
+                  dataNascimento: hasDataNascimento
+                    ? dto.dataNascimento
+                      ? new Date(dto.dataNascimento)
+                      : null
+                    : member.dataNascimento,
+                  dataBatismo: hasDataBatismo
+                    ? dto.dataBatismo
+                      ? new Date(dto.dataBatismo)
+                      : null
+                    : member.dataBatismo,
+                  estadoCivil: hasEstadoCivil ? dto.estadoCivil || null : member.estadoCivil,
+                  sexo: hasSexo ? dto.sexo || null : member.sexo,
                 }
               : null,
           },
