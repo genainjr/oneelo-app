@@ -329,6 +329,9 @@ export function CarteirinhaModal({
     </div>
   );
 
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragStartX, setDragStartX] = useState<number | null>(null);
+
   function handleTouchStart(e: React.TouchEvent) {
     setTouchStartX(e.targetTouches[0].clientX);
     setTouchDeltaX(0);
@@ -348,6 +351,30 @@ export function CarteirinhaModal({
     }
     setTouchStartX(null);
     setTouchDeltaX(0);
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    setIsDragging(true);
+    setDragStartX(e.clientX);
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!isDragging || dragStartX === null) return;
+    const diff = dragStartX - e.clientX;
+    if (diff > 45) {
+      setCurrentSlide((prev) => Math.min(prev + 1, 2));
+      setIsDragging(false);
+      setDragStartX(null);
+    } else if (diff < -45) {
+      setCurrentSlide((prev) => Math.max(prev - 1, 0));
+      setIsDragging(false);
+      setDragStartX(null);
+    }
+  }
+
+  function handleMouseUp() {
+    setIsDragging(false);
+    setDragStartX(null);
   }
 
   return (
@@ -417,12 +444,16 @@ export function CarteirinhaModal({
               <ChevronLeft className="h-5 w-5" />
             </button>
 
-            {/* Viewport do Slide */}
+            {/* Viewport do Slide com suporte a Swipe no Mobile e Arrastar no Desktop */}
             <div
-              className="relative overflow-hidden w-[340px] py-1 select-none"
+              className="relative overflow-hidden w-[340px] py-1 select-none cursor-grab active:cursor-grabbing"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
             >
               <div
                 className="flex transition-transform duration-300 ease-out"
@@ -454,46 +485,21 @@ export function CarteirinhaModal({
             </button>
           </div>
 
-          {/* Indicador de Paginação estilo CNH */}
-          <div className="mt-5 flex items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCurrentSlide(0)}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
-                currentSlide === 0
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${currentSlide === 0 ? 'bg-white' : 'bg-slate-500'}`} />
-              Frente
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentSlide(1)}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
-                currentSlide === 1
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${currentSlide === 1 ? 'bg-white' : 'bg-slate-500'}`} />
-              Verso
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentSlide(2)}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
-                currentSlide === 2
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${currentSlide === 2 ? 'bg-white' : 'bg-slate-500'}`} />
-              QR Code
-            </button>
+          {/* Indicador de Paginação estilo CNH (apenas bolinhas) */}
+          <div className="mt-5 flex items-center justify-center gap-2 py-1">
+            {[0, 1, 2].map((idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setCurrentSlide(idx)}
+                className={`transition-all duration-300 rounded-full cursor-pointer p-0 border-0 ${
+                  currentSlide === idx
+                    ? 'w-6 h-2 bg-blue-500 shadow-sm'
+                    : 'w-2 h-2 bg-slate-600 hover:bg-slate-400'
+                }`}
+                aria-label={`Página ${idx + 1}`}
+              />
+            ))}
           </div>
         </div>
 
