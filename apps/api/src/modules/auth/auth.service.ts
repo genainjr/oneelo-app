@@ -644,6 +644,7 @@ export class AuthService {
     ip?: string,
   ) {
     const hasNome = Object.prototype.hasOwnProperty.call(dto, 'nome');
+    const hasEmail = Object.prototype.hasOwnProperty.call(dto, 'email');
     const hasNomeExibicao = Object.prototype.hasOwnProperty.call(
       dto,
       'nomeExibicao',
@@ -667,6 +668,7 @@ export class AuthService {
 
     if (
       !hasNome &&
+      !hasEmail &&
       !hasNomeExibicao &&
       !hasWhatsapp &&
       !hasCpf &&
@@ -686,6 +688,7 @@ export class AuthService {
       select: {
         id: true,
         nome: true,
+        email: true,
         memberId: true,
       },
     });
@@ -706,6 +709,7 @@ export class AuthService {
             id: true,
             nome: true,
             nomeExibicao: true,
+            email: true,
             whatsapp: true,
             cpf: true,
             rg: true,
@@ -719,6 +723,10 @@ export class AuthService {
 
     const trimmedNome =
       hasNome && typeof dto.nome === 'string' ? dto.nome.trim() : undefined;
+    const trimmedEmail =
+      hasEmail && typeof dto.email === 'string'
+        ? dto.email.trim().toLowerCase()
+        : undefined;
     const trimmedNomeExibicao =
       hasNomeExibicao && typeof dto.nomeExibicao === 'string'
         ? dto.nomeExibicao.trim()
@@ -732,6 +740,25 @@ export class AuthService {
       throw new BadRequestException('Nome completo e obrigatorio.');
     }
 
+    if (hasEmail && !trimmedEmail) {
+      throw new BadRequestException('E-mail e obrigatorio.');
+    }
+
+    if (hasEmail && trimmedEmail && trimmedEmail !== user.email) {
+      const emailEmUso = await this.prisma.user.findFirst({
+        where: {
+          email: trimmedEmail,
+          NOT: { id: userId },
+        },
+        select: { id: true },
+      });
+      if (emailEmUso) {
+        throw new BadRequestException(
+          'Este e-mail ja esta em uso por outro usuario.',
+        );
+      }
+    }
+
     const hasAnyMemberField =
       hasNomeExibicao ||
       hasWhatsapp ||
@@ -742,23 +769,30 @@ export class AuthService {
       hasEstadoCivil ||
       hasSexo;
 
-    if (!member && hasAnyMemberField && !hasNome) {
+    if (!member && hasAnyMemberField && !hasNome && !hasEmail) {
       throw new ForbiddenException(
         'Seu usuario nao possui membro vinculado para alterar dados cadastrais.',
       );
     }
 
-    if (!member && !hasNome) {
+    if (!member && !hasNome && !hasEmail) {
       throw new BadRequestException(
         'Informe ao menos um campo para atualizar.',
       );
     }
 
     await this.prisma.$transaction(async (tx) => {
+      const userData: Prisma.UserUpdateInput = {};
       if (hasNome) {
+        userData.nome = trimmedNome;
+      }
+      if (hasEmail && trimmedEmail) {
+        userData.email = trimmedEmail;
+      }
+      if (Object.keys(userData).length > 0) {
         await tx.user.update({
           where: { id: userId },
-          data: { nome: trimmedNome },
+          data: userData,
         });
       }
 
@@ -767,6 +801,10 @@ export class AuthService {
 
         if (hasNome) {
           memberData.nome = trimmedNome;
+        }
+
+        if (hasEmail) {
+          memberData.email = trimmedEmail || null;
         }
 
         if (hasNomeExibicao) {
@@ -823,10 +861,12 @@ export class AuthService {
           acao: AcaoAuditoria.ATUALIZAR,
           payloadBefore: {
             nome: user.nome,
+            email: user.email,
             membro: member
               ? {
                   id: member.id,
                   nome: member.nome,
+                  email: member.email,
                   nomeExibicao: member.nomeExibicao,
                   whatsapp: member.whatsapp,
                   cpf: member.cpf,
@@ -840,10 +880,12 @@ export class AuthService {
           },
           payloadAfter: {
             nome: hasNome ? trimmedNome : user.nome,
+            email: hasEmail && trimmedEmail ? trimmedEmail : user.email,
             membro: member
               ? {
                   id: member.id,
                   nome: hasNome ? trimmedNome : member.nome,
+                  email: hasEmail ? trimmedEmail || null : member.email,
                   nomeExibicao: hasNomeExibicao
                     ? trimmedNomeExibicao || null
                     : member.nomeExibicao,

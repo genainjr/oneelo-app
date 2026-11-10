@@ -39,6 +39,7 @@ export function CompletarCadastroModal({
   const membro = user?.membro;
 
   const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
   const [nomeExibicao, setNomeExibicao] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [cpf, setCpf] = useState('');
@@ -60,6 +61,7 @@ export function CompletarCadastroModal({
   useEffect(() => {
     if (membro || user) {
       setNome(user?.nome || membro?.nome || '');
+      setEmail(user?.email || membro?.email || '');
       setNomeExibicao(membro?.nomeExibicao || '');
       setWhatsapp(membro?.whatsapp || '');
       setCpf(membro?.cpf || '');
@@ -123,6 +125,11 @@ export function CompletarCadastroModal({
       return;
     }
 
+    if (!email.trim()) {
+      setError('O E-mail é obrigatório.');
+      return;
+    }
+
     const rawCpf = cpf.replace(/\D/g, '');
     if (rawCpf.length > 0 && rawCpf.length !== 11) {
       setError('CPF inválido. Certifique-se de digitar os 11 dígitos.');
@@ -161,6 +168,7 @@ export function CompletarCadastroModal({
       // 2. Salva os campos cadastrais
       const payload = {
         nome: nome.trim(),
+        email: email.trim().toLowerCase(),
         nomeExibicao: nomeExibicao.trim() || null,
         whatsapp: whatsapp.trim() || null,
         cpf: rawCpf.length === 11 ? cpf.trim() : null,
@@ -267,6 +275,17 @@ export function CompletarCadastroModal({
             onChange={(e) => setNome(e.target.value)}
             required
             autoComplete="name"
+          />
+
+          <InputField
+            id="modal-email"
+            label="E-mail *"
+            type="email"
+            placeholder="email@exemplo.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
           />
 
           <InputField

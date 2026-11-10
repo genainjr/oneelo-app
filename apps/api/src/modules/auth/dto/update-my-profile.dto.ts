@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { EstadoCivil, SexoMembro } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateMyProfileDto {
   @ApiProperty({
@@ -12,6 +12,17 @@ export class UpdateMyProfileDto {
   @IsOptional()
   @MaxLength(120, { message: 'Nome completo deve ter no maximo 120 caracteres.' })
   nome?: string;
+
+  @ApiProperty({
+    description: 'E-mail do usuario autenticado e membro vinculado',
+    example: 'joao@exemplo.com',
+    required: false,
+    nullable: true,
+  })
+  @IsEmail({}, { message: 'E-mail invalido.' })
+  @IsOptional()
+  @MaxLength(120, { message: 'E-mail deve ter no maximo 120 caracteres.' })
+  email?: string | null;
 
   @ApiProperty({
     description: 'Nome de impressao do membro vinculado',

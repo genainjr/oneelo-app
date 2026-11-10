@@ -26,6 +26,7 @@ const AUTH_PROVIDER_LABEL: Record<ConnectedAuthProvider['provider'], string> = {
 
 type ProfileFormState = {
   nome: string;
+  email: string;
   nomeExibicao: string;
   whatsapp: string;
   cpf: string;
@@ -39,6 +40,7 @@ type ProfileFormState = {
 function buildProfileForm(user: AuthUser): ProfileFormState {
   return {
     nome: user.nome ?? '',
+    email: user.email ?? user.membro?.email ?? '',
     nomeExibicao: user.membro?.nomeExibicao ?? '',
     whatsapp: user.membro?.whatsapp ?? '',
     cpf: user.membro?.cpf ?? '',
@@ -60,6 +62,7 @@ export default function MeuPerfilPage() {
       ? buildProfileForm(contextUser)
       : {
           nome: '',
+          email: '',
           nomeExibicao: '',
           whatsapp: '',
           cpf: '',
@@ -159,6 +162,12 @@ export default function MeuPerfilPage() {
       return;
     }
 
+    const email = profileForm.email.trim();
+    if (!email) {
+      setProfileError('E-mail é obrigatório.');
+      return;
+    }
+
     const rawCpf = profileForm.cpf.replace(/\D/g, '');
     if (rawCpf && rawCpf.length !== 11) {
       setProfileError('CPF inválido. Certifique-se de digitar os 11 dígitos.');
@@ -168,6 +177,7 @@ export default function MeuPerfilPage() {
     const payload = user.membro
       ? {
           nome,
+          email,
           nomeExibicao: profileForm.nomeExibicao.trim() || null,
           whatsapp: profileForm.whatsapp.trim() || null,
           cpf: rawCpf ? profileForm.cpf.trim() : null,
@@ -177,7 +187,7 @@ export default function MeuPerfilPage() {
           estadoCivil: profileForm.estadoCivil || null,
           sexo: profileForm.sexo || null,
         }
-      : { nome };
+      : { nome, email };
 
     setProfileLoading(true);
     try {
@@ -501,7 +511,7 @@ export default function MeuPerfilPage() {
 
             {!user.membro && (
               <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-                Seu usuario ainda nao possui membro vinculado. Por enquanto, somente o nome completo pode ser alterado aqui.
+                Seu usuario ainda nao possui membro vinculado. Por enquanto, somente o nome completo e o e-mail podem ser alterados aqui.
               </p>
             )}
 
@@ -514,6 +524,15 @@ export default function MeuPerfilPage() {
                   value={profileForm.nome}
                   onChange={(event) => handleProfileFieldChange('nome', event.target.value)}
                   autoComplete="name"
+                />
+                <InputField
+                  id="profile-email"
+                  label="E-mail"
+                  type="email"
+                  required
+                  value={profileForm.email}
+                  onChange={(event) => handleProfileFieldChange('email', event.target.value)}
+                  autoComplete="email"
                 />
                 <InputField
                   id="profile-nome-exibicao"
