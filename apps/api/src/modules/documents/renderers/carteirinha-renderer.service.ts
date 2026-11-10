@@ -598,7 +598,7 @@ export class CarteirinhaRendererService {
         });
 
         try {
-          // Layout horizontal (deitado) com Frente e Verso lado a lado, com margens confortáveis e sombra idêntica ao PNG
+          // Layout idêntico ao PNG aprovado: fundo branco limpo, sombra suave elegante, sem margens ou fundos cinzas extras
           const fullHtml = `
             <!doctype html>
             <html>
@@ -606,41 +606,22 @@ export class CarteirinhaRendererService {
               <meta charset="utf-8" />
               ${this.getStyles()}
               <style>
-                @page {
-                  size: 196mm 70mm;
-                  margin: 0;
-                }
-                * {
-                  box-sizing: border-box;
-                }
                 html, body {
                   margin: 0;
                   padding: 0;
-                  width: 196mm;
-                  height: 70mm;
-                  background: #f8fafc;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  -webkit-print-color-adjust: exact;
-                  print-color-adjust: exact;
+                  background: #ffffff !important;
                 }
                 #cards-wrapper {
-                  display: flex;
+                  display: inline-flex;
                   flex-direction: row;
                   gap: 8mm;
                   align-items: center;
                   justify-content: center;
-                  width: 196mm;
-                  height: 70mm;
-                  padding: 8mm;
-                  background: #f8fafc;
+                  padding: 6mm;
+                  background: #ffffff;
                 }
                 .cr80-card {
-                  border-radius: 3.5mm;
-                  border: 0.25mm solid #e2e8f0;
-                  box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-                  margin: 0;
+                  box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.12);
                 }
               </style>
             </head>
@@ -656,12 +637,60 @@ export class CarteirinhaRendererService {
           await page.setContent(fullHtml, { waitUntil: 'domcontentloaded' });
           await this.chromiumRenderer.waitForImages(page);
 
-          const buffer = await page.pdf({
-            width: '196mm',
-            height: '70mm',
+          const wrapper = await page.$('#cards-wrapper');
+          if (!wrapper) {
+            throw new Error('Falha ao localizar elementos dos cartões.');
+          }
+
+          const box = await wrapper.boundingBox();
+          const pngBuffer = await wrapper.screenshot({ type: 'png' });
+          const dataUri = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+
+          const pdfWidth = box ? Math.round(box.width) : 740;
+          const pdfHeight = box ? Math.round(box.height) : 255;
+
+          const pdfPage = await browser.newPage();
+          const pdfHtml = `
+            <!doctype html>
+            <html>
+            <head>
+              <meta charset="utf-8" />
+              <style>
+                @page {
+                  size: ${pdfWidth}px ${pdfHeight}px;
+                  margin: 0;
+                }
+                html, body {
+                  margin: 0;
+                  padding: 0;
+                  background: #ffffff;
+                  overflow: hidden;
+                  width: 100%;
+                  height: 100%;
+                }
+                img {
+                  display: block;
+                  width: 100%;
+                  height: 100%;
+                  object-fit: contain;
+                }
+              </style>
+            </head>
+            <body>
+              <img src="${dataUri}" />
+            </body>
+            </html>
+          `;
+
+          await pdfPage.setContent(pdfHtml, { waitUntil: 'domcontentloaded' });
+          const buffer = await pdfPage.pdf({
+            width: `${pdfWidth}px`,
+            height: `${pdfHeight}px`,
             printBackground: true,
-            margin: { top: '0', right: '0', bottom: '0', left: '0' },
+            margin: { top: 0, right: 0, bottom: 0, left: 0 },
           });
+
+          await pdfPage.close().catch(() => undefined);
 
           return {
             buffer,
