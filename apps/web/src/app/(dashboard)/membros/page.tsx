@@ -269,15 +269,22 @@ export default function MembrosPage() {
   async function handleEmitirCarteirinhas(memberIds?: string[]) {
     try {
       setBatchLoading(true);
-      await api.post<DocumentJob>('/api/documents/jobs', {
+      const job = await api.post<DocumentJob>('/api/documents/jobs', {
         tipoDocumento: 'CARTEIRINHAS_LOTE',
         formato: 'PDF',
         parametros: memberIds && memberIds.length > 0 ? { memberIds } : undefined,
       });
-      setFeedback({
-        type: 'success',
-        message: 'Solicitação de geração de carteirinhas iniciada com sucesso! Você pode acompanhar e baixar o PDF na Central de Documentos.',
-      });
+      if (job?.status === 'COMPLETED') {
+        setFeedback({
+          type: 'success',
+          message: 'As carteirinhas em lote já estão atualizadas e prontas para download na Central de Documentos!',
+        });
+      } else {
+        setFeedback({
+          type: 'success',
+          message: 'Solicitação de geração de carteirinhas iniciada com sucesso! Você pode acompanhar e baixar o PDF na Central de Documentos.',
+        });
+      }
       if (memberIds && memberIds.length > 0) {
         setSelectedIds([]);
       }

@@ -26,14 +26,18 @@ export function CarteirinhaModal({
   const [activeSide, setActiveSide] = useState<'front' | 'back'>('front');
   const [error, setError] = useState<string | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [validationUrl, setValidationUrl] = useState<string>('');
 
   useEffect(() => {
     if (!membro?.id) return;
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-    const validationUrl = `${origin}/validar-carteirinha/${membro.id}`;
-    QRCode.toDataURL(validationUrl, {
-      margin: 1,
-      width: 140,
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001';
+    const targetUrl = `${origin}/validar-carteirinha/${membro.id}`;
+    setValidationUrl(targetUrl);
+
+    QRCode.toDataURL(targetUrl, {
+      margin: 2,
+      width: 320,
+      errorCorrectionLevel: 'M',
       color: {
         dark: '#0f172a',
         light: '#ffffff',
@@ -226,13 +230,30 @@ export function CarteirinhaModal({
 
                   <div className="col-span-1 border-l border-dashed border-slate-200 pl-2 flex flex-col items-center justify-center text-center">
                     {qrCodeDataUrl ? (
-                      <img src={qrCodeDataUrl} alt="QR Code Autenticidade" className="h-14 w-14 object-contain rounded" />
+                      <a
+                        href={validationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex flex-col items-center hover:opacity-90 transition-opacity"
+                        title="Clique para testar validação da carteirinha"
+                      >
+                        <img
+                          src={qrCodeDataUrl}
+                          alt="QR Code Autenticidade"
+                          className="h-16 w-16 object-contain"
+                        />
+                        <span className="mt-0.5 text-[7.5px] font-bold text-indigo-600 group-hover:underline uppercase tracking-tight flex items-center gap-0.5">
+                          Validar ↗
+                        </span>
+                      </a>
                     ) : (
-                      <QrCode className="h-12 w-12 text-slate-700" />
+                      <div className="flex flex-col items-center">
+                        <QrCode className="h-12 w-12 text-slate-700" />
+                        <span className="mt-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                          Autenticidade
+                        </span>
+                      </div>
                     )}
-                    <span className="mt-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                      Autenticidade
-                    </span>
                   </div>
                 </div>
 

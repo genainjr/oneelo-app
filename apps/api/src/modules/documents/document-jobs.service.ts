@@ -76,6 +76,83 @@ export class DocumentJobsService {
     return createHash('sha256').update(payload).digest('hex');
   }
 
+  async computeBatchCarteirinhasVersionHash(
+    tenantId: string,
+    memberIds?: string[],
+  ): Promise<string | null> {
+    const where: any = {
+      tenantId,
+      deletedAt: null,
+      status: 'ATIVO',
+    };
+
+    if (memberIds && memberIds.length > 0) {
+      where.id = { in: memberIds };
+    }
+
+    const [tenant, members] = await Promise.all([
+      this.prisma.client.tenant?.findFirst?.({
+        where: { id: tenantId },
+        select: { nome: true, logoUrl: true, updatedAt: true },
+      }),
+      this.prisma.client.membro?.findMany?.({
+        where,
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          nome: true,
+          nomeExibicao: true,
+          cargo: true,
+          matricula: true,
+          fotoUrl: true,
+          cpf: true,
+          rg: true,
+          sexo: true,
+          estadoCivil: true,
+          dataNascimento: true,
+          dataBatismo: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
+
+    if (!tenant || !members || members.length === 0) {
+      return null;
+    }
+
+    const validadeAno = new Date().getFullYear() + 1;
+    const membersPayload = members
+      .map((m: any) =>
+        [
+          m.id,
+          m.nome,
+          m.nomeExibicao ?? '',
+          m.cargo ?? '',
+          m.matricula ?? '',
+          m.fotoUrl ?? '',
+          m.cpf ?? '',
+          m.rg ?? '',
+          m.sexo ?? '',
+          m.estadoCivil ?? '',
+          m.dataNascimento?.toISOString() ?? '',
+          m.dataBatismo?.toISOString() ?? '',
+          m.updatedAt?.toISOString() ?? '',
+        ].join(';'),
+      )
+      .join('|');
+
+    const fullPayload = [
+      tenant.nome,
+      tenant.logoUrl ?? '',
+      tenant.updatedAt?.toISOString() ?? '',
+      validadeAno,
+      members.length,
+      membersPayload,
+    ].join('::');
+
+    return createHash('sha256').update(fullPayload).digest('hex');
+  }
+
   async createJob(
     tenantId: string,
     requestedByUserId: string | null,
@@ -92,6 +169,9 @@ export class DocumentJobsService {
       if (memberId) {
         versionHash = (await this.computeCarteirinhaVersionHash(tenantId, memberId, dto.formato)) ?? undefined;
       }
+    } else if (!versionHash && dto.tipoDocumento === TipoDocumento.CARTEIRINHAS_LOTE) {
+      const memberIds = dto.parametros?.memberIds;
+      versionHash = (await this.computeBatchCarteirinhasVersionHash(tenantId, memberIds)) ?? undefined;
     }
 
     // Se houver versionHash e já existir um job CONCLUÍDO com esse hash, formato e tipo, reaproveita
@@ -176,6 +256,9 @@ export class DocumentJobsService {
       (params.mesAno || params.agendaId)
     ) {
       return `agenda:${params.mesAno || params.agendaId}:${job.formato}`;
+    }
+    if (job.tipoDocumento === TipoDocumento.CARTEIRINHAS_LOTE) {
+      return `carteirinhas_lote:${job.tenantId}`;
     }
     return `job:${job.id}`;
   }

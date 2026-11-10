@@ -173,6 +173,35 @@ export class DocumentWorkerService implements OnModuleInit, OnModuleDestroy {
 
         storagePath = `tenants/${job.tenantId}/documents/member-cards/members/${memberId}/card-${Date.now()}.${extension}`;
       } else if (job.tipoDocumento === 'CARTEIRINHAS_LOTE') {
+        // Limpa lotes anteriores para não acumular arquivos órfãos
+        try {
+          const previousBatches = await this.prisma.client.documentJob.findMany({
+            where: {
+              tenantId: job.tenantId,
+              tipoDocumento: job.tipoDocumento,
+              id: { not: job.id },
+              storageKey: { not: null },
+            },
+            select: { id: true, storageKey: true },
+          });
+
+          for (const prev of previousBatches) {
+            if (prev.storageKey) {
+              await this.storageService
+                .deleteObject(this.documentsBucket, prev.storageKey)
+                .catch(() => undefined);
+            }
+          }
+
+          if (previousBatches.length > 0) {
+            await this.prisma.client.documentJob.deleteMany({
+              where: { id: { in: previousBatches.map((b) => b.id) } },
+            });
+          }
+        } catch {
+          // Ignora se a limpeza falhar
+        }
+
         storagePath = `tenants/${job.tenantId}/documents/member-cards/batches/batch-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
       } else if (job.tipoDocumento === 'ESCALA_PDF' || job.tipoDocumento === 'ESCALA_PNG') {
         storagePath = `tenants/${job.tenantId}/documents/schedules/schedule-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;

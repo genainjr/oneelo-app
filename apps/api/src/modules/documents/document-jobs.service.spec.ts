@@ -123,6 +123,47 @@ describe('DocumentJobsService', () => {
       expect(result).toEqual(cachedCarteirinha);
       expect(prismaMock.client.documentJob.create).not.toHaveBeenCalled();
     });
+
+    it('deve calcular versionHash automaticamente para carteirinhas em lote e reaproveitar job se membros/igreja não mudaram', async () => {
+      prismaMock.client.tenant = {
+        findFirst: jest.fn().mockResolvedValue({
+          nome: 'Igreja Central',
+          logoUrl: 'https://logo.png',
+          updatedAt: new Date('2026-10-01T10:00:00Z'),
+        }),
+      };
+
+      prismaMock.client.membro = {
+        findFirst: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'm1',
+            nome: 'Membro 1',
+            cargo: 'Diácono',
+            updatedAt: new Date('2026-11-01T10:00:00Z'),
+          },
+        ]),
+      };
+
+      const cachedBatch = {
+        id: 'cached-batch-job',
+        tenantId,
+        tipoDocumento: TipoDocumento.CARTEIRINHAS_LOTE,
+        formato: FormatoDocumento.PDF,
+        status: StatusDocumentJob.COMPLETED,
+        storageKey: 'tenants/tenant-1/documents/member-cards/batches/batch.pdf',
+      };
+
+      prismaMock.client.documentJob.findFirst.mockResolvedValue(cachedBatch);
+
+      const result = await service.createJob(tenantId, userId, {
+        tipoDocumento: TipoDocumento.CARTEIRINHAS_LOTE,
+        formato: FormatoDocumento.PDF,
+      });
+
+      expect(result).toEqual(cachedBatch);
+      expect(prismaMock.client.documentJob.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('claimNextPendingJob', () => {

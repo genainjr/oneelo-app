@@ -47,7 +47,7 @@ export class CarteirinhaRendererService {
     if (configured) return configured.replace(/\/$/, '');
     return process.env.NODE_ENV === 'production'
       ? 'https://app.oneelo.com.br'
-      : 'http://localhost:3000';
+      : 'http://localhost:3001';
   }
 
   private formatDatePtBr(date?: Date | null): string {
@@ -655,20 +655,44 @@ export class CarteirinhaRendererService {
       }),
     );
 
-    // Na folha A4 cabem até 6 cartões por folha (3 linhas x 2 colunas)
+    // Na folha A4 padrão cabem 6 cartões no formato CR80 (3 linhas x 2 colunas)
     const CARDS_PER_PAGE = 6;
     const pagesHtml: string[] = [];
 
     for (let i = 0; i < renderedCards.length; i += CARDS_PER_PAGE) {
       const slice = renderedCards.slice(i, i + CARDS_PER_PAGE);
 
-      // Página de Frentes
-      const frentes = slice.map((c) => c.frontHtml).join('');
-      pagesHtml.push(`<div class="a4-sheet">${frentes}</div>`);
+      const frontSlots: string[] = [];
+      const backSlots: string[] = [];
 
-      // Página de Versos (alinhados para impressão frente/verso)
-      const versos = slice.map((c) => c.backHtml).join('');
-      pagesHtml.push(`<div class="a4-sheet">${versos}</div>`);
+      for (let row = 0; row < 3; row++) {
+        const leftIdx = row * 2;
+        const rightIdx = row * 2 + 1;
+
+        const leftCard = slice[leftIdx];
+        const rightCard = slice[rightIdx];
+
+        // Frente da folha: Coluna 1 = leftCard, Coluna 2 = rightCard
+        frontSlots.push(
+          leftCard ? leftCard.frontHtml : '<div class="card-placeholder"></div>',
+        );
+        frontSlots.push(
+          rightCard ? rightCard.frontHtml : '<div class="card-placeholder"></div>',
+        );
+
+        // Verso da folha (espelhado horizontalmente para impressão frente e verso duplex):
+        // Quando virada na horizontal, Coluna 1 da frente fica na Coluna 2 do verso,
+        // e Coluna 2 da frente fica na Coluna 1 do verso.
+        backSlots.push(
+          rightCard ? rightCard.backHtml : '<div class="card-placeholder"></div>',
+        );
+        backSlots.push(
+          leftCard ? leftCard.backHtml : '<div class="card-placeholder"></div>',
+        );
+      }
+
+      pagesHtml.push(`<div class="a4-sheet">${frontSlots.join('')}</div>`);
+      pagesHtml.push(`<div class="a4-sheet">${backSlots.join('')}</div>`);
     }
 
     const fullHtml = `
@@ -682,11 +706,52 @@ export class CarteirinhaRendererService {
             size: A4 portrait;
             margin: 0;
           }
-          body {
-            background: #ffffff;
+          * {
+            box-sizing: border-box;
           }
-          .cr80-card {
-            border: 0.2mm dashed #94a3b8; /* Linha de corte */
+          html, body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            width: 210mm;
+          }
+          body {
+            display: block !important;
+          }
+          .a4-sheet {
+            width: 210mm;
+            height: 297mm;
+            max-height: 297mm;
+            box-sizing: border-box;
+            padding: 20mm 15.4mm;
+            display: grid;
+            grid-template-columns: 85.6mm 85.6mm;
+            grid-template-rows: 53.98mm 53.98mm 53.98mm;
+            column-gap: 8mm;
+            row-gap: 8mm;
+            justify-content: center;
+            align-content: center;
+            page-break-after: always;
+            break-after: page;
+            overflow: hidden;
+          }
+          .a4-sheet:last-child {
+            page-break-after: avoid;
+            break-after: avoid;
+          }
+          .a4-sheet .cr80-card {
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+            break-after: avoid !important;
+            break-inside: avoid !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: 0.25mm dashed #94a3b8 !important; /* Linha de corte precisa */
+          }
+          .card-placeholder {
+            width: 85.6mm;
+            height: 53.98mm;
+            visibility: hidden;
           }
         </style>
       </head>
