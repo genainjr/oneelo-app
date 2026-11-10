@@ -129,12 +129,33 @@ export function AddToCalendarButton({
   className = '',
 }: AddToCalendarButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
   const [platform, setPlatform] = useState<CalendarPlatform>('other');
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPlatform(detectCalendarPlatform());
   }, []);
+
+  const updatePlacement = () => {
+    if (!containerRef.current || typeof window === 'undefined') return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const menuEstimatedHeight = 230;
+
+    if (spaceBelow < menuEstimatedHeight && rect.top > spaceBelow) {
+      setPlacement('top');
+    } else {
+      setPlacement('bottom');
+    }
+  };
+
+  const handleToggle = () => {
+    if (!isOpen) {
+      updatePlacement();
+    }
+    setIsOpen((prev) => !prev);
+  };
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent | TouchEvent) {
@@ -150,15 +171,20 @@ export function AddToCalendarButton({
     }
 
     if (isOpen) {
+      updatePlacement();
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('resize', updatePlacement, { passive: true });
+      window.addEventListener('scroll', updatePlacement, { passive: true });
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', updatePlacement);
+      window.removeEventListener('scroll', updatePlacement);
     };
   }, [isOpen]);
 
@@ -187,7 +213,7 @@ export function AddToCalendarButton({
     <div ref={containerRef} className={`relative inline-flex items-center shrink-0 ${className}`.trim()}>
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={handleToggle}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={`${buttonLabel}: ${event.title}`}
@@ -206,7 +232,11 @@ export function AddToCalendarButton({
         <div
           role="menu"
           aria-label="Opções de Agenda"
-          className="absolute right-0 top-full z-50 mt-1.5 w-60 origin-top-right rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150"
+          className={`absolute right-0 z-50 w-60 max-w-[calc(100vw-32px)] rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150 ${
+            placement === 'top'
+              ? 'bottom-full mb-1.5 origin-bottom-right'
+              : 'top-full mt-1.5 origin-top-right'
+          }`}
         >
           <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
             Salvar em
