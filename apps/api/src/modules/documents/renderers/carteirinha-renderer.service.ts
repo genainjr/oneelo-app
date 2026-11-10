@@ -298,25 +298,25 @@ export class CarteirinhaRendererService {
         }
 
         .cr80-card {
-          width: 85.6mm;
-          min-width: 85.6mm;
-          max-width: 85.6mm;
-          height: 53.98mm;
-          min-height: 53.98mm;
-          max-height: 53.98mm;
+          width: 330px;
+          min-width: 330px;
+          max-width: 330px;
+          height: 208px;
+          min-height: 208px;
+          max-height: 208px;
           flex-shrink: 0;
           position: relative;
           background: #ffffff;
-          border-radius: 3.5mm;
+          border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
           page-break-inside: avoid;
           page-break-after: always;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          border: 0.25mm solid rgba(226, 232, 240, 0.9);
-          padding: 3mm 3.5mm;
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          padding: 14px;
         }
 
         /* Frente */
@@ -328,24 +328,24 @@ export class CarteirinhaRendererService {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding-bottom: 1.5mm;
-          border-bottom: 0.25mm solid #f1f5f9;
+          padding-bottom: 6px;
+          border-bottom: 1px solid #f1f5f9;
         }
 
         .header-left {
           display: flex;
           align-items: center;
-          max-width: 48mm;
+          max-width: 190px;
         }
 
         .church-logo {
-          max-height: 6mm;
-          max-width: 25mm;
+          max-height: 24px;
+          max-width: 90px;
           object-fit: contain;
         }
 
         .church-name-text {
-          font-size: 6.5pt;
+          font-size: 12px;
           font-weight: 900;
           color: #1e293b;
           text-transform: uppercase;
@@ -358,29 +358,29 @@ export class CarteirinhaRendererService {
         .header-badge {
           background: #4f46e5;
           color: #ffffff;
-          font-size: 5pt;
+          font-size: 9px;
           font-weight: 900;
-          letter-spacing: 0.4px;
-          padding: 0.7mm 1.8mm;
-          border-radius: 1.2mm;
+          letter-spacing: 0.5px;
+          padding: 2px 8px;
+          border-radius: 6px;
           text-transform: uppercase;
         }
 
         .card-body {
           display: flex;
           align-items: center;
-          gap: 2.8mm;
+          gap: 12px;
           margin-top: auto;
           margin-bottom: auto;
         }
 
         .photo-container {
-          width: 14mm;
-          height: 16.5mm;
-          border-radius: 2.5mm;
+          width: 56px;
+          height: 64px;
+          border-radius: 12px;
           overflow: hidden;
           background: #e2e8f0;
-          border: 0.25mm solid #cbd5e1;
+          border: 1px solid #cbd5e1;
           flex-shrink: 0;
           display: flex;
           align-items: center;
@@ -395,7 +395,7 @@ export class CarteirinhaRendererService {
         }
 
         .member-photo-placeholder {
-          font-size: 11pt;
+          font-size: 16px;
           font-weight: 800;
           color: #94a3b8;
         }
@@ -403,24 +403,24 @@ export class CarteirinhaRendererService {
         .member-info {
           display: flex;
           flex-direction: column;
-          gap: 0.6mm;
+          gap: 3px;
           overflow: hidden;
           flex: 1;
           min-width: 0;
         }
 
         .member-name {
-          font-size: 8.5pt;
+          font-size: 14px;
           font-weight: 800;
           color: #0f172a;
-          line-height: 1.15;
+          line-height: 1.25;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
         .member-role {
-          font-size: 6.5pt;
+          font-size: 12px;
           font-weight: 700;
           color: #4f46e5;
           text-transform: uppercase;
@@ -428,19 +428,19 @@ export class CarteirinhaRendererService {
         }
 
         .info-pill-container {
-          margin-top: 0.5mm;
+          margin-top: 2px;
         }
 
         .info-pill {
           display: inline-block;
           background: #eef2ff;
-          border: 0.2mm solid #e0e7ff;
+          border: 1px solid #e0e7ff;
           color: #4338ca;
-          font-size: 5.2pt;
+          font-size: 9.5px;
           font-weight: 700;
-          padding: 0.4mm 1.6mm;
-          border-radius: 1mm;
-          max-width: 48mm;
+          padding: 2px 6px;
+          border-radius: 4px;
+          max-width: 180px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -450,9 +450,9 @@ export class CarteirinhaRendererService {
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          padding-top: 1.5mm;
-          border-top: 0.25mm solid #f1f5f9;
-          font-size: 5.5pt;
+          padding-top: 6px;
+          border-top: 1px solid #f1f5f9;
+          font-size: 10px;
           color: #64748b;
         }
 
@@ -469,7 +469,7 @@ export class CarteirinhaRendererService {
         .back-grid {
           display: grid;
           grid-template-columns: 2fr 1fr;
-          gap: 2mm;
+          gap: 8px;
           height: 100%;
         }
 
@@ -477,8 +477,8 @@ export class CarteirinhaRendererService {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          padding-top: 0.5mm;
-          padding-bottom: 0.5mm;
+          padding-top: 2px;
+          padding-bottom: 2px;
         }
 
         .detail-row {
@@ -487,23 +487,23 @@ export class CarteirinhaRendererService {
         }
 
         .detail-label {
-          font-size: 4.8pt;
+          font-size: 8.5px;
           color: #94a3b8;
           font-weight: 700;
           text-transform: uppercase;
           line-height: 1;
-          margin-bottom: 0.3mm;
+          margin-bottom: 2px;
         }
 
         .detail-value {
-          font-size: 6pt;
+          font-size: 9.5px;
           color: #334155;
           font-weight: 600;
-          line-height: 1.15;
+          line-height: 1.2;
         }
 
         .detail-value.name-highlight {
-          font-size: 7.2pt;
+          font-size: 10.5px;
           color: #1e293b;
           font-weight: 800;
           white-space: nowrap;
@@ -512,7 +512,7 @@ export class CarteirinhaRendererService {
         }
 
         .detail-value.date-highlight {
-          font-size: 6pt;
+          font-size: 10px;
           color: #1e293b;
           font-weight: 700;
         }
@@ -520,12 +520,12 @@ export class CarteirinhaRendererService {
         .detail-cols-2 {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 1.5mm;
+          gap: 4px;
         }
 
         .back-qr-col {
-          border-left: 0.25mm dashed #e2e8f0;
-          padding-left: 2mm;
+          border-left: 1px dashed #e2e8f0;
+          padding-left: 8px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -541,26 +541,26 @@ export class CarteirinhaRendererService {
         }
 
         .qr-code {
-          width: 16mm;
-          height: 16mm;
+          width: 64px;
+          height: 64px;
           object-fit: contain;
           display: block;
         }
 
         .qr-label {
-          font-size: 4.8pt;
+          font-size: 7.5px;
           font-weight: 700;
           color: #4f46e5;
           text-transform: uppercase;
           letter-spacing: -0.2px;
-          margin-top: 0.5mm;
+          margin-top: 2px;
         }
 
         .back-footer {
-          padding-top: 1.5mm;
-          border-top: 0.25mm solid #f1f5f9;
+          padding-top: 6px;
+          border-top: 1px solid #f1f5f9;
           text-align: center;
-          font-size: 4.8pt;
+          font-size: 8px;
           color: #94a3b8;
         }
 
@@ -622,7 +622,7 @@ export class CarteirinhaRendererService {
       },
       async (browser) => {
         const page = await browser.newPage({
-          viewport: { width: 1200, height: 450 },
+          viewport: { width: 720, height: 250 },
           deviceScaleFactor: 2,
         });
 
@@ -635,14 +635,14 @@ export class CarteirinhaRendererService {
               ${this.getStyles()}
               <style>
                 @page {
-                  size: 188mm 62mm;
+                  size: 712px 240px;
                   margin: 0;
                 }
                 html, body {
                   margin: 0;
                   padding: 0;
-                  width: 188mm;
-                  height: 62mm;
+                  width: 712px;
+                  height: 240px;
                   background: #ffffff !important;
                   display: flex;
                   align-items: center;
@@ -653,13 +653,13 @@ export class CarteirinhaRendererService {
                 #cards-wrapper {
                   display: flex;
                   flex-direction: row;
-                  gap: 8mm;
+                  gap: 20px;
                   align-items: center;
                   justify-content: center;
                   background: #ffffff;
                 }
                 .cr80-card {
-                  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+                  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
                 }
               </style>
             </head>
@@ -676,8 +676,8 @@ export class CarteirinhaRendererService {
           await this.chromiumRenderer.waitForImages(page);
 
           const buffer = await page.pdf({
-            width: '188mm',
-            height: '62mm',
+            width: '712px',
+            height: '240px',
             printBackground: true,
             margin: { top: 0, right: 0, bottom: 0, left: 0 },
           });
