@@ -6,19 +6,39 @@ import { SkeletonList } from '@/components/app/skeleton';
 import { EmptyState } from '@/components/app/empty-state';
 import { StatCard } from '@/components/app/stat-card';
 import { StatusBadge } from '@/components/app/status-badge';
+import { AddToCalendarButton, CalendarDeepLinkModal } from '@/components/app/add-to-calendar-button';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { useAuthUser } from '@/contexts/auth-user-context';
 import { api } from '@/lib/api';
+import {
+  consolidateEscalasToCalendarEvents,
+  mapEscalaToCalendarEvent,
+  type CalendarEventParams,
+} from '@/lib/calendar-url-builder';
 import { useRouter } from 'next/navigation';
-import { Calendar, AlertTriangle, List } from 'lucide-react';
-import { getCivilDateKey, getDatePartsWithWeekday, isCivilDateBefore, isCivilDateOnOrAfter, STATUS_CONFIRMACAO_COLOR, STATUS_CONFIRMACAO_LABEL, STATUS_ESCALA_COLOR, STATUS_ESCALA_LABEL } from '@/lib/utils';
-import { AuthUser, MinhaEscalaItem } from '@/types';
+import { Calendar, AlertTriangle, List, Info, X } from 'lucide-react';
+import {
+  getCivilDateKey,
+  getDatePartsWithWeekday,
+  isCivilDateBefore,
+  isCivilDateOnOrAfter,
+  STATUS_CONFIRMACAO_COLOR,
+  STATUS_CONFIRMACAO_LABEL,
+  STATUS_ESCALA_COLOR,
+  STATUS_ESCALA_LABEL,
+} from '@/lib/utils';
+import { MinhaEscalaItem } from '@/types';
 
 export default function MinhasEscalasPage() {
   const router = useRouter();
   const { user, loadingUser } = useAuthUser();
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const [declineCalendarNotice, setDeclineCalendarNotice] = useState(false);
+  const [deepLinkCalendarEvent, setDeepLinkCalendarEvent] = useState<{
+    event: CalendarEventParams;
+    subtitle?: string;
+  } | null>(null);
   const [proximasMinimizadas, setProximasMinimizadas] = useState(false);
   const [historicoMinimizado, setHistoricoMinimizado] = useState(true);
   const { items, loading, error, refetch } = useMinhasEscalas();
@@ -30,14 +50,38 @@ export default function MinhasEscalasPage() {
     }
   }, [items.length, loading, loadingUser, router, user]);
 
+  // Tratamento do deep-link ?addCalendar=<escalaItemId>
+  useEffect(() => {
+    if (loading || items.length === 0 || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const addCalendarId = params.get('addCalendar');
+    if (!addCalendarId) return;
+
+    const targetItem = items.find((i) => i.id === addCalendarId);
+    if (targetItem) {
+      const { weekday, date } = getDatePartsWithWeekday(targetItem.data, 'dd/MM/yyyy');
+      setDeepLinkCalendarEvent({
+        event: mapEscalaToCalendarEvent(targetItem),
+        subtitle: `${weekday}, ${date}`,
+      });
+    }
+
+    params.delete('addCalendar');
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [items, loading]);
+
   const todayDateKey = getCivilDateKey(new Date()) ?? '';
 
   const pendentes = useMemo(
-    () => items.filter((item) => (
-      item.escala.status === 'PUBLICADA' &&
-      item.statusConfirmacao === 'PENDENTE' &&
-      isCivilDateOnOrAfter(item.data, todayDateKey)
-    )),
+    () =>
+      items.filter(
+        (item) =>
+          item.escala.status === 'PUBLICADA' &&
+          item.statusConfirmacao === 'PENDENTE' &&
+          isCivilDateOnOrAfter(item.data, todayDateKey),
+      ),
     [items, todayDateKey],
   );
   const futuras = useMemo(
@@ -49,11 +93,22 @@ export default function MinhasEscalasPage() {
     [items, todayDateKey],
   );
 
+  const futurasParaCalendario = useMemo(
+    () =>
+      consolidateEscalasToCalendarEvents(
+        futuras.filter((item) => item.statusConfirmacao !== 'RECUSADO'),
+      ),
+    [futuras],
+  );
+
   async function updateConfirmacao(itemId: string, statusConfirmacao: 'CONFIRMADO' | 'RECUSADO') {
     setUpdatingItemId(itemId);
     setActionError('');
     try {
       await api.patch(`/api/escalas/itens/${itemId}/confirmar`, { statusConfirmacao });
+      if (statusConfirmacao === 'RECUSADO') {
+        setDeclineCalendarNotice(true);
+      }
       await refetch();
     } catch {
       setActionError('Nao foi possivel atualizar sua confirmacao.');
@@ -62,9 +117,11 @@ export default function MinhasEscalasPage() {
     }
   }
 
-  function renderItem(item: MinhaEscalaItem, showActions = false) {
+  function renderItem(item: MinhaEscalaItem, showActions = false, isFutureOrPending = false) {
     const canConfirm = item.escala.status === 'PUBLICADA';
     const { weekday, date } = getDatePartsWithWeekday(item.data, 'dd/MM/yyyy');
+    const canAddToCalendar = isFutureOrPending && item.statusConfirmacao !== 'RECUSADO';
+    const calendarEvent = canAddToCalendar ? mapEscalaToCalendarEvent(item) : null;
 
     return (
       <div key={item.id} className="rounded-lg border border-gray-100 bg-white p-5">
@@ -93,22 +150,35 @@ export default function MinhasEscalasPage() {
           {item.observacoes && <p className="mt-1 text-xs text-gray-500">{item.observacoes}</p>}
         </div>
 
-        {canConfirm && showActions && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => updateConfirmacao(item.id, 'CONFIRMADO')}
-              disabled={updatingItemId === item.id}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-            >
-              Confirmar
-            </button>
-            <button
-              onClick={() => updateConfirmacao(item.id, 'RECUSADO')}
-              disabled={updatingItemId === item.id}
-              className="rounded-lg border border-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
-            >
-              Recusar
-            </button>
+        {((canConfirm && showActions) || calendarEvent) && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            {canConfirm && showActions ? (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => updateConfirmacao(item.id, 'CONFIRMADO')}
+                  disabled={updatingItemId === item.id}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  Confirmar
+                </button>
+                <button
+                  onClick={() => updateConfirmacao(item.id, 'RECUSADO')}
+                  disabled={updatingItemId === item.id}
+                  className="rounded-lg border border-red-100 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  Recusar
+                </button>
+              </div>
+            ) : (
+              <div />
+            )}
+
+            {calendarEvent && (
+              <AddToCalendarButton
+                event={calendarEvent}
+                variant="secondary"
+              />
+            )}
           </div>
         )}
       </div>
@@ -125,11 +195,37 @@ export default function MinhasEscalasPage() {
         description="Acompanhe suas proximas participacoes e confirme sua presenca."
       />
 
+      <CalendarDeepLinkModal
+        event={deepLinkCalendarEvent?.event ?? null}
+        subtitle={deepLinkCalendarEvent?.subtitle}
+        icsFilename="minha-escala-oneelo.ics"
+        onClose={() => setDeepLinkCalendarEvent(null)}
+      />
+
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <StatCard title="Proximas" value={futuras.length} icon={<Calendar className="w-5 h-5" />} color="indigo" />
         <StatCard title="Pendentes" value={pendentes.length} icon={<AlertTriangle className="w-5 h-5" />} color="amber" />
         <StatCard title="Historico" value={passadas.length} icon={<List className="w-5 h-5" />} color="blue" />
       </div>
+
+      {declineCalendarNotice && (
+        <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs text-amber-900">
+          <div className="flex items-start gap-2.5">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="leading-relaxed">
+              <strong className="font-bold">Indisponibilidade registrada.</strong> Caso você já tenha salvo esta escala no seu Google Agenda ou calendário pessoal, lembre-se de removê-la manualmente do seu aparelho.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDeclineCalendarNotice(false)}
+            aria-label="Fechar aviso"
+            className="rounded-lg p-1 text-amber-700 hover:bg-amber-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {(error || actionError) && (
         <div className="mb-4 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
@@ -148,7 +244,7 @@ export default function MinhasEscalasPage() {
           <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Pendentes</h2>
             <div className="space-y-3">
-              {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true)) : (
+              {pendentes.length > 0 ? pendentes.map((item) => renderItem(item, true, true)) : (
                 <EmptyState compact title="Nenhuma confirmacao pendente." />
               )}
             </div>
@@ -176,7 +272,7 @@ export default function MinhasEscalasPage() {
 
             {(!proximasMinimizadas || futuras.length === 0) && (
               <div className="space-y-3">
-                {futuras.length > 0 ? futuras.map((item) => renderItem(item)) : (
+                {futuras.length > 0 ? futuras.map((item) => renderItem(item, false, true)) : (
                   <EmptyState compact title="Nenhuma escala futura." />
                 )}
               </div>
@@ -205,7 +301,7 @@ export default function MinhasEscalasPage() {
 
             {(!historicoMinimizado || passadas.length === 0) && (
               <div className="space-y-3">
-                {passadas.length > 0 ? passadas.map((item) => renderItem(item)) : (
+                {passadas.length > 0 ? passadas.map((item) => renderItem(item, false, false)) : (
                   <EmptyState compact title="Nenhuma escala passada." />
                 )}
               </div>

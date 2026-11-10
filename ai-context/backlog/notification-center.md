@@ -449,3 +449,4 @@ A arquitetura deve permitir novos canais futuramente sem acoplar o domínio excl
 
 Ainda não criado. Deve ser produzido antes da implementação e dividido em entregas incrementais, mantendo este backlog como o escopo completo da funcionalidade.
 
+

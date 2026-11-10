@@ -30,8 +30,10 @@ import {
   ExportSharePreparedBanner,
   ExportShareErrorBanner,
 } from '@/components/app/export-share-dialog';
+import { AddToCalendarButton, CalendarDeepLinkModal } from '@/components/app/add-to-calendar-button';
 import { useAuthUser } from '@/contexts/auth-user-context';
 import { api } from '@/lib/api';
+import { mapEventoToCalendarEvent, type CalendarEventParams } from '@/lib/calendar-url-builder';
 import { formatDate, STATUS_EVENTO_LABEL } from '@/lib/utils';
 import type { AuthUser, Evento, EventoTipo, StatusEvento } from '@/types';
 
@@ -197,6 +199,45 @@ export default function AgendaVisualizacaoPage() {
     const cancelados = sortedEventos.filter((evento) => evento.status === 'CANCELADO').length;
     return { total, agendados, realizados, cancelados };
   }, [sortedEventos]);
+
+  const agendadosParaCalendario = useMemo(
+    () =>
+      sortedEventos
+        .filter((evento) => evento.status === 'AGENDADO')
+        .map((evento) => mapEventoToCalendarEvent(evento)),
+    [sortedEventos],
+  );
+
+  const [deepLinkCalendarEvent, setDeepLinkCalendarEvent] = useState<CalendarEventParams | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || loading) return;
+    const params = new URLSearchParams(window.location.search);
+    const addCalendarEventoId = params.get('addCalendarEvento');
+    if (!addCalendarEventoId) return;
+
+    params.delete('addCalendarEvento');
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`;
+    window.history.replaceState({}, '', nextUrl);
+
+    const matched = sortedEventos.find((ev) => ev.id === addCalendarEventoId);
+    if (matched) {
+      if (matched.status === 'AGENDADO') {
+        setDeepLinkCalendarEvent(mapEventoToCalendarEvent(matched));
+      }
+      return;
+    }
+
+    api
+      .get<Evento>(`/api/eventos/${addCalendarEventoId}`)
+      .then((fetched) => {
+        if (fetched && fetched.status === 'AGENDADO') {
+          setDeepLinkCalendarEvent(mapEventoToCalendarEvent(fetched));
+        }
+      })
+      .catch(() => {});
+  }, [loading, sortedEventos]);
 
   return (
     <div className="p-6">
@@ -389,12 +430,27 @@ export default function AgendaVisualizacaoPage() {
                       ) : null}
                     </div>
                   </div>
+
+                  {evento.status === 'AGENDADO' && (
+                    <div className="flex shrink-0 items-center gap-2 pt-2 md:pt-0">
+                      <AddToCalendarButton
+                        event={mapEventoToCalendarEvent(evento)}
+                        variant="secondary"
+                      />
+                    </div>
+                  )}
                 </EntityCard>
               );
             })}
           </div>
         )}
       </div>
+
+      <CalendarDeepLinkModal
+        isOpen={deepLinkCalendarEvent !== null}
+        event={deepLinkCalendarEvent}
+        onClose={() => setDeepLinkCalendarEvent(null)}
+      />
 
       {!loading && sortedEventos.length > 0 && (
         <div className="print-area print-document print-document--agenda hidden" aria-hidden="true">

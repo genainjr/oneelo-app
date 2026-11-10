@@ -107,7 +107,7 @@
 
 ### IMP-008 Limite de membros deve respeitar o plano contratado do tenant
 
-- **Status**: pendente
+- **Status**: implementado (via feature/tenant-plan-limits e merge commit 3f9c2a4)
 - **Prioridade**: alta
 - **Categoria**: billing / tenant management / consistencia de regras
 - **Contexto**: O bloqueio de criacao de membros hoje usa apenas `tenant.limiteMembros`. Isso faz com que tenants em `PROFISSIONAL` ainda possam ser bloqueados se o limite numerico nao for ajustado manualmente, mesmo quando o plano contratado deveria permitir membros ilimitados.
@@ -134,3 +134,4 @@
 - **Arquivos afetados**:
   - `apps/web/src/app/(dashboard)/agenda/visualizacao/page.tsx`
   - `apps/web/src/app/(dashboard)/ministerios/visualizacao/page.tsx`
+

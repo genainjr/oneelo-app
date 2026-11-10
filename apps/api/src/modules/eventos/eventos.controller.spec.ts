@@ -15,6 +15,7 @@ describe('EventosController', () => {
       createBatch: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
+      notificarAgendaEvento: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
       exportar: jest.fn(),
@@ -41,7 +42,7 @@ describe('EventosController', () => {
   const mockReq = {
     tenantId: 'tenant-123',
     user: {
-      userId: 'user-1',
+      sub: 'user-1',
       tenantId: 'tenant-123',
       role: Role.ADMIN,
       email: 'admin@oneelo.test',
@@ -141,5 +142,24 @@ describe('EventosController', () => {
     ).rejects.toBeInstanceOf(ExportServiceUnavailableException);
 
     expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '5');
+  });
+
+  it('delega notificarAgenda para EventosService.notificarAgendaEvento', async () => {
+    eventosService.notificarAgendaEvento.mockResolvedValue({
+      message: 'Convite para adicionar o evento à agenda enviado com sucesso.',
+      notificationId: 'notif-1',
+    });
+
+    const response = await controller.notificarAgenda('evento-123', mockReq);
+
+    expect(eventosService.notificarAgendaEvento).toHaveBeenCalledWith(
+      'tenant-123',
+      'evento-123',
+      mockReq['user'],
+    );
+    expect(response).toEqual({
+      message: 'Convite para adicionar o evento à agenda enviado com sucesso.',
+      notificationId: 'notif-1',
+    });
   });
 });

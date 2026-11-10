@@ -114,6 +114,14 @@ export class EventosController {
     return this.eventosService.findOne(tenantId, id, user);
   }
 
+  @Post(':id/notificar-agenda')
+  @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
+  notificarAgenda(@Param('id') id: string, @Req() req: Request) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.eventosService.notificarAgendaEvento(tenantId, id, user);
+  }
+
   @Patch(':id')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
   update(

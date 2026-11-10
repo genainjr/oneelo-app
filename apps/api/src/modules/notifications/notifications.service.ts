@@ -804,7 +804,7 @@ export class NotificationsService {
         horario,
         igreja: item.escalaDia.escala.ministerio.nome,
       });
-      const url = '/minhas-escalas';
+      const url = `/minhas-escalas?addCalendar=${item.id}`;
 
       if (this.notificationDispatch) {
         const diaYmd = item.escalaDia.data.toISOString().split('T')[0];
@@ -913,7 +913,7 @@ export class NotificationsService {
       const result = await this.sendToUsers(evento.tenantId, userIds, {
         title: 'Evento em 2 horas',
         body: `${evento.titulo} começa às ${horario}. Esperamos você!`,
-        url: '/agenda/visualizacao',
+        url: `/agenda/visualizacao?addCalendarEvento=${evento.id}`,
       });
 
       sent += result.sent;

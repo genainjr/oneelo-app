@@ -238,6 +238,15 @@ export interface Escala {
 export interface MinhaEscalaItem extends EscalaItem {
   data: string;
   titulo?: string | null;
+  evento?: {
+    id: string;
+    titulo: string;
+    dataInicio: string;
+    dataFim?: string | null;
+    local?: string | null;
+    status: StatusEvento;
+    tipo: EventoTipo;
+  } | null;
   escala: Escala;
   funcao?: MinisterioFuncao;
 }
