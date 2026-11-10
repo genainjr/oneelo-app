@@ -77,6 +77,26 @@ export class SupabaseStorageService {
     }
   }
 
+  async ensureBucket(bucket: string, isPublic = true) {
+    try {
+      await fetch(`${this.baseUrl}/storage/v1/bucket`, {
+        method: 'POST',
+        headers: {
+          ...this.authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: bucket,
+          name: bucket,
+          public: isPublic,
+          file_size_limit: 52428800,
+        }),
+      });
+    } catch {
+      // Ignora se o bucket já existir ou houver restrição
+    }
+  }
+
   async uploadPublicObject(
     bucket: string,
     path: string,
@@ -98,6 +118,25 @@ export class SupabaseStorageService {
 
     if (!response.ok) {
       const details = await response.text().catch(() => '');
+      if (response.status === 404 && details.includes('Bucket not found')) {
+        await this.ensureBucket(bucket);
+        const retryResponse = await fetch(
+          `${this.baseUrl}/storage/v1/object/${bucket}/${this.encodePath(path)}`,
+          {
+            method: 'PUT',
+            headers: {
+              ...this.authHeaders,
+              'Content-Type': mimeType,
+              'x-upsert': 'true',
+            },
+            body: new Uint8Array(buffer),
+          },
+        );
+        if (retryResponse.ok) {
+          return this.getPublicUrl(bucket, path);
+        }
+      }
+
       throw new BadRequestException(
         details || 'Nao foi possivel enviar a imagem para o Supabase Storage.',
       );
