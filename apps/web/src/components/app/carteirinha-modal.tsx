@@ -7,7 +7,6 @@ import {
   FileText,
   Loader2,
   QrCode,
-  RotateCw,
   ShieldCheck,
   X,
 } from 'lucide-react';
@@ -40,7 +39,6 @@ export function CarteirinhaModal({
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [validationUrl, setValidationUrl] = useState<string>('');
   const [currentTimestamp, setCurrentTimestamp] = useState<string>('');
-  const [isMobileLandscape, setIsMobileLandscape] = useState<boolean>(true);
 
   useEffect(() => {
     if (!membro?.id) return;
@@ -167,99 +165,99 @@ export function CarteirinhaModal({
     }
   }
 
-  const renderFrontCard = (isLarge = false) => (
+  const renderFrontCard = () => (
     <div
       style={{
-        width: isLarge ? '440px' : '330px',
-        height: isLarge ? '278px' : '208px',
+        width: '330px',
+        height: '208px',
         background: 'linear-gradient(135deg, #ffffff 15%, #f1f5f9 45%, #cbd5e1 75%, #94a3b8 100%)',
       }}
-      className={`relative rounded-xl border border-slate-200/70 ${isLarge ? 'p-4' : 'p-3.5'} shadow-xl flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border`}
+      className="relative rounded-xl border border-slate-200/70 p-3.5 shadow-lg flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border"
     >
       <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-        <div className={`flex items-center gap-2 ${isLarge ? 'max-w-[260px]' : 'max-w-[190px]'}`}>
+        <div className="flex items-center gap-2 max-w-[190px]">
           {churchLogoUrl ? (
-            <img src={churchLogoUrl} alt={churchName} className={`${isLarge ? 'h-8 max-w-[120px]' : 'h-6 max-w-[90px]'} object-contain`} />
+            <img src={churchLogoUrl} alt={churchName} className="h-6 max-w-[90px] object-contain" />
           ) : (
-            <span className={`${isLarge ? 'text-sm' : 'text-xs'} font-black tracking-tight text-slate-800 truncate uppercase`}>
+            <span className="text-xs font-black tracking-tight text-slate-800 truncate uppercase">
               {churchName}
             </span>
           )}
         </div>
-        <span className={`rounded-md bg-indigo-600 ${isLarge ? 'px-2.5 py-1 text-[10px]' : 'px-2 py-0.5 text-[9px]'} font-black tracking-wider text-white uppercase shadow-2xs`}>
+        <span className="rounded-md bg-indigo-600 px-2 py-0.5 text-[9px] font-black tracking-wider text-white uppercase shadow-2xs">
           Carteira de Membro
         </span>
       </div>
 
-      <div className="flex items-center gap-3.5 my-auto">
-        <div className={`${isLarge ? 'h-20 w-16 rounded-xl' : 'h-16 w-14 rounded-lg'} shrink-0 bg-slate-200 border border-slate-300 overflow-hidden flex items-center justify-center shadow-inner`}>
+      <div className="flex items-center gap-3 my-auto">
+        <div className="h-16 w-14 shrink-0 rounded-xl bg-slate-200 border border-slate-300 overflow-hidden flex items-center justify-center shadow-inner">
           {membro.fotoUrl ? (
             <img src={membro.fotoUrl} alt={displayName} className="h-full w-full object-cover" />
           ) : (
-            <span className={`${isLarge ? 'text-lg' : 'text-base'} font-extrabold text-slate-400`}>
+            <span className="text-base font-extrabold text-slate-400">
               {displayName.slice(0, 2).toUpperCase()}
             </span>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h4 className={`${isLarge ? 'text-base' : 'text-sm'} font-extrabold text-slate-900 truncate leading-snug`}>{displayName}</h4>
-          <p className={`${isLarge ? 'text-xs' : 'text-xs'} font-bold text-indigo-600 uppercase tracking-wide`}>{roleLabel}</p>
+          <h4 className="text-sm font-extrabold text-slate-900 truncate leading-snug">{displayName}</h4>
+          <p className="text-xs font-bold text-indigo-600 uppercase tracking-wide">{roleLabel}</p>
           <div className="mt-1">
-            <span className={`inline-block bg-indigo-50 border border-indigo-100/60 rounded ${isLarge ? 'px-2 py-0.5 text-[10.5px]' : 'px-1.5 py-0.5 text-[9.5px]'} font-bold text-indigo-700 truncate ${isLarge ? 'max-w-[240px]' : 'max-w-[180px]'}`}>
+            <span className="inline-block bg-indigo-50 border border-indigo-100/60 rounded px-1.5 py-0.5 text-[9.5px] font-bold text-indigo-700 truncate max-w-[180px]">
               {churchName}
             </span>
           </div>
         </div>
       </div>
 
-      <div className={`flex items-center pt-1.5 border-t border-slate-100 ${isLarge ? 'text-xs' : 'text-[10px]'} text-slate-500`}>
+      <div className="flex items-center pt-1.5 border-t border-slate-100 text-[10px] text-slate-500">
         <span>Matrícula: <strong className="text-slate-800">{matricula}</strong></span>
       </div>
     </div>
   );
 
-  const renderBackCard = (isLarge = false) => (
+  const renderBackCard = () => (
     <div
       style={{
-        width: isLarge ? '440px' : '330px',
-        height: isLarge ? '278px' : '208px',
+        width: '330px',
+        height: '208px',
         backgroundColor: '#ffffff',
       }}
-      className={`relative rounded-xl border border-slate-200/70 ${isLarge ? 'p-4' : 'p-3.5'} shadow-xl flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border`}
+      className="relative rounded-xl border border-slate-200/70 p-3.5 shadow-lg flex flex-col justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border"
     >
-      <div className={`grid grid-cols-3 ${isLarge ? 'gap-3' : 'gap-2'} h-full ${isLarge ? 'text-xs' : 'text-[10px]'}`}>
+      <div className="grid grid-cols-3 gap-2 h-full text-[10px]">
         <div className="col-span-2 flex flex-col justify-between py-0.5">
           <div>
-            <span className={`${isLarge ? 'text-[9.5px]' : 'text-[8.5px]'} text-slate-400 font-bold uppercase block leading-none mb-0.5`}>Nome Completo</span>
-            <strong className={`text-slate-800 ${isLarge ? 'text-xs' : 'text-[10.5px]'} truncate block leading-tight`}>{membro.nome}</strong>
+            <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Nome Completo</span>
+            <strong className="text-slate-800 text-[10.5px] truncate block leading-tight">{membro.nome}</strong>
           </div>
-          <div className={`grid grid-cols-2 ${isLarge ? 'gap-2 text-[11px]' : 'gap-1 text-[9.5px]'}`}>
+          <div className="grid grid-cols-2 gap-1 text-[9.5px]">
             <div>
-              <span className={`${isLarge ? 'text-[9.5px]' : 'text-[8.5px]'} text-slate-400 font-bold uppercase block leading-none mb-0.5`}>Nascimento</span>
+              <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Nascimento</span>
               <span className="text-slate-700 font-semibold">{formatDate(membro.dataNascimento)}</span>
             </div>
             <div>
-              <span className={`${isLarge ? 'text-[9.5px]' : 'text-[8.5px]'} text-slate-400 font-bold uppercase block leading-none mb-0.5`}>Batismo</span>
+              <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Batismo</span>
               <span className="text-slate-700 font-semibold">{formatDate(membro.dataBatismo)}</span>
             </div>
           </div>
-          <div className={`grid grid-cols-2 ${isLarge ? 'gap-2 text-[11px]' : 'gap-1 text-[9.5px]'}`}>
+          <div className="grid grid-cols-2 gap-1 text-[9.5px]">
             <div>
-              <span className={`${isLarge ? 'text-[9.5px]' : 'text-[8.5px]'} text-slate-400 font-bold uppercase block leading-none mb-0.5`}>CPF</span>
+              <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">CPF</span>
               <span className="text-slate-700 font-semibold">{membro.cpf || 'Não informado'}</span>
             </div>
             <div>
-              <span className={`${isLarge ? 'text-[9.5px]' : 'text-[8.5px]'} text-slate-400 font-bold uppercase block leading-none mb-0.5`}>Estado Civil</span>
+              <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Estado Civil</span>
               <span className="text-slate-700 font-semibold">{formatEstadoCivil(membro.estadoCivil, membro.sexo)}</span>
             </div>
           </div>
           <div>
-            <span className={`${isLarge ? 'text-[9.5px]' : 'text-[8.5px]'} text-slate-400 font-bold uppercase block leading-none mb-0.5`}>Validade</span>
-            <strong className={`text-slate-800 font-bold ${isLarge ? 'text-xs' : 'text-[10px]'}`}>31/12/{validadeAno}</strong>
+            <span className="text-[8.5px] text-slate-400 font-bold uppercase block leading-none mb-0.5">Validade</span>
+            <strong className="text-slate-800 font-bold text-[10px]">31/12/{validadeAno}</strong>
           </div>
         </div>
 
-        <div className={`col-span-1 border-l border-dashed border-slate-200 ${isLarge ? 'pl-3' : 'pl-2'} flex flex-col items-center justify-center text-center`}>
+        <div className="col-span-1 border-l border-dashed border-slate-200 pl-2 flex flex-col items-center justify-center text-center">
           {qrCodeDataUrl ? (
             <a
               href={validationUrl}
@@ -271,16 +269,16 @@ export function CarteirinhaModal({
               <img
                 src={qrCodeDataUrl}
                 alt="QR Code Autenticidade"
-                className={`${isLarge ? 'h-20 w-20' : 'h-16 w-16'} object-contain`}
+                className="h-16 w-16 object-contain"
               />
-              <span className={`mt-0.5 ${isLarge ? 'text-[9px]' : 'text-[7.5px]'} font-bold text-indigo-600 group-hover:underline uppercase tracking-tight flex items-center gap-0.5`}>
+              <span className="mt-0.5 text-[7.5px] font-bold text-indigo-600 group-hover:underline uppercase tracking-tight flex items-center gap-0.5">
                 Validar ↗
               </span>
             </a>
           ) : (
             <div className="flex flex-col items-center">
-              <QrCode className={`${isLarge ? 'h-16 w-16' : 'h-12 w-12'} text-slate-700`} />
-              <span className={`mt-1 ${isLarge ? 'text-[9px]' : 'text-[8px]'} font-bold text-slate-400 uppercase tracking-tighter`}>
+              <QrCode className="h-12 w-12 text-slate-700" />
+              <span className="mt-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
                 Autenticidade
               </span>
             </div>
@@ -288,26 +286,26 @@ export function CarteirinhaModal({
         </div>
       </div>
 
-      <div className={`pt-1.5 border-t border-slate-100 text-center ${isLarge ? 'text-[9.5px]' : 'text-[8px]'} text-slate-400`}>
+      <div className="pt-1.5 border-t border-slate-100 text-center text-[8px] text-slate-400">
         Documento emitido por OneElo • lookuplabs.com.br
       </div>
     </div>
   );
 
-  const renderQrCard = (isLarge = false) => (
+  const renderQrCard = () => (
     <div
       style={{
-        width: isLarge ? '440px' : '330px',
-        height: isLarge ? '278px' : '208px',
+        width: '330px',
+        height: '208px',
         backgroundColor: '#ffffff',
       }}
-      className={`relative rounded-xl border border-slate-200/70 ${isLarge ? 'p-4' : 'p-3.5'} shadow-xl flex flex-col items-center justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border text-center`}
+      className="relative rounded-xl border border-slate-200/70 p-3.5 shadow-lg flex flex-col items-center justify-between overflow-hidden text-slate-800 shrink-0 select-none box-border text-center"
     >
       <div className="w-full flex items-center justify-between pb-1.5 border-b border-slate-100">
-        <span className={`${isLarge ? 'text-xs' : 'text-[10px]'} font-black tracking-wider text-slate-800 uppercase`}>
+        <span className="text-[10px] font-black tracking-wider text-slate-800 uppercase">
           QR Code de Autenticidade
         </span>
-        <span className={`rounded-md bg-emerald-600 ${isLarge ? 'px-2.5 py-1 text-[9.5px]' : 'px-2 py-0.5 text-[8.5px]'} font-black tracking-wider text-white uppercase shadow-2xs`}>
+        <span className="rounded-md bg-emerald-600 px-2 py-0.5 text-[8.5px] font-black tracking-wider text-white uppercase shadow-2xs">
           Digital
         </span>
       </div>
@@ -317,18 +315,18 @@ export function CarteirinhaModal({
           <img
             src={qrCodeDataUrl}
             alt="QR Code Autenticidade"
-            className={`${isLarge ? 'h-36 w-36' : 'h-28 w-28'} object-contain`}
+            className="h-28 w-28 object-contain"
           />
         ) : (
-          <QrCode className={`${isLarge ? 'h-32 w-32' : 'h-24 w-24'} text-slate-700`} />
+          <QrCode className="h-24 w-24 text-slate-700" />
         )}
-        <span className={`mt-1 ${isLarge ? 'text-[10px]' : 'text-[9px]'} font-bold text-slate-500 uppercase tracking-tight`}>
+        <span className="mt-1 text-[9px] font-bold text-slate-500 uppercase tracking-tight">
           Aponte a câmera para validar
         </span>
       </div>
 
-      <div className={`w-full pt-1.5 border-t border-slate-100 text-center ${isLarge ? 'text-[9.5px]' : 'text-[8px]'} text-slate-400 truncate`}>
-        {validationUrl}
+      <div className="w-full pt-1.5 border-t border-slate-100 text-center text-[8px] text-slate-400">
+        Documento emitido por OneElo • lookuplabs.com.br
       </div>
     </div>
   );
@@ -417,24 +415,10 @@ export function CarteirinhaModal({
         </div>
 
         {/* Banner Informativo */}
-        <div className="bg-slate-950/50 px-4 py-2 border-b border-slate-800/60 text-center flex items-center justify-between sm:justify-center">
-          <p className="text-[11px] text-slate-300 flex items-center justify-center gap-1.5 flex-1">
-            <span className="hidden sm:inline">Deslize para o lado para ver frente, verso e QR Code</span>
-            <span className="sm:hidden">
-              {isMobileLandscape
-                ? 'Modo horizontal ativo • Apresente o celular deitado'
-                : 'Deslize para o lado para ver frente, verso e QR Code'}
-            </span>
+        <div className="bg-slate-950/50 px-4 py-2 border-b border-slate-800/60 text-center">
+          <p className="text-[11px] text-slate-300 flex items-center justify-center gap-1.5">
+            <span>Deslize para o lado para ver frente, verso e QR Code</span>
           </p>
-          <button
-            type="button"
-            onClick={() => setIsMobileLandscape((prev) => !prev)}
-            className="sm:hidden flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-[10px] text-slate-300 hover:text-white font-semibold transition-colors"
-            title="Alternar orientação"
-          >
-            <RotateCw className="h-3 w-3" />
-            <span>{isMobileLandscape ? 'Vertical' : 'Deitado'}</span>
-          </button>
         </div>
 
         {error && (
@@ -444,7 +428,7 @@ export function CarteirinhaModal({
         )}
 
         {/* Área Central da Carteirinha Digital com Carrossel estilo CNH Digital */}
-        <div className="my-auto px-2 sm:px-4 py-3 sm:py-6 flex flex-col items-center justify-center">
+        <div className="my-auto px-4 py-6 flex flex-col items-center justify-center">
           <div className="relative flex items-center justify-center w-full">
             {/* Seta Esquerda (Desktop) */}
             <button
@@ -459,13 +443,9 @@ export function CarteirinhaModal({
               <ChevronLeft className="h-5 w-5" />
             </button>
 
-            {/* Viewport do Slide: adaptável entre Desktop e Mobile Deitado */}
+            {/* Viewport do Slide com suporte a Swipe no Mobile e Arrastar no Desktop */}
             <div
-              className={`relative overflow-hidden ${
-                isMobileLandscape
-                  ? 'w-[290px] h-[460px] sm:w-[340px] sm:h-auto'
-                  : 'w-[340px]'
-              } py-1 select-none cursor-grab active:cursor-grabbing flex items-center justify-center`}
+              className="relative overflow-hidden w-[340px] py-1 select-none cursor-grab active:cursor-grabbing"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -475,67 +455,17 @@ export function CarteirinhaModal({
               onMouseLeave={handleMouseUp}
             >
               <div
-                className="flex transition-transform duration-300 ease-out h-full items-center"
+                className="flex transition-transform duration-300 ease-out"
                 style={{ transform: `translateX(-${currentSlide * 100}%)` }}
               >
-                {/* Slide 0: Frente */}
-                <div
-                  className={`${
-                    isMobileLandscape
-                      ? 'w-[290px] h-[460px] sm:w-[340px] sm:h-auto'
-                      : 'w-[340px]'
-                  } shrink-0 flex items-center justify-center`}
-                >
-                  <div
-                    className={isMobileLandscape ? 'rotate-90 sm:rotate-0 transition-transform' : ''}
-                  >
-                    <div className="hidden sm:block">
-                      {renderFrontCard(false)}
-                    </div>
-                    <div className="block sm:hidden">
-                      {renderFrontCard(isMobileLandscape)}
-                    </div>
-                  </div>
+                <div className="w-full shrink-0 flex justify-center">
+                  {renderFrontCard()}
                 </div>
-
-                {/* Slide 1: Verso */}
-                <div
-                  className={`${
-                    isMobileLandscape
-                      ? 'w-[290px] h-[460px] sm:w-[340px] sm:h-auto'
-                      : 'w-[340px]'
-                  } shrink-0 flex items-center justify-center`}
-                >
-                  <div
-                    className={isMobileLandscape ? 'rotate-90 sm:rotate-0 transition-transform' : ''}
-                  >
-                    <div className="hidden sm:block">
-                      {renderBackCard(false)}
-                    </div>
-                    <div className="block sm:hidden">
-                      {renderBackCard(isMobileLandscape)}
-                    </div>
-                  </div>
+                <div className="w-full shrink-0 flex justify-center">
+                  {renderBackCard()}
                 </div>
-
-                {/* Slide 2: QR Code */}
-                <div
-                  className={`${
-                    isMobileLandscape
-                      ? 'w-[290px] h-[460px] sm:w-[340px] sm:h-auto'
-                      : 'w-[340px]'
-                  } shrink-0 flex items-center justify-center`}
-                >
-                  <div
-                    className={isMobileLandscape ? 'rotate-90 sm:rotate-0 transition-transform' : ''}
-                  >
-                    <div className="hidden sm:block">
-                      {renderQrCard(false)}
-                    </div>
-                    <div className="block sm:hidden">
-                      {renderQrCard(isMobileLandscape)}
-                    </div>
-                  </div>
+                <div className="w-full shrink-0 flex justify-center">
+                  {renderQrCard()}
                 </div>
               </div>
             </div>
