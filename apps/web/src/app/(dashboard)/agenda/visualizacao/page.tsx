@@ -432,7 +432,7 @@ export default function AgendaVisualizacaoPage() {
                   </div>
 
                   {evento.status === 'AGENDADO' && (
-                    <div className="flex shrink-0 items-center gap-2 pt-2 md:pt-0">
+                    <div className="flex shrink-0 items-center justify-end self-end pt-2 md:self-auto md:pt-0">
                       <AddToCalendarButton
                         event={mapEventoToCalendarEvent(evento)}
                         variant="secondary"

@@ -29,13 +29,13 @@ export interface AddToCalendarButtonProps {
 
 const VARIANT_CLASSES: Record<NonNullable<AddToCalendarButtonProps['variant']>, string> = {
   primary:
-    'inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40',
+    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40',
   secondary:
-    'inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-xs font-bold text-indigo-700 shadow-2xs transition hover:bg-indigo-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
+    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-xs font-bold text-indigo-700 shadow-2xs transition hover:bg-indigo-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
   outline:
-    'inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 shadow-2xs transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
+    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 shadow-2xs transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
   compact:
-    'inline-flex items-center justify-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50/60 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
+    'inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 rounded-lg border border-indigo-100 bg-indigo-50/60 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
 };
 
 /**
@@ -184,7 +184,7 @@ export function AddToCalendarButton({
   };
 
   return (
-    <div ref={containerRef} className={`relative inline-flex items-center ${className}`.trim()}>
+    <div ref={containerRef} className={`relative inline-flex items-center shrink-0 ${className}`.trim()}>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -194,7 +194,7 @@ export function AddToCalendarButton({
         className={VARIANT_CLASSES[variant]}
       >
         <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
-        <span>{buttonLabel}</span>
+        <span className="whitespace-nowrap">{buttonLabel}</span>
         <ChevronDown
           className={`h-3 w-3 shrink-0 opacity-70 transition-transform duration-150 ${
             isOpen ? 'rotate-180' : ''

@@ -151,9 +151,9 @@ export default function MinhasEscalasPage() {
         </div>
 
         {((canConfirm && showActions) || calendarEvent) && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100/80">
             {canConfirm && showActions ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => updateConfirmacao(item.id, 'CONFIRMADO')}
                   disabled={updatingItemId === item.id}
@@ -169,15 +169,15 @@ export default function MinhasEscalasPage() {
                   Recusar
                 </button>
               </div>
-            ) : (
-              <div />
-            )}
+            ) : null}
 
             {calendarEvent && (
-              <AddToCalendarButton
-                event={calendarEvent}
-                variant="secondary"
-              />
+              <div className="ml-auto flex items-center justify-end shrink-0">
+                <AddToCalendarButton
+                  event={calendarEvent}
+                  variant="secondary"
+                />
+              </div>
             )}
           </div>
         )}
