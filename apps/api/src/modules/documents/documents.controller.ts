@@ -75,7 +75,22 @@ export class DocumentsController {
       throw new BadRequestException('Usuário sem tenant associado.');
     }
 
-    return this.jobsService.createJob(user.tenantId, user.sub, dto);
+    const job = await this.jobsService.createJob(user.tenantId, user.sub, dto);
+
+    // Se o job já estiver concluído (reaproveitado de cache sem alteração), anexa a URL assinada imediatamente
+    let downloadUrl: string | null = null;
+    if (job.status === 'COMPLETED' && job.storageKey) {
+      downloadUrl = await this.storageService.createSignedUrl(
+        this.documentsBucket,
+        job.storageKey,
+        3600,
+      );
+    }
+
+    return {
+      ...job,
+      downloadUrl,
+    };
   }
 
   @Get('jobs/:id')

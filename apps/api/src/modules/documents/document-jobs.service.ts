@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   FormatoDocumento,
@@ -16,6 +17,65 @@ import { FilterDocumentJobsDto } from './dto/filter-document-jobs.dto';
 export class DocumentJobsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async computeCarteirinhaVersionHash(
+    tenantId: string,
+    memberId: string,
+    formato: FormatoDocumento,
+  ): Promise<string | null> {
+    const member = await this.prisma.client.membro?.findFirst?.({
+      where: { id: memberId, tenantId, deletedAt: null },
+      select: {
+        id: true,
+        nome: true,
+        nomeExibicao: true,
+        cargo: true,
+        matricula: true,
+        fotoUrl: true,
+        cpf: true,
+        rg: true,
+        sexo: true,
+        estadoCivil: true,
+        dataNascimento: true,
+        dataBatismo: true,
+        updatedAt: true,
+        tenant: {
+          select: {
+            nome: true,
+            logoUrl: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    if (!member) {
+      return null;
+    }
+
+    const validadeAno = new Date().getFullYear() + 1;
+    const payload = [
+      member.id,
+      member.nome,
+      member.nomeExibicao ?? '',
+      member.cargo ?? '',
+      member.matricula ?? '',
+      member.fotoUrl ?? '',
+      member.cpf ?? '',
+      member.rg ?? '',
+      member.sexo ?? '',
+      member.estadoCivil ?? '',
+      member.dataNascimento?.toISOString() ?? '',
+      member.dataBatismo?.toISOString() ?? '',
+      member.updatedAt?.toISOString() ?? '',
+      member.tenant?.nome ?? '',
+      member.tenant?.logoUrl ?? '',
+      validadeAno,
+      formato,
+    ].join('::');
+
+    return createHash('sha256').update(payload).digest('hex');
+  }
+
   async createJob(
     tenantId: string,
     requestedByUserId: string | null,
@@ -25,12 +85,22 @@ export class DocumentJobsService {
       throw new BadRequestException('tenantId é obrigatório para criar um job.');
     }
 
-    // Se houver versionHash e já existir um job CONCLUÍDO com esse hash e tipo, reaproveita
-    if (dto.versionHash) {
+    let versionHash = dto.versionHash;
+
+    if (!versionHash && dto.tipoDocumento === TipoDocumento.CARTEIRINHA_INDIVIDUAL) {
+      const memberId = dto.parametros?.memberId;
+      if (memberId) {
+        versionHash = (await this.computeCarteirinhaVersionHash(tenantId, memberId, dto.formato)) ?? undefined;
+      }
+    }
+
+    // Se houver versionHash e já existir um job CONCLUÍDO com esse hash, formato e tipo, reaproveita
+    if (versionHash) {
       const existing = await this.findExistingCompletedJob(
         tenantId,
         dto.tipoDocumento,
-        dto.versionHash,
+        versionHash,
+        dto.formato,
       );
       if (existing) {
         return existing;
@@ -44,7 +114,7 @@ export class DocumentJobsService {
         tipoDocumento: dto.tipoDocumento,
         formato: dto.formato,
         parametros: dto.parametros ?? {},
-        versionHash: dto.versionHash ?? null,
+        versionHash: versionHash ?? dto.versionHash ?? null,
         status: StatusDocumentJob.PENDING,
       },
     });
@@ -54,15 +124,21 @@ export class DocumentJobsService {
     tenantId: string,
     tipoDocumento: TipoDocumento,
     versionHash: string,
+    formato?: FormatoDocumento,
   ) {
+    const where: any = {
+      tenantId,
+      tipoDocumento,
+      versionHash,
+      status: StatusDocumentJob.COMPLETED,
+      storageKey: { not: null },
+    };
+    if (formato) {
+      where.formato = formato;
+    }
+
     return this.prisma.client.documentJob.findFirst({
-      where: {
-        tenantId,
-        tipoDocumento,
-        versionHash,
-        status: StatusDocumentJob.COMPLETED,
-        storageKey: { not: null },
-      },
+      where,
       orderBy: { completedAt: 'desc' },
     });
   }
@@ -84,6 +160,26 @@ export class DocumentJobsService {
     return job;
   }
 
+  getDocumentLogicalKey(job: any): string {
+    const params = (job.parametros as Record<string, any>) || {};
+    if (job.tipoDocumento === TipoDocumento.CARTEIRINHA_INDIVIDUAL && params.memberId) {
+      return `carteirinha:${params.memberId}:${job.formato}`;
+    }
+    if (
+      (job.tipoDocumento === TipoDocumento.ESCALA_PDF || job.tipoDocumento === TipoDocumento.ESCALA_PNG) &&
+      (params.mesAno || params.escalaId)
+    ) {
+      return `escala:${params.mesAno || params.escalaId}:${job.formato}`;
+    }
+    if (
+      (job.tipoDocumento === TipoDocumento.AGENDA_PDF || job.tipoDocumento === TipoDocumento.AGENDA_PNG) &&
+      (params.mesAno || params.agendaId)
+    ) {
+      return `agenda:${params.mesAno || params.agendaId}:${job.formato}`;
+    }
+    return `job:${job.id}`;
+  }
+
   async listJobs(tenantId: string, query: FilterDocumentJobsDto) {
     const limit = Math.min(Math.max(parseInt(query.limit ?? '20', 10), 1), 100);
     const offset = Math.max(parseInt(query.offset ?? '0', 10), 0);
@@ -96,20 +192,138 @@ export class DocumentJobsService {
       where.tipoDocumento = query.tipoDocumento;
     }
 
-    const [items, total] = await Promise.all([
-      this.prisma.client.documentJob.findMany({
-        where,
-        take: limit,
-        skip: offset,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          requestedByUser: {
-            select: { id: true, nome: true, email: true },
-          },
+    const allJobs = await this.prisma.client.documentJob.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        requestedByUser: {
+          select: { id: true, nome: true, email: true },
         },
-      }),
-      this.prisma.client.documentJob.count({ where }),
+      },
+    });
+
+    // Mantém apenas o registro mais recente (último válido) por entidade de documento
+    const seenKeys = new Set<string>();
+    const deduplicated: typeof allJobs = [];
+
+    for (const job of allJobs) {
+      const key = this.getDocumentLogicalKey(job);
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        deduplicated.push(job);
+      }
+    }
+
+    const rawItems = deduplicated.slice(offset, offset + limit);
+    const total = deduplicated.length;
+
+    // Enriquece os itens com metadados detalhados de membro, ministério e período
+    const memberIds = Array.from(
+      new Set(
+        rawItems
+          .filter((j) => j.tipoDocumento === TipoDocumento.CARTEIRINHA_INDIVIDUAL)
+          .map((j) => (j.parametros as any)?.memberId)
+          .filter(Boolean),
+      ),
+    );
+
+    const ministerioIds = Array.from(
+      new Set(
+        rawItems
+          .map((j) => (j.parametros as any)?.ministerioId)
+          .filter(Boolean),
+      ),
+    );
+
+    const [membros, ministerios] = await Promise.all([
+      memberIds.length > 0 && this.prisma.client.membro
+        ? this.prisma.client.membro.findMany({
+            where: { id: { in: memberIds }, tenantId },
+            select: {
+              id: true,
+              nome: true,
+              nomeExibicao: true,
+              cargo: true,
+              matricula: true,
+              fotoUrl: true,
+            },
+          })
+        : [],
+      ministerioIds.length > 0 && this.prisma.client.ministerio
+        ? this.prisma.client.ministerio.findMany({
+            where: { id: { in: ministerioIds }, tenantId },
+            select: { id: true, nome: true },
+          })
+        : [],
     ]);
+
+    const memberMap = new Map(((membros as any[]) || []).map((m) => [m.id, m]));
+    const ministerioMap = new Map(((ministerios as any[]) || []).map((m) => [m.id, m]));
+
+    const MESES_PT = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    const items = rawItems.map((job) => {
+      const params = (job.parametros as Record<string, any>) || {};
+      let detalhes: any = null;
+
+      if (job.tipoDocumento === TipoDocumento.CARTEIRINHA_INDIVIDUAL) {
+        const member = memberMap.get(params.memberId);
+        const nomeMembro = member?.nomeExibicao || member?.nome || 'Membro';
+        const role = member?.cargo || 'Membro';
+        const mat = member?.matricula || (member?.id ? `ROL-${member.id.slice(0, 6).toUpperCase()}` : '');
+        detalhes = {
+          titulo: nomeMembro,
+          subtitulo: mat ? `${role} • ${mat}` : role,
+          fotoUrl: member?.fotoUrl || null,
+          cargo: role,
+          matricula: mat,
+          membroId: member?.id || params.memberId,
+        };
+      } else if (job.tipoDocumento === TipoDocumento.ESCALA_PDF || job.tipoDocumento === TipoDocumento.ESCALA_PNG) {
+        const ministerio = params.ministerioId ? ministerioMap.get(params.ministerioId) : null;
+        const ministerioNome = ministerio?.nome || (params.ministerioId ? 'Ministério' : 'Todos os Ministérios');
+        const m = Number(params.mes);
+        const a = Number(params.ano);
+        const periodo = m >= 1 && m <= 12 && a ? `${MESES_PT[m]} de ${a}` : 'Escala Mensal';
+        detalhes = {
+          titulo: `Escala de ${periodo}`,
+          subtitulo: ministerioNome,
+          ministerioNome,
+          periodo,
+          mes: params.mes,
+          ano: params.ano,
+        };
+      } else if (job.tipoDocumento === TipoDocumento.AGENDA_PDF || job.tipoDocumento === TipoDocumento.AGENDA_PNG) {
+        const ministerio = params.ministerioId ? ministerioMap.get(params.ministerioId) : null;
+        const ministerioNome = ministerio?.nome || 'Agenda Geral';
+        let periodo = 'Agenda de Eventos';
+        if (params.dataInicio && params.dataFim) {
+          const formatBr = (dStr: string) => {
+            const parts = dStr.split('-');
+            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dStr;
+          };
+          periodo = `${formatBr(params.dataInicio)} a ${formatBr(params.dataFim)}`;
+        }
+        detalhes = {
+          titulo: `Agenda: ${periodo}`,
+          subtitulo: ministerioNome,
+          ministerioNome,
+          periodo,
+          dataInicio: params.dataInicio,
+          dataFim: params.dataFim,
+        };
+      } else if (job.tipoDocumento === TipoDocumento.CARTEIRINHAS_LOTE) {
+        detalhes = {
+          titulo: 'Carteirinhas em Lote (Folha A4)',
+          subtitulo: 'Todos os membros ativos da igreja',
+        };
+      }
+
+      return {
+        ...job,
+        detalhes,
+      };
+    });
 
     return {
       items,

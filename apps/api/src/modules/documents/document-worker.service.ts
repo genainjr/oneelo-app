@@ -149,27 +149,37 @@ export class DocumentWorkerService implements OnModuleInit, OnModuleDestroy {
             select: { id: true, storageKey: true, parametros: true },
           });
 
+          const obsoleteJobIds: string[] = [];
           for (const prev of previousJobs) {
             const prevMemberId = (prev.parametros as any)?.memberId;
-            if (prevMemberId === memberId && prev.storageKey) {
-              await this.storageService
-                .deleteObject(this.documentsBucket, prev.storageKey)
-                .catch(() => undefined);
+            if (prevMemberId === memberId) {
+              obsoleteJobIds.push(prev.id);
+              if (prev.storageKey) {
+                await this.storageService
+                  .deleteObject(this.documentsBucket, prev.storageKey)
+                  .catch(() => undefined);
+              }
             }
+          }
+
+          if (obsoleteJobIds.length > 0) {
+            await this.prisma.client.documentJob.deleteMany({
+              where: { id: { in: obsoleteJobIds } },
+            });
           }
         } catch {
           // Não impede a gravação do novo arquivo se a limpeza falhar
         }
 
-        storagePath = `tenants/${job.tenantId}/documents/carteirinhas/members/${memberId}/carteirinha-${Date.now()}.${extension}`;
+        storagePath = `tenants/${job.tenantId}/documents/member-cards/members/${memberId}/card-${Date.now()}.${extension}`;
       } else if (job.tipoDocumento === 'CARTEIRINHAS_LOTE') {
-        storagePath = `tenants/${job.tenantId}/documents/carteirinhas/lotes/lote-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
+        storagePath = `tenants/${job.tenantId}/documents/member-cards/batches/batch-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
       } else if (job.tipoDocumento === 'ESCALA_PDF' || job.tipoDocumento === 'ESCALA_PNG') {
-        storagePath = `tenants/${job.tenantId}/documents/escalas/escala-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
+        storagePath = `tenants/${job.tenantId}/documents/schedules/schedule-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
       } else if (job.tipoDocumento === 'AGENDA_PDF' || job.tipoDocumento === 'AGENDA_PNG') {
-        storagePath = `tenants/${job.tenantId}/documents/agenda/agenda-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
+        storagePath = `tenants/${job.tenantId}/documents/events/event-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
       } else {
-        storagePath = `tenants/${job.tenantId}/documents/${job.tipoDocumento.toLowerCase()}/${job.id}.${extension}`;
+        storagePath = `tenants/${job.tenantId}/documents/reports/report-${job.id.slice(0, 8)}-${Date.now()}.${extension}`;
       }
 
       await this.storageService.uploadPublicObject(

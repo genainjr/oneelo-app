@@ -238,23 +238,20 @@ export default function CentralDocumentosPage() {
     }
   }
 
+  // Auto-atualização ao recuperar foco na aba
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchJobs(true);
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchJobs]);
+
   return (
     <div className="space-y-6 p-6">
       <PageHeader
         title="Central de Documentos"
         description="Acompanhe, baixe e reemita exportações de escalas, agenda e carteirinhas de membros."
-        action={
-          <button
-            type="button"
-            onClick={() => fetchJobs()}
-            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-2xs transition-all hover:bg-gray-50"
-          >
-            <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Atualizar
-          </button>
-        }
       />
 
       {error && (
@@ -354,14 +351,34 @@ export default function CentralDocumentosPage() {
                     <tr key={job.id} className="transition-colors hover:bg-gray-50/60">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${config.color}`}>
-                            <Icon className="h-4.5 w-4.5" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">{config.label}</p>
-                            <p className="text-xs text-gray-400 font-mono truncate max-w-xs">
-                              {job.storageKey ? job.storageKey.split('/').pop() : `ID: ${job.id.slice(0, 8)}`}
+                          {job.detalhes?.fotoUrl ? (
+                            <img
+                              src={job.detalhes.fotoUrl}
+                              alt={job.detalhes.titulo}
+                              className="h-9 w-9 shrink-0 rounded-full object-cover border border-slate-200"
+                            />
+                          ) : (
+                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${config.color}`}>
+                              <Icon className="h-4.5 w-4.5" />
+                            </div>
+                          )}
+                          <div className="min-w-0 max-w-md">
+                            <p className="font-semibold text-gray-900 truncate">
+                              {job.detalhes?.titulo || config.label}
                             </p>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                              <span className="font-medium text-indigo-600 truncate">
+                                {config.label}
+                              </span>
+                              {job.detalhes?.subtitulo && (
+                                <>
+                                  <span className="text-gray-300">•</span>
+                                  <span className="truncate text-gray-600 font-medium">
+                                    {job.detalhes.subtitulo}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>

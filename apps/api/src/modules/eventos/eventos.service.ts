@@ -20,6 +20,7 @@ import {
   StatusEvento,
   StatusMembro,
   UserStatus,
+  StatusDocumentJob,
   TipoDocumento,
   FormatoDocumento,
 } from '@prisma/client';
@@ -1022,18 +1023,12 @@ export class EventosService {
 
     const cleanEtag = (document.etag || '').replace(/"/g, '');
     const ext = query.formato === 'png' ? 'png' : 'pdf';
-    const storagePath = `${tenantId}/agenda/${cleanEtag || Date.now()}.${ext}`;
-
-    await this.storageService.uploadPublicObject(
-      'tenant-documents',
-      storagePath,
-      document.buffer,
-      document.mimeType,
-    );
+    const tipoDocumento = query.formato === 'png' ? TipoDocumento.AGENDA_PNG : TipoDocumento.AGENDA_PDF;
+    const formato = query.formato === 'png' ? FormatoDocumento.PNG : FormatoDocumento.PDF;
 
     const job = await this.documentJobsService.createJob(tenantId, userId, {
-      tipoDocumento: query.formato === 'png' ? TipoDocumento.AGENDA_PNG : TipoDocumento.AGENDA_PDF,
-      formato: query.formato === 'png' ? FormatoDocumento.PNG : FormatoDocumento.PDF,
+      tipoDocumento,
+      formato,
       versionHash: cleanEtag || undefined,
       parametros: {
         dataInicio: query.dataInicio,
@@ -1042,6 +1037,57 @@ export class EventosService {
         pagina: query.pagina,
       },
     });
+
+    // Se já estiver COMPLETED (em cache sem alterações), não re-envia arquivo para o storage
+    if (job.status === StatusDocumentJob.COMPLETED && job.storageKey) {
+      return;
+    }
+
+    const storagePath = `tenants/${tenantId}/documents/events/event-${cleanEtag || Date.now()}.${ext}`;
+
+    // Limpa versões anteriores dessa mesma agenda para não acumular arquivos órfãos
+    try {
+      const previousJobs = await this.prisma.client.documentJob.findMany({
+        where: {
+          tenantId,
+          tipoDocumento,
+          formato,
+          id: { not: job.id },
+          storageKey: { not: null },
+        },
+        select: { id: true, storageKey: true, parametros: true },
+      });
+
+      const obsoleteIds: string[] = [];
+      for (const prev of previousJobs) {
+        const p = (prev.parametros as any) || {};
+        if (
+          p.dataInicio === query.dataInicio &&
+          p.dataFim === query.dataFim &&
+          p.ministerioId === query.ministerioId
+        ) {
+          obsoleteIds.push(prev.id);
+          if (prev.storageKey) {
+            await this.storageService.deleteObject('tenant-documents', prev.storageKey).catch(() => undefined);
+          }
+        }
+      }
+
+      if (obsoleteIds.length > 0) {
+        await this.prisma.client.documentJob.deleteMany({
+          where: { id: { in: obsoleteIds } },
+        });
+      }
+    } catch {
+      // Ignora erro de limpeza para não travar exportação
+    }
+
+    await this.storageService.uploadPublicObject(
+      'tenant-documents',
+      storagePath,
+      document.buffer,
+      document.mimeType,
+    );
 
     await this.documentJobsService.completeJob(job.id, {
       storageKey: storagePath,

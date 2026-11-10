@@ -138,6 +138,21 @@ export type TipoDocumento =
 export type FormatoDocumento = 'PDF' | 'PNG';
 export type StatusDocumentJob = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
+export interface DocumentJobDetalhes {
+  titulo: string;
+  subtitulo?: string;
+  fotoUrl?: string | null;
+  cargo?: string | null;
+  matricula?: string | null;
+  membroId?: string | null;
+  ministerioNome?: string | null;
+  periodo?: string | null;
+  mes?: number | string | null;
+  ano?: number | string | null;
+  dataInicio?: string | null;
+  dataFim?: string | null;
+}
+
 export interface DocumentJob {
   id: string;
   tenantId: string;
@@ -156,6 +171,7 @@ export interface DocumentJob {
   updatedAt: string;
   completedAt?: string | null;
   downloadUrl?: string | null;
+  detalhes?: DocumentJobDetalhes | null;
   requestedByUser?: {
     id: string;
     nome: string;

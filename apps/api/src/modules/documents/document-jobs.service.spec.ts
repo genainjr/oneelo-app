@@ -85,6 +85,44 @@ describe('DocumentJobsService', () => {
       expect(result).toEqual(cachedMock);
       expect(prismaMock.client.documentJob.create).not.toHaveBeenCalled();
     });
+
+    it('deve calcular versionHash automaticamente para carteirinha individual e reaproveitar job existente se membro não teve alteração', async () => {
+      const memberMock = {
+        id: 'member-123',
+        nome: 'Carlos Eduardo',
+        cargo: 'Diácono',
+        updatedAt: new Date('2026-11-01T10:00:00Z'),
+        tenant: {
+          nome: 'Igreja Central',
+          logoUrl: 'https://logo.png',
+          updatedAt: new Date('2026-10-01T10:00:00Z'),
+        },
+      };
+
+      prismaMock.client.membro = {
+        findFirst: jest.fn().mockResolvedValue(memberMock),
+      };
+
+      const cachedCarteirinha = {
+        id: 'cached-carteirinha',
+        tenantId,
+        tipoDocumento: TipoDocumento.CARTEIRINHA_INDIVIDUAL,
+        formato: FormatoDocumento.PDF,
+        status: StatusDocumentJob.COMPLETED,
+        storageKey: 'tenants/tenant-1/documents/carteirinhas/members/member-123/carteirinha.pdf',
+      };
+
+      prismaMock.client.documentJob.findFirst.mockResolvedValue(cachedCarteirinha);
+
+      const result = await service.createJob(tenantId, userId, {
+        tipoDocumento: TipoDocumento.CARTEIRINHA_INDIVIDUAL,
+        formato: FormatoDocumento.PDF,
+        parametros: { memberId: 'member-123' },
+      });
+
+      expect(result).toEqual(cachedCarteirinha);
+      expect(prismaMock.client.documentJob.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('claimNextPendingJob', () => {
@@ -167,6 +205,44 @@ describe('DocumentJobsService', () => {
 
       const result = await service.getJobById(tenantId, 'job-1');
       expect(result).toEqual(jobMock);
+    });
+  });
+
+  describe('listJobs e retenção do último documento válido', () => {
+    it('deve desduplicar e retornar apenas a última versão de cada carteirinha por membro e formato', async () => {
+      const allJobsMock = [
+        {
+          id: 'job-latest-pdf',
+          tenantId,
+          tipoDocumento: TipoDocumento.CARTEIRINHA_INDIVIDUAL,
+          formato: FormatoDocumento.PDF,
+          parametros: { memberId: 'member-1' },
+          createdAt: new Date('2026-11-10T02:00:00Z'),
+        },
+        {
+          id: 'job-old-pdf',
+          tenantId,
+          tipoDocumento: TipoDocumento.CARTEIRINHA_INDIVIDUAL,
+          formato: FormatoDocumento.PDF,
+          parametros: { memberId: 'member-1' },
+          createdAt: new Date('2026-11-10T01:00:00Z'),
+        },
+        {
+          id: 'job-png',
+          tenantId,
+          tipoDocumento: TipoDocumento.CARTEIRINHA_INDIVIDUAL,
+          formato: FormatoDocumento.PNG,
+          parametros: { memberId: 'member-1' },
+          createdAt: new Date('2026-11-10T01:30:00Z'),
+        },
+      ];
+
+      prismaMock.client.documentJob.findMany.mockResolvedValue(allJobsMock);
+
+      const result = await service.listJobs(tenantId, {});
+      expect(result.items).toHaveLength(2);
+      expect(result.items.map((i: any) => i.id)).toEqual(['job-latest-pdf', 'job-png']);
+      expect(result.total).toBe(2);
     });
   });
 });
