@@ -818,6 +818,108 @@ export class EventosService {
     return { message: 'Evento removido com sucesso.' };
   }
 
+  async notificarAgendaEvento(tenantId: string, id: string, user: JwtPayload) {
+    if (!(await this.canManageEvent(tenantId, id, user))) {
+      throw new ForbiddenException('Acesso negado para divulgar este evento.');
+    }
+
+    const evento = await this.getEventoPorId(tenantId, id, user);
+
+    if (evento.status !== StatusEvento.AGENDADO) {
+      throw new BadRequestException(
+        'Apenas eventos agendados podem ser divulgados para a agenda.',
+      );
+    }
+
+    if (!this.notificationDispatch) {
+      throw new ServiceUnavailableException(
+        'Serviço de notificações indisponível no momento.',
+      );
+    }
+
+    const dataInicioDate = new Date(evento.dataInicio);
+    const dataFormatada = new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo',
+    }).format(dataInicioDate);
+    const horarioFormatado = new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    }).format(dataInicioDate);
+
+    const localSuffix = evento.local ? ` Local: ${evento.local}.` : '';
+    const titulo = `📅 Adicione à agenda: ${evento.titulo}`;
+    const mensagem = `O evento "${evento.titulo}" acontecerá em ${dataFormatada} às ${horarioFormatado}.${localSuffix} Toque para adicionar à sua agenda!`;
+    const urlDestino = `/agenda/visualizacao?addCalendarEvento=${evento.id}`;
+
+    let targetUserIds: string[] | undefined;
+    const isGeral = evento.tipo === EventoTipo.GERAL;
+
+    if (!isGeral) {
+      const ministerioIds = (evento.ministerios ?? []).map((m) => m.ministerioId);
+      if (ministerioIds.length > 0) {
+        const members = await this.prisma.ministerioMembro.findMany({
+          where: {
+            ministerioId: { in: ministerioIds },
+            membro: {
+              deletedAt: null,
+              status: StatusMembro.ATIVO,
+              user: {
+                tenantId,
+                ativo: true,
+                status: UserStatus.ACTIVE,
+              },
+            },
+          },
+          select: {
+            membro: {
+              select: {
+                user: {
+                  select: { id: true },
+                },
+              },
+            },
+          },
+        });
+        targetUserIds = Array.from(
+          new Set(
+            members
+              .map((m) => m.membro?.user?.id)
+              .filter((uid): uid is string => Boolean(uid)),
+          ),
+        );
+      }
+    }
+
+    const cooldownBucket = Math.floor(Date.now() / (15 * 60 * 1000));
+    const idempotencyKey = `tenant:${tenantId}:evento:${evento.id}:notificar-agenda:${cooldownBucket}`;
+
+    const notification = await this.notificationDispatch.createNotification({
+      tenantId,
+      titulo,
+      mensagem,
+      urlDestino,
+      origem: isGeral
+        ? NotificationOrigin.COMMUNICATION_GENERAL
+        : NotificationOrigin.COMMUNICATION_MINISTRY,
+      tipoPublico: isGeral
+        ? NotificationAudienceType.ALL_MEMBERS
+        : NotificationAudienceType.MINISTRY,
+      ministerioId: evento.ministerios?.[0]?.ministerioId ?? null,
+      criadoPorId: user.sub,
+      idempotencyKey,
+      userIds: targetUserIds,
+    });
+
+    return {
+      message: 'Convite para adicionar o evento à agenda enviado com sucesso.',
+      notificationId: notification?.id ?? null,
+    };
+  }
+
   async exportar(
     tenantId: string,
     query: ExportEventoDto,
@@ -992,7 +1094,7 @@ export class EventosService {
       tenantId: evento.tenantId,
       titulo: title,
       mensagem: message,
-      urlDestino: '/agenda/visualizacao',
+      urlDestino: `/agenda/visualizacao?addCalendarEvento=${evento.id}`,
       origem: NotificationOrigin.SYSTEM_AUTOMATION,
       tipoPublico:
         evento.tipo === EventoTipo.GERAL

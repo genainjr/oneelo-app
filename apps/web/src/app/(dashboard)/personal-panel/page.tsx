@@ -6,8 +6,10 @@ import { useTranslations } from 'next-intl';
 import { addMonths, format, startOfMonth, endOfMonth } from 'date-fns';
 import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
+import { AddToCalendarButton } from '@/components/app/add-to-calendar-button';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
+import { mapEscalaToCalendarEvent, mapEventoToCalendarEvent } from '@/lib/calendar-url-builder';
 import { compareCivilDates, formatDate, formatDateWithWeekday, getCivilDateKey, isCivilDateOnOrAfter } from '@/lib/utils';
 import { useEventos } from '@/hooks/use-eventos';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
@@ -348,6 +350,9 @@ export default function PersonalPanelPage() {
       ? t('subtitle', { date: today })
       : t('noMinistry.subtitle', { date: today });
 
+  const canSaveNextSchedule = nextSchedule && nextSchedule.statusConfirmacao !== 'RECUSADO';
+  const canSaveNextEvent = nextEvent && nextEvent.status === 'AGENDADO';
+
   return (
     <div className="max-w-5xl mx-auto">
       <PageHeader
@@ -381,7 +386,7 @@ export default function PersonalPanelPage() {
         </div>
       )}
 
-      <div className={`grid grid-cols-1 gap-4 mb-8 ${hasLeadership ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+      <div className={`grid grid-cols-1 gap-4 mb-6 ${hasLeadership ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
         {cards.map((card) => (
           <StatCard
             key={card.key}
@@ -395,6 +400,44 @@ export default function PersonalPanelPage() {
           />
         ))}
       </div>
+
+      {!loading && (canSaveNextSchedule || canSaveNextEvent) && (
+        <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {canSaveNextSchedule && nextSchedule && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                  Próxima Escala ({formatDateWithWeekday(nextSchedule.data, 'dd/MM')})
+                </p>
+                <p className="truncate text-sm font-medium text-gray-800">
+                  {nextSchedule.escala.ministerio?.nome ?? 'Ministério'} · {nextSchedule.funcao?.nome ?? 'Função'}
+                </p>
+              </div>
+              <AddToCalendarButton
+                event={mapEscalaToCalendarEvent(nextSchedule)}
+                variant="secondary"
+              />
+            </div>
+          )}
+
+          {canSaveNextEvent && nextEvent && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  Próximo Evento ({formatDateWithWeekday(nextEvent.dataInicio, 'dd/MM')})
+                </p>
+                <p className="truncate text-sm font-medium text-gray-800">
+                  {nextEvent.titulo}
+                </p>
+              </div>
+              <AddToCalendarButton
+                event={mapEventoToCalendarEvent(nextEvent)}
+                variant="secondary"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-800 mb-4">{t('quickAccess')}</h3>

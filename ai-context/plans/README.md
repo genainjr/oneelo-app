@@ -10,13 +10,14 @@ Ao adicionar um novo documento, inclua-o no início deste índice com a data, o 
 
 Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estritamente o modelo oficial em [PLAN_TEMPLATE.md](PLAN_TEMPLATE.md)**.
 - É obrigatório conter a seção `## Etapas de Desenvolvimento` dividida em subseções numeradas (`### Etapa 0 - ...`, `### Etapa 1 - ...`).
-- Cada etapa deve conter seu checklist (`- [ ]`) com itens verificáveis e o critério de validação.
+- Cada etapa deve conter seu checklist (`- [ ]`) com itens verificáveis, sub-itens também com `- [ ]` (proibido usar bullets simples `- ` sem caixa de marcação), desmembramento granular por arquivo/módulo (proibido condensar múltiplos arquivos num único checkbox) e o `- [ ] Critério de validação da etapa: ...`. Os `Critérios de Aceite Gerais` ao final do plano também devem usar `- [ ]`.
 - Não é permitido substituir a estrutura de etapas por agrupamentos genéricos que impeçam o workflow de parada para autorização do usuário entre etapas.
 
 ## Novembro de 2026
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 09/11/2026 | [otimizacao-navegacao-transicao-telas-plan.md](otimizacao-navegacao-transicao-telas-plan.md) | Otimização de navegação e transição instantânea de telas no Dashboard |
 | 06/11/2026 | [otimizacao-performance-memoria-render-plan.md](otimizacao-performance-memoria-render-plan.md) | Otimização de performance, memória, crons, fila de push e sessão (Render Free & Frontend) |
 | 05/11/2026 | [adicionar-escalas-google-agenda-plan.md](adicionar-escalas-google-agenda-plan.md) | Adicionar Escalas e Eventos da Igreja ao Google Agenda, Calendários e Notificações (FT-002) |
 

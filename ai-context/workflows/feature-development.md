@@ -30,7 +30,7 @@ Antes de implementar uma feature relevante:
 
 1. Verificar se existe plano em `ai-context/plans`.
 2. Se não existir, criar um plano seguindo estritamente o template oficial em `ai-context/plans/PLAN_TEMPLATE.md`.
-3. É **obrigatório** estruturar a seção `## Etapas de Desenvolvimento` em subseções numeradas sequencialmente (`### Etapa 0 - ...`, `### Etapa 1 - ...`), cada uma com status, checklist (`- [ ]`) com etapas pequenas e verificáveis e critério de validação. É proibido usar agrupamentos genéricos que não permitam a parada para autorização.
+3. É **obrigatório** estruturar a seção `## Etapas de Desenvolvimento` em subseções numeradas sequencialmente (`### Etapa 0 - ...`, `### Etapa 1 - ...`), cada uma com status, checklist (`- [ ]`) em todos os itens, sub-itens (`  - [ ]`) e `- [ ] Critério de validação da etapa:`. É proibido usar bullets simples (`- `) sem checkbox dentro das etapas ou condensar múltiplos arquivos/telas em um único checkbox genérico. Os `Critérios de Aceite Gerais` também devem usar `- [ ]`.
 4. Manter checklist com etapas pequenas e verificaveis.
 5. Atualizar o checklist durante o desenvolvimento, nao apenas no final.
 

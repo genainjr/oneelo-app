@@ -35,14 +35,18 @@ Features planejadas para homologaÃ§Ã£o e fases seguintes. As pÃ³s-MVP tÃªm tela 
 
 ---
 
-### FT-002 IntegraÃ§Ã£o com Google Agenda
+### FT-002 Adicionar Escalas ao Google Agenda (Link Direto e Lote)
 - **Prioridade**: alta
-- **Fase**: 1
-- **Categoria**: UX
-- **Contexto**: Membros precisam entrar no portal para saber quando estÃ£o escalados. O ideal Ã© que o evento apareÃ§a diretamente no celular deles.
-- **AÃ§Ã£o**: Implementar OAuth2 com Google Calendar API. Cada membro conecta sua conta Google no perfil. Ao ser escalado/removido/alterado, o sistema cria/atualiza/remove o evento no calendÃ¡rio do membro.
-- **Impacto**: Membro nunca esquece o compromisso; reduz "nÃ£o sabia que estava escalado".
-- **Depende de**: Tabela `member_integrations` no Prisma para guardar tokens OAuth2 por membro.
+- **Fase**: 1 (Pós-MVP)
+- **Categoria**: UX / Produtividade
+- **Contexto**: Membros precisam entrar no portal para saber quando estão escalados. Integrar via OAuth bidirecional traria fricção desnecessária (senhas, escopos restritos do Google e verificação de aplicativo). Uma abordagem ágil e sem atrito via Link Direto Template e Lote permite ao membro colocar seus compromissos no Google Agenda com 1 clique.
+- **Ação**:
+  1. **Inclusão Unitária (1 Clique)**: Botão "Adicionar ao Google Agenda" em cada compromisso individual no portal (/minhas-escalas e /personal-panel), gerando URL template direta (calendar.google.com/calendar/render?action=TEMPLATE...) com título, data/hora, ministério, função e local preenchidos.
+  2. **Inclusão em Lote**: Botão "Adicionar todas as minhas escalas do mês" no topo do painel do membro. No ecossistema web, abrir múltiplas abas de uma vez é bloqueado pelos navegadores como pop-up; para lote, a solução recomendada é disponibilizar um arquivo agregador que o app de calendário importa de uma vez só com todos os cultos do mês, ou um assistente de confirmação em sequência.
+  3. **Processo de Remoção**: Manual no próprio aplicativo do Google Agenda do membro. Por ser uma adição via link direto sem invasão de permissões na conta pessoal do usuário, caso a escala seja alterada ou o membro seja removido, o OneElo dispara a notificação de cancelamento/alteração e o membro remove o compromisso manualmente da sua agenda em 1 toque.
+  4. **Atalho nas Notificações**: Nas notificações push e no Inbox In-App (/notifications), os alertas de escala publicada ou escala do dia devem conter o link/ação direta "Adicionar à Agenda".
+- **Impacto**: Membro nunca esquece o compromisso em cultos e eventos; reduz ausências; implementação limpa, segura e sem dependência de credenciais OAuth permanentes.
+- **Depende de**: Helper utilitário de formatação de links de calendário (calendar-url-builder).
 
 ---
 
@@ -98,4 +102,7 @@ Features planejadas para homologaÃ§Ã£o e fases seguintes. As pÃ³s-MVP tÃªm tela 
 - **AÃ§Ã£o**: Chat em `/ministerios/midia` onde o usuÃ¡rio descreve o que precisa. Claude API gera um prompt otimizado. OpÃ§Ã£o A: integraÃ§Ã£o com DALL-E 3 ou Stability AI para gerar diretamente. OpÃ§Ã£o B: copia o prompt para usar no Canva IA / Midjourney. HistÃ³rico de imagens geradas salvo em S3 ou Cloudflare R2.
 - **Impacto**: Reduz tempo de criaÃ§Ã£o de arte. Equipe sem habilidade tÃ©cnica consegue gerar imagens de qualidade.
 - **Depende de**: Claude API key, DALL-E API ou Stability AI, bucket S3/R2 para storage. Controle de cota por tenant para gerenciar custo de geraÃ§Ã£o.
+
+
+
 

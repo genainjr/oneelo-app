@@ -13,6 +13,7 @@ import {
   Smartphone,
   ExternalLink,
   RotateCcw,
+  CalendarPlus,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import {
@@ -337,50 +338,65 @@ export function NotificationBellInbox() {
                 </p>
               </div>
             ) : (
-              items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleItemClick(item)}
-                  className={`w-full text-left p-3.5 flex items-start gap-3 transition-colors hover:bg-gray-50/80 ${
-                    !item.isRead ? 'bg-indigo-50/40' : 'bg-white'
-                  }`}
-                >
-                  <div className="p-2 rounded-xl bg-gray-100/80 shrink-0 mt-0.5">
-                    {ORIGIN_ICONS[item.origem] || <Bell className="w-4 h-4 text-gray-500" />}
-                  </div>
+              items.map((item) => {
+                const isCalendarAction =
+                  Boolean(item.urlDestino) &&
+                  (item.urlDestino!.includes('addCalendar=') || item.urlDestino!.includes('addCalendarEvento='));
 
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-start justify-between gap-1">
-                      <p
-                        className={`text-xs leading-tight line-clamp-1 ${
-                          !item.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-700'
-                        }`}
-                      >
-                        {item.titulo}
-                      </p>
-                      <span className="text-[10px] text-gray-400 shrink-0">
-                        {formatTimeAgo(item.createdAt)}
-                      </span>
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleItemClick(item)}
+                    className={`w-full text-left p-3.5 flex items-start gap-3 transition-colors hover:bg-gray-50/80 ${
+                      !item.isRead ? 'bg-indigo-50/40' : 'bg-white'
+                    }`}
+                  >
+                    <div className="p-2 rounded-xl bg-gray-100/80 shrink-0 mt-0.5">
+                      {ORIGIN_ICONS[item.origem] || <Bell className="w-4 h-4 text-gray-500" />}
                     </div>
 
-                    <p className="text-xs text-gray-500 line-clamp-2 leading-snug">
-                      {item.mensagem}
-                    </p>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-start justify-between gap-1">
+                        <p
+                          className={`text-xs leading-tight line-clamp-1 ${
+                            !item.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-700'
+                          }`}
+                        >
+                          {item.titulo}
+                        </p>
+                        <span className="text-[10px] text-gray-400 shrink-0">
+                          {formatTimeAgo(item.createdAt)}
+                        </span>
+                      </div>
 
-                    {item.urlDestino && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600">
-                        <span>Ver detalhes</span>
-                        <ExternalLink className="w-2.5 h-2.5" />
-                      </span>
+                      <p className="text-xs text-gray-500 line-clamp-2 leading-snug">
+                        {item.mensagem}
+                      </p>
+
+                      {item.urlDestino && (
+                        <div className="pt-0.5">
+                          {isCalendarAction ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
+                              <CalendarPlus className="w-3 h-3" />
+                              <span>Adicionar à Agenda</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600">
+                              <span>Ver detalhes</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {!item.isRead && (
+                      <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1.5" />
                     )}
-                  </div>
-
-                  {!item.isRead && (
-                    <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-1.5" />
-                  )}
-                </button>
-              ))
+                  </button>
+                );
+              })
             )}
           </div>
 

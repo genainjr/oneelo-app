@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { endOfWeek, startOfWeek } from 'date-fns';
-import { AlertTriangle, Check, X } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, Check, X } from 'lucide-react';
 import { EventoInput, useEventos } from '@/hooks/use-eventos';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
@@ -137,7 +137,9 @@ export default function AgendaPage() {
   const [modalError, setModalError] = useState<string | null>(null);
   const [pendingDeleteEvento, setPendingDeleteEvento] = useState<Evento | null>(null);
   const [pendingStatusEvento, setPendingStatusEvento] = useState<Evento | null>(null);
+  const [pendingNotifyEvento, setPendingNotifyEvento] = useState<Evento | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [notifyLoading, setNotifyLoading] = useState(false);
 
   const basicHasLeadership =
     currentUser?.role === 'BASIC' &&
@@ -325,6 +327,27 @@ export default function AgendaPage() {
       });
     } finally {
       setConfirmLoading(false);
+    }
+  }
+
+  async function handleNotifyAgenda() {
+    if (!pendingNotifyEvento) return;
+    setNotifyLoading(true);
+    setFeedback(null);
+    try {
+      await api.post(`/api/eventos/${pendingNotifyEvento.id}/notificar-agenda`, {});
+      setFeedback({
+        type: 'success',
+        message: 'Convite para salvar o evento na agenda enviado com sucesso!',
+      });
+      setPendingNotifyEvento(null);
+    } catch (error: unknown) {
+      setFeedback({
+        type: 'error',
+        message: getErrorMessage(error, 'Falha ao notificar membros sobre o evento.'),
+      });
+    } finally {
+      setNotifyLoading(false);
     }
   }
 
@@ -581,6 +604,17 @@ export default function AgendaPage() {
                 {canManage && (
                   <div className="flex w-full justify-end sm:w-auto md:self-start">
                     <div className="flex items-center justify-end gap-2">
+                      {ev.status === 'AGENDADO' && (
+                        <button
+                          type="button"
+                          onClick={() => setPendingNotifyEvento(ev)}
+                          className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-indigo-600 transition-all hover:border-indigo-300 hover:bg-indigo-50"
+                          title="Divulgar e convidar membros para adicionar à agenda"
+                          aria-label="Divulgar e convidar membros para adicionar à agenda"
+                        >
+                          <CalendarPlus className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setPendingStatusEvento(ev)}
@@ -914,6 +948,20 @@ export default function AgendaPage() {
         loading={confirmLoading}
         onConfirm={confirmDeleteEvento}
         onCancel={() => setPendingDeleteEvento(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={!!pendingNotifyEvento}
+        title="Divulgar e Convidar para a Agenda"
+        description={
+          pendingNotifyEvento
+            ? `Deseja enviar uma notificação para os membros convidando-os a adicionar o evento "${pendingNotifyEvento.titulo}" à sua agenda pessoal?`
+            : ''
+        }
+        confirmLabel="Enviar Notificação"
+        loading={notifyLoading}
+        onConfirm={handleNotifyAgenda}
+        onCancel={() => setPendingNotifyEvento(null)}
       />
     </div>
   );

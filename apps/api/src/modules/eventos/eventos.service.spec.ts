@@ -476,6 +476,7 @@ describe('EventosService', () => {
         expect.objectContaining({
           tenantId,
           titulo: 'Evento em 2 horas',
+          urlDestino: '/agenda/visualizacao?addCalendarEvento=evento-futuro-1',
           idempotencyKey: `tenant:${tenantId}:evento:evento-futuro-1:reminder-2h`,
           origem: 'SYSTEM_AUTOMATION',
           tipoPublico: 'ALL_MEMBERS',
@@ -576,6 +577,74 @@ describe('EventosService', () => {
         tenantId,
       );
       expect((prisma as any).evento.delete).toHaveBeenCalledWith({ where: { id: eventId } });
+    });
+  });
+
+  describe('notificarAgendaEvento', () => {
+    it('dispara notificação para todos os membros em evento GERAL agendado com urlDestino addCalendarEvento', async () => {
+      const { service, notificationDispatch, prisma } = createService();
+      const eventId = 'evento-geral-agenda-1';
+
+      prisma.evento.findFirst.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        titulo: 'Conferência de Jovens',
+        tipo: EventoTipo.GERAL,
+        dataInicio: new Date('2026-11-15T22:00:00.000Z'),
+        local: 'Auditório Principal',
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+
+      const result = await service.notificarAgendaEvento(tenantId, eventId, user);
+
+      expect(result).toEqual({
+        message: 'Convite para adicionar o evento à agenda enviado com sucesso.',
+        notificationId: 'notif-1',
+      });
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId,
+          titulo: '📅 Adicione à agenda: Conferência de Jovens',
+          urlDestino: `/agenda/visualizacao?addCalendarEvento=${eventId}`,
+          origem: 'COMMUNICATION_GENERAL',
+          tipoPublico: 'ALL_MEMBERS',
+          criadoPorId: user.sub,
+        }),
+      );
+    });
+
+    it('rejeita divulgação de evento não agendado (ex: CANCELADO)', async () => {
+      const { service, prisma } = createService();
+      const eventId = 'evento-canc-agenda';
+
+      prisma.evento.findFirst.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        titulo: 'Evento Cancelado',
+        tipo: EventoTipo.GERAL,
+        dataInicio: new Date('2026-11-15T22:00:00.000Z'),
+        status: 'CANCELADO',
+        ministerios: [],
+      });
+
+      await expect(
+        service.notificarAgendaEvento(tenantId, eventId, user),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejeita divulgação quando usuário BASIC não gerencia o evento', async () => {
+      const { service, prisma } = createService();
+      const eventId = 'evento-sem-permissao';
+      prisma.evento.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.notificarAgendaEvento(tenantId, eventId, {
+          ...user,
+          role: Role.BASIC,
+          memberId: 'membro-qualquer',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 });
