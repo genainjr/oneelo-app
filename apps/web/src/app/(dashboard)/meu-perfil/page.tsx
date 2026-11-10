@@ -11,10 +11,11 @@ import { InfoItem } from '@/components/app/info-item';
 import { StatusBadge } from '@/components/app/status-badge';
 import { ImageUploadPanel } from '@/components/app/image-upload-panel';
 import { ProfileNotificationSettings } from '@/components/app/profile-notification-settings';
+import { CarteirinhaModal } from '@/components/app/carteirinha-modal';
 import { api } from '@/lib/api';
 import { buildImageFormData, IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
-import { AuthUser, ConnectedAuthProvider } from '@/types';
+import { AuthUser, ConnectedAuthProvider, Membro } from '@/types';
 import { useAuthUser } from '@/contexts/auth-user-context';
 
 const AUTH_PROVIDER_LABEL: Record<ConnectedAuthProvider['provider'], string> = {
@@ -74,6 +75,7 @@ export default function MeuPerfilPage() {
   const [authProviderSuccess, setAuthProviderSuccess] = useState('');
   const [unlinkingProvider, setUnlinkingProvider] = useState<ConnectedAuthProvider['provider'] | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const [carteirinhaOpen, setCarteirinhaOpen] = useState(false);
   const hasPassword = user?.hasPassword !== false;
 
   useEffect(() => {
@@ -672,23 +674,42 @@ export default function MeuPerfilPage() {
 
           {user.membro ? (
             <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h2 className="text-base font-bold text-gray-900">Cadastro de membro</h2>
                   <p className="text-sm text-gray-500">Dados vinculados ao seu usuario.</p>
                 </div>
-                <StatusBadge
-                  label={STATUS_MEMBRO_LABEL[user.membro.status]}
-                  className={`rounded-lg px-2.5 py-1 font-bold ${STATUS_MEMBRO_COLOR[user.membro.status]}`}
-                />
+                <div className="flex items-center gap-2">
+                  <StatusBadge
+                    label={STATUS_MEMBRO_LABEL[user.membro.status]}
+                    className={`rounded-lg px-2.5 py-1 font-bold ${STATUS_MEMBRO_COLOR[user.membro.status]}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCarteirinhaOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs transition-all hover:bg-indigo-100"
+                  >
+                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                    </svg>
+                    Minha Carteirinha Digital
+                  </button>
+                </div>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <InfoItem label="Nome" value={user.membro.nome} />
                 <InfoItem label="Nome de impressao" value={user.membro.nomeExibicao || '-'} />
+                <InfoItem label="Cargo" value={user.membro.cargo || '-'} />
+                <InfoItem label="Matrícula" value={user.membro.matricula || '-'} />
                 <InfoItem label="E-mail" value={user.membro.email || '-'} />
                 <InfoItem label="WhatsApp" value={formatPhone(user.membro.whatsapp)} />
                 <InfoItem label="Nascimento" value={formatDate(user.membro.dataNascimento, 'dd/MM/yyyy')} />
+                <InfoItem label="Batismo" value={user.membro.dataBatismo ? formatDate(user.membro.dataBatismo, 'dd/MM/yyyy') : '-'} />
+                <InfoItem label="Sexo" value={user.membro.sexo || '-'} />
+                <InfoItem label="Estado Civil" value={user.membro.estadoCivil || '-'} />
+                <InfoItem label="CPF" value={user.membro.cpf || '-'} />
+                <InfoItem label="RG" value={user.membro.rg || '-'} />
               </div>
 
               <div className="mt-5">
@@ -711,6 +732,16 @@ export default function MeuPerfilPage() {
           )}
         </div>
       ) : null}
+
+      {user?.membro && (
+        <CarteirinhaModal
+          isOpen={carteirinhaOpen}
+          onClose={() => setCarteirinhaOpen(false)}
+          membro={user.membro as unknown as Membro}
+          churchName={user.tenant?.nome}
+          churchLogoUrl={user.tenant?.logoUrl}
+        />
+      )}
     </div>
   );
 }

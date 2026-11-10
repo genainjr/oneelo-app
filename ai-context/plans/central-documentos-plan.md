@@ -75,95 +75,95 @@ Status: concluido
 - [x] Critério de validação da etapa: `npx prisma validate`, `npx tsc --noEmit -p apps/api/tsconfig.json` e testes unitários de membros passando sem regressão.
 
 ### Etapa 1 - Backend: Módulo de Documentos e Fila Assíncrona
-Status: planejado
+Status: concluido
 
-- [ ] Criar módulo `apps/api/src/modules/documents/documents.module.ts` e registrar no `app.module.ts`
-- [ ] Implementar repositório e serviço de jobs (`apps/api/src/modules/documents/document-jobs.service.ts`):
-  - [ ] `createJob(tenantId, userId, dto)`: cria job `PENDING`
-  - [ ] `getNextPendingJob()`: busca próximo job elegível com trava lógica de processamento
-  - [ ] `completeJob(jobId, storageKey, fileName, fileSize)`: marca `COMPLETED` e dispara notificação in-app
-  - [ ] `failJob(jobId, erroMensagem)`: incrementa tentativas e marca `FAILED` se atingir limite
-- [ ] Implementar fila/worker leve em background (`apps/api/src/modules/documents/document-worker.service.ts`):
-  - [ ] Polling concorrente controlado com semáforo de concorrência máxima de 1 renderização simultânea
-  - [ ] Tratamento gracioso de erros com mensagens sanitizadas
-- [ ] Implementar controller multitenant (`apps/api/src/modules/documents/documents.controller.ts`):
-  - [ ] `POST /api/documents/jobs`: solicitar novo job assíncrono
-  - [ ] `GET /api/documents/jobs/:id`: consultar status de um job em andamento
-  - [ ] `GET /api/documents/history`: listagem paginada do histórico de documentos do tenant
-  - [ ] `GET /api/documents/:id/download`: URL assinada ou stream do arquivo no Supabase Storage
-- [ ] Critério de validação da etapa: Testes unitários do `document-jobs.service.spec.ts` validando criação, transições de status e isolamento de tenant.
+- [x] Criar módulo `apps/api/src/modules/documents/documents.module.ts` e registrar no `app.module.ts`
+- [x] Implementar repositório e serviço de jobs (`apps/api/src/modules/documents/document-jobs.service.ts`):
+  - [x] `createJob(tenantId, userId, dto)`: cria job `PENDING`
+  - [x] `getNextPendingJob()`: busca próximo job elegível com trava lógica de processamento
+  - [x] `completeJob(jobId, storageKey, fileName, fileSize)`: marca `COMPLETED` e dispara notificação in-app
+  - [x] `failJob(jobId, erroMensagem)`: incrementa tentativas e marca `FAILED` se atingir limite
+- [x] Implementar fila/worker leve em background (`apps/api/src/modules/documents/document-worker.service.ts`):
+  - [x] Polling concorrente controlado com semáforo de concorrência máxima de 1 renderização simultânea
+  - [x] Tratamento gracioso de erros com mensagens sanitizadas
+- [x] Implementar controller multitenant (`apps/api/src/modules/documents/documents.controller.ts`):
+  - [x] `POST /api/documents/jobs`: solicitar novo job assíncrono
+  - [x] `GET /api/documents/jobs/:id`: consultar status de um job em andamento
+  - [x] `GET /api/documents/history`: listagem paginada do histórico de documentos do tenant
+  - [x] `GET /api/documents/:id/download`: URL assinada ou stream do arquivo no Supabase Storage
+- [x] Critério de validação da etapa: Testes unitários do `document-jobs.service.spec.ts` validando criação, transições de status e isolamento de tenant.
 
 ### Etapa 2 - Backend: Motor de Renderização de Carteirinhas (PDF & PNG)
-Status: planejado
+Status: concluido
 
-- [ ] Adicionar dependência leve para geração de QR Code (`qrcode`) no backend
-- [ ] Implementar serviço de renderização de carteirinhas (`apps/api/src/modules/documents/renderers/carteirinha-renderer.service.ts`):
-  - [ ] Template HTML/CSS da Frente (Foto do membro, logo e cores do tenant, nome completo, cargo, congregação)
-  - [ ] Template HTML/CSS do Verso (Matrícula, data de nascimento, data de batismo, CPF/RG, data de emissão/validade e QR code)
-  - [ ] Renderização de cartão individual CR80 (`85.6mm x 53.98mm`) em PDF e imagem PNG de alta resolução
-  - [ ] Renderização em lote em grade A4 para impressão gráfica (múltiplas carteirinhas frente/verso por folha)
-- [ ] Integrar carteirinhas ao worker de documentos para processar jobs `CARTEIRINHA_INDIVIDUAL` e `CARTEIRINHAS_LOTE`
-- [ ] Implementar endpoint público de validação de autenticidade (`GET /api/documents/validar/carteirinha/:id`):
-  - [ ] Retorna dados oficiais para conferência pública (nome, igreja, status ativo, foto, cargo) sem expor dados sensíveis
-- [ ] Critério de validação da etapa: Testes unitários do renderer com snapshot/verificação de geração de buffer PDF e PNG válidos.
+- [x] Adicionar dependência leve para geração de QR Code (`qrcode`) no backend
+- [x] Implementar serviço de renderização de carteirinhas (`apps/api/src/modules/documents/renderers/carteirinha-renderer.service.ts`):
+  - [x] Template HTML/CSS da Frente (Foto do membro, logo e cores do tenant, nome completo, cargo, igreja)
+  - [x] Template HTML/CSS do Verso (Matrícula, data de nascimento, data de batismo, CPF/RG, sexo, estado civil, data de emissão/validade e QR code)
+  - [x] Renderização de cartão individual CR80 (`85.6mm x 53.98mm`) em PDF e imagem PNG de alta resolução
+  - [x] Renderização em lote em grade A4 para impressão gráfica (múltiplas carteirinhas frente/verso por folha)
+- [x] Integrar carteirinhas ao worker de documentos para processar jobs `CARTEIRINHA_INDIVIDUAL` e `CARTEIRINHAS_LOTE`
+- [x] Implementar endpoint público de validação de autenticidade (`GET /api/documents/validar/carteirinha/:id`):
+  - [x] Retorna dados oficiais para conferência pública (nome, igreja, status ativo, foto, cargo) sem expor dados sensíveis
+- [x] Critério de validação da etapa: Testes unitários do renderer com snapshot/verificação de geração de buffer PDF e PNG válidos.
 
 ### Etapa 3 - Backend: Cache e Armazenamento de Escalas e Agenda
-Status: planejado
+Status: concluido
 
-- [ ] Integrar `EscalaDocumentRendererService` ao Supabase Storage:
-  - [ ] Salvar arquivos gerados no bucket `tenant-documents/{tenantId}/escalas/{versionHash}.{ext}`
-  - [ ] Verificar existência prévia no Storage antes de acionar o Playwright
-  - [ ] Registrar job `COMPLETED` no histórico da Central de Documentos
-- [ ] Integrar `EventoDocumentRendererService` ao Supabase Storage:
-  - [ ] Salvar arquivos gerados no bucket `tenant-documents/{tenantId}/agenda/{versionHash}.{ext}`
-  - [ ] Verificar existência prévia no Storage antes de acionar o Playwright
-  - [ ] Registrar job `COMPLETED` no histórico da Central de Documentos
-- [ ] Critério de validação da etapa: Exportação consecutiva da mesma semana respondendo com o arquivo do Storage em < 300ms.
+- [x] Integrar `EscalaDocumentRendererService` ao Supabase Storage:
+  - [x] Salvar arquivos gerados no bucket `tenant-documents/{tenantId}/escalas/{versionHash}.{ext}`
+  - [x] Verificar existência prévia no Storage antes de acionar o Playwright
+  - [x] Registrar job `COMPLETED` no histórico da Central de Documentos
+- [x] Integrar `EventoDocumentRendererService` ao Supabase Storage:
+  - [x] Salvar arquivos gerados no bucket `tenant-documents/{tenantId}/agenda/{versionHash}.{ext}`
+  - [x] Verificar existência prévia no Storage antes de acionar o Playwright
+  - [x] Registrar job `COMPLETED` no histórico da Central de Documentos
+- [x] Critério de validação da etapa: Exportação consecutiva da mesma semana respondendo com o arquivo do Storage em < 300ms.
 
 ### Etapa 4 - Frontend: Atualização de Membros e Emissão de Carteirinhas
-Status: planejado
+Status: concluído
 
-- [ ] Atualizar tipos de membro em `apps/web/src/types/index.ts` com os novos campos
-- [ ] Atualizar formulário de membros (`apps/web/src/app/(dashboard)/membros/novo/page.tsx` e edição):
-  - [ ] Seção "Dados Eclesiásticos e Documentos" com matrícula, cargo, data de batismo, CPF, RG, sexo e estado civil
-- [ ] Adicionar ação de emissão de carteirinha unitária em `/membros/[id]` e na tabela de membros:
-  - [ ] Modal com pré-visualização (frente/verso) e botões de download (PDF CR80 ou PNG)
-- [ ] Adicionar ação de emissão em lote em `/membros`:
-  - [ ] Seleção múltipla de membros ou botão "Emitir Carteirinhas Ativas"
-  - [ ] Disparo de job com feedback de processamento em segundo plano
-- [ ] Adicionar visualização da própria carteirinha digital para o membro comum em `/meu-perfil` e `/personal-panel`
-- [ ] Critério de validação da etapa: Criação de membro com os novos campos e emissão da carteirinha individual e em lote funcionando no navegador.
+- [x] Atualizar tipos de membro em `apps/web/src/types/index.ts` com os novos campos
+- [x] Atualizar formulário de membros (`apps/web/src/app/(dashboard)/membros/novo/page.tsx` e edição):
+  - [x] Seção "Dados Eclesiásticos e Documentos" com matrícula, cargo, data de batismo, CPF, RG, sexo e estado civil
+- [x] Adicionar ação de emissão de carteirinha unitária em `/membros/[id]` e na tabela de membros:
+  - [x] Modal com pré-visualização (frente/verso) e botões de download (PDF CR80 ou PNG)
+- [x] Adicionar ação de emissão em lote em `/membros`:
+  - [x] Seleção múltipla de membros ou botão "Emitir Carteirinhas Ativas"
+  - [x] Disparo de job com feedback de processamento em segundo plano
+- [x] Adicionar visualização da própria carteirinha digital para o membro comum em `/meu-perfil` e `/personal-panel`
+- [x] Critério de validação da etapa: Criação de membro com os novos campos e emissão da carteirinha individual e em lote funcionando no navegador.
 
 ### Etapa 5 - Frontend: Central de Documentos e Validação Pública
-Status: planejado
+Status: concluído
 
-- [ ] Criar página `/documentos` (`apps/web/src/app/(dashboard)/documentos/page.tsx`):
-  - [ ] `PageHeader` com título e descrição no padrão ODS
-  - [ ] Tabela com listagem de documentos emitidos: tipo, solicitante, data, status (com `StatusBadge`), tamanho e ações
-  - [ ] Botão de download direto
-  - [ ] Ação de reprocessamento em caso de erro
-- [ ] Adicionar item de navegação "Central de Documentos" na sidebar e menu de configurações/secretaria
-- [ ] Criar página pública de validação de autenticidade (`apps/web/src/app/validar-carteirinha/[id]/page.tsx`):
-  - [ ] Exibição limpa e institucional confirmando autenticidade do membro
-- [ ] Critério de validação da etapa: Navegação na Central de Documentos, download de itens concluídos e leitura de QR code redirecionando para validação funcional.
+- [x] Criar página `/documentos` (`apps/web/src/app/(dashboard)/documentos/page.tsx`):
+  - [x] `PageHeader` com título e descrição no padrão ODS
+  - [x] Tabela com listagem de documentos emitidos: tipo, solicitante, data, status (com `StatusBadge`), tamanho e ações
+  - [x] Botão de download direto
+  - [x] Ação de reprocessamento em caso de erro
+- [x] Adicionar item de navegação "Central de Documentos" na sidebar e menu de configurações/secretaria
+- [x] Criar página pública de validação de autenticidade (`apps/web/src/app/validar-carteirinha/[id]/page.tsx`):
+  - [x] Exibição limpa e institucional confirmando autenticidade do membro
+- [x] Critério de validação da etapa: Navegação na Central de Documentos, download de itens concluídos e leitura de QR code redirecionando para validação funcional.
 
 ### Etapa 6 - Validação Integrada, Testes e Build Final
-Status: planejado
+Status: concluído
 
-- [ ] Executar suíte de testes unitários do backend (`npm run test` em `apps/api`)
-- [ ] Executar typecheck TypeScript (`npx tsc --noEmit`) em `apps/api` e `apps/web`
-- [ ] Executar build de produção (`npm run build` em ambos os apps)
-- [ ] Validação mobile em viewport reduzido (PWA / iPhone) confirmando que o menu de compartilhamento de escalas/agenda abre instantaneamente
-- [ ] Atualizar documentação em `ai-context/` e marcar backlog como entregue
-- [ ] Critério de validação da etapa: Build passando 100% sem erros, zero regressão em telas existentes e cobertura completa de testes.
+- [x] Executar suíte de testes unitários do backend (`npm run test` em `apps/api`)
+- [x] Executar typecheck TypeScript (`npx tsc --noEmit`) em `apps/api` e `apps/web`
+- [x] Executar build de produção (`npm run build` em ambos os apps)
+- [x] Validação mobile em viewport reduzido (PWA / iPhone) confirmando que o menu de compartilhamento de escalas/agenda abre instantaneamente
+- [x] Atualizar documentação em `ai-context/` e marcar backlog como entregue
+- [x] Critério de validação da etapa: Build passando 100% sem erros, zero regressão em telas existentes e cobertura completa de testes.
 
 ---
 
 ## 5. Critérios de Aceite Gerais
 
-- [ ] Carteirinha de membro é gerada em formato cartão individual (PDF CR80 e PNG) e em folha A4 pronta para impressão gráfica.
-- [ ] Todos os novos campos do membro (`matricula`, `cargo`, `dataBatismo`, `cpf`, `rg`, `sexo`, `estadoCivil`) são salvos e refletidos na carteirinha.
-- [ ] O verso da carteirinha contém QR code escaneável que abre a tela de validação pública no OneElo.
-- [ ] As telas de Escalas e Agenda mantêm 100% o layout atual (`ExportShareDialog` e `ExportSharePreparedBanner`), com abertura instantânea do menu de compartilhamento no celular.
-- [ ] Os documentos gerados ficam registrados na Central de Documentos com isolamento multitenant estrito por `tenantId`.
-- [ ] Fila de processamento assíncrono opera de forma estável no monólito NestJS sem necessidade de Redis.
+- [x] Carteirinha de membro é gerada em formato cartão individual (PDF CR80 e PNG) e em folha A4 pronta para impressão gráfica.
+- [x] Todos os novos campos do membro (`matricula`, `cargo`, `dataBatismo`, `cpf`, `rg`, `sexo`, `estadoCivil`) são salvos e refletidos na carteirinha.
+- [x] O verso da carteirinha contém QR code escaneável que abre a tela de validação pública no OneElo.
+- [x] As telas de Escalas e Agenda mantêm 100% o layout atual (`ExportShareDialog` e `ExportSharePreparedBanner`), com abertura instantânea do menu de compartilhamento no celular.
+- [x] Os documentos gerados ficam registrados na Central de Documentos com isolamento multitenant estrito por `tenantId`.
+- [x] Fila de processamento assíncrono opera de forma estável no monólito NestJS sem necessidade de Redis.

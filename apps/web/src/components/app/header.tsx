@@ -27,6 +27,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/financeiro': 'Gerenciamento Financeiro',
   '/financeiro/exportacao': 'Exportação Financeira',
   '/financeiro/visualizacao': 'Visualização Financeira',
+  '/documentos': 'Central de Documentos',
   '/grupos': 'Grupos',
   '/integracoes': 'Integrações',
   '/configuracoes': 'Configurações',

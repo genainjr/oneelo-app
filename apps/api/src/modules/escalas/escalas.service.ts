@@ -1,5 +1,7 @@
 import {
   Injectable,
+  Logger,
+  Optional,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
@@ -37,10 +39,15 @@ import {
   StatusEscala,
   StatusEvento,
   StatusMembro,
+  TipoDocumento,
+  FormatoDocumento,
 } from '@prisma/client';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationDispatchService } from '../notifications/services/notification-dispatch.service';
+import { DocumentJobsService } from '../documents/document-jobs.service';
+import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
+import { RenderedDocument } from '../../common/export';
 import {
   validarConflitosEscala,
   NovaAlocacao,
@@ -49,11 +56,18 @@ import {
 
 @Injectable()
 export class EscalasService {
+  private readonly logger = new Logger(EscalasService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly escalaDocumentRenderer: EscalaDocumentRendererService,
+    @Optional()
     private readonly notificationDispatch?: NotificationDispatchService,
+    @Optional()
+    private readonly documentJobsService?: DocumentJobsService,
+    @Optional()
+    private readonly storageService?: SupabaseStorageService,
   ) {}
 
   private appendDiaFilter(where: any, diaFilter: any) {
@@ -739,20 +753,32 @@ export class EscalasService {
     const queryMs = Math.round(performance.now() - queryStartedAt);
 
     try {
-      if (typeof this.escalaDocumentRenderer.renderExport === 'function') {
-        return await this.escalaDocumentRenderer.renderExport(
-          input,
-          query.formato,
-          query.pagina ?? 1,
-          { ifNoneMatch, queryMs },
+      const document = typeof this.escalaDocumentRenderer.renderExport === 'function'
+        ? await this.escalaDocumentRenderer.renderExport(
+            input,
+            query.formato,
+            query.pagina ?? 1,
+            { ifNoneMatch, queryMs },
+          )
+        : await this.escalaDocumentRenderer.render(
+            input,
+            query.formato,
+            typeof query.pagina === 'number' ? query.pagina : undefined,
+          );
+
+      if (
+        document &&
+        document.kind === 'single' &&
+        !document.notModified &&
+        this.documentJobsService &&
+        this.storageService
+      ) {
+        this.persistExportDocument(tenantId, user.sub, query, document).catch((err) =>
+          this.logger.warn(`Falha ao registrar escala na Central de Documentos: ${err?.message}`),
         );
       }
 
-      return await this.escalaDocumentRenderer.render(
-        input,
-        query.formato,
-        typeof query.pagina === 'number' ? query.pagina : undefined,
-      );
+      return document;
     } catch (error) {
       if (
         error instanceof BadRequestException ||
@@ -764,6 +790,44 @@ export class EscalasService {
         'Nao foi possivel gerar a exportacao da escala.',
       );
     }
+  }
+
+  private async persistExportDocument(
+    tenantId: string,
+    userId: string,
+    query: ExportEscalaDto,
+    document: RenderedDocument,
+  ) {
+    if (!this.storageService || !this.documentJobsService) return;
+
+    const cleanEtag = (document.etag || '').replace(/"/g, '');
+    const ext = query.formato === 'png' ? 'png' : 'pdf';
+    const storagePath = `${tenantId}/escalas/${cleanEtag || Date.now()}.${ext}`;
+
+    await this.storageService.uploadPublicObject(
+      'tenant-documents',
+      storagePath,
+      document.buffer,
+      document.mimeType,
+    );
+
+    const job = await this.documentJobsService.createJob(tenantId, userId, {
+      tipoDocumento: query.formato === 'png' ? TipoDocumento.ESCALA_PNG : TipoDocumento.ESCALA_PDF,
+      formato: query.formato === 'png' ? FormatoDocumento.PNG : FormatoDocumento.PDF,
+      versionHash: cleanEtag || undefined,
+      parametros: {
+        mes: query.mes,
+        ano: query.ano,
+        ministerioId: query.ministerioId,
+        pagina: query.pagina,
+      },
+    });
+
+    await this.documentJobsService.completeJob(job.id, {
+      storageKey: storagePath,
+      fileName: document.fileName,
+      fileSize: document.buffer.byteLength,
+    });
   }
 
   async findMinhas(

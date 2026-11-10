@@ -385,6 +385,13 @@ export class AuthService {
             whatsapp: true,
             dataNascimento: true,
             status: true,
+            matricula: true,
+            cargo: true,
+            dataBatismo: true,
+            cpf: true,
+            rg: true,
+            sexo: true,
+            estadoCivil: true,
             ministerios: {
               where: {
                 ministerio: { ativo: true },

@@ -2,8 +2,9 @@
 
 ### FT-013 Central de Documentos
 
+- **Status**: concluído (implementado)
 - **Prioridade**: alta
-- **Fase**: próxima evolução de produtividade e operação
+- **Fase**: produtividade e operação (Fase 1 entregue)
 - **Categoria**: produto / infraestrutura / documentos / relatórios
 - **Esforço estimado**: alto
 - **Contexto**: o OneElo possui exportação de Escalas e Agenda geradas sob demanda no backend via Playwright/Chromium, mas a geração síncrona causa lentidão no primeiro acesso e faz com que o menu nativo de compartilhamento do celular (`navigator.share`) falhe por expiração de gesto do usuário. Além disso, os arquivos gerados não ficam persistidos em histórico, geram consumo repetido de memória e não cobrem fluxos em lote ou documentos formais da igreja (carteirinhas).

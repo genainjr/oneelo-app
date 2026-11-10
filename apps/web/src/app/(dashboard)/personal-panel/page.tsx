@@ -7,6 +7,7 @@ import { addMonths, format, startOfMonth, endOfMonth } from 'date-fns';
 import { PageHeader } from '@/components/app/page-header';
 import { StatCard } from '@/components/app/stat-card';
 import { AddToCalendarButton } from '@/components/app/add-to-calendar-button';
+import { CarteirinhaModal } from '@/components/app/carteirinha-modal';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
 import { api } from '@/lib/api';
 import { mapEscalaToCalendarEvent, mapEventoToCalendarEvent } from '@/lib/calendar-url-builder';
@@ -14,7 +15,7 @@ import { compareCivilDates, formatDate, formatDateWithWeekday, getCivilDateKey, 
 import { useEventos } from '@/hooks/use-eventos';
 import { useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
 import { useAuthUser } from '@/contexts/auth-user-context';
-import type { AuthUser, Evento, MinhaEscalaItem } from '@/types';
+import type { AuthUser, Evento, MinhaEscalaItem, Membro } from '@/types';
 
 type MinisteriosResumo = {
   ministerios: number;
@@ -104,6 +105,7 @@ export default function PersonalPanelPage() {
   const [today, setToday] = useState('');
   const [ministeriosResumo, setMinisteriosResumo] = useState<MinisteriosResumo | null>(null);
   const [escalasProximoMes, setEscalasProximoMes] = useState<EscalaResumo[]>([]);
+  const [carteirinhaOpen, setCarteirinhaOpen] = useState(false);
   const nextMonthDate = useMemo(() => addMonths(new Date(), 1), []);
   const nextMonthQuery = useMemo(() => ({
     mes: format(nextMonthDate, 'M'),
@@ -377,6 +379,20 @@ export default function PersonalPanelPage() {
       <PageHeader
         title={headerTitle}
         description={headerSubtitle}
+        action={
+          user?.membro ? (
+            <button
+              type="button"
+              onClick={() => setCarteirinhaOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 shadow-2xs transition-all hover:bg-indigo-100"
+            >
+              <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+              </svg>
+              Minha Carteirinha
+            </button>
+          ) : undefined
+        }
       />
 
       {error && (
@@ -438,6 +454,16 @@ export default function PersonalPanelPage() {
           ))}
         </div>
       </div>
+
+      {user?.membro && (
+        <CarteirinhaModal
+          isOpen={carteirinhaOpen}
+          onClose={() => setCarteirinhaOpen(false)}
+          membro={user.membro as unknown as Membro}
+          churchName={user.tenant?.nome}
+          churchLogoUrl={user.tenant?.logoUrl}
+        />
+      )}
     </div>
   );
 }

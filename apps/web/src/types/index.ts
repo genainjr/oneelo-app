@@ -83,6 +83,13 @@ export interface AuthUser {
     whatsapp?: string | null;
     dataNascimento?: string | null;
     status: StatusMembro;
+    matricula?: string | null;
+    cargo?: string | null;
+    dataBatismo?: string | null;
+    cpf?: string | null;
+    rg?: string | null;
+    sexo?: SexoMembro | null;
+    estadoCivil?: EstadoCivil | null;
     ministerios?: {
       role: MinistryRole;
       ministerio: { id: string; nome: string; usaEscalas: boolean };
@@ -116,6 +123,46 @@ export interface Tag {
   _count?: { membros: number };
 }
 
+export type SexoMembro = 'MASCULINO' | 'FEMININO';
+export type EstadoCivil = 'SOLTEIRO' | 'CASADO' | 'DIVORCIADO' | 'VIUVO' | 'UNIAO_ESTAVEL';
+
+export type TipoDocumento =
+  | 'CARTEIRINHA_INDIVIDUAL'
+  | 'CARTEIRINHAS_LOTE'
+  | 'ESCALA_PDF'
+  | 'ESCALA_PNG'
+  | 'AGENDA_PDF'
+  | 'AGENDA_PNG'
+  | 'RELATORIO';
+
+export type FormatoDocumento = 'PDF' | 'PNG';
+export type StatusDocumentJob = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+export interface DocumentJob {
+  id: string;
+  tenantId: string;
+  requestedByUserId?: string | null;
+  tipoDocumento: TipoDocumento;
+  formato: FormatoDocumento;
+  status: StatusDocumentJob;
+  parametros?: Record<string, any>;
+  versionHash?: string | null;
+  storageKey?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  tentativas: number;
+  erroMensagem?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
+  downloadUrl?: string | null;
+  requestedByUser?: {
+    id: string;
+    nome: string;
+    email: string;
+  } | null;
+}
+
 // ─── Membro ───────────────────────────────────────────────────────────────────
 
 export interface Membro {
@@ -129,6 +176,13 @@ export interface Membro {
   fotoUrl?: string | null;
   fotoKey?: string | null;
   status: StatusMembro;
+  matricula?: string | null;
+  cargo?: string | null;
+  dataBatismo?: string | null;
+  cpf?: string | null;
+  rg?: string | null;
+  sexo?: SexoMembro | null;
+  estadoCivil?: EstadoCivil | null;
   endereco?: string;
   observacoes?: string;
   createdAt: string;

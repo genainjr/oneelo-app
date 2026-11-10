@@ -17,6 +17,7 @@ import { LeadsModule } from './modules/leads/leads.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PwaModule } from './modules/pwa/pwa.module';
 import { FinanceiroModule } from './modules/financeiro/financeiro.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -48,6 +49,7 @@ import { HealthController } from './health.controller';
     NotificationsModule,
     PwaModule,
     FinanceiroModule,
+    DocumentsModule,
   ],
   controllers: [HealthController],
   providers: [

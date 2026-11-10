@@ -36,6 +36,15 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
     membro?.dataNascimento ? membro.dataNascimento.split('T')[0] : '',
   );
   const [status, setStatus] = useState<StatusMembro>(membro?.status || 'ATIVO');
+  const [matricula, setMatricula] = useState(membro?.matricula || '');
+  const [cargo, setCargo] = useState(membro?.cargo || '');
+  const [dataBatismo, setDataBatismo] = useState(
+    membro?.dataBatismo ? membro.dataBatismo.split('T')[0] : '',
+  );
+  const [cpf, setCpf] = useState(membro?.cpf || '');
+  const [rg, setRg] = useState(membro?.rg || '');
+  const [sexo, setSexo] = useState(membro?.sexo || '');
+  const [estadoCivil, setEstadoCivil] = useState(membro?.estadoCivil || '');
   const [observacoes, setObservacoes] = useState(membro?.observacoes || '');
 
   const [loading, setLoading] = useState(false);
@@ -73,6 +82,13 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
         whatsapp: whatsapp.trim() || undefined,
         dataNascimento: dataNascimento ? new Date(dataNascimento).toISOString() : undefined,
         status,
+        matricula: matricula.trim() || undefined,
+        cargo: cargo.trim() || undefined,
+        dataBatismo: dataBatismo ? new Date(dataBatismo).toISOString() : undefined,
+        cpf: cpf.trim() || undefined,
+        rg: rg.trim() || undefined,
+        sexo: (sexo || undefined) as any,
+        estadoCivil: (estadoCivil || undefined) as any,
         observacoes: observacoes.trim() || undefined,
       };
 
@@ -248,13 +264,94 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
           </SelectField>
         </div>
 
+        <div className="pt-2 border-t border-gray-100">
+          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+            Dados Eclesiásticos e Carteirinha
+          </h4>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputField
+              id="matricula"
+              label="Matrícula / Rol de Membro"
+              type="text"
+              value={matricula}
+              onChange={(e) => setMatricula(e.target.value)}
+              placeholder="Ex: ROL-00123"
+            />
+
+            <InputField
+              id="cargo"
+              label="Cargo / Função Eclesiástica"
+              type="text"
+              value={cargo}
+              onChange={(e) => setCargo(e.target.value)}
+              placeholder="Ex: Pastor, Diácono, Membro"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputField
+              id="dataBatismo"
+              label="Data de Batismo"
+              type="date"
+              value={dataBatismo}
+              onChange={(e) => setDataBatismo(e.target.value)}
+            />
+
+            <SelectField
+              id="sexo"
+              label="Sexo"
+              value={sexo}
+              onChange={(e) => setSexo(e.target.value)}
+            >
+              <option value="">Selecione...</option>
+              <option value="MASCULINO">Masculino</option>
+              <option value="FEMININO">Feminino</option>
+            </SelectField>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <InputField
+              id="cpf"
+              label="CPF"
+              type="text"
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              placeholder="000.000.000-00"
+            />
+
+            <InputField
+              id="rg"
+              label="RG"
+              type="text"
+              value={rg}
+              onChange={(e) => setRg(e.target.value)}
+              placeholder="Ex: 1234567-SSP"
+            />
+
+            <SelectField
+              id="estadoCivil"
+              label="Estado Civil"
+              value={estadoCivil}
+              onChange={(e) => setEstadoCivil(e.target.value)}
+            >
+              <option value="">Selecione...</option>
+              <option value="SOLTEIRO">Solteiro(a)</option>
+              <option value="CASADO">Casado(a)</option>
+              <option value="UNIAO_ESTAVEL">União Estável</option>
+              <option value="DIVORCIADO">Divorciado(a)</option>
+              <option value="VIUVO">Viúvo(a)</option>
+            </SelectField>
+          </div>
+        </div>
+
         <TextareaField
           id="observacoes"
-          label="Observacoes / Historico"
+          label="Observações / Histórico"
           rows={3}
           value={observacoes}
           onChange={(e) => setObservacoes(e.target.value)}
-          placeholder="Insira detalhes como ministerios de interesse, data de batismo, etc."
+          placeholder="Insira detalhes adicionais sobre o membro..."
         />
       </form>
     </ModalShell>

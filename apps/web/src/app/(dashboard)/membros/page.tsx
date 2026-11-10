@@ -7,6 +7,7 @@ import { useMembros } from '@/hooks/use-membros';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
+import { CarteirinhaModal } from '@/components/app/carteirinha-modal';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
@@ -18,7 +19,7 @@ import { ContactCell } from '@/components/app/contact-cell';
 import { EntityCard } from '@/components/app/entity-card';
 import { InitialsAvatar } from '@/components/app/initials-avatar';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
-import { Membro, Tag, AuthUser } from '@/types';
+import { Membro, Tag, AuthUser, DocumentJob } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { useAuthUser } from '@/contexts/auth-user-context';
@@ -87,6 +88,8 @@ export default function MembrosPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMembro, setEditingMembro] = useState<Membro | null>(null);
+  const [carteirinhaMembro, setCarteirinhaMembro] = useState<Membro | null>(null);
+  const [batchLoading, setBatchLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [tagsList, setTagsList] = useState<Tag[]>([]);
   const [selectedBulkTags, setSelectedBulkTags] = useState<string[]>([]);
@@ -263,6 +266,31 @@ export default function MembrosPage() {
     }
   }
 
+  async function handleEmitirCarteirinhas(memberIds?: string[]) {
+    try {
+      setBatchLoading(true);
+      await api.post<DocumentJob>('/api/documents/jobs', {
+        tipoDocumento: 'CARTEIRINHAS_LOTE',
+        formato: 'PDF',
+        parametros: memberIds && memberIds.length > 0 ? { memberIds } : undefined,
+      });
+      setFeedback({
+        type: 'success',
+        message: 'Solicitação de geração de carteirinhas iniciada com sucesso! Você pode acompanhar e baixar o PDF na Central de Documentos.',
+      });
+      if (memberIds && memberIds.length > 0) {
+        setSelectedIds([]);
+      }
+    } catch (err: unknown) {
+      setFeedback({
+        type: 'error',
+        message: getErrorMessage(err, 'Falha ao solicitar geração das carteirinhas.'),
+      });
+    } finally {
+      setBatchLoading(false);
+    }
+  }
+
   const columns: Column<Membro>[] = [
     {
       key: 'nome',
@@ -323,6 +351,15 @@ export default function MembrosPage() {
       render: (m) => (
         <div className="flex items-center justify-end gap-2">
           <button
+            onClick={() => setCarteirinhaMembro(m)}
+            className="p-2 border border-gray-200 hover:border-indigo-300 rounded-xl text-indigo-600 bg-white transition-all hover:bg-indigo-50 flex items-center justify-center"
+            title="Carteirinha Digital"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+            </svg>
+          </button>
+          <button
             onClick={() => {
               setEditingMembro(m);
               setIsModalOpen(true);
@@ -355,18 +392,32 @@ export default function MembrosPage() {
         description={t('pageDescription')}
         stackActionsOnMobile
         action={
-          <button
-            onClick={() => {
-              setEditingMembro(null);
-              setIsModalOpen(true);
-            }}
-            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            {t('new')}
-          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => handleEmitirCarteirinhas()}
+              disabled={batchLoading}
+              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-2xs transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Gerar PDF em lote de todos os membros ativos para gráfica (folha A4)"
+            >
+              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              {batchLoading ? 'Solicitando...' : 'Emitir Carteirinhas (Lote)'}
+            </button>
+            <button
+              onClick={() => {
+                setEditingMembro(null);
+                setIsModalOpen(true);
+              }}
+              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              {t('new')}
+            </button>
+          </div>
         }
       />
 
@@ -625,6 +676,15 @@ export default function MembrosPage() {
             actions={
               <>
                 <button
+                  onClick={() => setCarteirinhaMembro(membro)}
+                  className="p-2 border border-gray-200 hover:border-indigo-300 rounded-xl text-indigo-600 bg-white transition-all hover:bg-indigo-50 flex items-center justify-center"
+                  title="Carteirinha Digital"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                  </svg>
+                </button>
+                <button
                   onClick={() => {
                     setEditingMembro(membro);
                     setIsModalOpen(true);
@@ -731,6 +791,18 @@ export default function MembrosPage() {
               >
                 {t('bulk.apply')}
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleEmitirCarteirinhas(selectedIds)}
+                disabled={batchLoading}
+                className="w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition-all hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                {batchLoading ? 'Solicitando...' : `Emitir Carteirinhas (${selectedIds.length})`}
+              </button>
             </div>
           </div>
         </div>
@@ -766,6 +838,14 @@ export default function MembrosPage() {
         loading={confirmLoading}
         onConfirm={confirmDeleteMembro}
         onCancel={() => setPendingDeleteMembro(null)}
+      />
+
+      <CarteirinhaModal
+        isOpen={Boolean(carteirinhaMembro)}
+        onClose={() => setCarteirinhaMembro(null)}
+        membro={carteirinhaMembro}
+        churchName={user?.tenant?.nome}
+        churchLogoUrl={user?.tenant?.logoUrl}
       />
     </div>
   );

@@ -44,6 +44,39 @@ export class SupabaseStorageService {
     return `${this.baseUrl}/storage/v1/object/public/${bucket}/${this.encodePath(path)}`;
   }
 
+  async createSignedUrl(
+    bucket: string,
+    path: string,
+    expiresIn = 3600,
+  ): Promise<string> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/storage/v1/object/sign/${bucket}/${this.encodePath(path)}`,
+        {
+          method: 'POST',
+          headers: {
+            ...this.authHeaders,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ expiresIn }),
+        },
+      );
+
+      if (!response.ok) {
+        return this.getPublicUrl(bucket, path);
+      }
+
+      const data = (await response.json()) as { signedURL?: string };
+      if (data.signedURL) {
+        return `${this.baseUrl}/storage/v1${data.signedURL}`;
+      }
+
+      return this.getPublicUrl(bucket, path);
+    } catch {
+      return this.getPublicUrl(bucket, path);
+    }
+  }
+
   async uploadPublicObject(
     bucket: string,
     path: string,

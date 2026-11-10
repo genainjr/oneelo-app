@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   InternalServerErrorException,
   Optional,
@@ -19,6 +20,8 @@ import {
   StatusEvento,
   StatusMembro,
   UserStatus,
+  TipoDocumento,
+  FormatoDocumento,
 } from '@prisma/client';
 import { NotificationDispatchService } from '../notifications/services/notification-dispatch.service';
 import {
@@ -27,6 +30,9 @@ import {
 } from '../notifications/services/notification-automation-rules.service';
 import { AuthorizationService } from '../../common/authorization/authorization.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { DocumentJobsService } from '../documents/document-jobs.service';
+import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
+import { RenderedDocument } from '../../common/export';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { EventoMinisterioInputDto } from './dto/evento-ministerio-input.dto';
@@ -60,6 +66,8 @@ const eventoInclude: Prisma.EventoInclude = {
 
 @Injectable()
 export class EventosService {
+  private readonly logger = new Logger(EventosService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
@@ -68,6 +76,10 @@ export class EventosService {
     private readonly notificationDispatch?: NotificationDispatchService,
     @Optional()
     private readonly automationRulesService?: NotificationAutomationRulesService,
+    @Optional()
+    private readonly documentJobsService?: DocumentJobsService,
+    @Optional()
+    private readonly storageService?: SupabaseStorageService,
   ) {}
 
   private uniqueIds(ids?: string[]) {
@@ -967,12 +979,26 @@ export class EventosService {
     const queryMs = Math.round(performance.now() - queryStartedAt);
 
     try {
-      return await this.eventoDocumentRenderer.renderExport(
+      const document = await this.eventoDocumentRenderer.renderExport(
         input,
         query.formato,
         query.pagina ?? 1,
         { ifNoneMatch, queryMs },
       );
+
+      if (
+        document &&
+        document.kind === 'single' &&
+        !document.notModified &&
+        this.documentJobsService &&
+        this.storageService
+      ) {
+        this.persistExportDocument(tenantId, user.sub, query, document).catch((err) =>
+          this.logger.warn(`Falha ao registrar evento na Central de Documentos: ${err?.message}`),
+        );
+      }
+
+      return document;
     } catch (error) {
       if (
         error instanceof BadRequestException ||
@@ -984,6 +1010,44 @@ export class EventosService {
         'Não foi possível gerar a exportação dos eventos.',
       );
     }
+  }
+
+  private async persistExportDocument(
+    tenantId: string,
+    userId: string,
+    query: ExportEventoDto,
+    document: RenderedDocument,
+  ) {
+    if (!this.storageService || !this.documentJobsService) return;
+
+    const cleanEtag = (document.etag || '').replace(/"/g, '');
+    const ext = query.formato === 'png' ? 'png' : 'pdf';
+    const storagePath = `${tenantId}/agenda/${cleanEtag || Date.now()}.${ext}`;
+
+    await this.storageService.uploadPublicObject(
+      'tenant-documents',
+      storagePath,
+      document.buffer,
+      document.mimeType,
+    );
+
+    const job = await this.documentJobsService.createJob(tenantId, userId, {
+      tipoDocumento: query.formato === 'png' ? TipoDocumento.AGENDA_PNG : TipoDocumento.AGENDA_PDF,
+      formato: query.formato === 'png' ? FormatoDocumento.PNG : FormatoDocumento.PDF,
+      versionHash: cleanEtag || undefined,
+      parametros: {
+        dataInicio: query.dataInicio,
+        dataFim: query.dataFim,
+        ministerioId: query.ministerioId,
+        pagina: query.pagina,
+      },
+    });
+
+    await this.documentJobsService.completeJob(job.id, {
+      storageKey: storagePath,
+      fileName: document.fileName,
+      fileSize: document.buffer.byteLength,
+    });
   }
 
   private getEventReminderIdempotencyKey(tenantId: string, eventoId: string): string {
