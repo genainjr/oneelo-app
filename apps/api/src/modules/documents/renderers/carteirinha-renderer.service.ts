@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import * as QRCode from 'qrcode';
 import sharp from 'sharp';
 import { ConfigService } from '@nestjs/config';
@@ -28,6 +30,8 @@ export interface CarteirinhaTenantData {
   logoUrl?: string | null;
   slug?: string;
 }
+
+let cachedMetallicBgDataUri: string | null = null;
 
 @Injectable()
 export class CarteirinhaRendererService {
@@ -275,7 +279,38 @@ export class CarteirinhaRendererService {
     return { frontHtml, backHtml };
   }
 
+  getMetallicBgDataUri(): string {
+    if (cachedMetallicBgDataUri) {
+      return cachedMetallicBgDataUri;
+    }
+
+    const candidatePaths = [
+      join(process.cwd(), 'assets/carteirinha-metallic-bg.png'),
+      join(process.cwd(), 'apps/api/assets/carteirinha-metallic-bg.png'),
+      join(__dirname, '../../../../assets/carteirinha-metallic-bg.png'),
+      join(__dirname, '../../assets/carteirinha-metallic-bg.png'),
+    ];
+
+    for (const filePath of candidatePaths) {
+      try {
+        if (existsSync(filePath)) {
+          const buffer = readFileSync(filePath);
+          cachedMetallicBgDataUri = `data:image/png;base64,${buffer.toString('base64')}`;
+          return cachedMetallicBgDataUri;
+        }
+      } catch {
+        // ignore and try next candidate
+      }
+    }
+
+    return '';
+  }
+
   getStyles(): string {
+    const bgDataUri = this.getMetallicBgDataUri();
+    const frontBgCss = bgDataUri
+      ? `background-color: #f1f5f9; background-image: url('${bgDataUri}'); background-repeat: no-repeat; background-position: center; background-size: cover;`
+      : 'background: linear-gradient(135deg, #ffffff 15%, #f1f5f9 45%, #cbd5e1 75%, #94a3b8 100%);';
     return `
       <style>
         * {
@@ -321,7 +356,7 @@ export class CarteirinhaRendererService {
 
         /* Frente */
         .card-front {
-          background: linear-gradient(135deg, #ffffff 15%, #f1f5f9 45%, #cbd5e1 75%, #94a3b8 100%);
+          ${frontBgCss}
         }
 
         .card-header {
