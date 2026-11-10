@@ -329,7 +329,7 @@ export function buildGoogleCalendarUrl(params: CalendarEventParams): string {
     searchParams.set('location', params.location.trim());
   }
 
-  return `https://calendar.google.com/calendar/render?${searchParams.toString()}`;
+  return `https://calendar.google.com/calendar/render?${searchParams.toString().replace(/\+/g, '%20')}`;
 }
 
 /**
@@ -370,6 +370,16 @@ export function openGoogleCalendar(
   }
 
   const webUrl = buildGoogleCalendarUrl(params);
+
+  // No iOS (iPhone/iPad): NÃO usar window.open('_blank')!
+  // No PWA do iOS, window.open('_blank') abre o Safari View Controller (tela branca com botão 'X').
+  // Ao usar window.location.href, o iOS detecta o Universal Link e abre o app nativo do Google Agenda
+  // diretamente sem deixar nenhuma tela branca órfã com o botão 'X'.
+  if (platform === 'apple') {
+    window.location.href = webUrl;
+    return;
+  }
+
   window.open(webUrl, '_blank', 'noopener,noreferrer');
 }
 
@@ -424,7 +434,7 @@ export function buildOutlookCalendarUrl(params: CalendarEventParams): string {
     searchParams.set('location', params.location.trim());
   }
 
-  return `https://outlook.live.com/calendar/0/deeplink/compose?${searchParams.toString()}`;
+  return `https://outlook.live.com/calendar/0/deeplink/compose?${searchParams.toString().replace(/\+/g, '%20')}`;
 }
 
 /**
@@ -486,7 +496,7 @@ export function buildOutlookAppUrl(params: CalendarEventParams): string {
     searchParams.set('location', params.location.trim());
   }
 
-  return `ms-outlook://events/new?${searchParams.toString()}`;
+  return `ms-outlook://events/new?${searchParams.toString().replace(/\+/g, '%20')}`;
 }
 
 /**

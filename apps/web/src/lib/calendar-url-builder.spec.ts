@@ -71,7 +71,7 @@ describe('calendar-url-builder', () => {
     assert.ok(url.startsWith('https://calendar.google.com/calendar/render?'));
     assert.ok(url.includes('action=TEMPLATE'));
     assert.ok(url.includes('dates=20261115T220000Z%2F20261116T000000Z'));
-    assert.ok(url.includes('location=Templo+Principal'));
+    assert.ok(url.includes('location=Templo%20Principal'));
   });
 
   it('aplica duração padrão de 2 horas quando o evento possui dataInicio com horário mas sem dataFim', () => {
@@ -248,11 +248,11 @@ describe('calendar-url-builder', () => {
     assert.ok(timedUrl.startsWith('https://outlook.live.com/calendar/0/deeplink/compose?'));
     assert.ok(timedUrl.includes('path=%2Fcalendar%2Faction%2Fcompose'));
     assert.ok(timedUrl.includes('rru=addevent'));
-    assert.ok(timedUrl.includes('subject=Ensaio+Geral'));
+    assert.ok(timedUrl.includes('subject=Ensaio%20Geral'));
     assert.ok(timedUrl.includes('startdt=2026-11-20T21%3A00%3A00.000Z'));
     assert.ok(timedUrl.includes('enddt=2026-11-20T23%3A00%3A00.000Z'));
-    assert.ok(timedUrl.includes('location=Sala+3'));
-    assert.ok(timedUrl.includes('body=Ensaio+com+toda+a+equipe'));
+    assert.ok(timedUrl.includes('location=Sala%203'));
+    assert.ok(timedUrl.includes('body=Ensaio%20com%20toda%20a%20equipe'));
 
     const allDayEvent = {
       title: 'Vigília da Igreja',
@@ -264,7 +264,7 @@ describe('calendar-url-builder', () => {
     assert.ok(allDayUrl.includes('allday=true'));
     assert.ok(allDayUrl.includes('startdt=2026-11-21'));
     assert.ok(allDayUrl.includes('enddt=2026-11-21'));
-    assert.ok(allDayUrl.includes('subject=Vig%C3%ADlia+da+Igreja'));
+    assert.ok(allDayUrl.includes('subject=Vig%C3%ADlia%20da%20Igreja'));
   });
 
   it('retorna "other" quando executado em ambiente SSR (sem window/navigator)', () => {
@@ -285,7 +285,7 @@ describe('calendar-url-builder', () => {
     const intentUrl = buildAndroidGoogleCalendarIntentUrl(event);
     assert.ok(intentUrl.startsWith('intent://calendar.google.com/calendar/render?'));
     assert.ok(intentUrl.includes('action=TEMPLATE'));
-    assert.ok(intentUrl.includes('text=Culto+de+Celebra%C3%A7%C3%A3o'));
+    assert.ok(intentUrl.includes('text=Culto%20de%20Celebra%C3%A7%C3%A3o'));
     assert.ok(intentUrl.includes('#Intent;scheme=https;package=com.google.android.calendar;'));
     assert.ok(intentUrl.includes('S.browser_fallback_url=https%3A%2F%2Fcalendar.google.com%2Fcalendar%2Frender%3F'));
     assert.ok(intentUrl.endsWith(';end'));
@@ -302,9 +302,9 @@ describe('calendar-url-builder', () => {
 
     const appUrl = buildOutlookAppUrl(event);
     assert.ok(appUrl.startsWith('ms-outlook://events/new?'));
-    assert.ok(appUrl.includes('title=Reuni%C3%A3o+de+Lideran%C3%A7a'));
-    assert.ok(appUrl.includes('subject=Reuni%C3%A3o+de+Lideran%C3%A7a'));
-    assert.ok(appUrl.includes('location=Sala+3'));
-    assert.ok(appUrl.includes('body=Pauta+estrat%C3%A9gica'));
+    assert.ok(appUrl.includes('title=Reuni%C3%A3o%20de%20Lideran%C3%A7a'));
+    assert.ok(appUrl.includes('subject=Reuni%C3%A3o%20de%20Lideran%C3%A7a'));
+    assert.ok(appUrl.includes('location=Sala%203'));
+    assert.ok(appUrl.includes('body=Pauta%20estrat%C3%A9gica'));
   });
 });
