@@ -3,10 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CalendarPlus, ChevronDown, ExternalLink, MapPin, X } from 'lucide-react';
 import {
-  buildOutlookCalendarUrl,
   detectCalendarPlatform,
   downloadIcsFile,
   openGoogleCalendar,
+  openOutlookCalendar,
   type CalendarEventParams,
   type CalendarPlatform,
 } from '@/lib/calendar-url-builder';
@@ -165,7 +165,6 @@ export function AddToCalendarButton({
   if (!event) return null;
 
   const isApple = platform === 'apple';
-  const outlookUrl = buildOutlookCalendarUrl(event);
   const buttonLabel = label || 'Adicionar à Agenda';
   const resolvedFilename = icsFilename || 'evento-oneelo.ics';
 
@@ -181,7 +180,7 @@ export function AddToCalendarButton({
 
   const handleOpenOutlook = () => {
     setIsOpen(false);
-    window.open(outlookUrl, '_blank', 'noopener,noreferrer');
+    openOutlookCalendar(event, platform);
   };
 
   return (
@@ -257,7 +256,7 @@ export function AddToCalendarButton({
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-bold text-gray-900 leading-tight">Microsoft Outlook</p>
-              <p className="text-[11px] text-gray-500 leading-tight">Outlook e Hotmail Web</p>
+              <p className="text-[11px] text-gray-500 leading-tight">Aplicativo e Web</p>
             </div>
             <ExternalLink className="h-3 w-3 shrink-0 text-gray-400 opacity-60" />
           </button>
@@ -307,7 +306,6 @@ export function CalendarDeepLinkModal({
   if (!isOpen || !event) return null;
 
   const isApple = platform === 'apple';
-  const outlookUrl = buildOutlookCalendarUrl(event);
   const resolvedFilename = icsFilename || 'evento-oneelo.ics';
 
   const handleOpenGoogle = () => {
@@ -322,7 +320,7 @@ export function CalendarDeepLinkModal({
 
   const handleOpenOutlook = () => {
     onClose();
-    window.open(outlookUrl, '_blank', 'noopener,noreferrer');
+    openOutlookCalendar(event, platform);
   };
 
   return (
@@ -421,7 +419,7 @@ export function CalendarDeepLinkModal({
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-gray-900">Microsoft Outlook</p>
-                <p className="text-[11px] text-gray-500">Outlook Web ou Hotmail</p>
+                <p className="text-[11px] text-gray-500">Salvar no app Outlook ou na Web</p>
               </div>
             </div>
             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-gray-400" />

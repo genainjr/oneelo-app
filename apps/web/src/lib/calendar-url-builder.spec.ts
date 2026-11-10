@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildAndroidGoogleCalendarIntentUrl,
   buildGoogleCalendarUrl,
+  buildOutlookAppUrl,
   buildOutlookCalendarUrl,
   buildIcsContent,
   consolidateEscalasToCalendarEvents,
@@ -10,6 +11,7 @@ import {
   mapEscalaToCalendarEvent,
   mapEventoToCalendarEvent,
   openGoogleCalendar,
+  openOutlookCalendar,
   resolveCalendarDateRange,
 } from './calendar-url-builder';
 import type { Evento, MinhaEscalaItem } from '../types';
@@ -287,5 +289,22 @@ describe('calendar-url-builder', () => {
     assert.ok(intentUrl.includes('#Intent;scheme=https;package=com.google.android.calendar;'));
     assert.ok(intentUrl.includes('S.browser_fallback_url=https%3A%2F%2Fcalendar.google.com%2Fcalendar%2Frender%3F'));
     assert.ok(intentUrl.endsWith(';end'));
+  });
+
+  it('gera URL de app móvel ms-outlook:// para abrir diretamente o app do Microsoft Outlook no iPhone/iOS', () => {
+    const event = {
+      title: 'Reunião de Liderança',
+      startDate: '2026-11-20T21:00:00.000Z',
+      endDate: '2026-11-20T23:00:00.000Z',
+      location: 'Sala 3',
+      description: 'Pauta estratégica',
+    };
+
+    const appUrl = buildOutlookAppUrl(event);
+    assert.ok(appUrl.startsWith('ms-outlook://events/new?'));
+    assert.ok(appUrl.includes('title=Reuni%C3%A3o+de+Lideran%C3%A7a'));
+    assert.ok(appUrl.includes('subject=Reuni%C3%A3o+de+Lideran%C3%A7a'));
+    assert.ok(appUrl.includes('location=Sala+3'));
+    assert.ok(appUrl.includes('body=Pauta+estrat%C3%A9gica'));
   });
 });

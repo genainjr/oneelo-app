@@ -428,6 +428,113 @@ export function buildOutlookCalendarUrl(params: CalendarEventParams): string {
 }
 
 /**
+ * Gera a URL do app móvel do Microsoft Outlook (URL scheme ms-outlook://).
+ * Suportada no iOS e Android quando o app nativo do Outlook está instalado.
+ */
+export function buildOutlookAppUrl(params: CalendarEventParams): string {
+  const { isAllDay } = resolveCalendarDateRange(params);
+  const searchParams = new URLSearchParams();
+  searchParams.set('title', params.title);
+  searchParams.set('subject', params.title);
+
+  if (isAllDay) {
+    const startYmd = extractCivilYmd(params.startDate);
+    const startIso = `${startYmd.year}-${pad2(startYmd.month)}-${pad2(startYmd.day)}T00:00:00`;
+    searchParams.set('start', startIso);
+    searchParams.set('startdt', startIso);
+
+    if (params.endDate) {
+      const endYmd = extractCivilYmd(params.endDate);
+      const endIso = `${endYmd.year}-${pad2(endYmd.month)}-${pad2(endYmd.day)}T23:59:59`;
+      searchParams.set('end', endIso);
+      searchParams.set('enddt', endIso);
+    } else {
+      const endIso = `${startYmd.year}-${pad2(startYmd.month)}-${pad2(startYmd.day)}T23:59:59`;
+      searchParams.set('end', endIso);
+      searchParams.set('enddt', endIso);
+    }
+  } else {
+    const startDateObj = params.startDate instanceof Date ? params.startDate : new Date(params.startDate);
+    const safeStart = Number.isNaN(startDateObj.getTime()) ? new Date() : startDateObj;
+
+    let safeEnd: Date;
+    if (params.endDate) {
+      const endDateObj = params.endDate instanceof Date ? params.endDate : new Date(params.endDate);
+      if (!Number.isNaN(endDateObj.getTime()) && endDateObj.getTime() > safeStart.getTime()) {
+        safeEnd = endDateObj;
+      } else {
+        safeEnd = new Date(safeStart.getTime() + DEFAULT_DURATION_MS);
+      }
+    } else {
+      safeEnd = new Date(safeStart.getTime() + DEFAULT_DURATION_MS);
+    }
+
+    const startIso = safeStart.toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const endIso = safeEnd.toISOString().replace(/\.\d{3}Z$/, 'Z');
+    searchParams.set('start', startIso);
+    searchParams.set('startdt', startIso);
+    searchParams.set('end', endIso);
+    searchParams.set('enddt', endIso);
+  }
+
+  if (params.description?.trim()) {
+    searchParams.set('body', params.description.trim());
+    searchParams.set('description', params.description.trim());
+  }
+
+  if (params.location?.trim()) {
+    searchParams.set('location', params.location.trim());
+  }
+
+  return `ms-outlook://events/new?${searchParams.toString()}`;
+}
+
+/**
+ * Abre o Microsoft Outlook de forma adaptativa para a plataforma do dispositivo:
+ * - No mobile (iOS e Android): tenta disparar o app nativo do Microsoft Outlook
+ *   através do esquema 'ms-outlook://events/new'. Caso o app não esteja instalado
+ *   ou não responda, faz fallback automático para a versão Web do Outlook após 1.5s.
+ * - No Desktop (Windows/Mac/Linux): abre a versão Web do Outlook em uma nova aba (_blank).
+ */
+export function openOutlookCalendar(
+  params: CalendarEventParams,
+  platformOverride?: CalendarPlatform,
+): void {
+  if (typeof window === 'undefined') return;
+
+  const platform = platformOverride || detectCalendarPlatform();
+  const isMobile = platform === 'apple' || platform === 'android';
+  const webUrl = buildOutlookCalendarUrl(params);
+
+  if (isMobile) {
+    const appUrl = buildOutlookAppUrl(params);
+    let appOpened = false;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        appOpened = true;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange, { once: true });
+
+    // Dispara o app nativo do Outlook
+    window.location.href = appUrl;
+
+    // Fallback: se em 1.5s o navegador continuar visível, significa que o app não foi aberto
+    window.setTimeout(() => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (!appOpened) {
+        window.open(webUrl, '_blank', 'noopener,noreferrer');
+      }
+    }, 1500);
+    return;
+  }
+
+  window.open(webUrl, '_blank', 'noopener,noreferrer');
+}
+
+/**
  * Escapa texto para o formato RFC 5545 (iCalendar .ics).
  */
 export function escapeIcsText(value: string): string {
