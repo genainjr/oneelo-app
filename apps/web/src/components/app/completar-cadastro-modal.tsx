@@ -38,6 +38,9 @@ export function CompletarCadastroModal({
   const { user, refreshUser, setUser: setLayoutUser } = useAuthUser();
   const membro = user?.membro;
 
+  const [nome, setNome] = useState('');
+  const [nomeExibicao, setNomeExibicao] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [cpf, setCpf] = useState('');
   const [rg, setRg] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
@@ -53,21 +56,24 @@ export function CompletarCadastroModal({
 
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Inicializa o formulário com os dados existentes do membro
+  // Inicializa o formulário com os dados existentes do membro/usuário
   useEffect(() => {
-    if (membro) {
-      setCpf(membro.cpf || '');
-      setRg(membro.rg || '');
-      setDataNascimento(membro.dataNascimento ? membro.dataNascimento.split('T')[0] : '');
-      setDataBatismo(membro.dataBatismo ? membro.dataBatismo.split('T')[0] : '');
-      setEstadoCivil(membro.estadoCivil || '');
-      setSexo(membro.sexo || '');
+    if (membro || user) {
+      setNome(user?.nome || membro?.nome || '');
+      setNomeExibicao(membro?.nomeExibicao || '');
+      setWhatsapp(membro?.whatsapp || '');
+      setCpf(membro?.cpf || '');
+      setRg(membro?.rg || '');
+      setDataNascimento(membro?.dataNascimento ? membro.dataNascimento.split('T')[0] : '');
+      setDataBatismo(membro?.dataBatismo ? membro.dataBatismo.split('T')[0] : '');
+      setEstadoCivil(membro?.estadoCivil || '');
+      setSexo(membro?.sexo || '');
       setSelectedPhoto(null);
       setSelectedPhotoPreview(null);
       setPhotoRemovalPending(false);
       setError(null);
     }
-  }, [membro, isOpen]);
+  }, [membro, user, isOpen]);
 
   // Formatação automática de CPF (000.000.000-00)
   function handleCpfChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -112,6 +118,11 @@ export function CompletarCadastroModal({
     e.preventDefault();
     if (!membro) return;
 
+    if (!nome.trim()) {
+      setError('O Nome Completo é obrigatório.');
+      return;
+    }
+
     const rawCpf = cpf.replace(/\D/g, '');
     if (rawCpf.length > 0 && rawCpf.length !== 11) {
       setError('CPF inválido. Certifique-se de digitar os 11 dígitos.');
@@ -149,6 +160,9 @@ export function CompletarCadastroModal({
 
       // 2. Salva os campos cadastrais
       const payload = {
+        nome: nome.trim(),
+        nomeExibicao: nomeExibicao.trim() || null,
+        whatsapp: whatsapp.trim() || null,
         cpf: rawCpf.length === 11 ? cpf.trim() : null,
         rg: rg.trim() || null,
         dataNascimento: dataNascimento ? new Date(dataNascimento).toISOString() : null,
@@ -243,8 +257,37 @@ export function CompletarCadastroModal({
           />
         </div>
 
-        {/* Dados Pessoais */}
+        {/* Dados Pessoais e Cadastrais */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <InputField
+            id="modal-nome"
+            label="Nome Completo *"
+            placeholder="Nome completo do membro"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            required
+            autoComplete="name"
+          />
+
+          <InputField
+            id="modal-nome-exibicao"
+            label="Nome de Impressão"
+            optionalLabel="O que sai na carteirinha"
+            placeholder="Ex: Pr. João, João Silva..."
+            value={nomeExibicao}
+            onChange={(e) => setNomeExibicao(e.target.value)}
+          />
+
+          <InputField
+            id="modal-whatsapp"
+            label="Telefone / WhatsApp"
+            optionalLabel="Opcional"
+            placeholder="(00) 00000-0000"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            autoComplete="tel"
+          />
+
           <InputField
             id="modal-cpf"
             label="CPF *"
