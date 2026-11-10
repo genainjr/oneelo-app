@@ -342,7 +342,7 @@ export class CarteirinhaRendererService {
           flex-shrink: 0;
           position: relative;
           background: #ffffff;
-          border-radius: 24px;
+          border-radius: 16px;
           overflow: hidden;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
           page-break-inside: avoid;
@@ -350,7 +350,7 @@ export class CarteirinhaRendererService {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          border: 1.5px solid rgba(226, 232, 240, 0.9);
+          border: 1px solid rgba(226, 232, 240, 0.7);
           padding: 20px;
         }
 
@@ -694,7 +694,9 @@ export class CarteirinhaRendererService {
                   background: #ffffff;
                 }
                 .cr80-card {
-                  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+                  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+                  border-radius: 16px;
+                  border: 1px solid rgba(226, 232, 240, 0.7);
                 }
               </style>
             </head>
