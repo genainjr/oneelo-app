@@ -35,9 +35,10 @@ Features planejadas para homologa√ß√£o e fases seguintes. As p√≥s-MVP t√™m tela 
 
 ---
 
-### FT-002 Adicionar Escalas ao Google Agenda (Link Direto e Lote)
+### FT-002 Adicionar Escalas e Eventos a Aplicativos de Agenda (Google, Apple, Outlook e .ics)
 - **Prioridade**: alta
-- **Fase**: 1 (PÛs-MVP)
+- **Status**: implementado (suporte multi-provedor Google/Apple/Outlook/.ics, aÁıes em lote e atalhos de notificaÁ„o via commit aca4f9c)
+- **Fase**: entregue
 - **Categoria**: UX / Produtividade
 - **Contexto**: Membros precisam entrar no portal para saber quando est„o escalados. Integrar via OAuth bidirecional traria fricÁ„o desnecess·ria (senhas, escopos restritos do Google e verificaÁ„o de aplicativo). Uma abordagem ·gil e sem atrito via Link Direto Template e Lote permite ao membro colocar seus compromissos no Google Agenda com 1 clique.
 - **AÁ„o**:
@@ -102,6 +103,7 @@ Features planejadas para homologa√ß√£o e fases seguintes. As p√≥s-MVP t√™m tela 
 - **A√ß√£o**: Chat em `/ministerios/midia` onde o usu√°rio descreve o que precisa. Claude API gera um prompt otimizado. Op√ß√£o A: integra√ß√£o com DALL-E 3 ou Stability AI para gerar diretamente. Op√ß√£o B: copia o prompt para usar no Canva IA / Midjourney. Hist√≥rico de imagens geradas salvo em S3 ou Cloudflare R2.
 - **Impacto**: Reduz tempo de cria√ß√£o de arte. Equipe sem habilidade t√©cnica consegue gerar imagens de qualidade.
 - **Depende de**: Claude API key, DALL-E API ou Stability AI, bucket S3/R2 para storage. Controle de cota por tenant para gerenciar custo de gera√ß√£o.
+
 
 
 
