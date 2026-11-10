@@ -28,6 +28,12 @@ type ProfileFormState = {
   nome: string;
   nomeExibicao: string;
   whatsapp: string;
+  cpf: string;
+  rg: string;
+  dataNascimento: string;
+  dataBatismo: string;
+  estadoCivil: string;
+  sexo: string;
 };
 
 function buildProfileForm(user: AuthUser): ProfileFormState {
@@ -35,6 +41,12 @@ function buildProfileForm(user: AuthUser): ProfileFormState {
     nome: user.nome ?? '',
     nomeExibicao: user.membro?.nomeExibicao ?? '',
     whatsapp: user.membro?.whatsapp ?? '',
+    cpf: user.membro?.cpf ?? '',
+    rg: user.membro?.rg ?? '',
+    dataNascimento: user.membro?.dataNascimento ? user.membro.dataNascimento.split('T')[0] : '',
+    dataBatismo: user.membro?.dataBatismo ? user.membro.dataBatismo.split('T')[0] : '',
+    estadoCivil: user.membro?.estadoCivil ?? '',
+    sexo: user.membro?.sexo ?? '',
   };
 }
 
@@ -50,6 +62,12 @@ export default function MeuPerfilPage() {
           nome: '',
           nomeExibicao: '',
           whatsapp: '',
+          cpf: '',
+          rg: '',
+          dataNascimento: '',
+          dataBatismo: '',
+          estadoCivil: '',
+          sexo: '',
         },
   );
   const [profileLoading, setProfileLoading] = useState(false);
@@ -141,11 +159,23 @@ export default function MeuPerfilPage() {
       return;
     }
 
+    const rawCpf = profileForm.cpf.replace(/\D/g, '');
+    if (rawCpf && rawCpf.length !== 11) {
+      setProfileError('CPF inválido. Certifique-se de digitar os 11 dígitos.');
+      return;
+    }
+
     const payload = user.membro
       ? {
           nome,
           nomeExibicao: profileForm.nomeExibicao.trim() || null,
           whatsapp: profileForm.whatsapp.trim() || null,
+          cpf: rawCpf ? profileForm.cpf.trim() : null,
+          rg: profileForm.rg.trim() || null,
+          dataNascimento: profileForm.dataNascimento ? new Date(profileForm.dataNascimento).toISOString() : null,
+          dataBatismo: profileForm.dataBatismo ? new Date(profileForm.dataBatismo).toISOString() : null,
+          estadoCivil: profileForm.estadoCivil || null,
+          sexo: profileForm.sexo || null,
         }
       : { nome };
 
@@ -502,6 +532,74 @@ export default function MeuPerfilPage() {
                   autoComplete="tel"
                   disabled={!user.membro}
                 />
+                {user.membro && (
+                  <>
+                    <InputField
+                      id="profile-cpf"
+                      label="CPF"
+                      placeholder="000.000.000-00"
+                      value={profileForm.cpf}
+                      onChange={(event) => {
+                        const raw = event.target.value.replace(/\D/g, '').slice(0, 11);
+                        let formatted = raw;
+                        if (raw.length > 9) {
+                          formatted = `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9)}`;
+                        } else if (raw.length > 6) {
+                          formatted = `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6)}`;
+                        } else if (raw.length > 3) {
+                          formatted = `${raw.slice(0, 3)}.${raw.slice(3)}`;
+                        }
+                        handleProfileFieldChange('cpf', formatted);
+                      }}
+                      autoComplete="off"
+                    />
+                    <InputField
+                      id="profile-rg"
+                      label="RG"
+                      optionalLabel="Opcional"
+                      value={profileForm.rg}
+                      onChange={(event) => handleProfileFieldChange('rg', event.target.value)}
+                    />
+                    <InputField
+                      id="profile-nascimento"
+                      label="Data de nascimento"
+                      type="date"
+                      value={profileForm.dataNascimento}
+                      onChange={(event) => handleProfileFieldChange('dataNascimento', event.target.value)}
+                    />
+                    <InputField
+                      id="profile-batismo"
+                      label="Data de batismo"
+                      type="date"
+                      optionalLabel="Opcional"
+                      value={profileForm.dataBatismo}
+                      onChange={(event) => handleProfileFieldChange('dataBatismo', event.target.value)}
+                    />
+                    <SelectField
+                      id="profile-estado-civil"
+                      label="Estado civil"
+                      value={profileForm.estadoCivil}
+                      onChange={(event) => handleProfileFieldChange('estadoCivil', event.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="SOLTEIRO">Solteiro(a)</option>
+                      <option value="CASADO">Casado(a)</option>
+                      <option value="DIVORCIADO">Divorciado(a)</option>
+                      <option value="VIUVO">Viúvo(a)</option>
+                      <option value="UNIAO_ESTAVEL">União Estável</option>
+                    </SelectField>
+                    <SelectField
+                      id="profile-sexo"
+                      label="Sexo"
+                      value={profileForm.sexo}
+                      onChange={(event) => handleProfileFieldChange('sexo', event.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      <option value="MASCULINO">Masculino</option>
+                      <option value="FEMININO">Feminino</option>
+                    </SelectField>
+                  </>
+                )}
               </div>
 
               {profileError && (
@@ -746,13 +844,29 @@ export default function MeuPerfilPage() {
       ) : null}
 
       {user?.membro && (
-        <CarteirinhaModal
-          isOpen={carteirinhaOpen}
-          onClose={() => setCarteirinhaOpen(false)}
-          membro={user.membro as unknown as Membro}
-          churchName={user.tenant?.nome}
-          churchLogoUrl={user.tenant?.logoUrl}
-        />
+        <>
+          <CompletarCadastroModal
+            isOpen={completarCadastroOpen}
+            onClose={() => {
+              setCompletarCadastroOpen(false);
+              setCarteirinhaPendingOpen(false);
+            }}
+            onSuccess={() => {
+              setCompletarCadastroOpen(false);
+              if (carteirinhaPendingOpen) {
+                setCarteirinhaPendingOpen(false);
+                setCarteirinhaOpen(true);
+              }
+            }}
+          />
+          <CarteirinhaModal
+            isOpen={carteirinhaOpen}
+            onClose={() => setCarteirinhaOpen(false)}
+            membro={user.membro as unknown as Membro}
+            churchName={user.tenant?.nome}
+            churchLogoUrl={user.tenant?.logoUrl}
+          />
+        </>
       )}
     </div>
   );
