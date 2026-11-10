@@ -246,16 +246,28 @@ export class DocumentJobsService {
       return `carteirinha:${params.memberId}:${job.formato}`;
     }
     if (
-      (job.tipoDocumento === TipoDocumento.ESCALA_PDF || job.tipoDocumento === TipoDocumento.ESCALA_PNG) &&
-      (params.mesAno || params.escalaId)
+      job.tipoDocumento === TipoDocumento.ESCALA_PDF ||
+      job.tipoDocumento === TipoDocumento.ESCALA_PNG
     ) {
-      return `escala:${params.mesAno || params.escalaId}:${job.formato}`;
+      const periodo =
+        params.mes && params.ano
+          ? `${params.ano}-${params.mes}`
+          : params.mesAno || params.escalaId || 'geral';
+      const min = params.ministerioId || 'geral';
+      const pag = params.pagina ?? 1;
+      return `escala:${min}:${periodo}:${pag}:${job.formato}`;
     }
     if (
-      (job.tipoDocumento === TipoDocumento.AGENDA_PDF || job.tipoDocumento === TipoDocumento.AGENDA_PNG) &&
-      (params.mesAno || params.agendaId)
+      job.tipoDocumento === TipoDocumento.AGENDA_PDF ||
+      job.tipoDocumento === TipoDocumento.AGENDA_PNG
     ) {
-      return `agenda:${params.mesAno || params.agendaId}:${job.formato}`;
+      const periodo =
+        params.dataInicio && params.dataFim
+          ? `${params.dataInicio}_${params.dataFim}`
+          : params.mesAno || params.agendaId || 'geral';
+      const min = params.ministerioId || 'geral';
+      const pag = params.pagina ?? 1;
+      return `agenda:${min}:${periodo}:${pag}:${job.formato}`;
     }
     if (job.tipoDocumento === TipoDocumento.CARTEIRINHAS_LOTE) {
       return `carteirinhas_lote:${job.tenantId}`;
@@ -271,8 +283,34 @@ export class DocumentJobsService {
     if (query.status) {
       where.status = query.status;
     }
-    if (query.tipoDocumento) {
-      where.tipoDocumento = query.tipoDocumento;
+    if (query.categoria) {
+      if (query.categoria === 'ESCALAS') {
+        where.tipoDocumento = {
+          in: [TipoDocumento.ESCALA_PDF, TipoDocumento.ESCALA_PNG],
+        };
+      } else if (query.categoria === 'AGENDA') {
+        where.tipoDocumento = {
+          in: [TipoDocumento.AGENDA_PDF, TipoDocumento.AGENDA_PNG],
+        };
+      } else if (query.categoria === 'CARTEIRINHAS') {
+        where.tipoDocumento = TipoDocumento.CARTEIRINHA_INDIVIDUAL;
+      } else if (query.categoria === 'CARTEIRINHAS_LOTE') {
+        where.tipoDocumento = TipoDocumento.CARTEIRINHAS_LOTE;
+      } else if (query.categoria === 'RELATORIOS') {
+        where.tipoDocumento = TipoDocumento.RELATORIO;
+      }
+    } else if (query.tipoDocumento) {
+      if ((query.tipoDocumento as any) === 'ESCALAS') {
+        where.tipoDocumento = {
+          in: [TipoDocumento.ESCALA_PDF, TipoDocumento.ESCALA_PNG],
+        };
+      } else if ((query.tipoDocumento as any) === 'AGENDA') {
+        where.tipoDocumento = {
+          in: [TipoDocumento.AGENDA_PDF, TipoDocumento.AGENDA_PNG],
+        };
+      } else {
+        where.tipoDocumento = query.tipoDocumento;
+      }
     }
 
     const allJobs = await this.prisma.client.documentJob.findMany({

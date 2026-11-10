@@ -655,8 +655,8 @@ export class CarteirinhaRendererService {
       }),
     );
 
-    // Na folha A4 padrão cabem 6 cartões no formato CR80 (3 linhas x 2 colunas)
-    const CARDS_PER_PAGE = 6;
+    // Na folha A4 padrão cabem 8 cartões no formato CR80 (4 linhas x 2 colunas)
+    const CARDS_PER_PAGE = 8;
     const pagesHtml: string[] = [];
 
     for (let i = 0; i < renderedCards.length; i += CARDS_PER_PAGE) {
@@ -665,7 +665,7 @@ export class CarteirinhaRendererService {
       const frontSlots: string[] = [];
       const backSlots: string[] = [];
 
-      for (let row = 0; row < 3; row++) {
+      for (let row = 0; row < 4; row++) {
         const leftIdx = row * 2;
         const rightIdx = row * 2 + 1;
 
@@ -680,14 +680,13 @@ export class CarteirinhaRendererService {
           rightCard ? rightCard.frontHtml : '<div class="card-placeholder"></div>',
         );
 
-        // Verso da folha (espelhado horizontalmente para impressão frente e verso duplex):
-        // Quando virada na horizontal, Coluna 1 da frente fica na Coluna 2 do verso,
-        // e Coluna 2 da frente fica na Coluna 1 do verso.
-        backSlots.push(
-          rightCard ? rightCard.backHtml : '<div class="card-placeholder"></div>',
-        );
+        // Verso da folha: Mantém rigorosamente a mesma ordem da frente
+        // Coluna 1 = verso do leftCard, Coluna 2 = verso do rightCard
         backSlots.push(
           leftCard ? leftCard.backHtml : '<div class="card-placeholder"></div>',
+        );
+        backSlots.push(
+          rightCard ? rightCard.backHtml : '<div class="card-placeholder"></div>',
         );
       }
 
@@ -723,12 +722,12 @@ export class CarteirinhaRendererService {
             height: 297mm;
             max-height: 297mm;
             box-sizing: border-box;
-            padding: 20mm 15.4mm;
+            padding: 20mm 16.4mm;
             display: grid;
             grid-template-columns: 85.6mm 85.6mm;
-            grid-template-rows: 53.98mm 53.98mm 53.98mm;
-            column-gap: 8mm;
-            row-gap: 8mm;
+            grid-template-rows: repeat(4, 53.98mm);
+            column-gap: 6mm;
+            row-gap: 4mm;
             justify-content: center;
             align-content: center;
             page-break-after: always;

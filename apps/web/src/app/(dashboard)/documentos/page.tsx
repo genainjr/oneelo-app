@@ -156,7 +156,13 @@ export default function CentralDocumentosPage() {
     if (!isPolling) setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (selectedTipo !== 'TODOS') params.append('tipoDocumento', selectedTipo);
+      if (selectedTipo !== 'TODOS') {
+        if (selectedTipo === 'ESCALAS' || selectedTipo === 'AGENDA') {
+          params.append('categoria', selectedTipo);
+        } else {
+          params.append('tipoDocumento', selectedTipo);
+        }
+      }
       if (selectedStatus !== 'TODOS') params.append('status', selectedStatus);
 
       const query = params.toString() ? `?${params.toString()}` : '';
@@ -271,8 +277,8 @@ export default function CentralDocumentosPage() {
             { id: 'TODOS', label: 'Todos' },
             { id: 'CARTEIRINHA_INDIVIDUAL', label: 'Carteirinhas' },
             { id: 'CARTEIRINHAS_LOTE', label: 'Lote (A4)' },
-            { id: 'ESCALA_PDF', label: 'Escalas' },
-            { id: 'AGENDA_PDF', label: 'Agenda' },
+            { id: 'ESCALAS', label: 'Escalas' },
+            { id: 'AGENDA', label: 'Agenda' },
           ].map((tab) => (
             <button
               key={tab.id}

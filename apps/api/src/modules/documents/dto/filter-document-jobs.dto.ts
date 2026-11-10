@@ -12,6 +12,10 @@ export class FilterDocumentJobsDto {
 
   @IsString()
   @IsOptional()
+  categoria?: string;
+
+  @IsString()
+  @IsOptional()
   limit?: string;
 
   @IsString()
