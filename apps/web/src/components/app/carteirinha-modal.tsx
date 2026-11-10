@@ -33,6 +33,8 @@ export function CarteirinhaModal({
   const [currentSlide, setCurrentSlide] = useState<number>(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchDeltaX, setTouchDeltaX] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragStartX, setDragStartX] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [validationUrl, setValidationUrl] = useState<string>('');
@@ -328,9 +330,6 @@ export function CarteirinhaModal({
       </div>
     </div>
   );
-
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [dragStartX, setDragStartX] = useState<number | null>(null);
 
   function handleTouchStart(e: React.TouchEvent) {
     setTouchStartX(e.targetTouches[0].clientX);
