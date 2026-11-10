@@ -118,6 +118,51 @@ enum AcaoAuditoria {
   @@map("audit_action")
 }
 
+enum SexoMembro {
+  MASCULINO
+  FEMININO
+
+  @@map("member_gender")
+}
+
+enum EstadoCivil {
+  SOLTEIRO
+  CASADO
+  DIVORCIADO
+  VIUVO
+  UNIAO_ESTAVEL
+
+  @@map("marital_status")
+}
+
+enum TipoDocumento {
+  CARTEIRINHA_INDIVIDUAL
+  CARTEIRINHAS_LOTE
+  ESCALA_PDF
+  ESCALA_PNG
+  AGENDA_PDF
+  AGENDA_PNG
+  RELATORIO
+
+  @@map("document_type")
+}
+
+enum FormatoDocumento {
+  PDF
+  PNG
+
+  @@map("document_format")
+}
+
+enum StatusDocumentJob {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+
+  @@map("document_job_status")
+}
+
 enum FinanceRole {
   FINANCE_VIEWER
   FINANCE_OPERATOR
@@ -256,6 +301,7 @@ model Tenant {
   notifications         Notification[]
   notificationAutomationRules NotificationAutomationRule[]
   userNotificationPreferences UserNotificationPreference[]
+  documentJobs          DocumentJob[]
 
   @@map("tb_tenant")
 }
@@ -293,6 +339,7 @@ model User {
   notificationsCreated          Notification[]          @relation("NotificationAuthor")
   notificationRecipients        NotificationRecipient[]
   notificationPreference        UserNotificationPreference?
+  documentJobs                  DocumentJob[]
 
   @@index([tenantId])
   @@index([status])
@@ -441,6 +488,13 @@ model Membro {
   fotoUrl        String?      @map("photo_url")
   fotoKey        String?      @map("photo_key")
   status         StatusMembro @default(ATIVO) @map("member_status")
+  matricula      String?      @map("registration_number")
+  cargo          String?      @map("ecclesiastical_role")
+  dataBatismo    DateTime?    @map("baptism_date")
+  cpf            String?      @map("tax_id")
+  rg             String?      @map("national_id")
+  sexo           SexoMembro?  @map("gender")
+  estadoCivil    EstadoCivil? @map("marital_status")
   observacoes    String?      @map("notes")
   deletedAt      DateTime?    @map("deleted_at")
   createdAt      DateTime     @default(now()) @map("created_at")
@@ -841,4 +895,30 @@ model UserNotificationPreference {
 
   @@index([tenantId])
   @@map("tb_user_notification_preference")
+}
+
+model DocumentJob {
+  id                String            @id @default(uuid())
+  tenantId          String            @map("tenant_id")
+  requestedByUserId String?           @map("requested_by_user_id")
+  tipoDocumento     TipoDocumento     @map("document_type")
+  formato           FormatoDocumento  @map("document_format")
+  status            StatusDocumentJob @default(PENDING) @map("status")
+  parametros        Json?             @map("parameters")
+  versionHash       String?           @map("version_hash")
+  storageKey        String?           @map("storage_key")
+  fileName          String?           @map("file_name")
+  fileSize          Int?              @map("file_size")
+  tentativas        Int               @default(0) @map("attempts")
+  erroMensagem      String?           @map("error_message")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  completedAt       DateTime?         @map("completed_at")
+
+  tenant          Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestedByUser User?  @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([tenantId, tipoDocumento, versionHash])
+  @@map("tb_document_job")
 }

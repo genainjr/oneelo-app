@@ -118,4 +118,43 @@ describe('MembrosService - limites por plano', () => {
       expect(prisma.client.membro.create).toHaveBeenCalled();
     });
   });
+
+  describe('Novos campos cadastrais e eclesiásticos', () => {
+    it('deve repassar matricula, cargo, dataBatismo, cpf, rg, sexo e estadoCivil ao prisma create', async () => {
+      const { service, prisma } = createService(
+        { id: tenantId, plano: Plano.BASICO, limiteMembros: 200 },
+        10,
+      );
+
+      const completeMemberDto = {
+        nome: 'Maria de Nazaré',
+        email: 'maria@exemplo.com',
+        matricula: 'ROL-00123',
+        cargo: 'Diaconisa',
+        dataBatismo: '2015-08-20T00:00:00Z',
+        cpf: '123.456.789-00',
+        rg: '200500900',
+        sexo: 'FEMININO',
+        estadoCivil: 'CASADO',
+      };
+
+      const result = await service.create(tenantId, completeMemberDto as any);
+      expect(result).toMatchObject({
+        nome: 'Maria de Nazaré',
+        matricula: 'ROL-00123',
+        cargo: 'Diaconisa',
+        cpf: '123.456.789-00',
+        rg: '200500900',
+        sexo: 'FEMININO',
+        estadoCivil: 'CASADO',
+      });
+      expect(prisma.client.membro.create).toHaveBeenCalledWith({
+        data: {
+          ...completeMemberDto,
+          tenantId,
+        },
+        include: expect.any(Object),
+      });
+    });
+  });
 });

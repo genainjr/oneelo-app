@@ -1,5 +1,5 @@
 import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsNotEmpty } from 'class-validator';
-import { StatusMembro } from '@prisma/client';
+import { StatusMembro, SexoMembro, EstadoCivil } from '@prisma/client';
 
 export class CreateMembroDto {
   @IsString()
@@ -25,6 +25,34 @@ export class CreateMembroDto {
   @IsEnum(StatusMembro)
   @IsOptional()
   status?: StatusMembro;
+
+  @IsString()
+  @IsOptional()
+  matricula?: string;
+
+  @IsString()
+  @IsOptional()
+  cargo?: string;
+
+  @IsDateString()
+  @IsOptional()
+  dataBatismo?: string;
+
+  @IsString()
+  @IsOptional()
+  cpf?: string;
+
+  @IsString()
+  @IsOptional()
+  rg?: string;
+
+  @IsEnum(SexoMembro)
+  @IsOptional()
+  sexo?: SexoMembro;
+
+  @IsEnum(EstadoCivil)
+  @IsOptional()
+  estadoCivil?: EstadoCivil;
 
   @IsString()
   @IsOptional()

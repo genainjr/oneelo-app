@@ -54,25 +54,25 @@ Entregar a infraestrutura da **Central de Documentos** multitenant no OneElo e a
 > **Regra de Execução:** O desenvolvimento deve avançar estritamente etapa por etapa. Ao concluir uma tarefa ou etapa, atualize imediatamente seu checkbox para `[x]`, apresente o resumo das validações e **aguarde a autorização explícita do usuário antes de iniciar a etapa seguinte**.
 
 ### Etapa 0 - Modelagem de Dados e Migração (Prisma & DTOs)
-Status: planejado
+Status: concluido
 
-- [ ] Atualizar schema Prisma (`apps/api/prisma/schema.prisma`):
-  - [ ] Adicionar campos em `Membro` (`tb_member`):
-    - [ ] `matricula` (String?, nullable)
-    - [ ] `cargo` (String?, nullable)
-    - [ ] `dataBatismo` (DateTime?, nullable)
-    - [ ] `cpf` (String?, nullable)
-    - [ ] `rg` (String?, nullable)
-    - [ ] `sexo` (enum `SexoMembro` com `MASCULINO`, `FEMININO`, nullable)
-    - [ ] `estadoCivil` (enum `EstadoCivil` com `SOLTEIRO`, `CASADO`, `DIVORCIADO`, `VIUVO`, `UNIAO_ESTAVEL`, nullable)
-  - [ ] Criar enum `TipoDocumento` (`CARTEIRINHA_INDIVIDUAL`, `CARTEIRINHAS_LOTE`, `ESCALA_PDF`, `ESCALA_PNG`, `AGENDA_PDF`, `AGENDA_PNG`, `RELATORIO`)
-  - [ ] Criar enum `FormatoDocumento` (`PDF`, `PNG`)
-  - [ ] Criar enum `StatusDocumentJob` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`)
-  - [ ] Criar modelo `DocumentJob` (`tb_document_job`) com `id`, `tenantId`, `requestedByUserId`, `tipoDocumento`, `formato`, `status`, `parametros` (Json), `versionHash` (String?), `storageKey` (String?), `fileName` (String?), `fileSize` (Int?), `tentativas` (Int @default(0)), `erroMensagem` (String?), `createdAt`, `completedAt`
-  - [ ] Adicionar índices por `[tenantId, status]` e `[tenantId, tipoDocumento, versionHash]`
-- [ ] Gerar migração Prisma e client (`npx prisma generate`)
-- [ ] Atualizar DTOs de membros (`apps/api/src/modules/membros/dto/create-membro.dto.ts` e `update-membro.dto.ts`) para suportar os novos campos com validações de formato
-- [ ] Critério de validação da etapa: `npx prisma validate`, `npx tsc --noEmit -p apps/api/tsconfig.json` e testes unitários de membros passando sem regressão.
+- [x] Atualizar schema Prisma (`apps/api/prisma/schema.prisma`):
+  - [x] Adicionar campos em `Membro` (`tb_member`):
+    - [x] `matricula` (String?, nullable)
+    - [x] `cargo` (String?, nullable)
+    - [x] `dataBatismo` (DateTime?, nullable)
+    - [x] `cpf` (String?, nullable)
+    - [x] `rg` (String?, nullable)
+    - [x] `sexo` (enum `SexoMembro` com `MASCULINO`, `FEMININO`, nullable)
+    - [x] `estadoCivil` (enum `EstadoCivil` com `SOLTEIRO`, `CASADO`, `DIVORCIADO`, `VIUVO`, `UNIAO_ESTAVEL`, nullable)
+  - [x] Criar enum `TipoDocumento` (`CARTEIRINHA_INDIVIDUAL`, `CARTEIRINHAS_LOTE`, `ESCALA_PDF`, `ESCALA_PNG`, `AGENDA_PDF`, `AGENDA_PNG`, `RELATORIO`)
+  - [x] Criar enum `FormatoDocumento` (`PDF`, `PNG`)
+  - [x] Criar enum `StatusDocumentJob` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`)
+  - [x] Criar modelo `DocumentJob` (`tb_document_job`) com `id`, `tenantId`, `requestedByUserId`, `tipoDocumento`, `formato`, `status`, `parametros` (Json), `versionHash` (String?), `storageKey` (String?), `fileName` (String?), `fileSize` (Int?), `tentativas` (Int @default(0)), `erroMensagem` (String?), `createdAt`, `completedAt`
+  - [x] Adicionar índices por `[tenantId, status]` e `[tenantId, tipoDocumento, versionHash]`
+- [x] Gerar migração Prisma e client (`npx prisma generate`)
+- [x] Atualizar DTOs de membros (`apps/api/src/modules/membros/dto/create-membro.dto.ts` e `update-membro.dto.ts`) para suportar os novos campos com validações de formato
+- [x] Critério de validação da etapa: `npx prisma validate`, `npx tsc --noEmit -p apps/api/tsconfig.json` e testes unitários de membros passando sem regressão.
 
 ### Etapa 1 - Backend: Módulo de Documentos e Fila Assíncrona
 Status: planejado
