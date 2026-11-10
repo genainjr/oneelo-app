@@ -1,10 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Download, FileText, Image as ImageIcon, Loader2, QrCode, ShieldCheck, X } from 'lucide-react';
+import {
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  QrCode,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import QRCode from 'qrcode';
 import { api } from '@/lib/api';
-import { downloadFile } from '@/hooks/use-document-share';
 import type { Membro } from '@/types';
 
 export interface CarteirinhaModalProps {
@@ -30,6 +36,8 @@ export function CarteirinhaModal({
 
   useEffect(() => {
     if (!membro?.id) return;
+    setError(null);
+
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001';
     const targetUrl = `${origin}/validar-carteirinha/${membro.id}`;
     setValidationUrl(targetUrl);
@@ -81,7 +89,7 @@ export function CarteirinhaModal({
       let currentJob = job;
       let attempts = 0;
       while (currentJob.status !== 'COMPLETED' && currentJob.status !== 'FAILED' && attempts < 15) {
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 1200));
         attempts += 1;
         currentJob = await api.get<{ id: string; status: string; downloadUrl?: string }>(
           `/api/documents/jobs/${job.id}`,
@@ -89,17 +97,28 @@ export function CarteirinhaModal({
       }
 
       if (currentJob.status === 'COMPLETED' && currentJob.downloadUrl) {
-        // Baixa o arquivo gerado via link direto para evitar restrições de CORS no browser
         const extension = formato === 'PDF' ? 'pdf' : 'png';
         const fileName = `carteirinha-${membro.nome.toLowerCase().replace(/\s+/g, '-')}.${extension}`;
-        const link = document.createElement('a');
-        link.href = currentJob.downloadUrl;
-        link.download = fileName;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+
+        const isMobile =
+          typeof window !== 'undefined' &&
+          (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+            (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 768px)').matches));
+
+        if (isMobile) {
+          // No celular, abre diretamente na janela atual para exibir o documento por dentro do sistema sem bloqueio de pop-up
+          window.location.href = currentJob.downloadUrl;
+        } else {
+          // No desktop, dispara o download via link
+          const link = document.createElement('a');
+          link.href = currentJob.downloadUrl;
+          link.download = fileName;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
       } else {
         throw new Error('Tempo de geração expirou. Consulte a Central de Documentos.');
       }
@@ -111,8 +130,8 @@ export function CarteirinhaModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 overflow-y-auto animate-in fade-in duration-150">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white p-5 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-indigo-600" />
@@ -122,6 +141,7 @@ export function CarteirinhaModal({
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            aria-label="Fechar modal"
           >
             <X className="h-5 w-5" />
           </button>
