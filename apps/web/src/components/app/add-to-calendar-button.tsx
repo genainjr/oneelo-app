@@ -29,13 +29,13 @@ export interface AddToCalendarButtonProps {
 
 const VARIANT_CLASSES: Record<NonNullable<AddToCalendarButtonProps['variant']>, string> = {
   primary:
-    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40',
+    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40',
   secondary:
-    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-xs font-bold text-indigo-700 shadow-2xs transition hover:bg-indigo-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
+    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl border border-gray-200/90 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
   outline:
-    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 shadow-2xs transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
+    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 rounded-xl border border-gray-200/90 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
   compact:
-    'inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 rounded-lg border border-indigo-100 bg-indigo-50/60 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
+    'inline-flex items-center justify-center gap-1 whitespace-nowrap shrink-0 rounded-lg border border-gray-200/80 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30',
 };
 
 /**
@@ -219,10 +219,10 @@ export function AddToCalendarButton({
         aria-label={`${buttonLabel}: ${event.title}`}
         className={VARIANT_CLASSES[variant]}
       >
-        <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
+        <CalendarPlus className="h-3.5 w-3.5 shrink-0 text-gray-500" />
         <span className="whitespace-nowrap">{buttonLabel}</span>
         <ChevronDown
-          className={`h-3 w-3 shrink-0 opacity-70 transition-transform duration-150 ${
+          className={`h-3 w-3 shrink-0 text-gray-400 transition-transform duration-150 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -232,30 +232,20 @@ export function AddToCalendarButton({
         <div
           role="menu"
           aria-label="Opções de Agenda"
-          className={`absolute right-0 z-50 w-60 max-w-[calc(100vw-32px)] rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150 ${
+          className={`absolute right-0 z-50 w-48 max-w-[calc(100vw-32px)] rounded-xl border border-gray-150 bg-white p-1 shadow-lg ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150 ${
             placement === 'top'
               ? 'bottom-full mb-1.5 origin-bottom-right'
               : 'top-full mt-1.5 origin-top-right'
           }`}
         >
-          <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            Salvar em
-          </div>
-
           <button
             type="button"
             role="menuitem"
             onClick={handleOpenGoogle}
-            className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-gray-700 transition hover:bg-indigo-50 hover:text-indigo-700"
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50 hover:text-gray-900"
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-50 border border-gray-100/80">
-              <GoogleCalendarLogo className="h-5 w-5 shrink-0" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-bold text-gray-900 leading-tight">Google Agenda</p>
-              <p className="text-[11px] text-gray-500 leading-tight">Web e aplicativo</p>
-            </div>
-            <ExternalLink className="h-3 w-3 shrink-0 text-gray-400 opacity-60" />
+            <GoogleCalendarLogo className="h-4 w-4 shrink-0" />
+            <span className="truncate">Google Agenda</span>
           </button>
 
           {isApple && (
@@ -263,15 +253,10 @@ export function AddToCalendarButton({
               type="button"
               role="menuitem"
               onClick={handleOpenApple}
-              className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-gray-700 transition hover:bg-indigo-50 hover:text-indigo-700"
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50 hover:text-gray-900"
             >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-50 border border-gray-100/80">
-                <AppleCalendarLogo className="h-5 w-5 shrink-0" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-gray-900 leading-tight">Apple Calendário</p>
-                <p className="text-[11px] text-gray-500 leading-tight">iPhone, iPad e Mac</p>
-              </div>
+              <AppleCalendarLogo className="h-4 w-4 shrink-0" />
+              <span className="truncate">Apple Calendário</span>
             </button>
           )}
 
@@ -279,16 +264,10 @@ export function AddToCalendarButton({
             type="button"
             role="menuitem"
             onClick={handleOpenOutlook}
-            className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-gray-700 transition hover:bg-indigo-50 hover:text-indigo-700"
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50 hover:text-gray-900"
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-50 border border-gray-100/80">
-              <OutlookLogo className="h-5 w-5 shrink-0" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-bold text-gray-900 leading-tight">Microsoft Outlook</p>
-              <p className="text-[11px] text-gray-500 leading-tight">Aplicativo e Web</p>
-            </div>
-            <ExternalLink className="h-3 w-3 shrink-0 text-gray-400 opacity-60" />
+            <OutlookLogo className="h-4 w-4 shrink-0" />
+            <span className="truncate">Microsoft Outlook</span>
           </button>
         </div>
       )}
@@ -399,41 +378,37 @@ export function CalendarDeepLinkModal({
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <button
             type="button"
             onClick={handleOpenGoogle}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-xs"
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-150 bg-white p-2.5 text-left transition hover:bg-gray-50/80"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 border border-gray-100">
-                <GoogleCalendarLogo className="h-6 w-6 shrink-0" />
-              </div>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <GoogleCalendarLogo className="h-5 w-5 shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs font-bold text-gray-900">Google Agenda</p>
-                <p className="text-[11px] text-gray-500">Salvar no Google Calendar web ou app</p>
+                <p className="text-xs font-semibold text-gray-800">Google Agenda</p>
+                <p className="text-[11px] text-gray-400">Web ou aplicativo</p>
               </div>
             </div>
-            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <ExternalLink className="h-3 w-3 shrink-0 text-gray-400" />
           </button>
 
           {isApple && (
             <button
               type="button"
               onClick={handleOpenApple}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-xs"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-150 bg-white p-2.5 text-left transition hover:bg-gray-50/80"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 border border-gray-100">
-                  <AppleCalendarLogo className="h-6 w-6 shrink-0" />
-                </div>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <AppleCalendarLogo className="h-5 w-5 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-gray-900">Apple Calendário</p>
-                  <p className="text-[11px] text-gray-500">iPhone, iPad ou Mac (aplicativo nativo)</p>
+                  <p className="text-xs font-semibold text-gray-800">Apple Calendário</p>
+                  <p className="text-[11px] text-gray-400">iPhone, iPad ou Mac</p>
                 </div>
               </div>
-              <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
-                iOS / Mac
+              <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                Nativo
               </span>
             </button>
           )}
@@ -441,18 +416,16 @@ export function CalendarDeepLinkModal({
           <button
             type="button"
             onClick={handleOpenOutlook}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-xs"
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-150 bg-white p-2.5 text-left transition hover:bg-gray-50/80"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 border border-gray-100">
-                <OutlookLogo className="h-6 w-6 shrink-0" />
-              </div>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <OutlookLogo className="h-5 w-5 shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs font-bold text-gray-900">Microsoft Outlook</p>
-                <p className="text-[11px] text-gray-500">Salvar no app Outlook ou na Web</p>
+                <p className="text-xs font-semibold text-gray-800">Microsoft Outlook</p>
+                <p className="text-[11px] text-gray-400">Aplicativo ou Web</p>
               </div>
             </div>
-            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <ExternalLink className="h-3 w-3 shrink-0 text-gray-400" />
           </button>
         </div>
 
@@ -460,7 +433,7 @@ export function CalendarDeepLinkModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50"
+            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
           >
             Cancelar
           </button>
