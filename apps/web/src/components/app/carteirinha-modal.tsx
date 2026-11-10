@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import {
   FileText,
-  Image as ImageIcon,
   Loader2,
   QrCode,
   ShieldCheck,
@@ -28,7 +27,7 @@ export function CarteirinhaModal({
   churchLogoUrl,
   onClose,
 }: CarteirinhaModalProps) {
-  const [downloading, setDownloading] = useState<'pdf' | 'png' | null>(null);
+  const [downloading, setDownloading] = useState<boolean>(false);
   const [activeSide, setActiveSide] = useState<'front' | 'back'>('front');
   const [error, setError] = useState<string | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
@@ -72,16 +71,16 @@ export function CarteirinhaModal({
     }
   }
 
-  async function handleEmitir(formato: 'PDF' | 'PNG') {
+  async function handleEmitir() {
     if (!membro) return;
-    setDownloading(formato.toLowerCase() as any);
+    setDownloading(true);
     setError(null);
 
     try {
-      // Cria job de geração
+      // Cria job de geração em PDF
       const job = await api.post<{ id: string; status: string; downloadUrl?: string }>('/api/documents/jobs', {
         tipoDocumento: 'CARTEIRINHA_INDIVIDUAL',
-        formato,
+        formato: 'PDF',
         parametros: { memberId: membro.id },
       });
 
@@ -97,8 +96,7 @@ export function CarteirinhaModal({
       }
 
       if (currentJob.status === 'COMPLETED' && currentJob.downloadUrl) {
-        const extension = formato === 'PDF' ? 'pdf' : 'png';
-        const fileName = `carteirinha-${membro.nome.toLowerCase().replace(/\s+/g, '-')}.${extension}`;
+        const fileName = `carteirinha-${membro.nome.toLowerCase().replace(/\s+/g, '-')}.pdf`;
 
         const isMobile =
           typeof window !== 'undefined' &&
@@ -125,7 +123,7 @@ export function CarteirinhaModal({
     } catch (err: any) {
       setError(err?.message || 'Falha ao emitir carteirinha.');
     } finally {
-      setDownloading(null);
+      setDownloading(false);
     }
   }
 
@@ -285,34 +283,20 @@ export function CarteirinhaModal({
           </div>
         </div>
 
-        {/* Botões de Ação */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Botão de Ação */}
+        <div className="mt-6">
           <button
             type="button"
-            onClick={() => handleEmitir('PDF')}
-            disabled={downloading !== null}
-            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            onClick={handleEmitir}
+            disabled={downloading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
-            {downloading === 'pdf' ? (
+            {downloading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <FileText className="h-4 w-4" />
             )}
-            Baixar PDF (CR80)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleEmitir('PNG')}
-            disabled={downloading !== null}
-            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-          >
-            {downloading === 'png' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ImageIcon className="h-4 w-4 text-indigo-600" />
-            )}
-            Baixar Imagem (PNG)
+            {downloading ? 'Gerando carteirinha...' : 'Baixar Carteirinha (PDF)'}
           </button>
         </div>
       </div>

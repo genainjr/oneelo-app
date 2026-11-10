@@ -532,7 +532,7 @@ export class CarteirinhaRendererService {
   async renderSingleCard(
     member: CarteirinhaMemberData,
     tenant: CarteirinhaTenantData,
-    formato: 'PDF' | 'PNG',
+    _formato?: 'PDF' | 'PNG' | string,
   ): Promise<DocumentRenderResult> {
     const tenantLogoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(tenant.logoUrl ?? undefined);
     const memberPhotoDataUri = await this.resolveMemberPhotoDataUri(member.fotoUrl ?? undefined);
@@ -557,115 +557,86 @@ export class CarteirinhaRendererService {
     return this.chromiumRenderer.runSerialRender(
       {
         eventName: 'carteirinha_render_single',
-        format: formato.toLowerCase() as any,
+        format: 'pdf',
         pageSelection: 1,
       },
       async (browser) => {
         const page = await browser.newPage({
-          viewport: { width: 900, height: 350 },
+          viewport: { width: 1200, height: 450 },
           deviceScaleFactor: 2,
         });
 
         try {
-          if (formato === 'PNG') {
-            // No PNG, renderiza frente e verso lado a lado em alta resolução, recortado e centralizado
-            const fullHtml = `
-              <!doctype html>
-              <html>
-              <head>
-                <meta charset="utf-8" />
-                ${this.getStyles()}
-                <style>
-                  html, body {
-                    margin: 0;
-                    padding: 0;
-                    background: transparent;
-                  }
-                  #cards-wrapper {
-                    display: inline-flex;
-                    flex-direction: row;
-                    gap: 8mm;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 6mm;
-                    background: #ffffff;
-                  }
-                  .cr80-card {
-                    box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.12);
-                  }
-                </style>
-              </head>
-              <body>
-                <div id="cards-wrapper">
-                  ${frontHtml}
-                  ${backHtml}
-                </div>
-              </body>
-              </html>
-            `;
-
-            await page.setContent(fullHtml, { waitUntil: 'domcontentloaded' });
-            await this.chromiumRenderer.waitForImages(page);
-
-            const wrapper = await page.$('#cards-wrapper');
-            const buffer = wrapper
-              ? await wrapper.screenshot({ type: 'png' })
-              : await page.screenshot({ type: 'png' });
-
-            return {
-              buffer,
-              fileName: `carteirinha-${safeMemberName}.png`,
-              mimeType: 'image/png',
-            };
-          } else {
-            // PDF em tamanho de cartão CR80 exato com 2 páginas (página 1: Frente, página 2: Verso)
-            const fullHtml = `
-              <!doctype html>
-              <html>
-              <head>
-                <meta charset="utf-8" />
-                ${this.getStyles()}
-                <style>
-                  @page {
-                    size: 85.6mm 53.98mm;
-                    margin: 0;
-                  }
-                  html, body {
-                    margin: 0;
-                    padding: 0;
-                    background: transparent;
-                  }
-                  .cr80-card {
-                    border-radius: 3.5mm;
-                    box-shadow: none;
-                    border: 0.25mm solid #cbd5e1;
-                    overflow: hidden;
-                  }
-                </style>
-              </head>
-              <body>
+          // Layout horizontal (deitado) com Frente e Verso lado a lado preenchendo o PDF por completo para exibição em celular
+          const fullHtml = `
+            <!doctype html>
+            <html>
+            <head>
+              <meta charset="utf-8" />
+              ${this.getStyles()}
+              <style>
+                @page {
+                  size: 182mm 60mm;
+                  margin: 0;
+                }
+                * {
+                  box-sizing: border-box;
+                }
+                html, body {
+                  margin: 0;
+                  padding: 0;
+                  width: 182mm;
+                  height: 60mm;
+                  background: #ffffff;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                #cards-wrapper {
+                  display: flex;
+                  flex-direction: row;
+                  gap: 5mm;
+                  align-items: center;
+                  justify-content: center;
+                  width: 182mm;
+                  height: 60mm;
+                  padding: 3mm;
+                  background: #ffffff;
+                }
+                .cr80-card {
+                  border-radius: 3.5mm;
+                  border: 0.25mm solid #cbd5e1;
+                  box-shadow: none;
+                  margin: 0;
+                }
+              </style>
+            </head>
+            <body>
+              <div id="cards-wrapper">
                 ${frontHtml}
                 ${backHtml}
-              </body>
-              </html>
-            `;
+              </div>
+            </body>
+            </html>
+          `;
 
-            await page.setContent(fullHtml, { waitUntil: 'domcontentloaded' });
-            await this.chromiumRenderer.waitForImages(page);
+          await page.setContent(fullHtml, { waitUntil: 'domcontentloaded' });
+          await this.chromiumRenderer.waitForImages(page);
 
-            const buffer = await page.pdf({
-              width: '85.6mm',
-              height: '53.98mm',
-              printBackground: true,
-              margin: { top: '0', right: '0', bottom: '0', left: '0' },
-            });
+          const buffer = await page.pdf({
+            width: '182mm',
+            height: '60mm',
+            printBackground: true,
+            margin: { top: '0', right: '0', bottom: '0', left: '0' },
+          });
 
-            return {
-              buffer,
-              fileName: `carteirinha-${safeMemberName}.pdf`,
-              mimeType: 'application/pdf',
-            };
-          }
+          return {
+            buffer,
+            fileName: `carteirinha-${safeMemberName}.pdf`,
+            mimeType: 'application/pdf',
+          };
         } finally {
           await page.close().catch(() => undefined);
         }
