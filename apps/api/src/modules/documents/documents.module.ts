@@ -2,13 +2,14 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../common/prisma/prisma.module';
 import { StorageModule } from '../../common/storage/storage.module';
 import { ExportModule } from '../../common/export/export.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { DocumentsController } from './documents.controller';
 import { DocumentJobsService } from './document-jobs.service';
 import { DocumentWorkerService } from './document-worker.service';
 import { CarteirinhaRendererService } from './renderers/carteirinha-renderer.service';
 
 @Module({
-  imports: [PrismaModule, StorageModule, ExportModule],
+  imports: [PrismaModule, StorageModule, ExportModule, NotificationsModule],
   controllers: [DocumentsController],
   providers: [
     DocumentJobsService,

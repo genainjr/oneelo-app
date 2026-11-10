@@ -19,7 +19,7 @@ fi
 
 echo "Starting NestJS application..."
 if [ -f "dist/src/main.js" ]; then
-  exec node --max-old-space-size=256 dist/src/main.js
+  exec node --max-old-space-size=384 dist/src/main.js
 fi
 
-exec node --max-old-space-size=256 dist/main.js
+exec node --max-old-space-size=384 dist/main.js

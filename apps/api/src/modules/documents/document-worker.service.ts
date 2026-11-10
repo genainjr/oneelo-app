@@ -4,13 +4,20 @@ import {
   NotFoundException,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { DocumentJobsService } from './document-jobs.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CarteirinhaRendererService } from './renderers/carteirinha-renderer.service';
-import { StatusDocumentJob, TipoDocumento } from '@prisma/client';
+import {
+  NotificationAudienceType,
+  NotificationOrigin,
+  StatusDocumentJob,
+  TipoDocumento,
+} from '@prisma/client';
+import { NotificationDispatchService } from '../notifications/services/notification-dispatch.service';
 
 export interface DocumentRenderResult {
   buffer: Buffer;
@@ -35,11 +42,63 @@ export class DocumentWorkerService implements OnModuleInit, OnModuleDestroy {
     private readonly storageService: SupabaseStorageService,
     private readonly prisma: PrismaService,
     private readonly carteirinhaRenderer: CarteirinhaRendererService,
+    @Optional()
+    private readonly notificationDispatch?: NotificationDispatchService,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     this.registerCarteirinhaHandlers();
     this.logger.log('DocumentWorkerService inicializado com handlers de carteirinha.');
+    await this.recoverStuckJobs();
+  }
+
+  private async recoverStuckJobs() {
+    try {
+      // 1. Corrige jobs que já têm storageKey mas ficaram presos em PROCESSING
+      const healed = await this.prisma.client.documentJob.updateMany({
+        where: {
+          status: StatusDocumentJob.PROCESSING,
+          storageKey: { not: null },
+        },
+        data: {
+          status: StatusDocumentJob.COMPLETED,
+          completedAt: new Date(),
+        },
+      });
+      if (healed.count > 0) {
+        this.logger.log(`Auto-heal: ${healed.count} jobs com storageKey recuperados para COMPLETED.`);
+      }
+
+      // 2. Destrava jobs presos em PROCESSING há mais de 5 minutos sem storageKey (ex: após OOM crash ou reinício do container)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const stuckJobs = await this.prisma.client.documentJob.findMany({
+        where: {
+          status: StatusDocumentJob.PROCESSING,
+          updatedAt: { lt: fiveMinutesAgo },
+        },
+      });
+
+      for (const stuck of stuckJobs) {
+        if (stuck.tentativas < 3) {
+          await this.prisma.client.documentJob.update({
+            where: { id: stuck.id },
+            data: { status: StatusDocumentJob.PENDING },
+          });
+          this.logger.warn(`Job ${stuck.id} destravado e retornado para PENDING para retry.`);
+        } else {
+          await this.prisma.client.documentJob.update({
+            where: { id: stuck.id },
+            data: {
+              status: StatusDocumentJob.FAILED,
+              erroMensagem: 'Processamento interrompido inesperadamente (tempo limite excedido).',
+            },
+          });
+          this.logger.warn(`Job ${stuck.id} excedeu tentativas e foi marcado como FAILED.`);
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Falha na rotina de recuperação de jobs presos: ${err?.message}`);
+    }
   }
 
   private registerCarteirinhaHandlers() {
@@ -111,11 +170,14 @@ export class DocumentWorkerService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.isProcessing = true;
+    let currentJob: any = null;
     try {
-      const job = await this.jobsService.claimNextPendingJob();
+      const allowedTypes = Array.from(this.handlers.keys());
+      const job = await this.jobsService.claimNextPendingJob(allowedTypes);
       if (!job) {
         return;
       }
+      currentJob = job;
 
       this.logger.log(
         `Processando DocumentJob id=${job.id} tipo=${job.tipoDocumento} tenant=${job.tenantId}`,
@@ -227,11 +289,43 @@ export class DocumentWorkerService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(
         `DocumentJob id=${job.id} concluído com sucesso. StorageKey=${storagePath}`,
       );
+
+      // Notificação in-app e web push para o usuário solicitante
+      if (job.requestedByUserId && this.notificationDispatch) {
+        const isLote = job.tipoDocumento === TipoDocumento.CARTEIRINHAS_LOTE;
+        const titulo = '📄 Documento pronto para download';
+        const mensagem = isLote
+          ? 'As carteirinhas em lote foram geradas com sucesso. Clique para acessar a Central de Documentos.'
+          : 'Sua carteirinha foi gerada com sucesso. Clique para acessar a Central de Documentos.';
+
+        await this.notificationDispatch
+          .createNotification({
+            tenantId: job.tenantId,
+            origem: NotificationOrigin.SYSTEM_AUTOMATION,
+            titulo,
+            mensagem,
+            urlDestino: '/documentos',
+            tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+            userIds: [job.requestedByUserId],
+            idempotencyKey: `tenant:${job.tenantId}:doc-job-ready:${job.id}`,
+          })
+          .catch((err) =>
+            this.logger.warn(`Falha ao emitir notificação de documento pronto: ${err?.message}`),
+          );
+      }
     } catch (err: any) {
       this.logger.error(
         `Falha ao processar job: ${err?.message ?? 'Erro desconhecido'}`,
         err?.stack,
       );
+      if (currentJob?.id) {
+        await this.jobsService
+          .failJob(
+            currentJob.id,
+            err?.message || 'Falha no processamento do documento.',
+          )
+          .catch(() => undefined);
+      }
     } finally {
       this.isProcessing = false;
     }

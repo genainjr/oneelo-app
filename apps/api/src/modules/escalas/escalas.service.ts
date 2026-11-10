@@ -806,23 +806,6 @@ export class EscalasService {
     const tipoDocumento = query.formato === 'png' ? TipoDocumento.ESCALA_PNG : TipoDocumento.ESCALA_PDF;
     const formato = query.formato === 'png' ? FormatoDocumento.PNG : FormatoDocumento.PDF;
 
-    const job = await this.documentJobsService.createJob(tenantId, userId, {
-      tipoDocumento,
-      formato,
-      versionHash: cleanEtag || undefined,
-      parametros: {
-        mes: query.mes,
-        ano: query.ano,
-        ministerioId: query.ministerioId,
-        pagina: query.pagina,
-      },
-    });
-
-    // Se já estiver COMPLETED (em cache sem alterações), não re-envia arquivo para o storage
-    if (job.status === StatusDocumentJob.COMPLETED && job.storageKey) {
-      return;
-    }
-
     const storagePath = `tenants/${tenantId}/documents/schedules/schedule-${cleanEtag || Date.now()}.${ext}`;
 
     // Limpa versões anteriores dessa mesma escala para não acumular arquivos órfãos
@@ -832,7 +815,6 @@ export class EscalasService {
           tenantId,
           tipoDocumento,
           formato,
-          id: { not: job.id },
           storageKey: { not: null },
         },
         select: { id: true, storageKey: true, parametros: true },
@@ -865,7 +847,18 @@ export class EscalasService {
       document.mimeType,
     );
 
-    await this.documentJobsService.completeJob(job.id, {
+    await this.documentJobsService.recordCompletedExport({
+      tenantId,
+      requestedByUserId: userId,
+      tipoDocumento,
+      formato,
+      versionHash: cleanEtag || undefined,
+      parametros: {
+        mes: query.mes,
+        ano: query.ano,
+        ministerioId: query.ministerioId,
+        pagina: query.pagina,
+      },
       storageKey: storagePath,
       fileName: document.fileName,
       fileSize: document.buffer.byteLength,

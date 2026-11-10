@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as QRCode from 'qrcode';
+import sharp from 'sharp';
 import { ConfigService } from '@nestjs/config';
 import { ChromiumRendererService, TenantLogoService } from '../../../common/export';
 import { PrismaService } from '../../../common/prisma/prisma.service';
@@ -90,6 +91,39 @@ export class CarteirinhaRendererService {
         light: '#ffffff',
       },
     });
+  }
+
+  async resolveMemberPhotoDataUri(fotoUrl?: string | null): Promise<string | null> {
+    if (!fotoUrl) return null;
+    const trimmed = fotoUrl.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith('data:image/')) return trimmed;
+    if (!/^https?:\/\//i.test(trimmed)) return null;
+
+    try {
+      const response = await fetch(trimmed, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) return null;
+      const arrayBuffer = await response.arrayBuffer();
+      if (arrayBuffer.byteLength === 0 || arrayBuffer.byteLength > 10 * 1024 * 1024) return null;
+
+      const rawBuffer = Buffer.from(arrayBuffer);
+      // O espaço da foto no cartão CR80 é de apenas 22mm x 28mm (~130x165 px).
+      // Redimensionar para 240x300 JPEG (quality 80) reduz o consumo de RAM de dezenas de MB para ~12KB por foto.
+      const optimizedBuffer = await sharp(rawBuffer, { failOnError: false })
+        .rotate()
+        .resize(240, 300, { fit: 'cover', position: 'center' })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+
+      return `data:image/jpeg;base64,${optimizedBuffer.toString('base64')}`;
+    } catch (err) {
+      this.logger.warn(
+        `Falha ao resolver foto do membro para carteirinha: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
   }
 
   renderCardHtml(
@@ -501,7 +535,7 @@ export class CarteirinhaRendererService {
     formato: 'PDF' | 'PNG',
   ): Promise<DocumentRenderResult> {
     const tenantLogoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(tenant.logoUrl ?? undefined);
-    const memberPhotoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(member.fotoUrl ?? undefined);
+    const memberPhotoDataUri = await this.resolveMemberPhotoDataUri(member.fotoUrl ?? undefined);
     const qrCodeDataUri = await this.generateQrCodeDataUri(member.id);
     const validadeAno = new Date().getFullYear() + 1;
 
@@ -646,14 +680,22 @@ export class CarteirinhaRendererService {
     const tenantLogoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(tenant.logoUrl ?? undefined);
     const validadeAno = new Date().getFullYear() + 1;
 
-    // Gera pares de frente e verso para cada membro
-    const renderedCards = await Promise.all(
-      members.map(async (m) => {
-        const qrCode = await this.generateQrCodeDataUri(m.id);
-        const memberPhotoDataUri = await this.tenantLogo.resolveTenantLogoDataUri(m.fotoUrl ?? undefined);
-        return this.renderCardHtml(m, tenant, tenantLogoDataUri, qrCode, validadeAno, memberPhotoDataUri);
-      }),
-    );
+    // Gera pares de frente e verso processando em pequenos lotes (chunk de 3)
+    // para evitar concorrência excessiva de descompressão de fotos na RAM do container
+    const renderedCards: { frontHtml: string; backHtml: string }[] = [];
+    const CHUNK_SIZE = 3;
+
+    for (let i = 0; i < members.length; i += CHUNK_SIZE) {
+      const chunk = members.slice(i, i + CHUNK_SIZE);
+      const chunkCards = await Promise.all(
+        chunk.map(async (m) => {
+          const qrCode = await this.generateQrCodeDataUri(m.id);
+          const memberPhotoDataUri = await this.resolveMemberPhotoDataUri(m.fotoUrl ?? undefined);
+          return this.renderCardHtml(m, tenant, tenantLogoDataUri, qrCode, validadeAno, memberPhotoDataUri);
+        }),
+      );
+      renderedCards.push(...chunkCards);
+    }
 
     // Na folha A4 padrão cabem 8 cartões no formato CR80 (4 linhas x 2 colunas)
     const CARDS_PER_PAGE = 8;

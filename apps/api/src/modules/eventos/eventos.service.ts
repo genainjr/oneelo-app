@@ -1026,23 +1026,6 @@ export class EventosService {
     const tipoDocumento = query.formato === 'png' ? TipoDocumento.AGENDA_PNG : TipoDocumento.AGENDA_PDF;
     const formato = query.formato === 'png' ? FormatoDocumento.PNG : FormatoDocumento.PDF;
 
-    const job = await this.documentJobsService.createJob(tenantId, userId, {
-      tipoDocumento,
-      formato,
-      versionHash: cleanEtag || undefined,
-      parametros: {
-        dataInicio: query.dataInicio,
-        dataFim: query.dataFim,
-        ministerioId: query.ministerioId,
-        pagina: query.pagina,
-      },
-    });
-
-    // Se já estiver COMPLETED (em cache sem alterações), não re-envia arquivo para o storage
-    if (job.status === StatusDocumentJob.COMPLETED && job.storageKey) {
-      return;
-    }
-
     const storagePath = `tenants/${tenantId}/documents/events/event-${cleanEtag || Date.now()}.${ext}`;
 
     // Limpa versões anteriores dessa mesma agenda para não acumular arquivos órfãos
@@ -1052,7 +1035,6 @@ export class EventosService {
           tenantId,
           tipoDocumento,
           formato,
-          id: { not: job.id },
           storageKey: { not: null },
         },
         select: { id: true, storageKey: true, parametros: true },
@@ -1089,7 +1071,18 @@ export class EventosService {
       document.mimeType,
     );
 
-    await this.documentJobsService.completeJob(job.id, {
+    await this.documentJobsService.recordCompletedExport({
+      tenantId,
+      requestedByUserId: userId,
+      tipoDocumento,
+      formato,
+      versionHash: cleanEtag || undefined,
+      parametros: {
+        dataInicio: query.dataInicio,
+        dataFim: query.dataFim,
+        ministerioId: query.ministerioId,
+        pagina: query.pagina,
+      },
       storageKey: storagePath,
       fileName: document.fileName,
       fileSize: document.buffer.byteLength,

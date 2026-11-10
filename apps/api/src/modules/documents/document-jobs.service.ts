@@ -323,6 +323,26 @@ export class DocumentJobsService {
       },
     });
 
+    // Auto-heal: se algum documento já tem storageKey ou fileSize mas está marcado como PROCESSING,
+    // corrige imediatamente para COMPLETED no retorno e persiste no banco
+    for (const job of allJobs) {
+      if (
+        job.status === StatusDocumentJob.PROCESSING &&
+        (job.storageKey || job.fileSize)
+      ) {
+        job.status = StatusDocumentJob.COMPLETED;
+        this.prisma.client.documentJob
+          .update({
+            where: { id: job.id },
+            data: {
+              status: StatusDocumentJob.COMPLETED,
+              completedAt: job.completedAt || new Date(),
+            },
+          })
+          .catch(() => undefined);
+      }
+    }
+
     // Mantém apenas o registro mais recente (último válido) por entidade de documento
     const seenKeys = new Set<string>();
     const deduplicated: typeof allJobs = [];
@@ -454,13 +474,47 @@ export class DocumentJobsService {
     };
   }
 
-  async claimNextPendingJob() {
+  async recordCompletedExport(params: {
+    tenantId: string;
+    requestedByUserId?: string;
+    tipoDocumento: TipoDocumento;
+    formato: FormatoDocumento;
+    versionHash?: string;
+    parametros?: any;
+    storageKey: string;
+    fileName: string;
+    fileSize: number;
+  }) {
+    return this.prisma.client.documentJob.create({
+      data: {
+        tenantId: params.tenantId,
+        requestedByUserId: params.requestedByUserId ?? null,
+        tipoDocumento: params.tipoDocumento,
+        formato: params.formato,
+        parametros: params.parametros ?? {},
+        versionHash: params.versionHash ?? null,
+        storageKey: params.storageKey,
+        fileName: params.fileName,
+        fileSize: params.fileSize,
+        status: StatusDocumentJob.COMPLETED,
+        completedAt: new Date(),
+      },
+    });
+  }
+
+  async claimNextPendingJob(allowedTypes?: TipoDocumento[]) {
+    const where: any = {
+      status: StatusDocumentJob.PENDING,
+      tentativas: { lt: 3 },
+    };
+
+    if (allowedTypes && allowedTypes.length > 0) {
+      where.tipoDocumento = { in: allowedTypes };
+    }
+
     // Busca o job pendente mais antigo com menos de 3 tentativas
     const candidate = await this.prisma.client.documentJob.findFirst({
-      where: {
-        status: StatusDocumentJob.PENDING,
-        tentativas: { lt: 3 },
-      },
+      where,
       orderBy: { createdAt: 'asc' },
     });
 
