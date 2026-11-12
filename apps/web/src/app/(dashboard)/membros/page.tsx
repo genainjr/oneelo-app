@@ -761,7 +761,7 @@ export default function MembrosPage() {
       {selectedIds.length > 0 && (
         <div className="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-4xl rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl animate-in slide-in-from-bottom-6 duration-300 sm:bottom-6 sm:px-5 sm:py-4">
           <div className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex-shrink-0 text-sm font-medium text-gray-700">
                 <span className="mr-2 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-bold text-white">
                   {selectedIds.length}
@@ -769,15 +769,29 @@ export default function MembrosPage() {
                 {t('bulk.selected', { count: selectedIds.length })}
               </div>
 
-              <button
-                onClick={() => setSelectedIds([])}
-                className="p-1 text-gray-400 transition-colors hover:text-gray-700"
-                title={t('bulk.cancelSelection')}
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkDeleteConfirmOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition-all shadow-2xs"
+                  title="Excluir membros selecionados"
+                >
+                  <svg className="h-4 w-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>Excluir ({selectedIds.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setSelectedIds([])}
+                  className="p-1 text-gray-400 transition-colors hover:text-gray-700"
+                  title={t('bulk.cancelSelection')}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -848,6 +862,17 @@ export default function MembrosPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 {batchLoading ? 'Solicitando...' : `Emitir Carteirinhas (${selectedIds.length})`}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteConfirmOpen(true)}
+                className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition-all hover:bg-rose-100 sm:w-auto flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <svg className="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Excluir ({selectedIds.length})
               </button>
             </div>
           </div>
