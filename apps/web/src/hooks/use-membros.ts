@@ -98,6 +98,11 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     return updated;
   }
 
+  async function bulkDeleteMembros(ids: string[]) {
+    await api.post('/api/membros/bulk-delete', { ids });
+    await fetchMembros();
+  }
+
   async function bulkTag(membrosIds: string[], tagsIds: string[], acao: 'ADD' | 'REMOVE') {
     await api.post('/api/membros/bulk-tag', { membrosIds, tagsIds, acao });
     await fetchMembros();
@@ -120,5 +125,6 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     uploadMembroFoto,
     removeMembroFoto,
     bulkTag,
+    bulkDeleteMembros,
   };
 }

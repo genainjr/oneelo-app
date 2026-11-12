@@ -26,6 +26,7 @@ import { FilterMembrosDto } from './dto/filter-membros.dto';
 import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.dto';
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
 import { ConfirmImportDto } from './dto/import-membros.dto';
+import { BulkDeleteMembrosDto } from './dto/bulk-delete-membros.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
@@ -136,6 +137,28 @@ export class MembrosController {
       user.sub,
       dto,
     );
+  }
+
+    @Post('bulk-delete')
+  @Roles(Role.ADMIN, Role.STAFF)
+  async bulkDeletePost(
+    @Body() dto: BulkDeleteMembrosDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.bulkRemove(tenantId, dto.ids, user?.sub);
+  }
+
+  @Delete('bulk')
+  @Roles(Role.ADMIN, Role.STAFF)
+  async bulkDelete(
+    @Body() dto: BulkDeleteMembrosDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.bulkRemove(tenantId, dto.ids, user?.sub);
   }
 
   @Get(':id')
