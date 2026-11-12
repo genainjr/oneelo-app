@@ -41,11 +41,17 @@ describe('MemberImportService', () => {
     it('deve normalizar telefones para E.164 brasileiro', () => {
       expect(service.normalizePhone('(11) 98765-4321').phone).toBe('+5511987654321');
       expect(service.normalizePhone('11987654321').phone).toBe('+5511987654321');
+      expect(service.normalizePhone(11987654321).phone).toBe('+5511987654321');
+      expect(service.normalizePhone('011987654321').phone).toBe('+5511987654321');
+      expect(service.normalizePhone('5511987654321').phone).toBe('+5511987654321');
+      expect(service.normalizePhone('98765-4321').phone).toBe('+55987654321');
       expect(service.normalizePhone(null).phone).toBeUndefined();
     });
 
     it('deve sanitizar e validar CPF', () => {
       expect(service.normalizeCpf('123.456.789-00').cpf).toBe('12345678900');
+      expect(service.normalizeCpf(12345678900).cpf).toBe('12345678900');
+      expect(service.normalizeCpf(1234567890).cpf).toBe('01234567890');
       expect(service.normalizeCpf('123').erro).toBeDefined();
     });
 
