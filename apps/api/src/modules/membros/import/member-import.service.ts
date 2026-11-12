@@ -14,6 +14,7 @@ import {
   isUnlimitedMembers,
 } from '../../../common/utils/tenant-plan';
 import {
+  CampoAlteradoDto,
   ConfirmImportDto,
   ConfirmImportResultDto,
   ImportMemberRowData,
@@ -46,85 +47,128 @@ export class MemberImportService {
   private mapHeaderToField(normalized: string): string | null {
     if (!normalized) return null;
 
+    // Nome Completo
     if (
       normalized === 'nome' ||
       normalized === 'nome completo' ||
       normalized === 'membro' ||
-      normalized === 'nome do membro'
+      normalized === 'nome do membro' ||
+      normalized.includes('nome completo')
     ) {
       return 'nome';
     }
+    // Nome de Exibição / Apelido
     if (
       normalized === 'nome de exibicao' ||
       normalized === 'nome exibicao' ||
       normalized === 'apelido' ||
-      normalized === 'como chamar'
+      normalized === 'como chamar' ||
+      normalized.includes('exibicao') ||
+      normalized.includes('apelido')
     ) {
       return 'nomeExibicao';
     }
+    // WhatsApp / Celular / Telefone
     if (
       normalized === 'whatsapp' ||
       normalized === 'celular' ||
       normalized === 'telefone' ||
       normalized === 'zap' ||
       normalized === 'fone' ||
-      normalized === 'whatsapp celular'
+      normalized === 'whatsapp celular' ||
+      normalized.includes('whatsapp') ||
+      normalized.includes('celular') ||
+      normalized.includes('telefone') ||
+      normalized.includes('fone')
     ) {
       return 'whatsapp';
     }
-    if (normalized === 'email' || normalized === 'e mail') {
+    // E-mail
+    if (
+      normalized === 'email' ||
+      normalized === 'e mail' ||
+      normalized.includes('email') ||
+      normalized.includes('e mail')
+    ) {
       return 'email';
     }
+    // Data de Nascimento
     if (
       normalized === 'data de nascimento' ||
       normalized === 'data nascimento' ||
       normalized === 'nascimento' ||
       normalized === 'aniversario' ||
-      normalized === 'dt nascimento'
+      normalized === 'dt nascimento' ||
+      normalized.includes('nasc') ||
+      normalized.includes('aniversario')
     ) {
       return 'dataNascimento';
     }
-    if (normalized === 'sexo' || normalized === 'genero') {
-      return 'sexo';
-    }
-    if (normalized === 'estado civil' || normalized === 'civil') {
-      return 'estadoCivil';
-    }
-    if (
-      normalized === 'cargo' ||
-      normalized === 'cargo funcao' ||
-      normalized === 'funcao' ||
-      normalized === 'papel'
-    ) {
-      return 'cargo';
-    }
+    // Data de Batismo
     if (
       normalized === 'data de batismo' ||
       normalized === 'data batismo' ||
       normalized === 'batismo' ||
-      normalized === 'dt batismo'
+      normalized === 'dt batismo' ||
+      normalized.includes('batis')
     ) {
       return 'dataBatismo';
     }
-    if (normalized === 'cpf') {
+    // Sexo / Gênero
+    if (
+      normalized === 'sexo' ||
+      normalized === 'genero' ||
+      normalized.includes('sexo') ||
+      normalized.includes('genero')
+    ) {
+      return 'sexo';
+    }
+    // Estado Civil
+    if (
+      normalized === 'estado civil' ||
+      normalized === 'civil' ||
+      normalized.includes('civil')
+    ) {
+      return 'estadoCivil';
+    }
+    // Cargo / Função
+    if (
+      normalized === 'cargo' ||
+      normalized === 'cargo funcao' ||
+      normalized === 'funcao' ||
+      normalized === 'papel' ||
+      normalized.includes('cargo') ||
+      normalized.includes('funcao')
+    ) {
+      return 'cargo';
+    }
+    // CPF
+    if (normalized === 'cpf' || normalized.includes('cpf')) {
       return 'cpf';
     }
-    if (normalized === 'rg') {
+    // RG
+    if (normalized === 'rg' || normalized.includes('rg') || normalized.includes('identidade')) {
       return 'rg';
     }
+    // Matrícula / Rol
     if (
       normalized === 'matricula' ||
       normalized === 'rol' ||
       normalized === 'matricula rol' ||
-      normalized === 'registro'
+      normalized === 'registro' ||
+      normalized.includes('matricula') ||
+      normalized.includes('rol')
     ) {
       return 'matricula';
     }
+    // Observações
     if (
       normalized === 'observacoes' ||
       normalized === 'observacao' ||
       normalized === 'obs' ||
-      normalized === 'notas'
+      normalized === 'notas' ||
+      normalized.includes('observ') ||
+      normalized.includes('nota')
     ) {
       return 'observacoes';
     }
@@ -185,10 +229,13 @@ export class MemberImportService {
   normalizeDate(val: any): { dateIso?: string; erro?: string } {
     if (val === null || val === undefined || val === '') return {};
 
-    // Se já for Date
+    // Se já for Date (ExcelJS date)
     if (val instanceof Date) {
       if (isNaN(val.getTime())) return { erro: 'Data inválida.' };
-      return { dateIso: val.toISOString().slice(0, 10) };
+      const year = val.getUTCFullYear();
+      const month = String(val.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(val.getUTCDate()).padStart(2, '0');
+      return { dateIso: `${year}-${month}-${day}` };
     }
 
     // Se for número serial do Excel
@@ -197,7 +244,10 @@ export class MemberImportService {
       const millis = val * 86400000;
       const d = new Date(excelEpoch.getTime() + millis);
       if (!isNaN(d.getTime())) {
-        return { dateIso: d.toISOString().slice(0, 10) };
+        const year = d.getUTCFullYear();
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        return { dateIso: `${year}-${month}-${day}` };
       }
       return { erro: 'Data serial numérica inválida.' };
     }
@@ -206,8 +256,8 @@ export class MemberImportService {
     const str = String(val).trim();
     if (!str) return {};
 
-    // Formato DD/MM/AAAA ou DD-MM-AAAA
-    const brMatch = str.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})$/);
+    // Formato DD/MM/AAAA ou DD-MM-AAAA (aceita horário no final)
+    const brMatch = str.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})(?:\s+.*)?$/);
     if (brMatch) {
       const day = parseInt(brMatch[1], 10);
       const month = parseInt(brMatch[2], 10) - 1;
@@ -218,7 +268,10 @@ export class MemberImportService {
         d.getUTCMonth() === month &&
         d.getUTCDate() === day
       ) {
-        return { dateIso: d.toISOString().slice(0, 10) };
+        const yearStr = d.getUTCFullYear();
+        const monthStr = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getUTCDate()).padStart(2, '0');
+        return { dateIso: `${yearStr}-${monthStr}-${dayStr}` };
       }
       return { erro: 'Dia, mês ou ano fora dos limites válidos.' };
     }
@@ -231,7 +284,10 @@ export class MemberImportService {
       const day = parseInt(isoMatch[3], 10);
       const d = new Date(Date.UTC(year, month, day));
       if (!isNaN(d.getTime())) {
-        return { dateIso: d.toISOString().slice(0, 10) };
+        const yearStr = d.getUTCFullYear();
+        const monthStr = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getUTCDate()).padStart(2, '0');
+        return { dateIso: `${yearStr}-${monthStr}-${dayStr}` };
       }
     }
 
@@ -256,6 +312,63 @@ export class MemberImportService {
   /**
    * Normaliza Estado Civil para Enum EstadoCivil
    */
+  /**
+   * Compara os dados da planilha com o membro existente no banco
+   * e retorna os campos que possuem alteração
+   */
+  detectFieldChanges(
+    existing: any,
+    incoming: Partial<ImportMemberRowData>,
+  ): CampoAlteradoDto[] {
+    const changes: CampoAlteradoDto[] = [];
+
+    const fieldsToCheck: Array<{ key: string; label: string; isDate?: boolean }> = [
+      { key: 'nome', label: 'Nome' },
+      { key: 'nomeExibicao', label: 'Nome de Exibição' },
+      { key: 'whatsapp', label: 'WhatsApp / Celular' },
+      { key: 'email', label: 'E-mail' },
+      { key: 'dataNascimento', label: 'Data de Nascimento', isDate: true },
+      { key: 'sexo', label: 'Sexo' },
+      { key: 'estadoCivil', label: 'Estado Civil' },
+      { key: 'cargo', label: 'Cargo / Função' },
+      { key: 'dataBatismo', label: 'Data de Batismo', isDate: true },
+      { key: 'cpf', label: 'CPF' },
+      { key: 'rg', label: 'RG' },
+      { key: 'matricula', label: 'Matrícula / Rol' },
+      { key: 'observacoes', label: 'Observações' },
+    ];
+
+    for (const { key, label, isDate } of fieldsToCheck) {
+      let existingVal: any = existing[key];
+      let incomingVal: any = (incoming as any)[key];
+
+      if (isDate) {
+        existingVal = existingVal instanceof Date ? existingVal.toISOString().slice(0, 10) : existingVal || null;
+        incomingVal = incomingVal ? String(incomingVal).slice(0, 10) : null;
+      } else {
+        existingVal = existingVal !== null && existingVal !== undefined ? String(existingVal).trim() : null;
+        incomingVal = incomingVal !== null && incomingVal !== undefined ? String(incomingVal).trim() : null;
+      }
+
+      // Se foi preenchido na planilha e é diferente do valor que está no banco
+      if (
+        incomingVal !== null &&
+        incomingVal !== undefined &&
+        incomingVal !== '' &&
+        incomingVal !== existingVal
+      ) {
+        changes.push({
+          campo: key,
+          label,
+          anterior: existingVal,
+          novo: incomingVal,
+        });
+      }
+    }
+
+    return changes;
+  }
+
   normalizeEstadoCivil(val?: string | null): EstadoCivil | undefined {
     if (!val) return undefined;
     const clean = val
@@ -333,9 +446,19 @@ export class MemberImportService {
         const field = colIndexToField[colNumber];
         if (field) {
           const val = cell.value;
-          // ExcelJS pode retornar objetos ricos para links/fórmulas
-          const resolvedVal =
-            val && typeof val === 'object' && 'text' in val ? (val as any).text : val;
+          let resolvedVal: any = val;
+
+          // ExcelJS pode retornar objetos ricos para richText, links e fórmulas
+          if (val && typeof val === 'object') {
+            if ('text' in val) {
+              resolvedVal = (val as any).text;
+            } else if ('richText' in val && Array.isArray((val as any).richText)) {
+              resolvedVal = (val as any).richText.map((r: any) => r.text).join('');
+            } else if ('result' in val) {
+              resolvedVal = (val as any).result;
+            }
+          }
+
           if (resolvedVal !== null && resolvedVal !== undefined && resolvedVal !== '') {
             hasData = true;
             rowData[field] = resolvedVal;
@@ -373,15 +496,26 @@ export class MemberImportService {
     }
 
     const existingMembers = await this.prisma.client.membro.findMany({
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       select: {
         id: true,
         nome: true,
+        nomeExibicao: true,
         email: true,
         whatsapp: true,
+        dataNascimento: true,
+        sexo: true,
+        estadoCivil: true,
+        cargo: true,
+        dataBatismo: true,
         cpf: true,
+        rg: true,
+        matricula: true,
+        observacoes: true,
       },
     });
+
+    const dbMemberById = new Map<string, any>();
 
     const totalAtivos = existingMembers.length;
     const limit = getEffectiveMemberLimit(tenant);
@@ -393,6 +527,7 @@ export class MemberImportService {
     const dbPhoneMap = new Map<string, { id: string; nome: string }>(); // phone -> {id, nome}
 
     for (const m of existingMembers) {
+      dbMemberById.set(m.id, m);
       if (m.cpf) {
         dbCpfMap.set(m.cpf.replace(/\D/g, ''), m.id);
       }
@@ -539,6 +674,34 @@ export class MemberImportService {
         validosCount++;
       }
 
+      let camposAlterados: CampoAlteradoDto[] | undefined;
+      if (statusLinha === 'DUPLICADO' && membroExistenteId && dbMemberById.has(membroExistenteId)) {
+        const existingMember = dbMemberById.get(membroExistenteId);
+        camposAlterados = this.detectFieldChanges(existingMember, {
+          nome,
+          nomeExibicao: raw.nomeExibicao ? String(raw.nomeExibicao).trim() : undefined,
+          whatsapp,
+          email,
+          dataNascimento,
+          sexo,
+          estadoCivil,
+          cargo: raw.cargo ? String(raw.cargo).trim() : undefined,
+          dataBatismo,
+          cpf,
+          rg: raw.rg ? String(raw.rg).trim() : undefined,
+          matricula: raw.matricula ? String(raw.matricula).trim() : undefined,
+          observacoes: raw.observacoes ? String(raw.observacoes).trim() : undefined,
+        });
+
+        if (camposAlterados.length > 0) {
+          avisos.push(
+            `${camposAlterados.length} campo(s) com alteração para atualização: ${camposAlterados.map((c) => c.label).join(', ')}`,
+          );
+        } else {
+          avisos.push('Dados idênticos aos já cadastrados no sistema (nenhuma alteração detectada).');
+        }
+      }
+
       parsedRows.push({
         linha,
         nome,
@@ -557,6 +720,7 @@ export class MemberImportService {
         statusLinha,
         erros: erros.length > 0 ? erros : undefined,
         avisos: avisos.length > 0 ? avisos : undefined,
+        camposAlterados,
         membroExistenteId,
       });
     }
@@ -638,18 +802,18 @@ export class MemberImportService {
           data: {
             tenantId,
             nome: item.nome,
-            nomeExibicao: item.nomeExibicao,
-            whatsapp: item.whatsapp,
-            email: item.email,
-            dataNascimento: item.dataNascimento ? new Date(item.dataNascimento) : undefined,
-            sexo: item.sexo,
-            estadoCivil: item.estadoCivil,
-            cargo: item.cargo,
-            dataBatismo: item.dataBatismo ? new Date(item.dataBatismo) : undefined,
-            cpf: item.cpf,
-            rg: item.rg,
-            matricula: item.matricula,
-            observacoes: item.observacoes,
+            nomeExibicao: item.nomeExibicao || null,
+            whatsapp: item.whatsapp || null,
+            email: item.email || null,
+            dataNascimento: item.dataNascimento ? new Date(item.dataNascimento) : null,
+            sexo: item.sexo || null,
+            estadoCivil: item.estadoCivil || null,
+            cargo: item.cargo || null,
+            dataBatismo: item.dataBatismo ? new Date(item.dataBatismo) : null,
+            cpf: item.cpf || null,
+            rg: item.rg || null,
+            matricula: item.matricula || null,
+            observacoes: item.observacoes || null,
           },
         });
         inseridos++;
@@ -660,18 +824,23 @@ export class MemberImportService {
         if (!item.membroExistenteId) continue;
         const updateData: Record<string, any> = {};
 
-        if (item.nomeExibicao) updateData.nomeExibicao = item.nomeExibicao;
-        if (item.whatsapp) updateData.whatsapp = item.whatsapp;
-        if (item.email) updateData.email = item.email;
-        if (item.dataNascimento) updateData.dataNascimento = new Date(item.dataNascimento);
-        if (item.sexo) updateData.sexo = item.sexo;
-        if (item.estadoCivil) updateData.estadoCivil = item.estadoCivil;
-        if (item.cargo) updateData.cargo = item.cargo;
-        if (item.dataBatismo) updateData.dataBatismo = new Date(item.dataBatismo);
-        if (item.cpf) updateData.cpf = item.cpf;
-        if (item.rg) updateData.rg = item.rg;
-        if (item.matricula) updateData.matricula = item.matricula;
-        if (item.observacoes) updateData.observacoes = item.observacoes;
+        if (item.nome) updateData.nome = item.nome;
+        if (item.nomeExibicao !== undefined) updateData.nomeExibicao = item.nomeExibicao || null;
+        if (item.whatsapp !== undefined) updateData.whatsapp = item.whatsapp || null;
+        if (item.email !== undefined) updateData.email = item.email || null;
+        if (item.dataNascimento !== undefined) {
+          updateData.dataNascimento = item.dataNascimento ? new Date(item.dataNascimento) : null;
+        }
+        if (item.sexo !== undefined) updateData.sexo = item.sexo || null;
+        if (item.estadoCivil !== undefined) updateData.estadoCivil = item.estadoCivil || null;
+        if (item.cargo !== undefined) updateData.cargo = item.cargo || null;
+        if (item.dataBatismo !== undefined) {
+          updateData.dataBatismo = item.dataBatismo ? new Date(item.dataBatismo) : null;
+        }
+        if (item.cpf !== undefined) updateData.cpf = item.cpf || null;
+        if (item.rg !== undefined) updateData.rg = item.rg || null;
+        if (item.matricula !== undefined) updateData.matricula = item.matricula || null;
+        if (item.observacoes !== undefined) updateData.observacoes = item.observacoes || null;
 
         if (Object.keys(updateData).length > 0) {
           await tx.membro.update({
