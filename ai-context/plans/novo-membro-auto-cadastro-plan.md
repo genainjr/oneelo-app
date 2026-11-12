@@ -2,91 +2,131 @@
 
 Status geral: planejado  
 Data de criação: 2026-11-12  
+Última atualização: 2026-11-12  
 Branch sugerida para implementação: feature/novo-membro-auto-cadastro  
 
 ## Planos e Referências Relacionados
 
 - [Backlog FT-018: Formulário Público e Auto-Cadastro](../backlog/novo-membro-auto-cadastro.md)
 - [Backlog Geral de Funcionalidades](../backlog/README.md)
+- [Plano de Importação de Membros via Planilha](importacao-membros-planilha-plan.md)
 - [Plano de Ativação e Onboarding de Usuários](new-user-creation-and-onboarding-workflow.md)
 - [Plano de Limites do Tenant e Quota de Membros](tenant-plan-limits-plan.md)
-- [Design System do OneElo (ODS)](../ods/)
+- [OneElo Design System (ODS)](../../ai-core/skills/oneelo-design-system/README.md)
 
 ---
 
 ## 1. Objetivo da Entrega
 
-Modernizar a recepção dominical das igrejas através de uma página pública responsiva e *mobile-first* (`/join/[slug]`), acessível por QR Code e link compartilhável, permitindo que novos membros e visitantes realizem seu auto-cadastro pelo próprio smartphone.
+Modernizar a recepção dominical das igrejas através de uma página pública responsiva e *mobile-first* (`/join/[slug]`), acessível por QR Code e link institucional configurados centralizadamente no painel de **Configurações da Igreja** (`/configuracoes`), permitindo que visitantes e novos membros realizem seu auto-cadastro pelo próprio smartphone, com triagem pastoral pela secretaria em `/membros` e governança completa do slug da igreja no painel administrativo.
 
 A entrega contempla:
-1. **Página Pública de Boas-Vindas por Igreja (`/join/[slug]`):** Identidade visual da igreja (logo e nome) com alternância fluida entre perfil **Visitante** (cadastro leve para acolhimento) e **Novo Membro** (ficha eclesiástica completa).
-2. **Fila de Triagem e Moderação Pastoral (`/membros`):** Aba administrativa com badge de pendências, verificação inteligente de duplicidade e visualização responsiva (tabela no desktop e cards empilhados no mobile).
-3. **Efetivação e Criação de Acesso Atômica:** Aprovação de visitante como status `VISITANTE` (sem consumo de limite de membros) ou de membro como `ATIVO` com criação atômica de conta `User` (`role: BASIC`, `status: PENDING`) e token de ativação válido por 72 horas.
-4. **Acolhimento no WhatsApp:** Modal imediato pós-aprovação com a mensagem oficial de boas-vindas pré-formatada e botão de disparo direto no WhatsApp (aplicativo no celular e WhatsApp Web no desktop).
+1. **Governança de Slug do Tenant no Super Admin:** Validação estrita do slug (kebab-case minúsculo) tanto na criação quanto na **edição** de tenants no painel Super Admin (`apps/web/src/app/(admin)/admin/page.tsx`), garantindo URLs públicas previsíveis e sem caracteres especiais.
+2. **Central de Divulgação em Configurações da Igreja (`/configuracoes`):** Seção institucional dedicada para administradores visualizarem o link oficial da igreja (`https://oneelo.vercel.app/join/[slug]`), copiarem o endereço com 1 clique e gerarem/baixarem o **QR Code em alta resolução (PNG)** para projeção no telão do culto, totens e folhetos dominicais.
+3. **Página Pública de Boas-Vindas (`/join/[slug]`):** Identidade visual da igreja (logo e nome) com alternância entre:
+   - **Aba "Sou Visitante":** Formulário leve para acolhimento pastoral (Nome, WhatsApp, Data de Nascimento, E-mail opcional e observações). Sem criação de usuário e sem consumir quota do plano.
+   - **Aba "Quero ser Membro":** Ficha eclesiástica completa (Nome, WhatsApp, E-mail obrigatório com helper *"Necessário para acessar o sistema da igreja"*, CPF opcional, Data de Nascimento, Sexo, Estado Civil, dados pastorais e consentimento LGPD).
+4. **Fila de Triagem Pastoral (`/membros`):** Aba administrativa de operação diária (ADMIN e STAFF) com badge numérico de pendências, verificação de duplicidade reutilizando as regras canônicas do `MemberImportService` e visualização responsiva (tabela no desktop, cards no mobile).
+5. **Fluxo Específico "Visitante que vira Membro":** Opção explícita de **"Vincular ao Cadastro Existente"** na triagem, promovendo o status de `VISITANTE` para `ATIVO` sem gerar duplicidade de cadastro.
+6. **Efetivação Atômica com Criação de Acesso:**
+   - Visitante aprovado → `Membro` com `status = VISITANTE`, sem conta `User` e sem consumir quota do plano.
+   - Membro aprovado (novo ou vinculado) → `Membro` com `status = ATIVO` **e conta `User`** (`role = BASIC`, `status = PENDING`) com token de ativação de 72h. Se o membro não criar a senha de imediato, a conta permanece `PENDING` indefinidamente (o link pode ser regenerado pelo fluxo já existente).
+   - Dados complementares da ficha (`igrejaAnterior`, `quemConvidou`, `batizadoAguas`) são concatenados de forma padronizada nas `observacoes` do membro.
+7. **Acolhimento no WhatsApp:** Modal pós-aprovação com a mensagem oficial de boas-vindas (reaproveitando `buildActivationWelcomeMessage`) e envio direto no WhatsApp (app no celular, WhatsApp Web no desktop).
 
 ---
 
 ## 2. Contexto e Diagnóstico
 
-1. **Gargalo Operacional na Recepção:** Nos cultos de domingo, a equipe de recepção utiliza fichas de papel manuscritas. Na segunda-feira, a secretaria precisa redigitar manualmente os dados no OneElo, gerando lentidão, erros de digitação e perda frequente de contatos de visitantes.
-2. **Diferenciação entre Membro e Visitante:**
-   - O enum `StatusMembro` no banco de dados já possui `VISITANTE`, `ATIVO`, `INATIVO` e `TRANSFERIDO`.
-   - O serviço de limites de plano (`tenant-plan.ts`) contabiliza estritamente membros com status `ATIVO`. Portanto, acolher visitantes não consome a quota de membros do plano da igreja.
-   - Visitantes não necessitam de credenciais de login no sistema, apenas de dados de contato e data de nascimento para acompanhamento pastoral e ministério de acolhimento.
-3. **Mensagem Oficial de Ativação Existente:** O sistema já possui um formato oficial de mensagem de boas-vindas com link de ativação em `apps/web/src/app/(dashboard)/configuracoes/page.tsx` (`buildActivationWelcomeMessage`). Esse gerador deve ser promovido a helper compartilhado e reaproveitado na triagem.
-4. **Proteção de Rotas:** O arquivo `middleware.ts` intercepta acessos ao frontend. A rota `/join/:slug` deve ser declarada explicitamente como rota pública permitida sem autenticação.
-5. **Segurança e Anti-Spam:** Um formulário público precisa de proteção contra robôs e abusos, combinando rate-limiting do NestJS (`ThrottlerGuard`), normalização de números telefônicos para formato E.164 e campo armadilha invisível (*honeypot*).
+1. **Separação de Responsabilidades (Institucional vs. Operacional):**
+   - O link público e o QR Code são ativos institucionais permanentes da igreja. Sua governança pertence à tela de **Configurações da Igreja (`/configuracoes`)**, ao lado da Logo e da Identidade Visual.
+   - A tela de **Membros (`/membros`)** é de operação diária e deve focar na listagem de membros e na aba de moderação das fichas recebidas pela secretaria.
+2. **Governança e Edição do Slug de Tenant:**
+   - No backend, `CreateTenantDto` valida `slug` via `@Matches(/^[a-z0-9-]+$/)`.
+   - Porém, `UpdateTenantDto` (`apps/api/src/modules/super-admin/dto/update-tenant.dto.ts`) **não possui o campo `slug`**, e a tela de edição do Super Admin (`EditTenantModal` em `apps/web/src/app/(admin)/admin/page.tsx`) não permite alterar ou corrigir o slug de igrejas cadastradas (inclusive corrigindo casos legados como o tenant piloto `"Resgatando Vidas"` para `"resgatando-vidas"`).
+3. **Reaproveitamento das Normalizações e Motor de Duplicidade:**
+   - O serviço `MemberImportService` (`apps/api/src/modules/membros/import/member-import.service.ts`) possui regras consolidadas e testadas:
+     - `normalizePhone`: extração de dígitos, suporte a zero no DDD (`011...`), prefixo internacional `+55` e tratamento de tipos numéricos.
+     - `normalizeCpf`: sanitização e recomposição do zero à esquerda (10 dígitos).
+     - `normalizeName`: minúsculas, remoção de acentos NFD e espaços extras.
+     - Detecção de duplicidade por documentos (CPF), contatos (E-mail, WhatsApp) e por **Nome Completo Exato**.
+   - Essas regras serão compartilhadas através de helper dedicado, assegurando consistência entre importação e triagem de auto-cadastro.
+4. **Cenário Crucial: Visitante que vira Membro:**
+   - É o fluxo mais comum nas igrejas: a pessoa visita no primeiro domingo (cadastrada como `VISITANTE`), frequenta por semanas e depois envia a ficha de "Novo Membro".
+   - O sistema deve reconhecer o visitante pré-existente e oferecer a ação "Vincular ao Cadastro Existente", evitando duplicidade e preservando o histórico.
+5. **Limite de membros e Quota (`tenant-plan.ts`):** Apenas membros com status `ATIVO` contam contra a quota do plano da igreja. Promover um visitante para membro ativo valida a quota via `canAddMember`.
+6. **Permissões de Criação de Acesso:** O STAFF passa a poder criar contas `User` exclusivamente através da aprovação de fichas de novos membros, sempre com `role = BASIC` e `status = PENDING`.
 
 ---
 
 ## 3. Decisões de Arquitetura, Riscos e Engenharia
 
-### 3.1. Modelo de Dados (Prisma)
-- Criação da tabela física `tb_member_registration_request` através do modelo `SolicitacaoCadastroMembro`:
-  - `id`: CUID/UUID (chave primária).
-  - `tenantId`: Referência à igreja (`tb_tenants`).
-  - `tipo`: Enum `TipoSolicitacaoCadastro` (`VISITANTE` | `MEMBRO`).
-  - `status`: Enum `StatusSolicitacaoCadastro` (`PENDENTE` | `APROVADO` | `REJEITADO`).
-  - Campos do postulante: `nome`, `telefone` (E.164), `email` (opcional para visitante, obrigatório para membro), `dataNascimento`, `genero`, `estadoCivil`, `batizadoAguas`, `igrejaAnterior`, `quemConvidou`, `observacoes`.
-  - Auditoria e controle: `rejectionReason` (motivo de descarte), `processedAt`, `processedByUserId` (quem aprovou/rejeitou), `createdAt`, `updatedAt`.
-  - Índices compostos de busca e performance: `@@index([tenantId, status])`, `@@index([tenantId, telefone])` e `@@index([tenantId, email])`.
+### 3.1. Governança de Slug no Super Admin
+- Atualizar `UpdateTenantDto`: adicionar `slug?: string` com `@Matches(/^[a-z0-9-]+$/)`.
+- Atualizar `SuperAdminService.updateTenant`: se o slug for alterado, checar unicidade no banco (`findUnique`) e lançar `ConflictException('Slug já está em uso.')` caso pertença a outro tenant.
+- Atualizar `EditTenantModal` em `apps/web/src/app/(admin)/admin/page.tsx`: incluir o campo editável "Slug (URL)" com helper visual e validação de formato.
 
-### 3.2. Arquitetura da API (NestJS)
-- **Módulo Público (`apps/api/src/modules/public/` ou rotas públicas em `membros`):**
-  - `GET /api/public/tenants/:slug`: Retorna nome da igreja, slug e URL do logotipo para renderizar o cabeçalho público.
-  - `POST /api/public/tenants/:slug/members/submit`: Endpoint protegido por rate-limit (`@Throttle({ default: { limit: 10, ttl: 60000 } })`), validação com `class-validator`, normalização de telefone, checagem do campo invisível `honeypot` e disparo de notificação in-app para os administradores/secretaria do tenant.
-- **Módulo Administrativo (`apps/api/src/modules/membros/`):**
-  - `GET /api/membros/solicitacoes`: Retorna listagem com filtro por status (`PENDENTE` por padrão) e flag calculada `hasDuplicate` (indicando se já existe membro ativo com mesmo telefone ou e-mail no tenant).
-  - `POST /api/membros/solicitacoes/:id/aprovar`: Operação transacional atômica (`prisma.$transaction`):
-    - Se `tipo == 'VISITANTE'`: Cria registro em `Membro` com `status = VISITANTE`. Não cria conta `User`. Marca solicitação como `APROVADO`.
-    - Se `tipo == 'MEMBRO'`: Valida quota disponível no plano do tenant via `assertTenantCanAddMember`. Cria registro em `Membro` com `status = ATIVO`. Cria conta `User` com `role = BASIC`, `status = PENDING` e token de ativação criptografado (expiração de 72h). Marca solicitação como `APROVADO`. Retorna dados do usuário e o link de ativação gerado.
-  - `POST /api/membros/solicitacoes/:id/rejeitar`: Atualiza status para `REJEITADO` registrando motivo e usuário responsável.
+### 3.2. Central de Divulgação em Configurações do Tenant (`/configuracoes`)
+- Criar o componente `JoinLinkCard` em `apps/web/src/components/app/join-link-card.tsx` e integrá-lo em `apps/web/src/app/(dashboard)/configuracoes/page.tsx`:
+  - Exibe a URL pública gerada com base no slug do tenant.
+  - Botão de copiar link com feedback visual.
+  - Botão de abrir modal com prévia ampliada do QR Code e download em PNG (usando a biblioteca `qrcode` já instalada).
+  - Orientações pastorais de uso (projeção no telão dominical, totens da recepção e folhetos).
 
-### 3.3. Experiência Frontend e Multi-Dispositivo
-- **Página Pública (`apps/web/src/app/(auth)/join/[slug]/page.tsx`):**
-  - Mobile-First: Elementos de formulário em coluna única com área de toque mínima de 44px de altura.
-  - Teclados virtuais otimizados: `type="tel"` e `type="email"`.
-  - Máscaras dinâmicas leves de telefone `(00) 00000-0000` e data `DD/MM/AAAA`.
-  - No desktop: Apresentação em card centralizado (`max-w-lg`) com tipografia nítida e logotipo destacado.
-  - Feedback visual acolhedor de envio com mensagem de confirmação.
-- **Aba de Triagem em `/membros`:**
-  - Adição da aba `Fichas Recebidas` com badge numérico de pendências ao lado da aba existente de membros.
-  - Responsividade ODS: No desktop exibe `DataTable` completa; em telas `< 768px` renderiza cartões empilhados (`EntityCard`) evitando quebra de layout.
-  - Badges visuais de atenção quando houver possível duplicidade cadastral (telefone ou e-mail coincidente).
-- **Modal de Boas-Vindas Pós-Aprovação:**
-  - Exibe a mensagem de acolhimento formatada com o link de ativação de 72h.
-  - Botão híbrido de envio no WhatsApp: no celular abre o app oficial diretamente na conversa; no desktop abre o WhatsApp Web em nova aba.
-  - Botão para copiar texto completo para a área de transferência.
-- **Modal de Divulgação e QR Code:**
-  - Botão na página de membros para abrir modal com QR Code da igreja em alta resolução e link copiável para projeção em telão ou impressão.
+### 3.3. Modelo de Dados (Prisma)
+- Novo modelo `SolicitacaoCadastroMembro` → tabela `tb_member_registration_request`:
+  - `id` (uuid), `tenantId` (FK `tb_tenant`, `onDelete: Cascade`).
+  - `tipo`: enum `TipoSolicitacaoCadastro` (`VISITANTE` | `MEMBRO`) → `@@map("member_registration_type")`.
+  - `status`: enum `StatusSolicitacaoCadastro` (`PENDENTE` | `APROVADO` | `REJEITADO`) → `@@map("member_registration_status")`.
+  - Postulante: `nome`, `telefone` (E.164), `cpf` (opcional, apenas dígitos no banco), `email` (obrigatório para `MEMBRO`, opcional para `VISITANTE`), `dataNascimento`, `sexo` (`SexoMembro?`), `estadoCivil` (`EstadoCivil?`), `batizadoAguas` (`Boolean?`), `igrejaAnterior`, `quemConvidou`, `observacoes`.
+  - LGPD: `consentimentoEm` (DateTime obrigatório), `ipAddress` (opcional).
+  - Controle: `membroId` (criado ou vinculado), `userId` (conta criada), `rejectionReason`, `processedAt`, `processedByUserId`, `createdAt`, `updatedAt`.
+  - Índices: `@@index([tenantId, status])`, `@@index([tenantId, telefone])`, `@@index([tenantId, cpf])`, `@@index([tenantId, email])`.
 
-### 3.4. Matriz de Riscos e Mitigações
+### 3.4. Motor de Duplicidade (Reaproveitamento de `MemberImportService`)
+- Criar helper unificado `apps/api/src/modules/membros/member-deduplication.helper.ts` baseado na lógica de `MemberImportService`:
+  - `cleanPhone(phone)`: extrai apenas dígitos, trata zero no DDD (`011...`) e DDI `+55`.
+  - `cleanCpf(cpf)`: extrai dígitos e recompõe zero à esquerda se tiver 10 dígitos.
+  - `normalizeEmail(email)`: minúsculo e sem espaços.
+  - `normalizeName(nome)`: NFD sem diacríticos e minúsculo.
+  - A consulta na triagem mapeia membros existentes (`ATIVO`, `VISITANTE`, `INATIVO`) e outras fichas `PENDENTE`, retornando:
+    - `membroExistenteId`: ID do membro coincidente.
+    - `membroExistenteNome`: Nome cadastrado.
+    - `membroExistenteStatus`: Status atual (`VISITANTE`, `ATIVO`, `INATIVO`).
+    - `motivoDuplicidade`: `'TELEFONE'` | `'CPF'` | `'EMAIL'` | `'NOME_EXATO'` | `'FICHA_PENDENTE'`.
+  - **Login com Google preservado:** A autenticação social com Google vincula contas de forma independente através da tabela `tb_user_auth_provider` (`providerUserId` do Google), continuando 100% operacional sem qualquer quebra.
+
+### 3.5. Fluxo de Aprovação: Novo Membro vs. Vincular Visitante
+Na transação atômica (`prisma.$transaction`):
+1. **Se for Visitante:** cria `Membro` (`status = VISITANTE`). Sem criar `User`. Sem validar quota de membros.
+2. **Se for Novo Membro (sem vínculo prévio):**
+   - Valida quota via `canAddMember(tenant, totalAtivos)`.
+   - Verifica conflito de `User.email` global e `User.telefoneLogin`.
+   - Cria `Membro` (`status = ATIVO`, `whatsapp` normalizado).
+   - Formata dados adicionais (`igrejaAnterior`, `quemConvidou`, `batizadoAguas`) e salva em `Membro.observacoes`.
+   - Cria `User` (`role = BASIC`, `status = PENDING`) com token de ativação de 72h.
+3. **Se for Vincular a Visitante Existente (`vincularMembroId`):**
+   - Valida que o membro pertence ao tenant e não possui `User` vinculado.
+   - Valida quota via `canAddMember` (pois `VISITANTE` passa a ser `ATIVO`).
+   - Atualiza `Membro`: `status = ATIVO`, preenche campos vazios com os dados informados na ficha e anexa o bloco formatado em `observacoes` preservando o conteúdo anterior:
+     ```
+     [Auto-cadastro em DD/MM/AAAA]
+     Igreja anterior: <valor>
+     Convidado por: <valor>
+     Batizado nas águas: Sim | Não
+     Observações: <texto da ficha>
+     ```
+   - Cria `User` (`role = BASIC`, `status = PENDING`) com token de ativação de 72h.
+4. Em ambos os casos de membro: marca a ficha como `APROVADO` e retorna `{ membro, user, activationLink }` para disparo imediato do WhatsApp.
+
+### 3.6. Matriz de Riscos e Mitigações
 | Risco | Probabilidade | Impacto | Mitigação |
 |---|---|---|---|
-| Envio de spam / robôs no formulário público | Média | Médio | ThrottlerGuard restritivo + campo invisível honeypot que descarta o request silenciosamente se preenchido. |
-| Cadastros duplicados (mesmo membro preenchendo mais de uma vez) | Alta | Baixo | Flag visual de duplicidade na fila de triagem permitindo que a secretaria identifique e descarte com um clique. |
-| Ultrapassagem de limite de membros ativos do plano | Baixa | Alto | A validação `assertTenantCanAddMember` é executada dentro da transação atômica de aprovação do membro. Visitantes não consomem limite. |
-| Incompatibilidade de máscaras em navegadores móveis | Média | Médio | Utilização de máscara pura sem travar o teclado nativo de Android e iOS. |
+| Bloqueio por rate-limit no Wi-Fi da igreja (mesmo IP) | Alta | Alto | Limite de 30/min por IP + idempotência por `tenantId + telefone` + honeypot invisível. |
+| Cadastros duplicados (visitante virando membro) | Alta | Médio | Detecção pelo motor do `MemberImportService` e ação explícita "Vincular ao Cadastro Existente". |
+| Conflito de `User.email` global | Média | Médio | Validação prévia na aprovação com mensagem amigável antes de falhar a transação. |
+| Ultrapassagem da quota do plano | Baixa | Alto | `canAddMember` executado dentro da transação atômica (tanto para novo membro quanto para visitante promovido a ativo). |
+| Slug de tenant com formato inválido ou colisão | Baixa | Médio | Validação regex `@Matches(/^[a-z0-9-]+$/)` em criação e edição, com checagem de unicidade. |
 
 ---
 
@@ -94,139 +134,153 @@ A entrega contempla:
 
 > **Regra de Execução:** O desenvolvimento deve avançar estritamente etapa por etapa. Ao concluir uma tarefa ou etapa, atualize imediatamente seu checkbox para `[x]`, apresente o resumo das validações e **aguarde a autorização explícita do usuário antes de iniciar a etapa seguinte**.
 
-### Etapa 0 - Modelagem de Dados e Schema Prisma
+### Etapa 0 - Governança de Slug de Tenant e Schema Prisma
 Status: planejado
 
-- [ ] Atualizar o arquivo de schema Prisma (`apps/api/prisma/schema.prisma`):
-  - [ ] Declarar enum `TipoSolicitacaoCadastro` (`VISITANTE`, `MEMBRO`)
-  - [ ] Declarar enum `StatusSolicitacaoCadastro` (`PENDENTE`, `APROVADO`, `REJEITADO`)
-  - [ ] Criar o modelo `SolicitacaoCadastroMembro` mapeando para a tabela `tb_member_registration_request` com índices para `tenantId`, `status`, `telefone` e `email`
-  - [ ] Adicionar relação reversa no modelo `Tenant` para `solicitacoesCadastro`
-- [ ] Gerar migração do Prisma e atualizar o client (`npx prisma migrate dev` / `npx prisma generate`):
-  - [ ] Validar criação da migração em `apps/api/prisma/migrations/`
-  - [ ] Validar tipagem TypeScript gerada no `@prisma/client`
-- [ ] Critério de validação da etapa: Prisma Client compilando sem erros e tabela `tb_member_registration_request` devidamente criada no banco com todos os índices e chaves estrangeiras.
+- [ ] Atualizar DTO de atualização de tenant (`apps/api/src/modules/super-admin/dto/update-tenant.dto.ts`):
+  - [ ] Adicionar campo opcional `slug?: string` com validação `@Matches(/^[a-z0-9-]+$/)`
+- [ ] Atualizar serviço do Super Admin (`apps/api/src/modules/super-admin/super-admin.service.ts`):
+  - [ ] Validar unicidade do novo slug em `updateTenant` lançando `ConflictException` se já em uso por outro tenant
+  - [ ] Persistir alteração do slug no banco e registrar no audit log
+- [ ] Atualizar modal de edição de tenant no frontend (`apps/web/src/app/(admin)/admin/page.tsx`):
+  - [ ] Incluir campo "Slug (URL)" no `EditTenantModal` com validação de formato e placeholder
+- [ ] Atualizar schema Prisma (`apps/api/prisma/schema.prisma`):
+  - [ ] Declarar enum `TipoSolicitacaoCadastro` (`VISITANTE`, `MEMBRO`) com `@@map("member_registration_type")`
+  - [ ] Declarar enum `StatusSolicitacaoCadastro` (`PENDENTE`, `APROVADO`, `REJEITADO`) com `@@map("member_registration_status")`
+  - [ ] Criar modelo `SolicitacaoCadastroMembro` mapeado para `tb_member_registration_request` com campos LGPD e índices
+  - [ ] Adicionar relação reversa no modelo `Tenant`
+- [ ] Executar migração do Prisma (`npx prisma migrate dev --name member_registration_request_and_slug`):
+  - [ ] Validar integridade da migração gerada e compilação do client (`npx prisma generate`)
+- [ ] Critério de validação da etapa: Testes do Super Admin passando, edição de slug funcionando na API e tabela criada no banco de dados.
 
-### Etapa 1 - Endpoints Públicos de Consulta de Tenant e Submissão (Backend)
+### Etapa 1 - Endpoints Públicos de Submissão e Consulta (Backend)
 Status: planejado
 
-- [ ] Criar DTOs de submissão e consulta pública (`apps/api/src/modules/public/dto/` ou `apps/api/src/modules/membros/dto/`):
-  - [ ] `submit-member-registration.dto.ts` com validações `class-validator` (nome, telefone, email condicional, dataNascimento, tipo, honeypot)
-  - [ ] Normalizador de telefone celular no padrão E.164 brasileiro
-- [ ] Implementar serviço de submissão pública (`apps/api/src/modules/membros/solicitacoes-cadastro.service.ts`):
-  - [ ] Método `getPublicTenantInfo(slug: string)` retornando nome, logo e slug da igreja
-  - [ ] Método `submitRegistration(slug: string, dto: SubmitMemberRegistrationDto)` com checagem de honeypot, busca do tenant e persistência com status `PENDENTE`
-  - [ ] Integração com serviço de notificações internas para alertar administradores/secretaria sobre nova ficha recebida
-- [ ] Implementar controller público (`apps/api/src/modules/membros/public-solicitacoes.controller.ts`):
-  - [ ] Decorador `@Throttle({ default: { limit: 10, ttl: 60000 } })` para proteção contra abusos
-  - [ ] Rota `GET /api/public/tenants/:slug`
-  - [ ] Rota `POST /api/public/tenants/:slug/members/submit`
-- [ ] Registrar módulos e controladores no NestJS (`apps/api/src/modules/membros/membros.module.ts`):
-  - [ ] Registrar novos controllers e services nos providers e exports
-- [ ] Criar testes unitários para o fluxo de submissão pública (`apps/api/src/modules/membros/solicitacoes-cadastro.service.spec.ts`):
-  - [ ] Teste de submissão de visitante com sucesso
-  - [ ] Teste de submissão de membro com validação de campos obrigatórios
-  - [ ] Teste de descarte por preenchimento de honeypot
-  - [ ] Teste de erro para slug de tenant inexistente
-- [ ] Critério de validação da etapa: Execução de testes unitários do serviço de submissão passando com sucesso (`npm run test -- solicitacoes-cadastro.service.spec.ts`).
+- [ ] Criar DTO de submissão (`apps/api/src/modules/membros/dto/submit-member-registration.dto.ts`):
+  - [ ] Validações `class-validator` para tipo, nome, telefone, cpf (opcional, 11 dígitos), email (obrigatório se tipo `MEMBRO`, opcional se `VISITANTE`), consentimento LGPD e honeypot
+  - [ ] Normalização de telefone celular no padrão E.164 e higienização de CPF (somente dígitos com recomposição de zero)
+- [ ] Criar serviço público (`apps/api/src/modules/membros/solicitacoes-cadastro.service.ts`):
+  - [ ] Método `getPublicTenantInfo(slug)` retornando nome, slug e logoUrl (404 se inativo/inexistente)
+  - [ ] Método `submitRegistration(slug, dto, ip)` com descarte silencioso de honeypot e idempotência por telefone pendente
+  - [ ] Disparo de notificação in-app para administradores e staff do tenant via `NotificationsService` com link `/membros?tab=fichas`
+- [ ] Criar controller público (`apps/api/src/modules/membros/public-solicitacoes.controller.ts`):
+  - [ ] Anotação `@Public()` e `@UseGuards(ThrottlerGuard)`
+  - [ ] Endpoint `GET /api/public/tenants/:slug`
+  - [ ] Endpoint `POST /api/public/tenants/:slug/members/submit` com `@Throttle({ default: { limit: 30, ttl: 60000 } })`
+- [ ] Registrar componentes no módulo `apps/api/src/modules/membros/membros.module.ts`
+- [ ] Criar testes unitários em `apps/api/src/modules/membros/solicitacoes-cadastro.service.spec.ts`:
+  - [ ] Submissão de visitante com sucesso (sem e-mail)
+  - [ ] Submissão de membro com e-mail obrigatório e CPF opcional
+  - [ ] Rejeição de membro sem e-mail com mensagem de validação
+  - [ ] Honeypot ignorado silenciosamente
+  - [ ] Idempotência por telefone atualizando ficha pendente
+  - [ ] Disparo de notificação para administradores do tenant
+- [ ] Critério de validação da etapa: Testes do serviço de submissão pública passando 100%.
 
-### Etapa 2 - Endpoints Administrativos de Triagem e Aprovação Atômica (Backend)
+### Etapa 2 - Motor de Duplicidade, Triagem e Aprovação com Vínculo (Backend)
 Status: planejado
 
-- [ ] Implementar métodos administrativos no serviço (`apps/api/src/modules/membros/solicitacoes-cadastro.service.ts`):
-  - [ ] Método `listSolicitacoes(tenantId: string, status?: StatusSolicitacaoCadastro)` com enriquecimento de flag `hasDuplicate`
-  - [ ] Método `aprovarSolicitacao(tenantId: string, solicitacaoId: string, userId: string)`:
-    - [ ] Fluxo Visitante: cria `Membro` (`status = VISITANTE`), sem criar `User` e sem validar limite de plano
-    - [ ] Fluxo Membro: valida limite de membros via `assertTenantCanAddMember`, cria `Membro` (`status = ATIVO`), cria `User` (`role = BASIC`, `status = PENDING`) e gera token hash de ativação (72h)
-    - [ ] Atualização do status da solicitação para `APROVADO` dentro da mesma transação (`prisma.$transaction`)
-  - [ ] Método `rejeitarSolicitacao(tenantId: string, solicitacaoId: string, userId: string, motivo?: string)`:
-    - [ ] Atualização do status para `REJEITADO` com auditoria
-- [ ] Implementar controller administrativo (`apps/api/src/modules/membros/solicitacoes-cadastro.controller.ts`):
-  - [ ] Rota protegida `GET /api/membros/solicitacoes`
-  - [ ] Rota protegida `POST /api/membros/solicitacoes/:id/aprovar`
-  - [ ] Rota protegida `POST /api/membros/solicitacoes/:id/rejeitar`
-- [ ] Criar testes unitários para a aprovação e rejeição administrativa (`apps/api/src/modules/membros/solicitacoes-triagem.service.spec.ts`):
-  - [ ] Teste de listagem com identificação de duplicidade
-  - [ ] Teste de aprovação de visitante sem criar usuário
-  - [ ] Teste de aprovação atômica de membro com criação de usuário e geração de token
-  - [ ] Teste de rejeição de membro caso o limite do plano seja atingido
-  - [ ] Teste de rejeição com motivo
-- [ ] Critério de validação da etapa: Testes unitários de triagem e aprovação atômica executados com 100% de sucesso.
+- [ ] Criar helper de duplicidade `apps/api/src/modules/membros/member-deduplication.helper.ts`:
+  - [ ] Reutilizar as funções canônicas de `MemberImportService` (`normalizePhone`, `normalizeCpf`, `normalizeName`)
+  - [ ] Implementar detecção de duplicidade por telefone limpo, CPF, e-mail e nome completo exato
+- [ ] Refatorar `apps/api/src/modules/auth/auth.service.ts`:
+  - [ ] Extrair método `createPendingBasicUserInTx(tx, params)` para uso transacional
+  - [ ] Garantir compatibilidade total do método existente `createUser` sem regressões
+- [ ] Implementar métodos administrativos em `solicitacoes-cadastro.service.ts`:
+  - [ ] `listSolicitacoes(tenantId, status)` com dados de duplicidade enriquecidos (indicando se membro existente é `VISITANTE`)
+  - [ ] `countPendentes(tenantId)`
+  - [ ] `aprovarSolicitacao(tenantId, id, actor, { vincularMembroId? }, ip)`:
+    - [ ] Fluxo Visitante: cria `Membro` `VISITANTE` sem usuário
+    - [ ] Fluxo Novo Membro: valida quota, valida unicidade de e-mail/telefone, cria `Membro` `ATIVO` e `User` `BASIC`/`PENDING`
+    - [ ] Fluxo Vincular Visitante: valida membro, valida quota, promove `VISITANTE` para `ATIVO`, atualiza campos vazios, anexa observações e cria `User` `BASIC`/`PENDING`
+    - [ ] Concatenação formatada em `observacoes`
+    - [ ] Atualização da ficha para `APROVADO` e gravação de logs de auditoria
+  - [ ] `rejeitarSolicitacao(tenantId, id, actor, motivo?)`
+- [ ] Criar controller administrativo (`apps/api/src/modules/membros/solicitacoes-cadastro.controller.ts`):
+  - [ ] Proteção `@Roles(Role.ADMIN, Role.STAFF)`
+  - [ ] Endpoints `GET /api/membros/solicitacoes`, `GET /api/membros/solicitacoes/count`, `POST /api/membros/solicitacoes/:id/aprovar`, `POST /api/membros/solicitacoes/:id/rejeitar`
+- [ ] Criar testes unitários em `apps/api/src/modules/membros/solicitacoes-triagem.service.spec.ts`:
+  - [ ] Detecção de visitante existente por telefone limpo e por nome
+  - [ ] Aprovação com vínculo promovendo visitante para ativo e gerando usuário
+  - [ ] Bloqueio por limite de membros na promoção de visitante
+  - [ ] Aprovação por usuário com perfil STAFF
+  - [ ] Concatenação correta em `observacoes`
+- [ ] Critério de validação da etapa: Testes unitários de triagem, duplicidade e aprovação atômica passando 100%.
 
-### Etapa 3 - Página Pública Mobile-First de Auto-Cadastro e Modal de QR Code (Frontend)
+### Etapa 3 - Página Pública Mobile-First e Divulgação em Configurações (Frontend)
 Status: planejado
 
-- [ ] Liberar rota pública no middleware (`apps/web/src/middleware.ts`):
-  - [ ] Adicionar prefixo `/join` na lista de rotas públicas permitidas sem sessão
-- [ ] Criar cliente HTTP para endpoints públicos (`apps/web/src/lib/api/public-tenant.ts`):
-  - [ ] Função `getPublicTenantBySlug(slug: string)`
-  - [ ] Função `submitMemberRegistration(slug: string, payload: SubmitMemberPayload)`
-- [ ] Criar página pública de auto-cadastro (`apps/web/src/app/(auth)/join/[slug]/page.tsx`):
-  - [ ] Layout mobile-first responsivo com suporte a celulares e desktops
-  - [ ] Cabeçalho com logo da igreja e mensagem de boas-vindas
-  - [ ] Botões tipo pílula para alternar entre "Sou Visitante" e "Quero ser Membro"
-  - [ ] Formulário com inputs ergonômicos (mínimo 44px de altura) e teclados semânticos (`tel`, `email`)
-  - [ ] Máscaras de telefone `(00) 00000-0000` e data de nascimento `DD/MM/AAAA`
-  - [ ] Campo invisível honeypot contra robôs
-  - [ ] Estado de loading no botão de envio e tela de confirmação/sucesso acolhedora
-- [ ] Criar modal de divulgação do link e QR Code (`apps/web/src/components/membros/QrCodeJoinModal.tsx`):
-  - [ ] Exibição visual do QR Code gerado dinamicamente para a URL pública do tenant
-  - [ ] Botão para copiar link direto da igreja (`oneelo.com.br/join/slug-da-igreja`)
-  - [ ] Opção para download da imagem do QR Code para impressão ou projeção em telão
-- [ ] Critério de validação da etapa: Acessar `/join/[slug]` no navegador sem autenticação, testar o formulário responsivo no modo mobile e desktop, e conferir renderização do QR Code.
+- [ ] Liberar rota pública em `apps/web/src/middleware.ts`:
+  - [ ] Adicionar `/join` à lista `PUBLIC_PATHS`
+- [ ] Criar layout e página pública (`apps/web/src/app/(public)/join/[slug]/`):
+  - [ ] Layout neutro respeitando identidade visual da igreja (nome e logo)
+  - [ ] Alternância rápida "Sou Visitante" (e-mail opcional) / "Quero ser Membro" (e-mail obrigatório com helper: *"Necessário para acessar o sistema da igreja"*)
+  - [ ] Reuso do componente `InternationalPhoneInput`, máscara de CPF `000.000.000-00` e input de data `00/00/0000`
+  - [ ] Checkbox de consentimento LGPD obrigatório
+  - [ ] Campo armadilha invisível honeypot
+  - [ ] Feedback acolhedor de confirmação após envio
+- [ ] Adicionar traduções nos arquivos de locale em `apps/web/messages/`
+- [ ] Criar card de divulgação e QR Code em `apps/web/src/components/app/join-link-card.tsx`:
+  - [ ] Exibição da URL oficial `/join/[slug]`
+  - [ ] Botão de copiar link com toast de confirmação
+  - [ ] Modal com renderização do QR Code em alta resolução via biblioteca `qrcode` e botão de download PNG
+- [ ] Integrar `JoinLinkCard` na página de Configurações da Igreja (`apps/web/src/app/(dashboard)/configuracoes/page.tsx`):
+  - [ ] Inserir a seção institucional logo após a configuração de logo e PWA
+- [ ] Critério de validação da etapa: Formulário `/join/[slug]` testado em mobile/desktop sem login e card com QR Code funcionando em `/configuracoes`.
 
-### Etapa 4 - Tela de Triagem Pastoral e Modal de Boas-Vindas no WhatsApp (Frontend)
+### Etapa 4 - Tela de Triagem com Ação de Vínculo e Boas-Vindas no WhatsApp (Frontend)
 Status: planejado
 
-- [ ] Extrair e centralizar helper de mensagem de ativação (`apps/web/src/lib/utils/activation-message.ts`):
-  - [ ] Mover `buildActivationWelcomeMessage` para função utilitária pura reaproveitável
-  - [ ] Atualizar `apps/web/src/app/(dashboard)/configuracoes/page.tsx` para consumir o helper compartilhado
-- [ ] Criar cliente HTTP de triagem (`apps/web/src/lib/api/solicitacoes-cadastro.ts`):
-  - [ ] Funções `getSolicitacoesCadastro(status?: string)`, `aprovarSolicitacao(id: string)` e `rejeitarSolicitacao(id: string, motivo?: string)`
-- [ ] Criar modal de boas-vindas com disparo no WhatsApp (`apps/web/src/components/membros/WelcomeActivationModal.tsx`):
-  - [ ] Exibição formatada da mensagem de boas-vindas com link de ativação
-  - [ ] Botão "Enviar no WhatsApp" compatível com mobile (app nativo) e desktop (WhatsApp Web)
-  - [ ] Botão para copiar texto completo com confirmação de cópia
-- [ ] Criar componente de lista e triagem de solicitações (`apps/web/src/components/membros/SolicitacoesTriagemTab.tsx`):
-  - [ ] Visão desktop com tabela ODS (`DataTable`) com colunas de dados, badge de duplicidade e botões de ação
-  - [ ] Visão mobile com cards empilhados (`EntityCard`) para operação no smartphone da liderança/secretaria
-  - [ ] Modal de confirmação de descarte com justificativa opcional
-  - [ ] Abertura do modal `WelcomeActivationModal` imediatamente após a aprovação de um membro
-- [ ] Atualizar página de membros para integrar abas (`apps/web/src/app/(dashboard)/membros/page.tsx`):
-  - [ ] Aba "Membros Cadastrados" e aba "Fichas Recebidas" com badge numérico de itens pendentes
-  - [ ] Botão de ação no topo "QR Code de Auto-Cadastro" abrindo o `QrCodeJoinModal`
-- [ ] Critério de validação da etapa: Triagem operando na aba de membros, aprovação de visitante criando membro sem login, aprovação de membro gerando credencial e abrindo o modal com disparo de WhatsApp.
+- [ ] Extrair helper de mensagem de boas-vindas (`apps/web/src/lib/activation-message.ts`):
+  - [ ] Migrar `buildActivationWelcomeMessage` e `formatActivationExpiration`
+  - [ ] Atualizar importações em `apps/web/src/app/(dashboard)/configuracoes/page.tsx`
+- [ ] Criar modal de envio no WhatsApp (`apps/web/src/components/app/welcome-activation-modal.tsx`):
+  - [ ] Mensagem pré-formatada com link de ativação de 72h
+  - [ ] Botão de abertura direta do WhatsApp (`wa.me`) e botão de copiar
+- [ ] Criar componente de triagem (`apps/web/src/components/app/solicitacoes-triagem-tab.tsx`):
+  - [ ] Visão desktop (`DataTable`) e visão mobile (`EntityCard`)
+  - [ ] Exibição de alertas de duplicidade com destaque para visitante pré-existente
+  - [ ] Botão de ação "Vincular ao Cadastro Existente"
+  - [ ] Confirmação de rejeição com motivo opcional
+  - [ ] Abertura imediata do modal de WhatsApp ao aprovar membro
+- [ ] Atualizar página de membros (`apps/web/src/app/(dashboard)/membros/page.tsx`):
+  - [ ] Abas "Membros Cadastrados" e "Fichas Recebidas" com badge numérico de pendências
+  - [ ] Suporte a query param `?tab=fichas` vindo de notificações
+- [ ] Critério de validação da etapa: Triagem completa operando na aba de membros, aprovando novos e vinculando visitantes existentes com abertura do modal de WhatsApp.
 
-### Etapa 5 - Validação Integrada Multi-Dispositivo, Testes e Build Final
+### Etapa 5 - Validação Integrada, Documentação e Build Final
 Status: planejado
 
-- [ ] Executar suíte completa de testes automatizados do backend (`npm run test` em `apps/api`):
-  - [ ] Garantir que nenhum teste existente de membros ou autenticação sofreu regressão
-- [ ] Executar type-check e linting no frontend e backend:
-  - [ ] `npm run lint` em `apps/api` e `apps/web`
-- [ ] Validar build de produção (`npm run build`):
-  - [ ] Build do pacote `apps/api` concluído com sucesso
-  - [ ] Build do pacote `apps/web` concluído com sucesso (rotas estáticas e dinâmicas)
-- [ ] Validação visual integrada de fluxos (Desktop e Mobile):
-  - [ ] Acesso público via `/join/[slug]` no viewport mobile (375px e 412px) e desktop (1280px+)
-  - [ ] Envio de ficha de visitante e aprovação na triagem
-  - [ ] Envio de ficha de membro, verificação de duplicidade e aprovação com disparo de WhatsApp
-- [ ] Atualizar documentação e backlog:
-  - [ ] Marcar FT-018 como concluída em `ai-context/backlog/novo-membro-auto-cadastro.md` e `ai-context/backlog/README.md`
-  - [ ] Atualizar índice em `ai-context/plans/README.md`
-- [ ] Critério de validação da etapa: Builds de produção passando sem erros, testes com 100% de sucesso e fluxos operacionais validados em desktop e mobile.
+- [ ] Executar bateria de testes automatizados do backend (`npm run test -w apps/api`)
+- [ ] Executar typecheck e linting (`npm run lint -w apps/api` e `npm run lint -w apps/web`)
+- [ ] Validar build de produção (`npm run build -w apps/api` e `npm run build -w apps/web`)
+- [ ] Validação visual integrada de fluxos:
+  - [ ] Edição do slug do tenant no Super Admin e acesso imediato na nova URL pública
+  - [ ] Acesso à tela de `/configuracoes`, cópia do link institucional e download do QR Code
+  - [ ] Cadastro de visitante via smartphone e aprovação na triagem
+  - [ ] Envio posterior de ficha de membro pelo mesmo visitante, detecção de duplicidade e aprovação via "Vincular"
+  - [ ] Ativação da conta pelo link de 72h e conferência dos dados no sistema
+- [ ] Atualizar backlog e índices de documentação:
+  - [ ] `ai-context/backlog/novo-membro-auto-cadastro.md`
+  - [ ] `ai-context/backlog/README.md`
+  - [ ] `ai-context/plans/README.md`
+- [ ] Critério de validação da etapa: Builds passando com código 0 e todos os fluxos operacionais aprovados.
 
 ---
 
 ## 5. Critérios de Aceite Gerais
 
+- [ ] O slug da igreja pode ser editado pelo Super Admin na tela de edição de tenants, com validação estrita de formato e unicidade.
+- [ ] O link público e o QR Code em alta resolução estão disponíveis centralizadamente em `/configuracoes` para download e cópia pela liderança.
 - [ ] O visitante ou novo membro consegue preencher e enviar sua ficha pelo smartphone através de `/join/[slug]` sem necessidade de login.
-- [ ] A página pública adapta-se perfeitamente a dispositivos móveis e desktops, com ergonomia de toque e máscaras sem travamento.
-- [ ] A submissão pública conta com rate-limiting e honeypot invisível para impedir bots e envios maliciosos.
-- [ ] A secretaria visualiza a contagem de fichas pendentes através de badge numérico na aba de membros.
-- [ ] A tela de triagem alterna automaticamente entre tabela no desktop e cards empilhados no mobile, mantendo usabilidade em qualquer tamanho de tela.
-- [ ] Casos de duplicidade (mesmo telefone ou e-mail já cadastrado) exibem alerta visual claro para orientar a decisão pastoral.
-- [ ] Visitantes aprovados tornam-se membros com status `VISITANTE`, sem criação de usuário de acesso e sem consumir a quota de membros do plano.
-- [ ] Membros aprovados são criados atomicamente com status `ATIVO`, conta de usuário com role `BASIC` e token de ativação com validade de 72 horas.
-- [ ] O modal de boas-vindas permite envio com 1 clique no WhatsApp (app oficial no celular ou WhatsApp Web no desktop) e cópia do texto de acolhimento.
-- [ ] Nenhum erro de TypeScript ou quebra de build é introduzido em `apps/api` ou `apps/web`.
+- [ ] A ficha de "Visitante" possui e-mail opcional; a ficha de "Quero ser Membro" possui e-mail obrigatório com helper: *"Necessário para acessar o sistema da igreja"*.
+- [ ] A página pública adapta-se a dispositivos móveis e desktops, com consentimento LGPD, teclado semântico e seletor telefônico internacional.
+- [ ] Rate-limit de 30/min por IP, idempotência por telefone e honeypot silencioso impedem abusos sem prejudicar a congregação no mesmo Wi-Fi.
+- [ ] O motor de duplicidade reutiliza as normalizações canônicas de `MemberImportService` (telefone com/sem DDD e zero, CPF com zero recomposto, e-mail limpo e nome normalizado).
+- [ ] A liderança (ADMIN e STAFF) visualiza fichas pendentes com badge numérico em `/membros` com suporte a desktop e mobile.
+- [ ] Fichas de membros que já constam como visitantes possuem a opção clara de "Vincular ao Cadastro Existente", promovendo o cadastro de `VISITANTE` para `ATIVO` sem duplicar registros.
+- [ ] Visitantes aprovados são cadastrados como `VISITANTE`, sem criação de usuário e sem consumir quota do plano.
+- [ ] Todo membro aprovado (novo ou vinculado) recebe conta de usuário com role `BASIC`, status `PENDING` e link de ativação válido por 72h; a conta permanece `PENDING` indefinidamente caso a senha não seja criada de imediato.
+- [ ] Igreja anterior, quem convidou e batismo são concatenados e persistidos de forma padronizada em `Membro.observacoes`.
+- [ ] O modal pós-aprovação permite envio com 1 toque no WhatsApp e cópia do texto oficial de acolhimento.
+- [ ] Nenhum erro de TypeScript ou quebra de build é introduzido no sistema.
