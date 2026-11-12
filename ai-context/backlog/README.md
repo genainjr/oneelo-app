@@ -6,6 +6,16 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 ---
 
+## Novembro de 2026
+
+| Criação | Documento | Assunto | Status no Código |
+|---|---|---|---|
+| 11/11/2026 | [novo-membro-auto-cadastro.md](novo-membro-auto-cadastro.md) | **FT-018: Auto-Cadastro Público de Novos Membros (com Triagem)** | ⚪ **Pendente** (Link/QR Code público de recepção com aprovação pastoral) |
+| 10/11/2026 | [importacao-membros-planilha.md](importacao-membros-planilha.md) | **FT-016: Importação de Membros em Lote (Excel/CSV)** | ⏳ **Em Planejamento / Foco Atual** (Destravador de onboarding de grandes igrejas) |
+| 10/11/2026 | [modulo-infantil.md](modulo-infantil.md) | **FT-017: Ministério Infantil Ágil (Aulas, Alergias e Cuidados)** | ⚪ **Pendente** (Apoio pedagógico e segurança sem hardware) |
+
+---
+
 ## Outubro de 2026
 
 | Criação | Documento | Assunto | Status no Código |
@@ -18,9 +28,9 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
-| 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | Módulo financeiro, permissões e patrimônio | 🟡 **MVP Implementado** (Contas, categorias, lançamentos, relatórios, permissões); Patrimônio e conciliação pendentes |
-| 22/07/2026 | [central-documentos.md](central-documentos.md) | Central de documentos e geração assíncrona de arquivos | ⚪ **Pendente** (Geração síncrona priorizada primeiro via FT-015) |
-| 18/07/2026 | [tenant-branded-experience.md](tenant-branded-experience.md) | Experiência personalizada da igreja por tenant | 🟡 **Parcial** (PWA dinâmico por tenant ativo; co-branding completo pendente) |
+| 22/07/2026 | [central-documentos.md](central-documentos.md) | Central de documentos, Carteirinhas de Membros e Exportações | ✅ **Implementado** (Fila assíncrona, Supabase Storage, Carteirinha Digital estilo CNH, lote A4 duplex e QR Code) |
+| 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | Módulo financeiro, permissões e patrimônio | 🟡 **MVP Implementado** (Contas, categorias, lançamentos, relatórios, permissões); Patrimônio e conciliação despriorizados |
+| 18/07/2026 | [tenant-branded-experience.md](tenant-branded-experience.md) | Experiência personalizada da igreja por tenant | 🟡 **Parcial** (PWA dinâmico por tenant ativo; co-branding despriorizado) |
 | 17/07/2026 | [phone-password-login.md](phone-password-login.md) | Login com telefone e senha | ✅ **Implementado** (E.164, login unificado por email/telefone, Meu Perfil) |
 | 17/07/2026 | [notification-center.md](notification-center.md) | Central e infraestrutura robusta de notificações | ✅ **Implementado** (Persistência, retentativas, inbox in-app, regras e preferências via PRs #212/#213) |
 | 15/07/2026 | [escala-evento-vinculo.md](escala-evento-vinculo.md) | Vínculo entre escalas e eventos | ✅ **Implementado** (`requerEscala`, modo EVENTOS em escalas, vínculo `EscalaDia -> Evento`) |
@@ -33,7 +43,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
-| 05/06/2026 | [features-roadmap.md](features-roadmap.md) | Features de produto pós-MVP & Super Admin | 🟡 **FT-000 Super Admin e FT-002 Calendários Implementados**; demais pós-MVP pendentes |
+| 05/06/2026 | [features-roadmap.md](features-roadmap.md) | Features de produto pós-MVP & Super Admin | 🟡 **FT-000 Super Admin e FT-002 Calendários Implementados**; demais pós-MVP despriorizados |
 | 03/06/2026 | [security.md](security.md) | Correções de segurança pendentes | ✅ **Implementado** (IP real em auditoria `SEC-001` e cookies seguros `SEC-002`) |
 | 03/06/2026 | [permissions-matrix.md](permissions-matrix.md) | Matriz de permissões por role e recurso | 📖 **Documentado** (Referência ativa de RBAC) |
 | 03/06/2026 | [improvements.md](improvements.md) | Melhorias gerais e débito técnico | 🟢 **8 de 8 implementados** (IMP-001 até IMP-009 todos concluídos) |
@@ -51,4 +61,3 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 - **Ação**: o que precisa ser feito
 - **Impacto**: o que melhora após a entrega
 ```
-
