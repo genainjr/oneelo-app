@@ -177,6 +177,19 @@ export class MemberImportService {
   }
 
   /**
+   * Normaliza nome completo para comparação e deduplicação
+   */
+  normalizeName(name?: string | null): string {
+    if (!name) return '';
+    return String(name)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
    * Normaliza número de telefone para formato E.164 brasileiro
    */
   normalizePhone(phone?: string | null): { phone?: string; aviso?: string } {
@@ -525,6 +538,7 @@ export class MemberImportService {
     const dbCpfMap = new Map<string, string>(); // cpf -> id
     const dbEmailMap = new Map<string, string>(); // email -> id
     const dbPhoneMap = new Map<string, { id: string; nome: string }>(); // phone -> {id, nome}
+    const dbNameMap = new Map<string, { id: string; nome: string }[]>(); // normName -> [{id, nome}]
 
     for (const m of existingMembers) {
       dbMemberById.set(m.id, m);
@@ -540,11 +554,20 @@ export class MemberImportService {
           dbPhoneMap.set(clean, { id: m.id, nome: m.nome });
         }
       }
+      if (m.nome) {
+        const norm = this.normalizeName(m.nome);
+        if (norm) {
+          const list = dbNameMap.get(norm) || [];
+          list.push({ id: m.id, nome: m.nome });
+          dbNameMap.set(norm, list);
+        }
+      }
     }
 
     // Conjuntos para rastrear duplicidades internas no próprio arquivo
     const fileSeenCpfs = new Set<string>();
     const fileSeenEmails = new Set<string>();
+    const fileSeenNames = new Map<string, number>();
 
     const parsedRows: ImportMemberRowData[] = [];
     let validosCount = 0;
@@ -620,6 +643,8 @@ export class MemberImportService {
 
       // 7. Checagem de Duplicidades (se não tiver erros fatais)
       if (erros.length === 0) {
+        const normName = this.normalizeName(nome);
+
         // A) Duplicidade Interna no Arquivo
         if (cpf && fileSeenCpfs.has(cpf)) {
           statusLinha = 'DUPLICADO';
@@ -627,11 +652,17 @@ export class MemberImportService {
         } else if (email && fileSeenEmails.has(email)) {
           statusLinha = 'DUPLICADO';
           erros.push(`E-mail duplicado dentro do próprio arquivo.`);
+        } else if (!cpf && !email && !whatsapp && fileSeenNames.has(normName)) {
+          statusLinha = 'DUPLICADO';
+          avisos.push(
+            `Nome repetido dentro do próprio arquivo (já apareceu na linha ${fileSeenNames.get(normName)}).`,
+          );
         } else {
           if (cpf) fileSeenCpfs.add(cpf);
           if (email) fileSeenEmails.add(email);
+          if (normName) fileSeenNames.set(normName, linha);
 
-          // B) Duplicidade contra o Banco de Dados
+          // B) Duplicidade contra o Banco de Dados (Documento e Contato direto)
           if (cpf && dbCpfMap.has(cpf)) {
             statusLinha = 'DUPLICADO';
             membroExistenteId = dbCpfMap.get(cpf);
@@ -658,6 +689,33 @@ export class MemberImportService {
                   `Telefone compartilhado com outro membro da igreja (${existingWithPhone.nome}).`,
                 );
               }
+            }
+          }
+
+          // C) Duplicidade por Nome Completo Exato
+          // Se ainda não houve match por CPF/E-mail/WhatsApp, checa se há membro com mesmo nome
+          if (!membroExistenteId && normName && dbNameMap.has(normName)) {
+            const matches = dbNameMap.get(normName)!;
+            const matchCandidate = matches.find((m) => {
+              const dbM = dbMemberById.get(m.id);
+              if (!dbM) return false;
+              // Se ambos têm CPF e são divergentes, não é a mesma pessoa (homônimo legítimo)
+              if (cpf && dbM.cpf && dbM.cpf.replace(/\D/g, '') !== cpf) {
+                return false;
+              }
+              // Se ambos têm email e são divergentes, não é a mesma pessoa
+              if (email && dbM.email && dbM.email.toLowerCase().trim() !== email) {
+                return false;
+              }
+              return true;
+            });
+
+            if (matchCandidate) {
+              statusLinha = 'DUPLICADO';
+              membroExistenteId = matchCandidate.id;
+              avisos.push(
+                `Membro com mesmo nome completo já cadastrado no sistema (${matchCandidate.nome}).`,
+              );
             }
           }
         }
