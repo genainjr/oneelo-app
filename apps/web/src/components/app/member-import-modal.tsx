@@ -178,6 +178,8 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
       isOpen={isOpen}
       onClose={handleClose}
       size="xl"
+      contentClassName="border border-gray-200 shadow-2xl"
+      bodyClassName="p-4 sm:p-6"
       title={
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5 text-indigo-600" />
@@ -422,34 +424,34 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
             </div>
 
             {/* Tabela de Pré-visualização das Linhas */}
-            <div className="max-h-60 overflow-y-auto overflow-x-auto rounded-xl border border-gray-200">
+            <div className="max-h-60 overflow-y-auto overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-2xs">
               <table className="min-w-[620px] w-full text-left border-collapse text-xs">
-                <thead className="bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500 sticky top-0 border-b border-gray-200">
-                  <tr>
-                    <th className="py-2 px-3 w-12 text-center">Linha</th>
-                    <th className="py-2 px-3">Nome</th>
-                    <th className="py-2 px-3">Contato</th>
-                    <th className="py-2 px-3">Cargo / Rol</th>
-                    <th className="py-2 px-3 w-28 text-center">Status</th>
-                    <th className="py-2 px-3">Diagnóstico</th>
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-gray-200 bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                    <th className="py-2.5 px-3.5 w-12 text-center">Linha</th>
+                    <th className="py-2.5 px-3.5">Nome</th>
+                    <th className="py-2.5 px-3.5">Contato</th>
+                    <th className="py-2.5 px-3.5">Cargo / Rol</th>
+                    <th className="py-2.5 px-3.5 w-28 text-center">Status</th>
+                    <th className="py-2.5 px-3.5">Diagnóstico</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {filteredLinhas.map((item) => (
-                    <tr key={item.linha} className="hover:bg-gray-50/60">
-                      <td className="py-2 px-3 text-center text-gray-400 font-mono text-[11px]">
+                    <tr key={item.linha} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/60 transition-colors">
+                      <td className="py-2.5 px-3.5 text-center text-gray-400 font-mono text-[11px]">
                         {item.linha}
                       </td>
-                      <td className="py-2 px-3 font-semibold text-gray-900 truncate max-w-[150px]">
+                      <td className="py-2.5 px-3.5 font-semibold text-gray-900 truncate max-w-[150px]">
                         {item.nome || <span className="text-rose-500 italic">Ausente</span>}
                       </td>
-                      <td className="py-2 px-3 text-gray-600 truncate max-w-[150px]">
+                      <td className="py-2.5 px-3.5 text-gray-600 truncate max-w-[150px]">
                         {item.whatsapp || item.email || '-'}
                       </td>
-                      <td className="py-2 px-3 text-gray-500 truncate max-w-[120px]">
+                      <td className="py-2.5 px-3.5 text-gray-500 truncate max-w-[120px]">
                         {item.cargo || item.matricula || '-'}
                       </td>
-                      <td className="py-2 px-3 text-center">
+                      <td className="py-2.5 px-3.5 text-center">
                         {item.statusLinha === 'VALIDO' && (
                           <span className="inline-block rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold">
                             Válido
@@ -466,7 +468,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                           </span>
                         )}
                       </td>
-                      <td className="py-2 px-3 text-[11px]">
+                      <td className="py-2.5 px-3.5 text-[11px]">
                         {item.erros && item.erros.length > 0 && (
                           <span className="text-rose-600 block">{item.erros.join(', ')}</span>
                         )}
