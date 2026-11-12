@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
 import { CarteirinhaModal } from '@/components/app/carteirinha-modal';
+import { MemberImportModal } from '@/components/app/member-import-modal';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
@@ -87,6 +88,7 @@ export default function MembrosPage() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingMembro, setEditingMembro] = useState<Membro | null>(null);
   const [carteirinhaMembro, setCarteirinhaMembro] = useState<Membro | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
@@ -411,6 +413,17 @@ export default function MembrosPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
               {batchLoading ? 'Solicitando...' : 'Emitir Carteirinhas (Lote)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-2xs transition-all hover:bg-gray-50"
+              title="Importar membros em lote via planilha Excel (.xlsx) ou CSV"
+            >
+              <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Importar Planilha
             </button>
             <button
               onClick={() => {
@@ -853,6 +866,18 @@ export default function MembrosPage() {
         membro={carteirinhaMembro}
         churchName={user?.tenant?.nome}
         churchLogoUrl={user?.tenant?.logoUrl}
+      />
+
+      <MemberImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          refetch();
+          setFeedback({
+            type: 'success',
+            message: 'Importação de membros concluída com sucesso! Os novos membros já estão visíveis na lista.',
+          });
+        }}
       />
     </div>
   );
