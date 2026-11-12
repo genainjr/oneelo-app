@@ -73,7 +73,9 @@ export class AuthService {
     ) {
       const target = String(error.meta?.target ?? '');
       if (target.includes('login_phone') || target.includes('telefoneLogin')) {
-        throw new ConflictException('Este telefone já está em uso por outro usuário.');
+        throw new ConflictException(
+          'Este telefone já está em uso por outro usuário.',
+        );
       }
     }
 
@@ -450,7 +452,8 @@ export class AuthService {
       ...safeUser,
       financePermission,
       financeHasManager: financeManagerCount > 0,
-      financeCanBootstrap: financeManagerCount === 0 && user.role === Role.ADMIN,
+      financeCanBootstrap:
+        financeManagerCount === 0 && user.role === Role.ADMIN,
       financeCanManage: financePermission === FinanceRole.FINANCE_MANAGER,
       hasPassword: Boolean(senhaHash),
     };
@@ -569,7 +572,9 @@ export class AuthService {
     ip?: string,
   ) {
     if (!Object.prototype.hasOwnProperty.call(dto, 'telefoneLogin')) {
-      throw new BadRequestException('Informe o telefone de login ou null para remover.');
+      throw new BadRequestException(
+        'Informe o telefone de login ou null para remover.',
+      );
     }
 
     const user = await this.prisma.user.findFirst({
@@ -587,7 +592,10 @@ export class AuthService {
       );
     }
 
-    const senhaAtualValida = await bcrypt.compare(dto.senhaAtual, user.senhaHash);
+    const senhaAtualValida = await bcrypt.compare(
+      dto.senhaAtual,
+      user.senhaHash,
+    );
     if (!senhaAtualValida) {
       throw new UnauthorizedException('Senha atual invalida.');
     }
@@ -603,7 +611,9 @@ export class AuthService {
         select: { id: true },
       });
       if (conflict) {
-        throw new ConflictException('Este telefone já está em uso por outro usuário.');
+        throw new ConflictException(
+          'Este telefone já está em uso por outro usuário.',
+        );
       }
     }
 
@@ -892,7 +902,11 @@ export class AuthService {
                   whatsapp: hasWhatsapp
                     ? trimmedWhatsapp || null
                     : member.whatsapp,
-                  cpf: hasCpf ? (dto.cpf ? dto.cpf.replace(/\D/g, '') : null) : member.cpf,
+                  cpf: hasCpf
+                    ? dto.cpf
+                      ? dto.cpf.replace(/\D/g, '')
+                      : null
+                    : member.cpf,
                   rg: hasRg ? (dto.rg ? dto.rg.trim() : null) : member.rg,
                   dataNascimento: hasDataNascimento
                     ? dto.dataNascimento
@@ -904,7 +918,9 @@ export class AuthService {
                       ? new Date(dto.dataBatismo)
                       : null
                     : member.dataBatismo,
-                  estadoCivil: hasEstadoCivil ? dto.estadoCivil || null : member.estadoCivil,
+                  estadoCivil: hasEstadoCivil
+                    ? dto.estadoCivil || null
+                    : member.estadoCivil,
                   sexo: hasSexo ? dto.sexo || null : member.sexo,
                 }
               : null,
@@ -918,38 +934,40 @@ export class AuthService {
   }
 
   async findAllUsers(tenantId: string) {
-    return this.prisma.user.findMany({
-      where: { tenantId },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        telefoneLogin: true,
-        role: true,
-        ativo: true,
-        status: true,
-        activationExpiresAt: true,
-        activationCreatedAt: true,
-        activatedAt: true,
-        onboardingCompletedAt: true,
-        memberId: true,
-        createdAt: true,
-        membro: {
-          select: { id: true, nome: true },
+    return this.prisma.user
+      .findMany({
+        where: { tenantId },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          telefoneLogin: true,
+          role: true,
+          ativo: true,
+          status: true,
+          activationExpiresAt: true,
+          activationCreatedAt: true,
+          activatedAt: true,
+          onboardingCompletedAt: true,
+          memberId: true,
+          createdAt: true,
+          membro: {
+            select: { id: true, nome: true },
+          },
+          financePermissions: {
+            where: { revokedAt: null },
+            select: { role: true },
+            take: 1,
+          },
         },
-        financePermissions: {
-          where: { revokedAt: null },
-          select: { role: true },
-          take: 1,
-        },
-      },
-      orderBy: { nome: 'asc' },
-    }).then((users) =>
-      users.map(({ financePermissions, ...user }) => ({
-        ...user,
-        financePermission: financePermissions[0]?.role ?? null,
-      })),
-    );
+        orderBy: { nome: 'asc' },
+      })
+      .then((users) =>
+        users.map(({ financePermissions, ...user }) => ({
+          ...user,
+          financePermission: financePermissions[0]?.role ?? null,
+        })),
+      );
   }
 
   async findAllAuditLogs(
@@ -1020,7 +1038,9 @@ export class AuthService {
         select: { id: true },
       });
       if (phoneConflict) {
-        throw new ConflictException('Este telefone já está em uso por outro usuário.');
+        throw new ConflictException(
+          'Este telefone já está em uso por outro usuário.',
+        );
       }
     }
 
@@ -1054,33 +1074,33 @@ export class AuthService {
     try {
       newUser = await this.prisma.user.create({
         data: {
-        tenantId,
-        nome: dto.nome,
-        email: dto.email,
-        telefoneLogin,
-        senhaHash,
-        role: dto.role,
-        status,
-        ativo: status === UserStatus.ACTIVE,
-        activationTokenHash: activation?.tokenHash ?? null,
-        activationExpiresAt: activation?.expiresAt ?? null,
-        activationCreatedAt: activation?.createdAt ?? null,
-        activatedAt: status === UserStatus.ACTIVE ? new Date() : null,
-        memberId: dto.memberId ?? null,
+          tenantId,
+          nome: dto.nome,
+          email: dto.email,
+          telefoneLogin,
+          senhaHash,
+          role: dto.role,
+          status,
+          ativo: status === UserStatus.ACTIVE,
+          activationTokenHash: activation?.tokenHash ?? null,
+          activationExpiresAt: activation?.expiresAt ?? null,
+          activationCreatedAt: activation?.createdAt ?? null,
+          activatedAt: status === UserStatus.ACTIVE ? new Date() : null,
+          memberId: dto.memberId ?? null,
         },
         select: {
-        id: true,
-        nome: true,
-        email: true,
-        telefoneLogin: true,
-        role: true,
-        ativo: true,
-        status: true,
-        activationExpiresAt: true,
-        activationCreatedAt: true,
-        activatedAt: true,
-        onboardingCompletedAt: true,
-        createdAt: true,
+          id: true,
+          nome: true,
+          email: true,
+          telefoneLogin: true,
+          role: true,
+          ativo: true,
+          status: true,
+          activationExpiresAt: true,
+          activationCreatedAt: true,
+          activatedAt: true,
+          onboardingCompletedAt: true,
+          createdAt: true,
         },
       });
     } catch (error) {
@@ -1104,6 +1124,104 @@ export class AuthService {
       activationLink: activation
         ? this.buildActivationLink(activation.token)
         : null,
+    };
+  }
+
+  async createPendingBasicUserInTx(
+    tx: Prisma.TransactionClient,
+    params: {
+      tenantId: string;
+      nome: string;
+      email: string;
+      telefoneLogin?: string | null;
+      memberId?: string | null;
+      actorId?: string;
+      ip?: string;
+    },
+  ) {
+    const existing = await tx.user.findFirst({
+      where: { email: params.email.trim().toLowerCase() },
+    });
+    if (existing) {
+      throw new ConflictException('Já existe um usuário com este e-mail.');
+    }
+
+    let telefoneLogin: string | null = null;
+    if (params.telefoneLogin) {
+      try {
+        telefoneLogin = this.normalizePhoneForWrite(params.telefoneLogin);
+      } catch {
+        telefoneLogin = null;
+      }
+      if (telefoneLogin) {
+        const phoneConflict = await tx.user.findFirst({
+          where: { telefoneLogin },
+          select: { id: true },
+        });
+        if (phoneConflict) {
+          throw new ConflictException(
+            'Este telefone já está em uso por outro usuário.',
+          );
+        }
+      }
+    }
+
+    const activation = this.createActivationToken();
+
+    let newUser;
+    try {
+      newUser = await tx.user.create({
+        data: {
+          tenantId: params.tenantId,
+          nome: params.nome.trim(),
+          email: params.email.trim().toLowerCase(),
+          telefoneLogin,
+          senhaHash: null,
+          role: Role.BASIC,
+          status: UserStatus.PENDING,
+          ativo: false,
+          activationTokenHash: activation.tokenHash,
+          activationExpiresAt: activation.expiresAt,
+          activationCreatedAt: activation.createdAt,
+          memberId: params.memberId ?? null,
+        },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          telefoneLogin: true,
+          role: true,
+          ativo: true,
+          status: true,
+          activationExpiresAt: true,
+          memberId: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      this.rethrowPhoneUniqueConflict(error);
+    }
+
+    if (params.actorId) {
+      await tx.auditLog.create({
+        data: {
+          tenantId: params.tenantId,
+          userId: params.actorId,
+          entidade: 'usuarios',
+          entidadeId: newUser.id,
+          acao: AcaoAuditoria.CRIAR,
+          payloadAfter: {
+            origem: 'aprovacao_ficha_membro',
+            telefoneLogin: maskLoginPhone(telefoneLogin),
+          },
+          ipAddress: params.ip,
+        },
+      });
+    }
+
+    return {
+      user: newUser,
+      activationLink: this.buildActivationLink(activation.token),
     };
   }
 
@@ -1231,7 +1349,9 @@ export class AuthService {
           select: { id: true },
         });
         if (phoneConflict) {
-          throw new ConflictException('Este telefone já está em uso por outro usuário.');
+          throw new ConflictException(
+            'Este telefone já está em uso por outro usuário.',
+          );
         }
       }
     }
@@ -1294,18 +1414,18 @@ export class AuthService {
         where: { id },
         data: updateData,
         select: {
-        id: true,
-        nome: true,
-        email: true,
-        telefoneLogin: true,
-        role: true,
-        ativo: true,
-        status: true,
-        activationExpiresAt: true,
-        activationCreatedAt: true,
-        activatedAt: true,
-        onboardingCompletedAt: true,
-        createdAt: true,
+          id: true,
+          nome: true,
+          email: true,
+          telefoneLogin: true,
+          role: true,
+          ativo: true,
+          status: true,
+          activationExpiresAt: true,
+          activationCreatedAt: true,
+          activatedAt: true,
+          onboardingCompletedAt: true,
+          createdAt: true,
         },
       });
     } catch (error) {
@@ -1426,7 +1546,8 @@ export class AuthService {
     ip?: string,
   ) {
     const shortName = dto.shortName.trim();
-    if (!shortName) throw new BadRequestException('Nome curto do aplicativo e obrigatorio.');
+    if (!shortName)
+      throw new BadRequestException('Nome curto do aplicativo e obrigatorio.');
 
     const previous = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -1462,8 +1583,18 @@ export class AuthService {
     return updated;
   }
 
-  async updateTenantPwaIcon(tenantId: string, file: Multer.File, actorId: string, ip?: string) {
-    return this.tenantMediaService.uploadTenantPwaIcon(tenantId, file, actorId, ip);
+  async updateTenantPwaIcon(
+    tenantId: string,
+    file: Multer.File,
+    actorId: string,
+    ip?: string,
+  ) {
+    return this.tenantMediaService.uploadTenantPwaIcon(
+      tenantId,
+      file,
+      actorId,
+      ip,
+    );
   }
 
   async removeTenantPwaIcon(tenantId: string, actorId: string, ip?: string) {

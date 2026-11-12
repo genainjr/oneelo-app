@@ -203,6 +203,7 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
   const { updateTenant, uploadTenantLogo, removeTenantLogo } = useAdmin();
   const [form, setForm] = useState<UpdateTenantPayload>({
     nome: tenant.nome,
+    slug: tenant.slug,
     plano: tenant.plano,
     ativo: tenant.ativo,
     email: tenant.email ?? '',
@@ -332,7 +333,17 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
               {logoError}
             </p>
           )}
-          <InputField label="Nome da Igreja" required value={form.nome} onChange={(e) => set('nome', e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <InputField label="Nome da Igreja" required value={form.nome} onChange={(e) => set('nome', e.target.value)} />
+            <InputField
+              label="Slug (URL)"
+              required
+              value={form.slug ?? ''}
+              onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              placeholder="igreja-exemplo"
+              pattern="[a-z0-9-]+"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Plano" value={form.plano} onChange={(e) => set('plano', e.target.value as Plano)}>

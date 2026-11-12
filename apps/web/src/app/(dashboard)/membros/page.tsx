@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMembros } from '@/hooks/use-membros';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
 import { CarteirinhaModal } from '@/components/app/carteirinha-modal';
 import { MemberImportModal } from '@/components/app/member-import-modal';
+import { SolicitacoesTriagemTab } from '@/components/app/solicitacoes-triagem-tab';
+import { Users, Inbox } from 'lucide-react';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
@@ -50,6 +52,28 @@ function getReadableTextColor(hexColor?: string | null) {
 export default function MembrosPage() {
   const t = useTranslations('members');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'membros' | 'fichas'>('membros');
+  const [pendentesCount, setPendentesCount] = useState<number>(0);
+
+  async function fetchPendentesCount() {
+    try {
+      const res = await api.get<{ total: number }>('/api/membros/solicitacoes/count');
+      setPendentesCount(res.total || 0);
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    fetchPendentesCount();
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'fichas') {
+      setActiveTab('fichas');
+    }
+  }, [searchParams]);
   const { user, loadingUser, setUser: setAuthUser } = useAuthUser();
 
   function syncAuthenticatedMemberPhoto(memberId: string, member: Membro) {
@@ -493,7 +517,43 @@ export default function MembrosPage() {
         </div>
       )}
 
-      <div ref={membersListTopRef}>
+      <div className="flex items-center gap-2 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab('membros')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-all ${
+            activeTab === 'membros'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          Membros Cadastrados
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('fichas')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-all ${
+            activeTab === 'fichas'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Inbox className="h-4 w-4" />
+          Fichas Recebidas
+          {pendentesCount > 0 && (
+            <span className="inline-flex items-center justify-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white shadow-2xs">
+              {pendentesCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'fichas' ? (
+        <SolicitacoesTriagemTab onCountChanged={fetchPendentesCount} tenantName={user?.tenant?.nome} />
+      ) : (
+        <>
+          <div ref={membersListTopRef}>
         {/* Filters */}
         <FilterShell
           onSubmit={handleFilterSubmit}
@@ -756,6 +816,8 @@ export default function MembrosPage() {
           />
         )}
       />
+        </>
+      )}
 
       {/* Bulk Action Banner */}
       {selectedIds.length > 0 && (

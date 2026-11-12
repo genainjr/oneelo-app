@@ -302,6 +302,7 @@ model Tenant {
   notificationAutomationRules NotificationAutomationRule[]
   userNotificationPreferences UserNotificationPreference[]
   documentJobs          DocumentJob[]
+  solicitacoesCadastro  SolicitacaoCadastroMembro[]
 
   @@map("tb_tenant")
 }
@@ -921,4 +922,54 @@ model DocumentJob {
   @@index([tenantId, status])
   @@index([tenantId, tipoDocumento, versionHash])
   @@map("tb_document_job")
+}
+
+enum TipoSolicitacaoCadastro {
+  VISITANTE
+  MEMBRO
+
+  @@map("member_registration_type")
+}
+
+enum StatusSolicitacaoCadastro {
+  PENDENTE
+  APROVADO
+  REJEITADO
+
+  @@map("member_registration_status")
+}
+
+model SolicitacaoCadastroMembro {
+  id                String                    @id @default(uuid())
+  tenantId          String                    @map("tenant_id")
+  tipo              TipoSolicitacaoCadastro   @map("type")
+  status            StatusSolicitacaoCadastro @default(PENDENTE) @map("status")
+  nome              String                    @map("name")
+  telefone          String                    @map("phone")
+  cpf               String?                   @map("cpf")
+  email             String?                   @map("email")
+  dataNascimento    DateTime?                 @map("birth_date")
+  sexo              SexoMembro?               @map("gender")
+  estadoCivil       EstadoCivil?              @map("marital_status")
+  batizadoAguas     Boolean?                  @map("baptized_in_water")
+  igrejaAnterior    String?                   @map("previous_church")
+  quemConvidou      String?                   @map("invited_by")
+  observacoes       String?                   @map("notes")
+  consentimentoEm   DateTime                  @map("consent_at")
+  ipAddress         String?                   @map("ip_address")
+  membroId          String?                   @map("member_id")
+  userId            String?                   @map("user_id")
+  rejectionReason   String?                   @map("rejection_reason")
+  processedAt       DateTime?                 @map("processed_at")
+  processedByUserId String?                   @map("processed_by_user_id")
+  createdAt         DateTime                  @default(now()) @map("created_at")
+  updatedAt         DateTime                  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, telefone])
+  @@index([tenantId, cpf])
+  @@index([tenantId, email])
+  @@map("tb_member_registration_request")
 }

@@ -13,7 +13,13 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { CreateTenantUserDto } from './dto/create-tenant-user.dto';
-import { Role, AcaoAuditoria, FinanceRole, UserStatus, Plano } from '@prisma/client';
+import {
+  Role,
+  AcaoAuditoria,
+  FinanceRole,
+  UserStatus,
+  Plano,
+} from '@prisma/client';
 import { getDefaultStoredMemberLimit } from '../../common/utils/tenant-plan';
 import * as bcrypt from 'bcryptjs';
 import type { Multer } from 'multer';
@@ -40,7 +46,8 @@ export class SuperAdminService {
 
     if (!user) throw new UnauthorizedException('Credenciais inválidas.');
 
-    if (!user.senhaHash) throw new UnauthorizedException('Credenciais invalidas.');
+    if (!user.senhaHash)
+      throw new UnauthorizedException('Credenciais invalidas.');
 
     const senhaValida = await bcrypt.compare(dto.senha, user.senhaHash);
     if (!senhaValida) throw new UnauthorizedException('Credenciais inválidas.');
@@ -58,7 +65,12 @@ export class SuperAdminService {
 
     return {
       accessToken,
-      user: { id: user.id, nome: user.nome, email: user.email, role: user.role },
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        role: user.role,
+      },
     };
   }
 
@@ -85,14 +97,20 @@ export class SuperAdminService {
   }
 
   async createTenant(dto: CreateTenantDto, adminId: string, ip?: string) {
-    const slugExists = await this.prisma.tenant.findUnique({ where: { slug: dto.slug } });
+    const slugExists = await this.prisma.tenant.findUnique({
+      where: { slug: dto.slug },
+    });
     if (slugExists) throw new ConflictException('Slug já está em uso.');
 
-    const emailExists = await this.prisma.user.findFirst({ where: { email: dto.adminEmail } });
-    if (emailExists) throw new ConflictException('E-mail do administrador já está em uso.');
+    const emailExists = await this.prisma.user.findFirst({
+      where: { email: dto.adminEmail },
+    });
+    if (emailExists)
+      throw new ConflictException('E-mail do administrador já está em uso.');
 
     const plano = dto.plano ?? Plano.GRATUITO;
-    const limiteMembros = dto.limiteMembros ?? getDefaultStoredMemberLimit(plano);
+    const limiteMembros =
+      dto.limiteMembros ?? getDefaultStoredMemberLimit(plano);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
@@ -139,7 +157,12 @@ export class SuperAdminService {
           entidadeId: tenant.id,
           acao: AcaoAuditoria.CRIAR,
           ipAddress: ip ?? null,
-          payloadAfter: { nome: dto.nome, slug: dto.slug, plano, limiteMembros },
+          payloadAfter: {
+            nome: dto.nome,
+            slug: dto.slug,
+            plano,
+            limiteMembros,
+          },
         },
       });
 
@@ -149,12 +172,30 @@ export class SuperAdminService {
     return result;
   }
 
-  async updateTenant(id: string, dto: UpdateTenantDto, adminId: string, ip?: string) {
+  async updateTenant(
+    id: string,
+    dto: UpdateTenantDto,
+    adminId: string,
+    ip?: string,
+  ) {
     const tenant = await this.prisma.tenant.findUnique({ where: { id } });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
 
+    if (dto.slug !== undefined && dto.slug !== tenant.slug) {
+      const existingSlug = await this.prisma.tenant.findUnique({
+        where: { slug: dto.slug },
+      });
+      if (existingSlug) {
+        throw new ConflictException('Já existe uma igreja com este slug.');
+      }
+    }
+
     let newLimiteMembros = dto.limiteMembros;
-    if (newLimiteMembros === undefined && dto.plano !== undefined && dto.plano !== tenant.plano) {
+    if (
+      newLimiteMembros === undefined &&
+      dto.plano !== undefined &&
+      dto.plano !== tenant.plano
+    ) {
       newLimiteMembros = getDefaultStoredMemberLimit(dto.plano);
     }
 
@@ -162,8 +203,11 @@ export class SuperAdminService {
       where: { id },
       data: {
         ...(dto.nome !== undefined && { nome: dto.nome }),
+        ...(dto.slug !== undefined && { slug: dto.slug }),
         ...(dto.plano !== undefined && { plano: dto.plano }),
-        ...(newLimiteMembros !== undefined && { limiteMembros: newLimiteMembros }),
+        ...(newLimiteMembros !== undefined && {
+          limiteMembros: newLimiteMembros,
+        }),
         ...(dto.ativo !== undefined && { ativo: dto.ativo }),
         ...(dto.email !== undefined && { email: dto.email }),
         ...(dto.telefone !== undefined && { telefone: dto.telefone }),
@@ -196,13 +240,16 @@ export class SuperAdminService {
         ipAddress: ip ?? null,
         payloadBefore: {
           nome: tenant.nome,
+          slug: tenant.slug,
           plano: tenant.plano,
           limiteMembros: tenant.limiteMembros,
           ativo: tenant.ativo,
         },
         payloadAfter: {
           ...dto,
-          ...(newLimiteMembros !== undefined ? { limiteMembros: newLimiteMembros } : {}),
+          ...(newLimiteMembros !== undefined
+            ? { limiteMembros: newLimiteMembros }
+            : {}),
         } as any,
       },
     });
@@ -216,18 +263,32 @@ export class SuperAdminService {
     adminId: string,
     ip?: string,
   ) {
-    return this.tenantMediaService.uploadTenantLogo(tenantId, file, adminId, ip);
+    return this.tenantMediaService.uploadTenantLogo(
+      tenantId,
+      file,
+      adminId,
+      ip,
+    );
   }
 
   async removeTenantLogo(tenantId: string, adminId: string, ip?: string) {
     return this.tenantMediaService.removeTenantLogo(tenantId, adminId, ip);
   }
 
-  async createTenantUser(tenantId: string, dto: CreateTenantUserDto, adminId: string, ip?: string) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+  async createTenantUser(
+    tenantId: string,
+    dto: CreateTenantUserDto,
+    adminId: string,
+    ip?: string,
+  ) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
 
-    const emailExists = await this.prisma.user.findFirst({ where: { email: dto.email } });
+    const emailExists = await this.prisma.user.findFirst({
+      where: { email: dto.email },
+    });
     if (emailExists) throw new ConflictException('E-mail já está em uso.');
 
     const senhaHash = await bcrypt.hash(dto.senha, 10);
@@ -242,7 +303,13 @@ export class SuperAdminService {
         ativo: true,
         activatedAt: new Date(),
       },
-      select: { id: true, nome: true, email: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
     });
 
     await this.prisma.auditLog.create({

@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SuperAdminService } from './super-admin.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -44,7 +45,13 @@ describe('SuperAdminService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
         { provide: ConfigService, useValue: { get: jest.fn() } },
-        { provide: TenantMediaService, useValue: { uploadTenantLogo: jest.fn(), removeTenantLogo: jest.fn() } },
+        {
+          provide: TenantMediaService,
+          useValue: {
+            uploadTenantLogo: jest.fn(),
+            removeTenantLogo: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -74,8 +81,16 @@ describe('SuperAdminService', () => {
     it('deve criar tenant GRATUITO com limite de 50 membros por padrao', async () => {
       prisma.tenant.findUnique.mockResolvedValue(null);
       prisma.user.findFirst.mockResolvedValue(null);
-      prisma.tenant.create.mockImplementation(({ data }: any) => ({ id: 'tenant-1', ...data }));
-      prisma.user.create.mockResolvedValue({ id: 'user-1', nome: 'Admin', email: 'admin@igreja.com', role: Role.ADMIN });
+      prisma.tenant.create.mockImplementation(({ data }: any) => ({
+        id: 'tenant-1',
+        ...data,
+      }));
+      prisma.user.create.mockResolvedValue({
+        id: 'user-1',
+        nome: 'Admin',
+        email: 'admin@igreja.com',
+        role: Role.ADMIN,
+      });
 
       await service.createTenant(
         {
@@ -99,8 +114,16 @@ describe('SuperAdminService', () => {
     it('deve criar tenant BASICO com limite de 200 membros', async () => {
       prisma.tenant.findUnique.mockResolvedValue(null);
       prisma.user.findFirst.mockResolvedValue(null);
-      prisma.tenant.create.mockImplementation(({ data }: any) => ({ id: 'tenant-2', ...data }));
-      prisma.user.create.mockResolvedValue({ id: 'user-2', nome: 'Admin', email: 'admin@igreja.com', role: Role.ADMIN });
+      prisma.tenant.create.mockImplementation(({ data }: any) => ({
+        id: 'tenant-2',
+        ...data,
+      }));
+      prisma.user.create.mockResolvedValue({
+        id: 'user-2',
+        nome: 'Admin',
+        email: 'admin@igreja.com',
+        role: Role.ADMIN,
+      });
 
       await service.createTenant(
         {
@@ -125,8 +148,16 @@ describe('SuperAdminService', () => {
     it('deve criar tenant PROFISSIONAL com limite armazenado de 999999', async () => {
       prisma.tenant.findUnique.mockResolvedValue(null);
       prisma.user.findFirst.mockResolvedValue(null);
-      prisma.tenant.create.mockImplementation(({ data }: any) => ({ id: 'tenant-3', ...data }));
-      prisma.user.create.mockResolvedValue({ id: 'user-3', nome: 'Admin', email: 'admin@igreja.com', role: Role.ADMIN });
+      prisma.tenant.create.mockImplementation(({ data }: any) => ({
+        id: 'tenant-3',
+        ...data,
+      }));
+      prisma.user.create.mockResolvedValue({
+        id: 'user-3',
+        nome: 'Admin',
+        email: 'admin@igreja.com',
+        role: Role.ADMIN,
+      });
 
       await service.createTenant(
         {
@@ -151,8 +182,16 @@ describe('SuperAdminService', () => {
     it('deve respeitar override de limiteMembros informado explicitamente no DTO', async () => {
       prisma.tenant.findUnique.mockResolvedValue(null);
       prisma.user.findFirst.mockResolvedValue(null);
-      prisma.tenant.create.mockImplementation(({ data }: any) => ({ id: 'tenant-4', ...data }));
-      prisma.user.create.mockResolvedValue({ id: 'user-4', nome: 'Admin', email: 'admin@igreja.com', role: Role.ADMIN });
+      prisma.tenant.create.mockImplementation(({ data }: any) => ({
+        id: 'tenant-4',
+        ...data,
+      }));
+      prisma.user.create.mockResolvedValue({
+        id: 'user-4',
+        nome: 'Admin',
+        email: 'admin@igreja.com',
+        role: Role.ADMIN,
+      });
 
       await service.createTenant(
         {
@@ -211,7 +250,11 @@ describe('SuperAdminService', () => {
       });
       prisma.tenant.update.mockResolvedValue({ id: 't-basico' });
 
-      await service.updateTenant('t-basico', { plano: Plano.GRATUITO }, adminId);
+      await service.updateTenant(
+        't-basico',
+        { plano: Plano.GRATUITO },
+        adminId,
+      );
 
       expect(prisma.tenant.update).toHaveBeenCalledWith({
         where: { id: 't-basico' },
@@ -286,6 +329,42 @@ describe('SuperAdminService', () => {
         }),
         select: expect.any(Object),
       });
+    });
+
+    it('deve atualizar slug com sucesso quando novo slug estiver disponivel', async () => {
+      prisma.tenant.findUnique
+        .mockResolvedValueOnce({
+          id: 't-1',
+          nome: 'Igreja',
+          slug: 'igreja-antiga',
+        })
+        .mockResolvedValueOnce(null);
+      prisma.tenant.update.mockResolvedValue({
+        id: 't-1',
+        slug: 'igreja-nova',
+      });
+
+      await service.updateTenant('t-1', { slug: 'igreja-nova' }, adminId);
+
+      expect(prisma.tenant.update).toHaveBeenCalledWith({
+        where: { id: 't-1' },
+        data: expect.objectContaining({ slug: 'igreja-nova' }),
+        select: expect.any(Object),
+      });
+    });
+
+    it('deve lancar ConflictException ao tentar atualizar para slug ja existente', async () => {
+      prisma.tenant.findUnique
+        .mockResolvedValueOnce({
+          id: 't-1',
+          nome: 'Igreja',
+          slug: 'igreja-antiga',
+        })
+        .mockResolvedValueOnce({ id: 't-outro', slug: 'igreja-existente' });
+
+      await expect(
+        service.updateTenant('t-1', { slug: 'igreja-existente' }, adminId),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

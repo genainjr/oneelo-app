@@ -1,10 +1,26 @@
-import { IsBoolean, IsEmail, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Min,
+} from 'class-validator';
 import { Plano } from '@prisma/client';
 
 export class UpdateTenantDto {
   @IsOptional()
   @IsString()
   nome?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'Slug deve conter apenas letras minúsculas, números e hífens.',
+  })
+  slug?: string;
 
   @IsOptional()
   @IsEnum(Plano)
