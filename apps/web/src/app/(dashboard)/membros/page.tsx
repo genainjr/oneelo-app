@@ -84,6 +84,7 @@ export default function MembrosPage() {
     uploadMembroFoto,
     removeMembroFoto,
     bulkTag,
+    bulkDeleteMembros,
   } = useMembros();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -92,6 +93,8 @@ export default function MembrosPage() {
   const [editingMembro, setEditingMembro] = useState<Membro | null>(null);
   const [carteirinhaMembro, setCarteirinhaMembro] = useState<Membro | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [tagsList, setTagsList] = useState<Tag[]>([]);
   const [selectedBulkTags, setSelectedBulkTags] = useState<string[]>([]);
@@ -265,6 +268,29 @@ export default function MembrosPage() {
       setFeedback({ type: 'success', message: t('bulk.success') });
     } catch (err: unknown) {
       setFeedback({ type: 'error', message: getErrorMessage(err, t('bulk.error')) });
+    }
+  }
+
+  async function handleBulkDeleteConfirm() {
+    if (selectedIds.length === 0) return;
+    setBulkDeleteLoading(true);
+    setFeedback(null);
+    try {
+      await bulkDeleteMembros(selectedIds);
+      const count = selectedIds.length;
+      setSelectedIds([]);
+      setIsBulkDeleteConfirmOpen(false);
+      setFeedback({
+        type: 'success',
+        message: `${count} membro(s) excluído(s) com sucesso.`,
+      });
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: getErrorMessage(err, 'Erro ao excluir membros em lote.'),
+      });
+    } finally {
+      setBulkDeleteLoading(false);
     }
   }
 
@@ -858,6 +884,16 @@ export default function MembrosPage() {
         loading={confirmLoading}
         onConfirm={confirmDeleteMembro}
         onCancel={() => setPendingDeleteMembro(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={isBulkDeleteConfirmOpen}
+        title="Excluir Membros Selecionados"
+        description={`Tem certeza que deseja excluir os ${selectedIds.length} membros selecionados? Esta ação desvinculará esses membros de escalas e ministérios.`}
+        confirmLabel={`Excluir (${selectedIds.length}) Membros`}
+        loading={bulkDeleteLoading}
+        onConfirm={handleBulkDeleteConfirm}
+        onCancel={() => setIsBulkDeleteConfirmOpen(false)}
       />
 
       <CarteirinhaModal

@@ -127,4 +127,27 @@ describe('MembrosController - Import Endpoints', () => {
       expect(result.inseridos).toBe(1);
     });
   });
+
+  describe('bulkDelete endpoints', () => {
+    it('deve chamar membrosService.bulkRemove no POST bulk-delete', async () => {
+      const req = { tenantId: 't1', user: { sub: 'u1' } };
+      const dto = { ids: ['m1', 'm2'] };
+      membrosService.bulkRemove = jest.fn().mockResolvedValue({ count: 2, message: '2 removidos' });
+
+      const res = await controller.bulkDeletePost(dto as any, req as any);
+      expect(membrosService.bulkRemove).toHaveBeenCalledWith('t1', ['m1', 'm2'], 'u1');
+      expect(res.count).toBe(2);
+    });
+
+    it('deve chamar membrosService.bulkRemove no DELETE bulk', async () => {
+      const req = { tenantId: 't1', user: { sub: 'u1' } };
+      const dto = { ids: ['m1'] };
+      membrosService.bulkRemove = jest.fn().mockResolvedValue({ count: 1, message: '1 removido' });
+
+      const res = await controller.bulkDelete(dto as any, req as any);
+      expect(membrosService.bulkRemove).toHaveBeenCalledWith('t1', ['m1'], 'u1');
+      expect(res.count).toBe(1);
+    });
+  });
+
 });

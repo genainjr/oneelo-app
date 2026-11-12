@@ -10,7 +10,7 @@ import { FilterMembrosDto } from './dto/filter-membros.dto';
 import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.dto';
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
-import { MinistryRole, Role } from '@prisma/client';
+import { AcaoAuditoria, MinistryRole, Role } from '@prisma/client';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import type { Multer } from 'multer';
 import {
@@ -475,6 +475,97 @@ export class MembrosService {
     ]);
 
     return { message: 'Membro removido com sucesso (soft delete).' };
+  }
+
+  async bulkRemove(tenantId: string, ids: string[], actorUserId?: string) {
+    if (!ids || ids.length === 0) {
+      return { count: 0, message: 'Nenhum membro selecionado.' };
+    }
+
+    const uniqueIds = Array.from(new Set(ids));
+
+    // 1. Buscar membros pertencentes ao tenant
+    const members = await this.prisma.client.membro.findMany({
+      where: {
+        id: { in: uniqueIds },
+        tenantId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        nome: true,
+        fotoKey: true,
+      },
+    });
+
+    if (members.length === 0) {
+      throw new NotFoundException('Nenhum membro válido encontrado para exclusão.');
+    }
+
+    const targetIds = members.map((m) => m.id);
+
+    // 2. Remover fotos do storage se existirem
+    for (const m of members) {
+      if (m.fotoKey) {
+        await this.storageService
+          .deleteObject(this.memberPhotoBucket, m.fotoKey)
+          .catch(() => undefined);
+      }
+    }
+
+    const deletedAt = new Date();
+
+    // 3. Transação atômica de desvinculação, soft delete e auditoria
+    await this.prisma.$transaction(async (tx) => {
+      // Remover vínculos com funções ministeriais
+      await tx.ministerioMembroFuncao.deleteMany({
+        where: { membroId: { in: targetIds } },
+      });
+
+      // Remover vínculos com ministérios
+      await tx.ministerioMembro.deleteMany({
+        where: { membroId: { in: targetIds } },
+      });
+
+      // Remover vínculos com tags
+      await tx.membroTag.deleteMany({
+        where: { membroId: { in: targetIds } },
+      });
+
+      // Soft delete dos membros
+      await tx.membro.updateMany({
+        where: { id: { in: targetIds } },
+        data: {
+          deletedAt,
+          fotoUrl: null,
+          fotoKey: null,
+        },
+      });
+
+      // Auditoria consolidada
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId: actorUserId,
+          entidade: 'Membro',
+          entidadeId: 'BULK_DELETE',
+          acao: AcaoAuditoria.DELETAR,
+          payloadBefore: {
+            total: targetIds.length,
+            ids: targetIds,
+            nomes: members.map((m) => m.nome),
+          },
+          payloadAfter: {
+            deletados: targetIds.length,
+          },
+        },
+      });
+    });
+
+    return {
+      count: targetIds.length,
+      message: `${targetIds.length} membro(s) removido(s) com sucesso.`,
+    };
   }
 
   async bulkTag(tenantId: string, dto: BulkTagMembrosDto) {
