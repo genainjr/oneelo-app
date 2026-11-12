@@ -42,10 +42,10 @@ export const MEMBER_IMPORT_COLUMNS: ColumnDefinition[] = [
   {
     header: 'Data de Nascimento',
     key: 'dataNascimento',
-    width: 20,
+    width: 22,
     example: '15/08/1988',
     example2: '22/03/1992',
-    numFmt: 'dd/mm/yyyy',
+    numFmt: '00\\/00\\/0000',
   },
   {
     header: 'Sexo',
@@ -71,10 +71,10 @@ export const MEMBER_IMPORT_COLUMNS: ColumnDefinition[] = [
   {
     header: 'Data de Batismo',
     key: 'dataBatismo',
-    width: 20,
+    width: 22,
     example: '10/12/2005',
     example2: '18/06/2015',
-    numFmt: 'dd/mm/yyyy',
+    numFmt: '00\\/00\\/0000',
   },
   {
     header: 'CPF',
@@ -87,16 +87,18 @@ export const MEMBER_IMPORT_COLUMNS: ColumnDefinition[] = [
   {
     header: 'RG',
     key: 'rg',
-    width: 16,
+    width: 24,
     example: '12.345.678-9',
     example2: '',
+    numFmt: '@',
   },
   {
     header: 'Matrícula / Rol',
     key: 'matricula',
-    width: 18,
+    width: 20,
     example: 'ROL-001',
     example2: 'ROL-002',
+    numFmt: '@',
   },
   {
     header: 'Observações',
@@ -158,17 +160,24 @@ export async function buildMemberImportTemplateBuffer(): Promise<Buffer> {
   [row2, row3].forEach((r) => {
     r.height = 20;
     r.eachCell((cell) => {
-      cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF4B5563' } };
+      cell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF6B7280' } };
       cell.alignment = { vertical: 'middle', horizontal: 'left' };
     });
   });
 
-  // Aplica formatação de número/data nas colunas configuradas (até linha 500)
+  // Aplica formatação e fontes nas colunas (linhas 4 a 500 para dados digitados)
   MEMBER_IMPORT_COLUMNS.forEach((col, idx) => {
     if (col.numFmt) {
       worksheet.getColumn(col.key).numFmt = col.numFmt;
-      for (let i = 2; i <= 500; i++) {
-        worksheet.getCell(i, idx + 1).numFmt = col.numFmt;
+    }
+    for (let i = 2; i <= 500; i++) {
+      const cell = worksheet.getCell(i, idx + 1);
+      if (col.numFmt) {
+        cell.numFmt = col.numFmt;
+      }
+      if (i >= 4) {
+        cell.font = { name: 'Calibri', size: 11, color: { argb: 'FF000000' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'left' };
       }
     }
   });
