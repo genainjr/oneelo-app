@@ -17,6 +17,7 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 11/11/2026 | [importacao-membros-planilha-plan.md](importacao-membros-planilha-plan.md) | Importa��o de Membros em Lote via Planilha (Excel / CSV) |
 | 09/11/2026 | [otimizacao-navegacao-transicao-telas-plan.md](otimizacao-navegacao-transicao-telas-plan.md) | Otimização de navegação e transição instantânea de telas no Dashboard |
 | 06/11/2026 | [otimizacao-performance-memoria-render-plan.md](otimizacao-performance-memoria-render-plan.md) | Otimização de performance, memória, crons, fila de push e sessão (Render Free & Frontend) |
 | 05/11/2026 | [adicionar-escalas-google-agenda-plan.md](adicionar-escalas-google-agenda-plan.md) | Adicionar Escalas e Eventos da Igreja ao Google Agenda, Calendários e Notificações (FT-002) |
@@ -119,3 +120,4 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 | 08/06/2026 | [accordion-export-plan.md](accordion-export-plan.md) | Accordion genérico e telas de exportação |
 | 07/06/2026 | [super-admin-plan.md](super-admin-plan.md) | Painel Super Admin |
 | 07/06/2026 | [landing-page-plan.md](landing-page-plan.md) | Landing page |
+

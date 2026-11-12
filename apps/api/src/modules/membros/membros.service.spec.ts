@@ -157,4 +157,82 @@ describe('MembrosService - limites por plano', () => {
       });
     });
   });
+
+  describe('bulkRemove', () => {
+    it('deve retornar count 0 quando array de ids for vazio', async () => {
+      const { service } = createService({ id: tenantId, plano: Plano.PROFISSIONAL }, 10);
+      const res = await service.bulkRemove(tenantId, []);
+      expect(res.count).toBe(0);
+    });
+
+    it('deve lançar NotFoundException quando nenhum membro ativo pertencer ao tenant', async () => {
+      const prisma = {
+        client: {
+          membro: {
+            findMany: jest.fn().mockResolvedValue([]),
+          },
+        },
+      };
+      const storage = {} as any;
+      const service = new MembrosService(prisma as any, storage);
+
+      await expect(service.bulkRemove(tenantId, ['uuid-1', 'uuid-2'])).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('deve desvincular dados, aplicar soft delete e registrar auditoria em transação', async () => {
+      const membersMock = [
+        { id: 'm1', nome: 'Membro 1', fotoKey: 'photo-1.jpg' },
+        { id: 'm2', nome: 'Membro 2', fotoKey: null },
+      ];
+
+      const deleteObjectMock = jest.fn().mockResolvedValue(true);
+      const txMock = {
+        ministerioMembroFuncao: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        ministerioMembro: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
+        membroTag: { deleteMany: jest.fn().mockResolvedValue({ count: 3 }) },
+        membro: { updateMany: jest.fn().mockResolvedValue({ count: 2 }) },
+        auditLog: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) },
+      };
+
+      const prisma = {
+        client: {
+          membro: {
+            findMany: jest.fn().mockResolvedValue(membersMock),
+          },
+        },
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+
+      const storage = {
+        deleteObject: deleteObjectMock,
+      } as any;
+
+      const service = new MembrosService(prisma as any, storage);
+      const res = await service.bulkRemove(tenantId, ['m1', 'm2'], 'user-admin');
+
+      expect(res.count).toBe(2);
+      expect(deleteObjectMock).toHaveBeenCalledWith(expect.any(String), 'photo-1.jpg');
+      expect(txMock.ministerioMembroFuncao.deleteMany).toHaveBeenCalledWith({
+        where: { membroId: { in: ['m1', 'm2'] } },
+      });
+      expect(txMock.membro.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['m1', 'm2'] } },
+        data: expect.objectContaining({
+          deletedAt: expect.any(Date),
+          fotoUrl: null,
+          fotoKey: null,
+        }),
+      });
+      expect(txMock.auditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          tenantId,
+          userId: 'user-admin',
+          entidade: 'Membro',
+          entidadeId: 'BULK_DELETE',
+          acao: 'DELETAR',
+        }),
+      });
+    });
+  });
+
 });

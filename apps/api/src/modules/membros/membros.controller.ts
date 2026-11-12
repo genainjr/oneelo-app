@@ -8,27 +8,37 @@ import {
   Delete,
   Query,
   Req,
+  Res,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import type { Multer } from 'multer';
+import type { Response, Request } from 'express';
 import { MembrosService } from './membros.service';
+import { MemberImportService } from './import/member-import.service';
+import { buildMemberImportTemplateBuffer } from './import/member-template.builder';
 import { CreateMembroDto } from './dto/create-membro.dto';
 import { UpdateMembroDto } from './dto/update-membro.dto';
 import { FilterMembrosDto } from './dto/filter-membros.dto';
 import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.dto';
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
+import { ConfirmImportDto } from './dto/import-membros.dto';
+import { BulkDeleteMembrosDto } from './dto/bulk-delete-membros.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
-import type { Request } from 'express';
-import { JwtPayload } from '../../common/types/jwt-payload.interface';
+import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { MAX_IMAGE_SIZE } from '../../common/storage/image-upload';
 
 @Controller('membros')
 export class MembrosController {
-  constructor(private readonly membrosService: MembrosService) {}
+  constructor(
+    private readonly membrosService: MembrosService,
+    private readonly memberImportService: MemberImportService,
+  ) {}
 
   @Post()
   @Roles(Role.ADMIN, Role.STAFF)
@@ -65,6 +75,90 @@ export class MembrosController {
   bulkTag(@Body() bulkTagMembrosDto: BulkTagMembrosDto, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.bulkTag(tenantId, bulkTagMembrosDto);
+  }
+
+  @Get('import/template')
+  @Roles(Role.ADMIN, Role.STAFF)
+  async downloadTemplate(@Res() res: Response) {
+    const buffer = await buildMemberImportTemplateBuffer();
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="modelo-importacao-membros-oneelo.xlsx"',
+    );
+    res.send(buffer);
+  }
+
+  @Post('import/preview')
+  @Roles(Role.ADMIN, Role.STAFF)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+    }),
+  )
+  async previewImport(
+    @UploadedFile() file: Multer.File,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('Nenhum arquivo enviado para importação.');
+    }
+    const ext = file.originalname.toLowerCase();
+    if (!ext.endsWith('.xlsx') && !ext.endsWith('.csv')) {
+      throw new BadRequestException('Apenas arquivos .xlsx ou .csv são aceitos.');
+    }
+    if (!user.tenantId) {
+      throw new BadRequestException('Tenant não encontrado para o usuário.');
+    }
+    return this.memberImportService.generatePreview(
+      user.tenantId,
+      file.buffer,
+      file.originalname,
+    );
+  }
+
+  @Post('import/confirm')
+  @Roles(Role.ADMIN, Role.STAFF)
+  async confirmImport(
+    @Body() dto: ConfirmImportDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (!user.tenantId) {
+      throw new BadRequestException('Tenant não encontrado para o usuário.');
+    }
+    return this.memberImportService.confirmImport(
+      user.tenantId,
+      user.sub,
+      dto,
+    );
+  }
+
+    @Post('bulk-delete')
+  @Roles(Role.ADMIN, Role.STAFF)
+  async bulkDeletePost(
+    @Body() dto: BulkDeleteMembrosDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.bulkRemove(tenantId, dto.ids, user?.sub);
+  }
+
+  @Delete('bulk')
+  @Roles(Role.ADMIN, Role.STAFF)
+  async bulkDelete(
+    @Body() dto: BulkDeleteMembrosDto,
+    @Req() req: Request,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.bulkRemove(tenantId, dto.ids, user?.sub);
   }
 
   @Get(':id')
