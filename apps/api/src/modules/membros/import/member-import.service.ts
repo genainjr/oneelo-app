@@ -267,7 +267,7 @@ export class MemberImportService {
   normalizeDate(val: any): { dateIso?: string; erro?: string } {
     if (val === null || val === undefined || val === '') return {};
 
-    // Se já for Date (ExcelJS date)
+    // 1. Se já for Date (ExcelJS date)
     if (val instanceof Date) {
       if (isNaN(val.getTime())) return { erro: 'Data inválida.' };
       const year = val.getUTCFullYear();
@@ -276,21 +276,41 @@ export class MemberImportService {
       return { dateIso: `${year}-${month}-${day}` };
     }
 
-    // Se for número serial do Excel
+    // 2. Se for número (Excel Serial ou dígitos corridos DDMMYYYY)
     if (typeof val === 'number') {
+      // Se for número de 7 ou 8 dígitos corridos (ex: 15081988 ou 1011990 para 01/01/1990)
+      if (val >= 1000000 && val <= 99999999) {
+        const strNum = String(val).padStart(8, '0');
+        const day = parseInt(strNum.slice(0, 2), 10);
+        const month = parseInt(strNum.slice(2, 4), 10) - 1;
+        const year = parseInt(strNum.slice(4, 8), 10);
+        const d = new Date(Date.UTC(year, month, day));
+        if (
+          d.getUTCFullYear() === year &&
+          d.getUTCMonth() === month &&
+          d.getUTCDate() === day
+        ) {
+          const yearStr = d.getUTCFullYear();
+          const monthStr = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const dayStr = String(d.getUTCDate()).padStart(2, '0');
+          return { dateIso: `${yearStr}-${monthStr}-${dayStr}` };
+        }
+      }
+
+      // Se for número serial padrão do Excel (geralmente entre 1 e 70000)
       const excelEpoch = new Date(1899, 11, 30);
       const millis = val * 86400000;
       const d = new Date(excelEpoch.getTime() + millis);
-      if (!isNaN(d.getTime())) {
-        const year = d.getUTCFullYear();
-        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(d.getUTCDate()).padStart(2, '0');
-        return { dateIso: `${year}-${month}-${day}` };
+      if (!isNaN(d.getTime()) && d.getUTCFullYear() >= 1900 && d.getUTCFullYear() <= 2100) {
+        const yearStr = d.getUTCFullYear();
+        const monthStr = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getUTCDate()).padStart(2, '0');
+        return { dateIso: `${yearStr}-${monthStr}-${dayStr}` };
       }
-      return { erro: 'Data serial numérica inválida.' };
+      return { erro: 'Data numérica inválida.' };
     }
 
-    // Se for string
+    // 3. Se for string
     const str = String(val).trim();
     if (!str) return {};
 
@@ -312,6 +332,25 @@ export class MemberImportService {
         return { dateIso: `${yearStr}-${monthStr}-${dayStr}` };
       }
       return { erro: 'Dia, mês ou ano fora dos limites válidos.' };
+    }
+
+    // Se for string com 8 dígitos sem barra (ex: "15081988")
+    const digitsOnly = str.replace(/\D/g, '');
+    if (digitsOnly.length === 8) {
+      const day = parseInt(digitsOnly.slice(0, 2), 10);
+      const month = parseInt(digitsOnly.slice(2, 4), 10) - 1;
+      const year = parseInt(digitsOnly.slice(4, 8), 10);
+      const d = new Date(Date.UTC(year, month, day));
+      if (
+        d.getUTCFullYear() === year &&
+        d.getUTCMonth() === month &&
+        d.getUTCDate() === day
+      ) {
+        const yearStr = d.getUTCFullYear();
+        const monthStr = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getUTCDate()).padStart(2, '0');
+        return { dateIso: `${yearStr}-${monthStr}-${dayStr}` };
+      }
     }
 
     // Formato ISO AAAA-MM-DD
@@ -499,6 +538,14 @@ export class MemberImportService {
 
           if (resolvedVal !== null && resolvedVal !== undefined && resolvedVal !== '') {
             hasData = true;
+            // Para RG e Matrícula: trata números longos e notação científica do Excel (ex: 2.00401E+12)
+            if (field === 'rg' || field === 'matricula') {
+              if (typeof resolvedVal === 'number') {
+                resolvedVal = resolvedVal.toLocaleString('fullwide', { useGrouping: false });
+              } else if (typeof resolvedVal === 'string' && /[eE]\+/.test(resolvedVal)) {
+                resolvedVal = Number(resolvedVal.replace(',', '.')).toLocaleString('fullwide', { useGrouping: false });
+              }
+            }
             rowData[field] = resolvedVal;
           }
         }

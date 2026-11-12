@@ -27,10 +27,11 @@ describe('MemberTemplateBuilder', () => {
     expect(worksheet?.getRow(2).getCell(1).value).toBe(MEMBER_IMPORT_COLUMNS[0].example);
     expect(worksheet?.getRow(3).getCell(1).value).toBe(MEMBER_IMPORT_COLUMNS[0].example2);
 
-    // Verifica formatações de datas, whatsapp e CPF
-    expect(worksheet?.getCell('E2').numFmt).toBe('dd/mm/yyyy');
-    expect(worksheet?.getCell('I2').numFmt).toBe('dd/mm/yyyy');
+    // Verifica formatações de datas, whatsapp, CPF e RG
+    expect(worksheet?.getCell('E2').numFmt).toBe('00/00/0000');
+    expect(worksheet?.getCell('I2').numFmt).toBe('00/00/0000');
     expect(worksheet?.getCell('J2').numFmt).toBe('000.000.000-00');
+    expect(worksheet?.getCell('K2').numFmt).toBe('@');
     expect(worksheet?.getCell('C2').numFmt).toBeDefined();
   });
 });

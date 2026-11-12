@@ -57,6 +57,8 @@ describe('MemberImportService', () => {
 
     it('deve normalizar datas em vários formatos', () => {
       expect(service.normalizeDate('15/08/1988').dateIso).toBe('1988-08-15');
+      expect(service.normalizeDate(15081988).dateIso).toBe('1988-08-15');
+      expect(service.normalizeDate('15081988').dateIso).toBe('1988-08-15');
       expect(service.normalizeDate('1988-08-15').dateIso).toBe('1988-08-15');
       expect(service.normalizeDate(new Date('1990-05-20T00:00:00Z')).dateIso).toBe('1990-05-20');
       expect(service.normalizeDate('32/01/2020').erro).toBeDefined();
