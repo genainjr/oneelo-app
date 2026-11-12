@@ -10,8 +10,8 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
-| 11/11/2026 | [novo-membro-auto-cadastro.md](novo-membro-auto-cadastro.md) | **FT-018: Auto-Cadastro Público de Novos Membros (com Triagem)** | ⚪ **Pendente** (Link/QR Code público de recepção com aprovação pastoral) |
-| 10/11/2026 | [importacao-membros-planilha.md](importacao-membros-planilha.md) | **FT-016: Importação de Membros em Lote (Excel/CSV)** | ⏳ **Em Planejamento / Foco Atual** (Destravador de onboarding de grandes igrejas) |
+| 11/11/2026 | [novo-membro-auto-cadastro.md](novo-membro-auto-cadastro.md) | **FT-018: Auto-Cadastro Público de Novos Membros (com Triagem)** | ⚪ **Pendente / Próximo Foco** (Link/QR Code público de recepção com aprovação pastoral) |
+| 10/11/2026 | [importacao-membros-planilha.md](importacao-membros-planilha.md) | **FT-016: Importação de Membros em Lote (Excel/CSV)** | ✅ **Implementado** (Parser ExcelJS, preview dry-run, template oficial, detecção de duplicidades e exclusão em lote) |
 | 10/11/2026 | [modulo-infantil.md](modulo-infantil.md) | **FT-017: Ministério Infantil Ágil (Aulas, Alergias e Cuidados)** | ⚪ **Pendente** (Apoio pedagógico e segurança sem hardware) |
 
 ---
