@@ -34,11 +34,23 @@ export interface ImportPreviewResponse {
     whatsapp?: string;
     email?: string;
     dataNascimento?: string;
+    sexo?: string;
+    estadoCivil?: string;
     cargo?: string;
+    dataBatismo?: string;
+    cpf?: string;
+    rg?: string;
     matricula?: string;
+    observacoes?: string;
     statusLinha: 'VALIDO' | 'DUPLICADO' | 'ERRO';
     erros?: string[];
     avisos?: string[];
+    camposAlterados?: Array<{
+      campo: string;
+      label: string;
+      anterior?: string | null;
+      novo?: string | null;
+    }>;
     membroExistenteId?: string;
   }>;
 }
@@ -472,10 +484,37 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                         {item.erros && item.erros.length > 0 && (
                           <span className="text-rose-600 block">{item.erros.join(', ')}</span>
                         )}
-                        {item.avisos && item.avisos.length > 0 && (
+                        {item.statusLinha === 'DUPLICADO' && (
+                          <div className="space-y-1">
+                            {item.camposAlterados && item.camposAlterados.length > 0 ? (
+                              <div>
+                                <span className="font-semibold text-amber-800 block text-[10px]">
+                                  {item.camposAlterados.length} campo(s) alterado(s):
+                                </span>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {item.camposAlterados.map((ch, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 border border-amber-200"
+                                      title={ch.anterior ? `Anterior: ${ch.anterior} → Novo: ${ch.novo}` : `Novo valor: ${ch.novo}`}
+                                    >
+                                      <span className="text-amber-700">{ch.label}:</span>
+                                      <strong className="font-bold text-amber-950 truncate max-w-[130px]">{ch.novo}</strong>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 block text-[10px]">
+                                Dados idênticos (sem alterações)
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {item.avisos && item.avisos.length > 0 && item.statusLinha !== 'DUPLICADO' && (
                           <span className="text-amber-600 block">{item.avisos.join(', ')}</span>
                         )}
-                        {!item.erros && !item.avisos && (
+                        {!item.erros && !item.avisos && item.statusLinha === 'VALIDO' && (
                           <span className="text-gray-400">Pronto para importar</span>
                         )}
                       </td>

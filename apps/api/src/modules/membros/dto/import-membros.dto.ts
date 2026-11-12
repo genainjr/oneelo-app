@@ -12,6 +12,13 @@ import { SexoMembro, EstadoCivil } from '@prisma/client';
 export type StatusLinhaImportacao = 'VALIDO' | 'DUPLICADO' | 'ERRO';
 export type EstrategiaDuplicidade = 'SKIP' | 'UPDATE';
 
+export class CampoAlteradoDto {
+  campo: string;
+  label: string;
+  anterior?: string | null;
+  novo?: string | null;
+}
+
 export class ImportMemberRowData {
   @IsNotEmpty({ message: 'Número da linha é obrigatório.' })
   linha: number;
@@ -83,6 +90,10 @@ export class ImportMemberRowData {
   @IsString()
   @IsOptional()
   membroExistenteId?: string;
+
+  @IsArray()
+  @IsOptional()
+  camposAlterados?: CampoAlteradoDto[];
 }
 
 export class ImportPreviewLimitePlanoDto {
