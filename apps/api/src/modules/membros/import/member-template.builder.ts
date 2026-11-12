@@ -6,6 +6,7 @@ export interface ColumnDefinition {
   width: number;
   example: string;
   example2?: string;
+  numFmt?: string;
 }
 
 export const MEMBER_IMPORT_COLUMNS: ColumnDefinition[] = [
@@ -29,6 +30,7 @@ export const MEMBER_IMPORT_COLUMNS: ColumnDefinition[] = [
     width: 22,
     example: '(11) 98765-4321',
     example2: '(11) 97654-3210',
+    numFmt: '[<=9999999999]\\(00\\)\\ 0000\\-0000;\\(00\\)\\ 00000\\-0000',
   },
   {
     header: 'E-mail',
@@ -43,6 +45,7 @@ export const MEMBER_IMPORT_COLUMNS: ColumnDefinition[] = [
     width: 20,
     example: '15/08/1988',
     example2: '22/03/1992',
+    numFmt: 'dd/mm/yyyy',
   },
   {
     header: 'Sexo',
@@ -71,6 +74,7 @@ export const MEMBER_IMPORT_COLUMNS: ColumnDefinition[] = [
     width: 20,
     example: '10/12/2005',
     example2: '18/06/2015',
+    numFmt: 'dd/mm/yyyy',
   },
   {
     header: 'CPF',
@@ -78,6 +82,7 @@ export const MEMBER_IMPORT_COLUMNS: ColumnDefinition[] = [
     width: 18,
     example: '123.456.789-00',
     example2: '987.654.321-00',
+    numFmt: '000\\.000\\.000\\-00',
   },
   {
     header: 'RG',
@@ -156,6 +161,16 @@ export async function buildMemberImportTemplateBuffer(): Promise<Buffer> {
       cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF4B5563' } };
       cell.alignment = { vertical: 'middle', horizontal: 'left' };
     });
+  });
+
+  // Aplica formatação de número/data nas colunas configuradas (até linha 500)
+  MEMBER_IMPORT_COLUMNS.forEach((col, idx) => {
+    if (col.numFmt) {
+      worksheet.getColumn(col.key).numFmt = col.numFmt;
+      for (let i = 2; i <= 500; i++) {
+        worksheet.getCell(i, idx + 1).numFmt = col.numFmt;
+      }
+    }
   });
 
   // Adiciona validações de dados (Listas suspensas)

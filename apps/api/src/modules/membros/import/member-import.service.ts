@@ -192,9 +192,12 @@ export class MemberImportService {
   /**
    * Normaliza número de telefone para formato E.164 brasileiro
    */
-  normalizePhone(phone?: string | null): { phone?: string; aviso?: string } {
-    if (!phone) return {};
-    const clean = phone.replace(/[^\d+]/g, '');
+  normalizePhone(phone?: string | number | null): { phone?: string; aviso?: string } {
+    if (phone === null || phone === undefined || phone === '') return {};
+    const str = String(phone).trim();
+    if (!str || str === '-' || str === '--') return {};
+
+    const clean = str.replace(/[^\d+]/g, '');
     if (!clean) return {};
 
     try {
@@ -209,25 +212,47 @@ export class MemberImportService {
       // Ignora erro do parser e tenta fallback
     }
 
-    // Fallback: se tiver 10 ou 11 dígitos numéricos
-    const digitsOnly = clean.replace(/\D/g, '');
+    let digitsOnly = clean.replace(/\D/g, '');
+    if (digitsOnly.startsWith('0') && (digitsOnly.length === 11 || digitsOnly.length === 12)) {
+      digitsOnly = digitsOnly.slice(1);
+    }
+
+    if (digitsOnly.startsWith('55') && (digitsOnly.length === 12 || digitsOnly.length === 13)) {
+      return { phone: `+${digitsOnly}` };
+    }
+
     if (digitsOnly.length === 10 || digitsOnly.length === 11) {
       return { phone: `+55${digitsOnly}` };
     }
 
+    if (digitsOnly.length === 8 || digitsOnly.length === 9) {
+      return {
+        phone: digitsOnly,
+        aviso: 'Telefone informado sem DDD (ex: 8 ou 9 dígitos).',
+      };
+    }
+
+    if (clean.startsWith('+') && clean.length >= 8) {
+      return { phone: clean };
+    }
+
     return {
-      phone: clean,
-      aviso: 'Formato de telefone não pôde ser validado com precisão internacional.',
+      phone: digitsOnly || clean,
+      aviso: 'Formato de telefone não padronizado.',
     };
   }
 
   /**
    * Sanitiza CPF
    */
-  normalizeCpf(cpf?: string | null): { cpf?: string; erro?: string } {
-    if (!cpf) return {};
-    const digits = cpf.replace(/\D/g, '');
+  normalizeCpf(cpf?: string | number | null): { cpf?: string; erro?: string } {
+    if (cpf === null || cpf === undefined || cpf === '') return {};
+    let digits = String(cpf).replace(/\D/g, '');
     if (!digits) return {};
+
+    if (digits.length === 10) {
+      digits = digits.padStart(11, '0');
+    }
 
     if (digits.length !== 11) {
       return { erro: 'CPF deve conter 11 dígitos numéricos.' };
