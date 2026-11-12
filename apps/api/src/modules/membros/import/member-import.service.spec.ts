@@ -192,6 +192,82 @@ describe('MemberImportService', () => {
       expect(changes.find((c) => c.campo === 'cargo')?.novo).toBe('Diácono');
     });
 
+    it('deve diagnosticar duplicidade por nome completo exato quando contato e documento estiverem vazios', async () => {
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('Membros');
+      ws.addRow(['Nome Completo*', 'Nome de Exibição']);
+      ws.addRow(['Messias do Nascimento Júnior', 'Messias Júnior']);
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      prismaMock.tenant.findUnique.mockResolvedValue({
+        id: 'tenant-1',
+        plano: Plano.PROFISSIONAL,
+        limiteMembros: null,
+      });
+
+      prismaMock.client.membro.findMany.mockResolvedValue([
+        {
+          id: 'messias-existing-id',
+          nome: 'Messias do Nascimento Júnior',
+          nomeExibicao: null,
+          email: 'messias.junior@email.com',
+          whatsapp: '+5511987654321',
+          cpf: '12345678900',
+        },
+      ]);
+
+      const preview = await service.generatePreview(
+        'tenant-1',
+        Buffer.from(buffer),
+        'teste_nome_exato.xlsx',
+      );
+
+      expect(preview.totalLinhas).toBe(1);
+      expect(preview.duplicadosCount).toBe(1);
+      expect(preview.validosCount).toBe(0);
+
+      const row = preview.linhas[0];
+      expect(row.statusLinha).toBe('DUPLICADO');
+      expect(row.membroExistenteId).toBe('messias-existing-id');
+      expect(row.camposAlterados).toBeDefined();
+      expect(row.camposAlterados?.some((c) => c.campo === 'nomeExibicao')).toBe(true);
+    });
+
+    it('não deve considerar duplicado por nome se a linha tiver um CPF diferente cadastrado (homônimo legítimo)', async () => {
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('Membros');
+      ws.addRow(['Nome Completo*', 'CPF']);
+      ws.addRow(['João da Silva', '999.888.777-66']);
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      prismaMock.tenant.findUnique.mockResolvedValue({
+        id: 'tenant-1',
+        plano: Plano.PROFISSIONAL,
+        limiteMembros: null,
+      });
+
+      prismaMock.client.membro.findMany.mockResolvedValue([
+        {
+          id: 'joao-existing-id',
+          nome: 'João da Silva',
+          cpf: '11122233344',
+        },
+      ]);
+
+      const preview = await service.generatePreview(
+        'tenant-1',
+        Buffer.from(buffer),
+        'homonimo.xlsx',
+      );
+
+      expect(preview.totalLinhas).toBe(1);
+      expect(preview.duplicadosCount).toBe(0);
+      expect(preview.validosCount).toBe(1);
+      expect(preview.linhas[0].statusLinha).toBe('VALIDO');
+    });
+
     it('deve alertar se a quantidade de novos membros exceder o limite do plano do tenant', async () => {
       const workbook = new ExcelJS.Workbook();
       const ws = workbook.addWorksheet('Membros');
