@@ -12,9 +12,11 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
   imports: [StorageModule, NotificationsModule, forwardRef(() => AuthModule)],
   controllers: [
-    MembrosController,
+    // SolicitacoesCadastroController ('membros/solicitacoes') deve vir antes de
+    // MembrosController ('membros') para nao ser capturado por @Get(':id').
     PublicSolicitacoesController,
     SolicitacoesCadastroController,
+    MembrosController,
   ],
   providers: [MembrosService, MemberImportService, SolicitacoesCadastroService],
   exports: [MembrosService, MemberImportService, SolicitacoesCadastroService],

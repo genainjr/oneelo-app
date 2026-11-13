@@ -58,6 +58,7 @@ export function SolicitacoesTriagemTab({
   tenantName,
 }: SolicitacoesTriagemTabProps) {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [items, setItems] = useState<SolicitacaoItem[]>([]);
   const [filterStatus, setFilterStatus] = useState<'PENDENTE' | 'TODOS'>('PENDENTE');
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,11 +95,13 @@ export function SolicitacoesTriagemTab({
   async function loadItems() {
     try {
       setLoading(true);
+      setLoadError(null);
       const queryParam = filterStatus === 'PENDENTE' ? '?status=PENDENTE' : '';
       const data = await api.get<SolicitacaoItem[]>(`/api/membros/solicitacoes${queryParam}`);
       setItems(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar fichas de triagem:', err);
+      setLoadError(err?.message || 'Não foi possível carregar as fichas de cadastro.');
     } finally {
       setLoading(false);
     }
@@ -230,6 +233,24 @@ export function SolicitacoesTriagemTab({
         <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-100 shadow-2xs">
           <Loader2 className="h-7 w-7 animate-spin text-indigo-600 mb-2" />
           <span className="text-xs font-medium text-gray-500">Carregando fichas de cadastro...</span>
+        </div>
+      ) : loadError ? (
+        <div className="flex flex-col items-center justify-center p-10 bg-white rounded-2xl border border-rose-200 shadow-2xs text-center space-y-3">
+          <div className="h-12 w-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 border border-rose-100">
+            <AlertTriangle className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Erro ao carregar fichas</p>
+            <p className="text-xs text-rose-700 mt-1">{loadError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={loadItems}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Tentar novamente
+          </button>
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-100 shadow-2xs text-center">
