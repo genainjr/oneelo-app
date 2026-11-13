@@ -8,6 +8,7 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
+import { IsOptional, IsString } from 'class-validator';
 import type { Request } from 'express';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role, StatusSolicitacaoCadastro } from '@prisma/client';
@@ -15,10 +16,14 @@ import { SolicitacoesCadastroService } from './solicitacoes-cadastro.service';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 
 export class AprovarSolicitacaoDto {
+  @IsOptional()
+  @IsString()
   vincularMembroId?: string;
 }
 
 export class RejeitarSolicitacaoDto {
+  @IsOptional()
+  @IsString()
   motivo?: string;
 }
 

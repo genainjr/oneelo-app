@@ -115,9 +115,10 @@ export function SolicitacoesTriagemTab({
   async function handleAprovar(id: string, vincularMembroId?: string) {
     try {
       setActionLoadingId(id);
-      const res = await api.post<any>(`/api/membros/solicitacoes/${id}/aprovar`, {
-        vincularMembroId,
-      });
+      const res = await api.post<any>(
+        `/api/membros/solicitacoes/${id}/aprovar`,
+        vincularMembroId ? { vincularMembroId } : {},
+      );
 
       // Recarrega lista e atualiza contador de badge
       await loadItems();

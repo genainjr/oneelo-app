@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
 import { MembrosModule } from './membros.module';
@@ -34,6 +34,16 @@ describe('MembrosModule routing priority', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+        transformOptions: {
+          enableImplicitConversion: true,
+        },
+      }),
+    );
     app.use((req: any, _res: any, next: () => void) => {
       req.tenantId = 'tenant-1';
       req.user = { sub: 'user-1', role: 'ADMIN', tenantId: 'tenant-1' };
@@ -68,5 +78,51 @@ describe('MembrosModule routing priority', () => {
   it('deve continuar roteando GET /membros/:id para MembrosController', async () => {
     await request(app.getHttpServer()).get('/membros/uuid-qualquer').expect(200);
     expect(mockMembrosService.findOne).toHaveBeenCalledWith('tenant-1', 'uuid-qualquer');
+  });
+
+  it('deve aceitar POST /membros/solicitacoes/:id/aprovar com body vazio e com vincularMembroId no ValidationPipe', async () => {
+    mockSolicitacoesService.aprovarSolicitacao.mockResolvedValue({ ok: true });
+
+    await request(app.getHttpServer())
+      .post('/membros/solicitacoes/sol-1/aprovar')
+      .send({})
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/membros/solicitacoes/sol-1/aprovar')
+      .send({ vincularMembroId: 'membro-1' })
+      .expect(201);
+
+    expect(mockSolicitacoesService.aprovarSolicitacao).toHaveBeenCalledTimes(2);
+    expect(mockSolicitacoesService.aprovarSolicitacao).toHaveBeenLastCalledWith(
+      'tenant-1',
+      'sol-1',
+      'user-1',
+      expect.objectContaining({ vincularMembroId: 'membro-1' }),
+      expect.any(String),
+    );
+  });
+
+  it('deve aceitar POST /membros/solicitacoes/:id/rejeitar com body vazio e com motivo no ValidationPipe', async () => {
+    mockSolicitacoesService.rejeitarSolicitacao.mockResolvedValue({ ok: true });
+
+    await request(app.getHttpServer())
+      .post('/membros/solicitacoes/sol-2/rejeitar')
+      .send({})
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/membros/solicitacoes/sol-2/rejeitar')
+      .send({ motivo: 'Cadastro duplicado' })
+      .expect(201);
+
+    expect(mockSolicitacoesService.rejeitarSolicitacao).toHaveBeenCalledTimes(2);
+    expect(mockSolicitacoesService.rejeitarSolicitacao).toHaveBeenLastCalledWith(
+      'tenant-1',
+      'sol-2',
+      'user-1',
+      'Cadastro duplicado',
+      expect.any(String),
+    );
   });
 });
