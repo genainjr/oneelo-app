@@ -368,7 +368,9 @@ export class SolicitacoesCadastroService {
     batizadoAguas?: boolean | null;
     observacoes?: string | null;
   }): string {
-    const dateStr = new Date(solicitacao.createdAt).toLocaleDateString('pt-BR');
+    const dateStr = new Date(solicitacao.createdAt).toLocaleDateString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+    });
     const lines = [`[Auto-cadastro em ${dateStr}]`];
     if (solicitacao.igrejaAnterior)
       lines.push(`Igreja anterior: ${solicitacao.igrejaAnterior}`);
@@ -473,7 +475,7 @@ export class SolicitacoesCadastroService {
       // 2. FLUXO MEMBRO COM VÍNCULO A VISITANTE EXISTENTE
       if (options.vincularMembroId) {
         const existingMembro = await tx.membro.findFirst({
-          where: { id: options.vincularMembroId, tenantId },
+          where: { id: options.vincularMembroId, tenantId, deletedAt: null },
           include: { user: true },
         });
 
@@ -490,7 +492,7 @@ export class SolicitacoesCadastroService {
         // Se o membro não era ATIVO (ex: era VISITANTE ou INATIVO), valida quota do plano
         if (existingMembro.status !== StatusMembro.ATIVO) {
           const totalAtivos = await tx.membro.count({
-            where: { tenantId, status: StatusMembro.ATIVO },
+            where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
           });
           if (!canAddMember(tenant, totalAtivos)) {
             throw new ForbiddenException(
@@ -571,7 +573,7 @@ export class SolicitacoesCadastroService {
 
       // 3. FLUXO NOVO MEMBRO (sem vínculo prévio)
       const totalAtivos = await tx.membro.count({
-        where: { tenantId, status: StatusMembro.ATIVO },
+        where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
       });
       if (!canAddMember(tenant, totalAtivos)) {
         throw new ForbiddenException(

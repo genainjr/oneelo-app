@@ -1,4 +1,5 @@
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { StatusMembro } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 /**
@@ -158,9 +159,13 @@ export async function checkMemberDuplicity(
   const phoneDigits = extractPhoneDigits(normPhone || candidate.telefone);
   const normName = normalizeName(candidate.nome);
 
-  // 1. Buscar membros existentes no tenant
+  // 1. Buscar apenas membros nao excluidos e nao inativos/transferidos no tenant
   const membros = await prisma.membro.findMany({
-    where: { tenantId },
+    where: {
+      tenantId,
+      deletedAt: null,
+      status: { in: [StatusMembro.ATIVO, StatusMembro.VISITANTE] },
+    },
     select: {
       id: true,
       nome: true,

@@ -126,6 +126,13 @@ describe('SolicitacoesCadastroService (Triagem e Aprovação)', () => {
       expect(result[0].duplicidade.membroExistenteStatus).toBe(
         StatusMembro.VISITANTE,
       );
+      expect(prisma.membro.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: {
+          tenantId,
+          deletedAt: null,
+          status: { in: [StatusMembro.ATIVO, StatusMembro.VISITANTE] },
+        },
+      }));
     });
 
     it('deve detectar duplicidade por nome completo exato', async () => {
@@ -339,6 +346,9 @@ describe('SolicitacoesCadastroService (Triagem e Aprovação)', () => {
       expect(res.user.id).toBe('new-user-id');
       expect(res.activationLink).toContain('token-123');
       expect(authService.createPendingBasicUserInTx).toHaveBeenCalled();
+      expect(prisma.membro.count).toHaveBeenCalledWith({
+        where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
+      });
     });
   });
 });

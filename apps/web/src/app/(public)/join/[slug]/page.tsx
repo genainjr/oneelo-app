@@ -85,13 +85,22 @@ export default function PublicJoinPage({
 
   function parseDateIso(val: string): string | undefined {
     const digits = val.replace(/\D/g, '');
-    if (digits.length === 8) {
-      const d = digits.slice(0, 2);
-      const m = digits.slice(2, 4);
-      const y = digits.slice(4, 8);
-      return `${y}-${m}-${d}`;
+    if (digits.length !== 8) return undefined;
+    const day = Number(digits.slice(0, 2));
+    const month = Number(digits.slice(2, 4));
+    const year = Number(digits.slice(4, 8));
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+      return undefined;
     }
-    return undefined;
+    const utcCheck = new Date(Date.UTC(year, month - 1, day));
+    if (
+      utcCheck.getUTCFullYear() !== year ||
+      utcCheck.getUTCMonth() !== month - 1 ||
+      utcCheck.getUTCDate() !== day
+    ) {
+      return undefined;
+    }
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -108,6 +117,12 @@ export default function PublicJoinPage({
       return;
     }
 
+    const parsedBirthDate = parseDateIso(dataNascimento);
+    if (dataNascimento.trim() && !parsedBirthDate) {
+      setError('Data de nascimento inválida. Informe no formato DD/MM/AAAA.');
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -117,7 +132,7 @@ export default function PublicJoinPage({
         telefone: telefone.trim(),
         email: email.trim() ? email.trim() : undefined,
         cpf: cpf ? cpf.replace(/\D/g, '') : undefined,
-        dataNascimento: parseDateIso(dataNascimento),
+        dataNascimento: parsedBirthDate,
         sexo: sexo ? sexo : undefined,
         estadoCivil: estadoCivil ? estadoCivil : undefined,
         batizadoAguas: batizadoAguas === 'true' ? true : batizadoAguas === 'false' ? false : undefined,

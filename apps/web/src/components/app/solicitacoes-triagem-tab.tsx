@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
 import { ModalShell } from '@/components/app/modal-shell';
 import { TextareaField } from '@/components/app/form-field';
 import { WelcomeActivationModal } from '@/components/app/welcome-activation-modal';
@@ -162,7 +163,7 @@ export function SolicitacoesTriagemTab({
     }
   }
 
-  function formatDate(iso: string | null) {
+  function formatTimestampDate(iso: string | null) {
     if (!iso) return '-';
     const d = new Date(iso);
     return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR');
@@ -306,7 +307,7 @@ export function SolicitacoesTriagemTab({
 
                     <span className="text-xs text-gray-400 flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      Recebido em {formatDate(item.createdAt)}
+                      Recebido em {formatTimestampDate(item.createdAt)}
                     </span>
                   </div>
 
