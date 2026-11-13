@@ -16,6 +16,7 @@ describe('SolicitacoesCadastroService (Public)', () => {
     nome: 'Igreja Vida Nova',
     slug: 'igreja-vida-nova',
     logoUrl: 'https://cdn.oneelo.com/logos/tenant-123.png',
+    pwaIconUrl: 'https://cdn.oneelo.com/pwa/tenant-123.png',
     ativo: true,
   };
 
@@ -62,10 +63,27 @@ describe('SolicitacoesCadastroService (Public)', () => {
         nome: mockTenant.nome,
         slug: mockTenant.slug,
         logoUrl: mockTenant.logoUrl,
+        pwaIconUrl: mockTenant.pwaIconUrl,
       });
       expect(prisma.tenant.findUnique).toHaveBeenCalledWith({
         where: { slug: 'igreja-vida-nova' },
         select: expect.any(Object),
+      });
+    });
+
+    it('deve usar pwaIconUrl como fallback de logoUrl quando logoUrl for nulo', async () => {
+      prisma.tenant.findUnique.mockResolvedValue({
+        ...mockTenant,
+        logoUrl: null,
+      });
+
+      const result = await service.getPublicTenantInfo('igreja-vida-nova');
+
+      expect(result).toEqual({
+        nome: mockTenant.nome,
+        slug: mockTenant.slug,
+        logoUrl: mockTenant.pwaIconUrl,
+        pwaIconUrl: mockTenant.pwaIconUrl,
       });
     });
 

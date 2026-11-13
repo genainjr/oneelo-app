@@ -80,6 +80,7 @@ export class SolicitacoesCadastroService {
         nome: true,
         slug: true,
         logoUrl: true,
+        pwaIconUrl: true,
         ativo: true,
       },
     });
@@ -93,7 +94,8 @@ export class SolicitacoesCadastroService {
     return {
       nome: tenant.nome,
       slug: tenant.slug,
-      logoUrl: tenant.logoUrl,
+      logoUrl: tenant.logoUrl || tenant.pwaIconUrl || null,
+      pwaIconUrl: tenant.pwaIconUrl || null,
     };
   }
 
