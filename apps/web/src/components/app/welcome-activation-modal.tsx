@@ -20,6 +20,7 @@ interface WelcomeActivationModalProps {
   } | null;
   activationLink?: string | null;
   tenantName?: string;
+  description?: string;
 }
 
 export function WelcomeActivationModal({
@@ -29,6 +30,7 @@ export function WelcomeActivationModal({
   user,
   activationLink,
   tenantName,
+  description,
 }: WelcomeActivationModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -72,7 +74,7 @@ export function WelcomeActivationModal({
             <p className="text-emerald-800 mt-0.5">
               {activationLink
                 ? 'A conta de acesso foi gerada com token válido por 72 horas. Envie a mensagem de boas-vindas abaixo.'
-                : 'O cadastro de visitante foi efetivado com sucesso.'}
+                : description || 'O cadastro de visitante foi efetivado com sucesso.'}
             </p>
           </div>
         </div>

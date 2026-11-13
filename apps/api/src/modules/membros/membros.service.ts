@@ -1,7 +1,13 @@
 import {
+  BadRequestException,
+  ConflictException,
+  Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
+  Optional,
   ForbiddenException,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateMembroDto } from './dto/create-membro.dto';
@@ -9,8 +15,10 @@ import { UpdateMembroDto } from './dto/update-membro.dto';
 import { FilterMembrosDto } from './dto/filter-membros.dto';
 import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.dto';
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
+import { PromoteVisitanteDto } from './dto/promote-visitante.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
-import { AcaoAuditoria, MinistryRole, Role } from '@prisma/client';
+import { AcaoAuditoria, MinistryRole, Role, StatusMembro } from '@prisma/client';
+import { AuthService } from '../auth/auth.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import type { Multer } from 'multer';
 import {
@@ -34,7 +42,7 @@ const memberListInclude = {
       ministerio: { select: { id: true, nome: true } },
     },
     orderBy: {
-      ministerio: { nome: 'asc' },
+      ministerio: { nome: 'asc' as const },
     },
   },
 };
@@ -46,6 +54,9 @@ export class MembrosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: SupabaseStorageService,
+    @Optional()
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService?: AuthService,
   ) {}
 
   private sortByVisualizacao(
@@ -317,7 +328,7 @@ export class MembrosService {
               },
             },
             orderBy: {
-              ministerio: { nome: 'asc' },
+              ministerio: { nome: 'asc' as const },
             },
           },
           _count: {
@@ -368,6 +379,144 @@ export class MembrosService {
       where: { id },
       data: dto,
       include: memberListInclude,
+    });
+  }
+
+  /**
+   * Promove um visitante cadastrado para Membro ATIVO, validando cota do plano
+   * e criando opcionalmente o usuário PENDING com link de ativação.
+   */
+  async promoteVisitante(
+    tenantId: string,
+    id: string,
+    dto: PromoteVisitanteDto,
+    actorId?: string,
+    ip?: string,
+  ) {
+    const criarAcesso = dto.criarAcesso !== false;
+
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: { id: tenantId },
+      });
+
+      if (!tenant) {
+        throw new NotFoundException('Tenant não encontrado.');
+      }
+
+      const membro = await tx.membro.findFirst({
+        where: { id, tenantId, deletedAt: null },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nome: true,
+              email: true,
+              telefoneLogin: true,
+              role: true,
+              ativo: true,
+              status: true,
+              activationExpiresAt: true,
+              memberId: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+      if (!membro) {
+        throw new NotFoundException('Membro não encontrado.');
+      }
+
+      if (membro.status !== StatusMembro.VISITANTE) {
+        throw new ConflictException(
+          'Apenas cadastros com status Visitante podem ser promovidos a Membro.',
+        );
+      }
+
+      const totalAtivos = await tx.membro.count({
+        where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
+      });
+
+      if (!canAddMember(tenant, totalAtivos)) {
+        const effectiveLimit = getEffectiveMemberLimit(tenant);
+        throw new ForbiddenException(
+          `Limite de membros (${effectiveLimit}) atingido para o plano ${tenant.plano}. Faça um upgrade.`,
+        );
+      }
+
+      const normalizedEmail =
+        dto.email !== undefined
+          ? dto.email.trim().toLowerCase() || null
+          : membro.email?.trim().toLowerCase() || null;
+      const finalWhatsapp =
+        dto.whatsapp !== undefined
+          ? dto.whatsapp.trim() || null
+          : membro.whatsapp;
+
+      if (criarAcesso && !membro.user && !normalizedEmail) {
+        throw new BadRequestException(
+          'Informe um e-mail válido para criar o acesso de usuário do membro.',
+        );
+      }
+
+      if (criarAcesso && !membro.user && !this.authService) {
+        throw new InternalServerErrorException(
+          'Serviço de autenticação indisponível para criar acesso do membro.',
+        );
+      }
+
+      const updatedMembro = await tx.membro.update({
+        where: { id: membro.id },
+        data: {
+          status: StatusMembro.ATIVO,
+          ...(dto.email !== undefined ? { email: normalizedEmail } : {}),
+          ...(dto.whatsapp !== undefined ? { whatsapp: finalWhatsapp } : {}),
+        },
+        include: memberListInclude,
+      });
+
+      let userResult: { user: any; activationLink: string | null } = {
+        user: membro.user ?? null,
+        activationLink: null,
+      };
+
+      if (criarAcesso && !membro.user && this.authService) {
+        userResult = await this.authService.createPendingBasicUserInTx(tx, {
+          tenantId,
+          nome: updatedMembro.nome,
+          email: normalizedEmail!,
+          telefoneLogin: updatedMembro.whatsapp,
+          memberId: updatedMembro.id,
+          actorId,
+          ip,
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId: actorId ?? null,
+          entidade: 'membros',
+          entidadeId: updatedMembro.id,
+          acao: AcaoAuditoria.ATUALIZAR,
+          payloadBefore: { status: membro.status },
+          payloadAfter: {
+            origem: 'promocao_visitante_para_membro',
+            statusAnterior: membro.status,
+            novoStatus: StatusMembro.ATIVO,
+            criarAcesso,
+            userCriadoId: userResult.user?.id ?? null,
+          },
+          ipAddress: ip ?? null,
+        },
+      });
+
+      return {
+        membro: updatedMembro,
+        user: userResult.user,
+        activationLink: userResult.activationLink,
+      };
     });
   }
 

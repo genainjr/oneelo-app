@@ -19,6 +19,7 @@ describe('MembrosModule routing priority', () => {
   };
   const mockMembrosService = {
     findOne: jest.fn().mockResolvedValue({ id: 'member-1' }),
+    promoteVisitante: jest.fn(),
   };
 
   beforeAll(async () => {
@@ -122,6 +123,31 @@ describe('MembrosModule routing priority', () => {
       'sol-2',
       'user-1',
       'Cadastro duplicado',
+      expect.any(String),
+    );
+  });
+
+  it('deve aceitar POST /membros/:id/promover validando PromoteVisitanteDto no ValidationPipe', async () => {
+    mockMembrosService.promoteVisitante.mockResolvedValue({
+      membro: { id: 'vis-1', status: 'ATIVO' },
+      user: { id: 'u-1' },
+      activationLink: 'https://app.oneelo.com/activate/tok',
+    });
+
+    await request(app.getHttpServer())
+      .post('/membros/vis-1/promover')
+      .send({ email: 'vis@igreja.com', whatsapp: '+5585999999999', criarAcesso: true })
+      .expect(201);
+
+    expect(mockMembrosService.promoteVisitante).toHaveBeenCalledWith(
+      'tenant-1',
+      'vis-1',
+      expect.objectContaining({
+        email: 'vis@igreja.com',
+        whatsapp: '+5585999999999',
+        criarAcesso: true,
+      }),
+      'user-1',
       expect.any(String),
     );
   });

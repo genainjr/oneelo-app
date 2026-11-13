@@ -9,6 +9,7 @@ import {
   Query,
   Req,
   Res,
+  Ip,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
@@ -27,6 +28,7 @@ import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
 import { ConfirmImportDto } from './dto/import-membros.dto';
 import { BulkDeleteMembrosDto } from './dto/bulk-delete-membros.dto';
+import { PromoteVisitanteDto } from './dto/promote-visitante.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
@@ -177,6 +179,25 @@ export class MembrosController {
   ) {
     const tenantId = req['tenantId'] as string;
     return this.membrosService.update(tenantId, id, updateMembroDto);
+  }
+
+  @Post(':id/promover')
+  @Roles(Role.ADMIN, Role.STAFF)
+  promover(
+    @Param('id') id: string,
+    @Body() dto: PromoteVisitanteDto,
+    @Req() req: Request,
+    @Ip() ip?: string,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.promoteVisitante(
+      tenantId,
+      id,
+      dto,
+      user?.sub,
+      ip,
+    );
   }
 
   @Delete(':id')
