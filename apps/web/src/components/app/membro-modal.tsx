@@ -13,6 +13,8 @@ interface MembroModalProps {
   onSave: (data: Partial<Membro>) => Promise<Membro | void>;
   onUploadPhoto?: (id: string, file: File) => Promise<Membro>;
   onRemovePhoto?: (id: string) => Promise<Membro>;
+  onPromote?: (membro: Membro) => void;
+  onGenerateActivationLink?: (membro: Membro) => void;
   membro?: Membro | null;
 }
 
@@ -27,7 +29,7 @@ export function MembroModal(props: MembroModalProps) {
   );
 }
 
-function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePhoto, membro }: MembroModalProps) {
+function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePhoto, onPromote, onGenerateActivationLink, membro }: MembroModalProps) {
   const [nome, setNome] = useState(membro?.nome || '');
   const [nomeExibicao, setNomeExibicao] = useState(membro?.nomeExibicao || '');
   const [email, setEmail] = useState(membro?.email || '');
@@ -173,6 +175,42 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
     >
       <form id="membro-form" onSubmit={handleSubmit} className="space-y-4">
         {error && <ModalError>{error}</ModalError>}
+        {membro?.status === 'VISITANTE' && onPromote && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-950">
+            <div>
+              <p className="font-semibold">Cadastro atual: Visitante</p>
+              <p className="text-emerald-800 mt-0.5">
+                Promova para Membro Ativo validando a cota do plano e gerando o acesso ao aplicativo.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onPromote(membro)}
+              disabled={loading}
+              className="shrink-0 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-all disabled:opacity-60"
+            >
+              Promover a Membro
+            </button>
+          </div>
+        )}
+        {membro?.user?.status === 'PENDING' && membro.user.role === 'BASIC' && onGenerateActivationLink && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-950">
+            <div>
+              <p className="font-semibold">Acesso pendente de ativação</p>
+              <p className="text-amber-800 mt-0.5">
+                Este membro ainda não ativou a conta. Gere um novo link de boas-vindas para enviar.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onGenerateActivationLink(membro)}
+              disabled={loading}
+              className="shrink-0 rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-amber-700 transition-all disabled:opacity-60"
+            >
+              Link de Ativação
+            </button>
+          </div>
+        )}
         <section>
           <input
             ref={photoInputRef}

@@ -19,6 +19,7 @@ export interface CreateTenantPayload {
 
 export interface UpdateTenantPayload {
   nome?: string;
+  slug?: string;
   plano?: Plano;
   limiteMembros?: number;
   ativo?: boolean;

@@ -17,7 +17,8 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 
 | Criação | Documento | Assunto |
 |---|---|---|
-| 11/11/2026 | [importacao-membros-planilha-plan.md](importacao-membros-planilha-plan.md) | Importa��o de Membros em Lote via Planilha (Excel / CSV) |
+| 12/11/2026 | [novo-membro-auto-cadastro-plan.md](novo-membro-auto-cadastro-plan.md) | Auto-Cadastro Público de Novos Membros e Visitantes com Triagem Pastoral (FT-018) |
+| 11/11/2026 | [importacao-membros-planilha-plan.md](importacao-membros-planilha-plan.md) | Importação de Membros em Lote via Planilha (Excel / CSV) |
 | 09/11/2026 | [otimizacao-navegacao-transicao-telas-plan.md](otimizacao-navegacao-transicao-telas-plan.md) | Otimização de navegação e transição instantânea de telas no Dashboard |
 | 06/11/2026 | [otimizacao-performance-memoria-render-plan.md](otimizacao-performance-memoria-render-plan.md) | Otimização de performance, memória, crons, fila de push e sessão (Render Free & Frontend) |
 | 05/11/2026 | [adicionar-escalas-google-agenda-plan.md](adicionar-escalas-google-agenda-plan.md) | Adicionar Escalas e Eventos da Igreja ao Google Agenda, Calendários e Notificações (FT-002) |

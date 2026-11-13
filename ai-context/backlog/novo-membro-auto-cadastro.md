@@ -3,7 +3,7 @@
 ### FT-018 Formulário Público de Boas-Vindas e Auto-Cadastro de Membros (com Triagem Pastoral)
 
 - **Prioridade**: alta (engajamento e acolhimento contínuo)
-- **Status**: pendente
+- **Status**: implementado
 - **Fase**: expansão e recepção
 - **Categoria**: produto / onboarding / UX / secretaria
 - **Esforço estimado**: médio

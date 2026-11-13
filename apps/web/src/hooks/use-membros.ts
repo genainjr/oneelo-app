@@ -6,6 +6,17 @@ import { buildImageFormData } from '@/lib/image-upload';
 import { includesNormalizedText } from '@/lib/utils';
 import { Membro } from '@/types';
 
+export interface PromoteVisitanteResponse {
+  membro: Membro;
+  user: {
+    id: string;
+    nome: string;
+    email: string;
+    activationExpiresAt?: string | null;
+  } | null;
+  activationLink: string | null;
+}
+
 export interface FilterMembros {
   nome?: string;
   status?: string;
@@ -108,6 +119,27 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     await fetchMembros();
   }
 
+  async function promoteVisitante(
+    id: string,
+    data: { email?: string; whatsapp?: string; criarAcesso: boolean },
+  ) {
+    const res = await api.post<PromoteVisitanteResponse>(
+      `/api/membros/${id}/promover`,
+      data,
+    );
+    setRawMembros((prev) => prev.map((m) => (m.id === id ? res.membro : m)));
+    return res;
+  }
+
+  async function generateActivationLink(id: string) {
+    const res = await api.post<PromoteVisitanteResponse>(
+      `/api/membros/${id}/activation-link`,
+      {},
+    );
+    setRawMembros((prev) => prev.map((m) => (m.id === id ? res.membro : m)));
+    return res;
+  }
+
   function applyFilter(newFilter: FilterMembros) {
     setFilter((prev) => ({ ...prev, ...newFilter }));
   }
@@ -126,5 +158,7 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     removeMembroFoto,
     bulkTag,
     bulkDeleteMembros,
+    promoteVisitante,
+    generateActivationLink,
   };
 }

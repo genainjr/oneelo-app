@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMembros } from '@/hooks/use-membros';
 import { PageHeader } from '@/components/app/page-header';
 import { DataTable, Column } from '@/components/app/data-table';
 import { MembroModal } from '@/components/app/membro-modal';
 import { CarteirinhaModal } from '@/components/app/carteirinha-modal';
 import { MemberImportModal } from '@/components/app/member-import-modal';
+import { SolicitacoesTriagemTab } from '@/components/app/solicitacoes-triagem-tab';
+import { PromoteVisitanteModal } from '@/components/app/promote-visitante-modal';
+import { WelcomeActivationModal } from '@/components/app/welcome-activation-modal';
+import { Users, Inbox, UserCheck, Link2, Loader2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
@@ -50,6 +54,28 @@ function getReadableTextColor(hexColor?: string | null) {
 export default function MembrosPage() {
   const t = useTranslations('members');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'membros' | 'fichas'>('membros');
+  const [pendentesCount, setPendentesCount] = useState<number>(0);
+
+  async function fetchPendentesCount() {
+    try {
+      const res = await api.get<{ total: number }>('/api/membros/solicitacoes/count');
+      setPendentesCount(res.total || 0);
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    fetchPendentesCount();
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'fichas') {
+      setActiveTab('fichas');
+    }
+  }, [searchParams]);
   const { user, loadingUser, setUser: setAuthUser } = useAuthUser();
 
   function syncAuthenticatedMemberPhoto(memberId: string, member: Membro) {
@@ -85,6 +111,8 @@ export default function MembrosPage() {
     removeMembroFoto,
     bulkTag,
     bulkDeleteMembros,
+    promoteVisitante,
+    generateActivationLink,
   } = useMembros();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -106,6 +134,19 @@ export default function MembrosPage() {
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [pendingDeleteMembro, setPendingDeleteMembro] = useState<Membro | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [promotingMembro, setPromotingMembro] = useState<Membro | null>(null);
+  const [activationLoadingId, setActivationLoadingId] = useState<string | null>(null);
+  const [welcomeModal, setWelcomeModal] = useState<{
+    isOpen: boolean;
+    membro: Membro | null;
+    user: { id: string; nome: string; email: string; activationExpiresAt?: string | null } | null;
+    activationLink: string | null;
+  }>({
+    isOpen: false,
+    membro: null,
+    user: null,
+    activationLink: null,
+  });
   const membersListTopRef = useRef<HTMLDivElement | null>(null);
 
   const itemsPerPage = 10;
@@ -222,6 +263,46 @@ export default function MembrosPage() {
     }
     fetchTags();
     return saved;
+  }
+
+  async function handlePromoteVisitante(
+    id: string,
+    data: { email?: string; whatsapp?: string; criarAcesso: boolean },
+  ) {
+    const res = await promoteVisitante(id, data);
+    setFeedback({
+      type: 'success',
+      message: `${res.membro.nome} promovido(a) a Membro Ativo com sucesso.`,
+    });
+    setWelcomeModal({
+      isOpen: true,
+      membro: res.membro,
+      user: res.user,
+      activationLink: res.activationLink,
+    });
+  }
+
+  async function handleGenerateActivationLink(membro: Membro) {
+    if (activationLoadingId) return;
+    setActivationLoadingId(membro.id);
+    setFeedback(null);
+    try {
+      const res = await generateActivationLink(membro.id);
+      setWelcomeModal({
+        isOpen: true,
+        membro: res.membro,
+        user: res.user,
+        activationLink: res.activationLink,
+      });
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: getErrorMessage(err, 'Não foi possível gerar o link de ativação.'),
+      });
+      void refetch();
+    } finally {
+      setActivationLoadingId(null);
+    }
   }
 
   function handleDelete(membro: Membro) {
@@ -385,6 +466,31 @@ export default function MembrosPage() {
       className: 'text-right',
       render: (m) => (
         <div className="flex items-center justify-end gap-2">
+          {m.user?.status === 'PENDING' && m.user?.role === 'BASIC' && (
+            <button
+              type="button"
+              onClick={() => handleGenerateActivationLink(m)}
+              disabled={activationLoadingId === m.id}
+              className="p-2 border border-amber-200 hover:border-amber-300 rounded-xl text-amber-700 bg-amber-50 transition-all hover:bg-amber-100 flex items-center justify-center disabled:opacity-60"
+              title="Link de ativação (usuário pendente)"
+            >
+              {activationLoadingId === m.id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Link2 className="w-4 h-4" />
+              )}
+            </button>
+          )}
+          {m.status === 'VISITANTE' && (
+            <button
+              type="button"
+              onClick={() => setPromotingMembro(m)}
+              className="p-2 border border-emerald-200 hover:border-emerald-300 rounded-xl text-emerald-700 bg-emerald-50 transition-all hover:bg-emerald-100 flex items-center justify-center"
+              title="Promover a Membro"
+            >
+              <UserCheck className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => setCarteirinhaMembro(m)}
             className="p-2 border border-gray-200 hover:border-indigo-300 rounded-xl text-indigo-600 bg-white transition-all hover:bg-indigo-50 flex items-center justify-center"
@@ -493,7 +599,46 @@ export default function MembrosPage() {
         </div>
       )}
 
-      <div ref={membersListTopRef}>
+      <div className="flex items-center gap-2 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('membros');
+            void refetch();
+          }}
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-all ${
+            activeTab === 'membros'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          Membros Cadastrados
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('fichas')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-all ${
+            activeTab === 'fichas'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Inbox className="h-4 w-4" />
+          Fichas Recebidas
+          {pendentesCount > 0 && (
+            <span className="inline-flex items-center justify-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white shadow-2xs">
+              {pendentesCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'fichas' ? (
+        <SolicitacoesTriagemTab onCountChanged={fetchPendentesCount} tenantName={user?.tenant?.nome} />
+      ) : (
+        <>
+          <div ref={membersListTopRef}>
         {/* Filters */}
         <FilterShell
           onSubmit={handleFilterSubmit}
@@ -721,6 +866,31 @@ export default function MembrosPage() {
             }
             actions={
               <>
+                {membro.user?.status === 'PENDING' && membro.user?.role === 'BASIC' && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateActivationLink(membro)}
+                    disabled={activationLoadingId === membro.id}
+                    className="p-2 border border-amber-200 hover:border-amber-300 rounded-xl text-amber-700 bg-amber-50 transition-all hover:bg-amber-100 flex items-center justify-center disabled:opacity-60"
+                    title="Link de ativação (usuário pendente)"
+                  >
+                    {activationLoadingId === membro.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Link2 className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+                {membro.status === 'VISITANTE' && (
+                  <button
+                    type="button"
+                    onClick={() => setPromotingMembro(membro)}
+                    className="p-2 border border-emerald-200 hover:border-emerald-300 rounded-xl text-emerald-700 bg-emerald-50 transition-all hover:bg-emerald-100 flex items-center justify-center"
+                    title="Promover a Membro"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={() => setCarteirinhaMembro(membro)}
                   className="p-2 border border-gray-200 hover:border-indigo-300 rounded-xl text-indigo-600 bg-white transition-all hover:bg-indigo-50 flex items-center justify-center"
@@ -756,6 +926,8 @@ export default function MembrosPage() {
           />
         )}
       />
+        </>
+      )}
 
       {/* Bulk Action Banner */}
       {selectedIds.length > 0 && (
@@ -898,8 +1070,39 @@ export default function MembrosPage() {
           syncAuthenticatedMemberPhoto(id, updated);
           return updated;
         }}
+        onPromote={(member) => {
+          setIsModalOpen(false);
+          setEditingMembro(null);
+          setPromotingMembro(member);
+        }}
+        onGenerateActivationLink={(member) => {
+          setIsModalOpen(false);
+          setEditingMembro(null);
+          void handleGenerateActivationLink(member);
+        }}
         membro={editingMembro}
       />
+
+      <PromoteVisitanteModal
+        isOpen={Boolean(promotingMembro)}
+        membro={promotingMembro}
+        onClose={() => setPromotingMembro(null)}
+        onPromote={handlePromoteVisitante}
+      />
+
+      {welcomeModal.membro && (
+        <WelcomeActivationModal
+          isOpen={welcomeModal.isOpen}
+          onClose={() =>
+            setWelcomeModal({ isOpen: false, membro: null, user: null, activationLink: null })
+          }
+          membro={welcomeModal.membro}
+          user={welcomeModal.user}
+          activationLink={welcomeModal.activationLink}
+          tenantName={user?.tenant?.nome}
+          description="Visitante promovido a Membro Ativo com sucesso."
+        />
+      )}
 
       <ConfirmDialog
         isOpen={!!pendingDeleteMembro}
