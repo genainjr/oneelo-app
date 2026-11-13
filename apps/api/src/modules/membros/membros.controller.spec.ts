@@ -172,4 +172,24 @@ describe('MembrosController - Import Endpoints', () => {
     });
   });
 
+  describe('POST :id/activation-link', () => {
+    it('deve chamar membrosService.generateActivationLink com tenantId, id, userId e ip', async () => {
+      const req = { tenantId: 't1', user: { sub: 'staff-1' } };
+      membrosService.generateActivationLink = jest.fn().mockResolvedValue({
+        membro: { id: 'm1' },
+        user: { id: 'u1' },
+        activationLink: 'https://app/activate/xyz',
+      });
+
+      const res = await controller.generateActivationLink('m1', req as any, '10.0.0.2');
+      expect(membrosService.generateActivationLink).toHaveBeenCalledWith(
+        't1',
+        'm1',
+        'staff-1',
+        '10.0.0.2',
+      );
+      expect(res.activationLink).toBe('https://app/activate/xyz');
+    });
+  });
+
 });

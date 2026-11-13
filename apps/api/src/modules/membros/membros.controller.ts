@@ -200,6 +200,23 @@ export class MembrosController {
     );
   }
 
+  @Post(':id/activation-link')
+  @Roles(Role.ADMIN, Role.STAFF)
+  generateActivationLink(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Ip() ip?: string,
+  ) {
+    const tenantId = req['tenantId'] as string;
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.generateActivationLink(
+      tenantId,
+      id,
+      user.sub,
+      ip,
+    );
+  }
+
   @Delete(':id')
   @Roles(Role.ADMIN, Role.STAFF)
   remove(@Param('id') id: string, @Req() req: Request) {

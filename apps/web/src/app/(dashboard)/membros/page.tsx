@@ -12,7 +12,7 @@ import { MemberImportModal } from '@/components/app/member-import-modal';
 import { SolicitacoesTriagemTab } from '@/components/app/solicitacoes-triagem-tab';
 import { PromoteVisitanteModal } from '@/components/app/promote-visitante-modal';
 import { WelcomeActivationModal } from '@/components/app/welcome-activation-modal';
-import { Users, Inbox, UserCheck } from 'lucide-react';
+import { Users, Inbox, UserCheck, Link2, Loader2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
@@ -112,6 +112,7 @@ export default function MembrosPage() {
     bulkTag,
     bulkDeleteMembros,
     promoteVisitante,
+    generateActivationLink,
   } = useMembros();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -134,6 +135,7 @@ export default function MembrosPage() {
   const [pendingDeleteMembro, setPendingDeleteMembro] = useState<Membro | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [promotingMembro, setPromotingMembro] = useState<Membro | null>(null);
+  const [activationLoadingId, setActivationLoadingId] = useState<string | null>(null);
   const [welcomeModal, setWelcomeModal] = useState<{
     isOpen: boolean;
     membro: Membro | null;
@@ -278,6 +280,29 @@ export default function MembrosPage() {
       user: res.user,
       activationLink: res.activationLink,
     });
+  }
+
+  async function handleGenerateActivationLink(membro: Membro) {
+    if (activationLoadingId) return;
+    setActivationLoadingId(membro.id);
+    setFeedback(null);
+    try {
+      const res = await generateActivationLink(membro.id);
+      setWelcomeModal({
+        isOpen: true,
+        membro: res.membro,
+        user: res.user,
+        activationLink: res.activationLink,
+      });
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: getErrorMessage(err, 'Não foi possível gerar o link de ativação.'),
+      });
+      void refetch();
+    } finally {
+      setActivationLoadingId(null);
+    }
   }
 
   function handleDelete(membro: Membro) {
@@ -441,6 +466,21 @@ export default function MembrosPage() {
       className: 'text-right',
       render: (m) => (
         <div className="flex items-center justify-end gap-2">
+          {m.user?.status === 'PENDING' && m.user?.role === 'BASIC' && (
+            <button
+              type="button"
+              onClick={() => handleGenerateActivationLink(m)}
+              disabled={activationLoadingId === m.id}
+              className="p-2 border border-amber-200 hover:border-amber-300 rounded-xl text-amber-700 bg-amber-50 transition-all hover:bg-amber-100 flex items-center justify-center disabled:opacity-60"
+              title="Link de ativação (usuário pendente)"
+            >
+              {activationLoadingId === m.id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Link2 className="w-4 h-4" />
+              )}
+            </button>
+          )}
           {m.status === 'VISITANTE' && (
             <button
               type="button"
@@ -562,7 +602,10 @@ export default function MembrosPage() {
       <div className="flex items-center gap-2 border-b border-gray-200">
         <button
           type="button"
-          onClick={() => setActiveTab('membros')}
+          onClick={() => {
+            setActiveTab('membros');
+            void refetch();
+          }}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-all ${
             activeTab === 'membros'
               ? 'border-indigo-600 text-indigo-600'
@@ -823,6 +866,21 @@ export default function MembrosPage() {
             }
             actions={
               <>
+                {membro.user?.status === 'PENDING' && membro.user?.role === 'BASIC' && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateActivationLink(membro)}
+                    disabled={activationLoadingId === membro.id}
+                    className="p-2 border border-amber-200 hover:border-amber-300 rounded-xl text-amber-700 bg-amber-50 transition-all hover:bg-amber-100 flex items-center justify-center disabled:opacity-60"
+                    title="Link de ativação (usuário pendente)"
+                  >
+                    {activationLoadingId === membro.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Link2 className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
                 {membro.status === 'VISITANTE' && (
                   <button
                     type="button"
@@ -1016,6 +1074,11 @@ export default function MembrosPage() {
           setIsModalOpen(false);
           setEditingMembro(null);
           setPromotingMembro(member);
+        }}
+        onGenerateActivationLink={(member) => {
+          setIsModalOpen(false);
+          setEditingMembro(null);
+          void handleGenerateActivationLink(member);
         }}
         membro={editingMembro}
       />
