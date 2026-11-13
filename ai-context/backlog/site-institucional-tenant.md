@@ -11,9 +11,10 @@
 - **Ação**: criar o módulo do Portal Institucional com renderização pública e painel de gestão simples no dashboard:
 
   1. **Estrutura de Rotas e Páginas Públicas (`/[slug]` e `/[slug]/cadastro`):**
-     - **Rota Principal da Igreja (`/[slug]`, ex: `/ccrv`):**
+     - **Rota Principal da Igreja (`/[slug]`, ex: `/ccrv` ou domínio próprio `ccrv.org.br`):**
        - **Header & Hero Banner:** Logo da igreja, nome oficial, imagem de destaque com chamada de boas-vindas acolhedora e botões de ação rápida.
-       - **Porta de Entrada e Acolhimento:** Botões destacados de CTA: *"É sua primeira visita? / Quero me conectar"* levando para a rota `/[slug]/cadastro`.
+       - **Área de Membros (Link de Login):** Botão "Área de Membros" / "Entrar" no topo da página direcionando para `/login` (com identificação da igreja), permitindo que membros e líderes acessem o sistema diretamente pelo site da sua comunidade. O link de Login da página principal do OneElo (`oneelo.com.br`) permanece inalterado para acesso geral.
+       - **Porta de Entrada e Acolhimento:** Botões destacados de CTA: *"É sua primeira visita? / Quero me conectar"* levando para a rota `/[slug]/cadastro` (ou `ccrv.org.br/cadastro`).
        - **Agenda e Horários de Cultos:** Cartões elegantes com os dias, horários e modalidades dos cultos regulares (ex.: *Culto da Família - Domingo 19h*, *Quarta da Palavra - 20h*).
        - **Informativos e Avisos (Feed de Notícias):** Banners e comunicados da semana (retiros, conferências, avisos pastorais, campanhas).
        - **Sobre a Igreja & Liderança Pastoral:** Breve história, valores e apresentação dos pastores presidentes.
@@ -29,6 +30,7 @@
      - Banners rotativos ou hero principal com upload de imagem.
      - Configuração de links de redes sociais e canais de streaming.
      - Textos institucionais ("Sobre nós", endereço, telefone de plantão).
+     - **Configuração de Domínio Personalizado:** Campo para informar o domínio próprio da igreja (ex: `ccrv.org.br` ou `www.igreja.com.br`), exibição das instruções de apontamento DNS (CNAME para o OneElo) e checagem de status de propagação/SSL.
 
   3. **Direção de Design "Anti-IA" (Identidade Autêntica e Contemporânea):**
      - Rejeitar layouts genéricos de IA (gradientes roxo/azul neon de SaaS corporativo, ilustrações 3D genéricas ou cartões flutuantes clichês).
@@ -44,12 +46,15 @@
 
 ## Desafios Técnicos e Arquiteturais
 
-1. **Roteamento Multitenant no Next.js App Router:**
-   - Decisão de convenção de rota: subpath `/igreja/[slug]` vs domínio de topo `/[slug]` (com exclusão de rotas reservadas como `/login`, `/membros`, `/dashboard`, etc.) vs subdomínio wildcard `[slug].oneelo.com.br`.
-   - Para o MVP, `/igreja/[slug]` ou `/[slug]` com middleware inteligente oferece a entrega mais rápida e segura.
+1. **Roteamento Multitenant e Domínios Personalizados (Custom Domains):**
+   - **No domínio padrão (`oneelo.com.br/[slug]`):** Roteamento por slug dinâmico com lista restrita de palavras reservadas (`login`, `membros`, `escalas`, `financeiro`, `configuracoes`, `admin`, `api`, etc.).
+   - **No domínio próprio da igreja (`ccrv.org.br` / `www.ccrv.org.br`):**
+     - O `middleware.ts` lê o header `Host`. Se for um domínio customizado registrado no banco pelo tenant, realiza um rewrite interno invisível para a rota do tenant (`/ccrv`), mantendo a URL limpa no navegador do visitante.
+     - A rota `ccrv.org.br/cadastro` reescreve internamente para `/ccrv/cadastro`.
+     - Integração com Vercel Domains API (ou proxy reverso) para provisionamento de SSL e validação de CNAME.
 2. **Modelagem de Dados Flexível no Prisma:**
    - Tabelas sugeridas:
-     - `tb_tenant_website_config`: guarda bio, sobre nós, redes sociais, tema/cores e telefone de contato.
+     - `tb_tenant_website_config`: guarda bio, sobre nós, redes sociais, tema/cores, telefone de contato, `customDomain` e status do DNS (`PENDING`, `VERIFIED`, `ERROR`).
      - `tb_church_schedules`: horários recorrentes de cultos (`diaSemana`, `horario`, `titulo`, `descricao`).
      - `tb_tenant_news`: comunicados e informativos (`titulo`, `slug`, `resumo`, `conteudo`, `imagemUrl`, `ativo`, `dataPublicacao`).
      - `tb_tenant_banners`: banners de destaque no hero com link de destino.
