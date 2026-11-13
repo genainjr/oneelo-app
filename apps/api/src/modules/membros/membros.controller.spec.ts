@@ -150,4 +150,26 @@ describe('MembrosController - Import Endpoints', () => {
     });
   });
 
+  describe('POST :id/promover', () => {
+    it('deve chamar membrosService.promoteVisitante com tenantId, id, dto, userId e ip', async () => {
+      const req = { tenantId: 't1', user: { sub: 'admin-1' } };
+      const dto = { email: 'novo@igreja.com', criarAcesso: true };
+      membrosService.promoteVisitante = jest.fn().mockResolvedValue({
+        membro: { id: 'm1', status: 'ATIVO' },
+        user: { id: 'u1' },
+        activationLink: 'https://app/activate/123',
+      });
+
+      const res = await controller.promover('m1', dto as any, req as any, '10.0.0.1');
+      expect(membrosService.promoteVisitante).toHaveBeenCalledWith(
+        't1',
+        'm1',
+        dto,
+        'admin-1',
+        '10.0.0.1',
+      );
+      expect(res.activationLink).toBe('https://app/activate/123');
+    });
+  });
+
 });

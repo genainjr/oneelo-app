@@ -10,7 +10,9 @@ import { MembroModal } from '@/components/app/membro-modal';
 import { CarteirinhaModal } from '@/components/app/carteirinha-modal';
 import { MemberImportModal } from '@/components/app/member-import-modal';
 import { SolicitacoesTriagemTab } from '@/components/app/solicitacoes-triagem-tab';
-import { Users, Inbox } from 'lucide-react';
+import { PromoteVisitanteModal } from '@/components/app/promote-visitante-modal';
+import { WelcomeActivationModal } from '@/components/app/welcome-activation-modal';
+import { Users, Inbox, UserCheck } from 'lucide-react';
 import { ConfirmDialog } from '@/components/app/confirm-dialog';
 import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
@@ -109,6 +111,7 @@ export default function MembrosPage() {
     removeMembroFoto,
     bulkTag,
     bulkDeleteMembros,
+    promoteVisitante,
   } = useMembros();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -130,6 +133,18 @@ export default function MembrosPage() {
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [pendingDeleteMembro, setPendingDeleteMembro] = useState<Membro | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [promotingMembro, setPromotingMembro] = useState<Membro | null>(null);
+  const [welcomeModal, setWelcomeModal] = useState<{
+    isOpen: boolean;
+    membro: Membro | null;
+    user: { id: string; nome: string; email: string; activationExpiresAt?: string | null } | null;
+    activationLink: string | null;
+  }>({
+    isOpen: false,
+    membro: null,
+    user: null,
+    activationLink: null,
+  });
   const membersListTopRef = useRef<HTMLDivElement | null>(null);
 
   const itemsPerPage = 10;
@@ -246,6 +261,23 @@ export default function MembrosPage() {
     }
     fetchTags();
     return saved;
+  }
+
+  async function handlePromoteVisitante(
+    id: string,
+    data: { email?: string; whatsapp?: string; criarAcesso: boolean },
+  ) {
+    const res = await promoteVisitante(id, data);
+    setFeedback({
+      type: 'success',
+      message: `${res.membro.nome} promovido(a) a Membro Ativo com sucesso.`,
+    });
+    setWelcomeModal({
+      isOpen: true,
+      membro: res.membro,
+      user: res.user,
+      activationLink: res.activationLink,
+    });
   }
 
   function handleDelete(membro: Membro) {
@@ -409,6 +441,16 @@ export default function MembrosPage() {
       className: 'text-right',
       render: (m) => (
         <div className="flex items-center justify-end gap-2">
+          {m.status === 'VISITANTE' && (
+            <button
+              type="button"
+              onClick={() => setPromotingMembro(m)}
+              className="p-2 border border-emerald-200 hover:border-emerald-300 rounded-xl text-emerald-700 bg-emerald-50 transition-all hover:bg-emerald-100 flex items-center justify-center"
+              title="Promover a Membro"
+            >
+              <UserCheck className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => setCarteirinhaMembro(m)}
             className="p-2 border border-gray-200 hover:border-indigo-300 rounded-xl text-indigo-600 bg-white transition-all hover:bg-indigo-50 flex items-center justify-center"
@@ -781,6 +823,16 @@ export default function MembrosPage() {
             }
             actions={
               <>
+                {membro.status === 'VISITANTE' && (
+                  <button
+                    type="button"
+                    onClick={() => setPromotingMembro(membro)}
+                    className="p-2 border border-emerald-200 hover:border-emerald-300 rounded-xl text-emerald-700 bg-emerald-50 transition-all hover:bg-emerald-100 flex items-center justify-center"
+                    title="Promover a Membro"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={() => setCarteirinhaMembro(membro)}
                   className="p-2 border border-gray-200 hover:border-indigo-300 rounded-xl text-indigo-600 bg-white transition-all hover:bg-indigo-50 flex items-center justify-center"
@@ -960,8 +1012,34 @@ export default function MembrosPage() {
           syncAuthenticatedMemberPhoto(id, updated);
           return updated;
         }}
+        onPromote={(member) => {
+          setIsModalOpen(false);
+          setEditingMembro(null);
+          setPromotingMembro(member);
+        }}
         membro={editingMembro}
       />
+
+      <PromoteVisitanteModal
+        isOpen={Boolean(promotingMembro)}
+        membro={promotingMembro}
+        onClose={() => setPromotingMembro(null)}
+        onPromote={handlePromoteVisitante}
+      />
+
+      {welcomeModal.membro && (
+        <WelcomeActivationModal
+          isOpen={welcomeModal.isOpen}
+          onClose={() =>
+            setWelcomeModal({ isOpen: false, membro: null, user: null, activationLink: null })
+          }
+          membro={welcomeModal.membro}
+          user={welcomeModal.user}
+          activationLink={welcomeModal.activationLink}
+          tenantName={user?.tenant?.nome}
+          description="Visitante promovido a Membro Ativo com sucesso."
+        />
+      )}
 
       <ConfirmDialog
         isOpen={!!pendingDeleteMembro}

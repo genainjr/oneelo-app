@@ -1,5 +1,5 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Plano } from '@prisma/client';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Plano, StatusMembro } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import { MembrosService } from './membros.service';
@@ -232,6 +232,197 @@ describe('MembrosService - limites por plano', () => {
           acao: 'DELETAR',
         }),
       });
+    });
+  });
+
+  describe('promoteVisitante', () => {
+    it('deve promover visitante para ATIVO e criar usuário PENDING com link de ativação', async () => {
+      const txMock = {
+        tenant: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: tenantId,
+            plano: Plano.GRATUITO,
+            limiteMembros: 50,
+          }),
+        },
+        membro: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'vis-1',
+            tenantId,
+            nome: 'Messias Visitante',
+            email: null,
+            whatsapp: '+5585991101771',
+            status: StatusMembro.VISITANTE,
+            user: null,
+          }),
+          count: jest.fn().mockResolvedValue(5),
+          update: jest.fn().mockResolvedValue({
+            id: 'vis-1',
+            tenantId,
+            nome: 'Messias Visitante',
+            email: 'messias@igreja.com',
+            whatsapp: '+5585991101771',
+            status: StatusMembro.ATIVO,
+          }),
+        },
+        auditLog: {
+          create: jest.fn().mockResolvedValue({}),
+        },
+      };
+
+      const prisma = {
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+
+      const authService = {
+        createPendingBasicUserInTx: jest.fn().mockResolvedValue({
+          user: { id: 'user-1', nome: 'Messias Visitante', email: 'messias@igreja.com' },
+          activationLink: 'https://app.oneelo.com/activate/tok-1',
+        }),
+      } as any;
+
+      const service = new MembrosService(prisma as any, {} as any, authService);
+      const res = await service.promoteVisitante(
+        tenantId,
+        'vis-1',
+        { email: 'Messias@Igreja.com', criarAcesso: true },
+        'admin-1',
+        '127.0.0.1',
+      );
+
+      expect(txMock.membro.count).toHaveBeenCalledWith({
+        where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
+      });
+      expect(txMock.membro.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'vis-1' },
+          data: expect.objectContaining({
+            status: StatusMembro.ATIVO,
+            email: 'messias@igreja.com',
+          }),
+        }),
+      );
+      expect(authService.createPendingBasicUserInTx).toHaveBeenCalledWith(
+        txMock,
+        expect.objectContaining({
+          tenantId,
+          email: 'messias@igreja.com',
+          memberId: 'vis-1',
+          actorId: 'admin-1',
+        }),
+      );
+      expect(res.activationLink).toBe('https://app.oneelo.com/activate/tok-1');
+    });
+
+    it('deve promover visitante sem criar acesso quando criarAcesso for false e sem e-mail', async () => {
+      const txMock = {
+        tenant: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: tenantId,
+            plano: Plano.GRATUITO,
+            limiteMembros: 50,
+          }),
+        },
+        membro: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'vis-2',
+            tenantId,
+            nome: 'Maria Visitante',
+            email: null,
+            whatsapp: '+5585999990000',
+            status: StatusMembro.VISITANTE,
+            user: null,
+          }),
+          count: jest.fn().mockResolvedValue(2),
+          update: jest.fn().mockResolvedValue({
+            id: 'vis-2',
+            tenantId,
+            nome: 'Maria Visitante',
+            status: StatusMembro.ATIVO,
+          }),
+        },
+        auditLog: {
+          create: jest.fn().mockResolvedValue({}),
+        },
+      };
+
+      const prisma = {
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+      const authService = { createPendingBasicUserInTx: jest.fn() } as any;
+
+      const service = new MembrosService(prisma as any, {} as any, authService);
+      const res = await service.promoteVisitante(
+        tenantId,
+        'vis-2',
+        { criarAcesso: false },
+        'admin-1',
+      );
+
+      expect(authService.createPendingBasicUserInTx).not.toHaveBeenCalled();
+      expect(res.activationLink).toBeNull();
+      expect(res.user).toBeNull();
+    });
+
+    it('deve rejeitar promoção quando criarAcesso for true e não houver e-mail', async () => {
+      const txMock = {
+        tenant: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: tenantId,
+            plano: Plano.GRATUITO,
+            limiteMembros: 50,
+          }),
+        },
+        membro: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'vis-3',
+            tenantId,
+            nome: 'Sem Email',
+            email: null,
+            status: StatusMembro.VISITANTE,
+            user: null,
+          }),
+          count: jest.fn().mockResolvedValue(2),
+        },
+      };
+
+      const prisma = {
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+
+      const service = new MembrosService(prisma as any, {} as any, {} as any);
+      await expect(
+        service.promoteVisitante(tenantId, 'vis-3', { criarAcesso: true }, 'admin-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('deve rejeitar se o cadastro não estiver com status VISITANTE', async () => {
+      const txMock = {
+        tenant: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: tenantId,
+            plano: Plano.GRATUITO,
+            limiteMembros: 50,
+          }),
+        },
+        membro: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'mem-ativo',
+            tenantId,
+            status: StatusMembro.ATIVO,
+            user: null,
+          }),
+        },
+      };
+
+      const prisma = {
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+
+      const service = new MembrosService(prisma as any, {} as any, {} as any);
+      await expect(
+        service.promoteVisitante(tenantId, 'mem-ativo', {}, 'admin-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 
