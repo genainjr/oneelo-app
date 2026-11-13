@@ -1,4 +1,17 @@
 import type { AuthUser } from '@/types';
+import { isReservedSlug, normalizeSlug } from './reserved-slugs';
+
+/**
+ * Resolve the login route for a tenant, falling back to the generic One Elo login
+ * when no valid tenant slug is available.
+ */
+export function getTenantLoginPath(tenantSlug?: string | null): string {
+  const cleanSlug = tenantSlug ? normalizeSlug(tenantSlug) : '';
+  if (!cleanSlug || isReservedSlug(cleanSlug)) {
+    return '/login';
+  }
+  return `/login?igreja=${encodeURIComponent(cleanSlug)}`;
+}
 
 export function isOnboardingEnabled() {
   return process.env.NEXT_PUBLIC_ONBOARDING_ENABLED === 'true';
