@@ -1,4 +1,5 @@
-import { IsEmail, IsEnum, IsInt, IsOptional, IsString, MinLength, Matches, Min } from 'class-validator';
+import { IsEmail, IsEnum, IsInt, IsOptional, IsString, MinLength, Matches, Min, Validate } from 'class-validator';
+import { NotReservedSlugConstraint } from '../../../common/constants/reserved-slugs';
 import { Plano } from '@prisma/client';
 
 export class CreateTenantDto {
@@ -7,6 +8,7 @@ export class CreateTenantDto {
 
   @IsString()
   @Matches(/^[a-z0-9-]+$/, { message: 'Slug deve conter apenas letras minúsculas, números e hífens.' })
+  @Validate(NotReservedSlugConstraint)
   slug: string;
 
   @IsOptional()

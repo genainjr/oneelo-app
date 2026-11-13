@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
-import { getPublicTenantInfoServer } from '../tenant-public';
+import { getPublicTenantInfoServer } from '@/components/public-site/join/tenant-public';
+import { isReservedSlug, normalizeSlug } from '@/lib/reserved-slugs';
 
 const IMAGE_SIZE = {
   width: 512,
@@ -18,7 +19,10 @@ async function fetchSupportedImageDataUri(url?: string | null): Promise<string |
     });
     if (!res.ok) return null;
 
-    const rawContentType = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const rawContentType = (res.headers.get('content-type') || '')
+      .split(';')[0]
+      .trim()
+      .toLowerCase();
     const contentType = rawContentType === 'image/jpg' ? 'image/jpeg' : rawContentType;
     if (!SATORI_SUPPORTED_MIMES.has(contentType)) {
       return null;
@@ -47,7 +51,12 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  const tenant = await getPublicTenantInfoServer(slug);
+  const cleanSlug = normalizeSlug(slug);
+  if (!cleanSlug || isReservedSlug(cleanSlug)) {
+    return new Response('Not found', { status: 404 });
+  }
+
+  const tenant = await getPublicTenantInfoServer(cleanSlug);
 
   const logoDataUri =
     (await fetchSupportedImageDataUri(tenant?.logoUrl)) ||

@@ -68,6 +68,8 @@ Decisao de produto: os enums tecnicos nao devem ser renomeados. Termos como "Adm
 | Meu Perfil - alterar propria senha | sim | sim | sim | sim | sim |
 | Usuarios do tenant | sim | nao | nao | nao | nao |
 | Auditoria | sim | sim | nao | nao | nao |
+| Site da Igreja (`/configuracoes/site` e `/api/site/*`) | sim | sim | nao | nao | nao |
+| Domínio Próprio do Site (`/api/site/custom-domain*`) | sim | nao | nao | nao | nao |
 
 ---
 

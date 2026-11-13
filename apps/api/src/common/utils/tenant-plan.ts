@@ -53,6 +53,14 @@ export function getEffectiveMemberLimit(tenant: TenantPlanData): number | null {
 /**
  * Valida se é permitido adicionar um novo membro com base na quantidade atual de membros ativos.
  */
+/**
+ * Determina se o plano do tenant dá direito a configurar domínio próprio no Portal da Igreja.
+ * Atualmente exclusivo do plano PROFISSIONAL.
+ */
+export function canUseCustomDomain(plano: Plano): boolean {
+  return plano === Plano.PROFISSIONAL;
+}
+
 export function canAddMember(tenant: TenantPlanData, currentActiveCount: number): boolean {
   const limit = getEffectiveMemberLimit(tenant);
   if (limit === null) {

@@ -17,6 +17,7 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 13/11/2026 | [site-institucional-tenant-plan.md](site-institucional-tenant-plan.md) | Site Institucional Público do Tenant e Portal da Igreja (FT-019) |
 | 12/11/2026 | [novo-membro-auto-cadastro-plan.md](novo-membro-auto-cadastro-plan.md) | Auto-Cadastro Público de Novos Membros e Visitantes com Triagem Pastoral (FT-018) |
 | 11/11/2026 | [importacao-membros-planilha-plan.md](importacao-membros-planilha-plan.md) | Importação de Membros em Lote via Planilha (Excel / CSV) |
 | 09/11/2026 | [otimizacao-navegacao-transicao-telas-plan.md](otimizacao-navegacao-transicao-telas-plan.md) | Otimização de navegação e transição instantânea de telas no Dashboard |

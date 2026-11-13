@@ -95,7 +95,8 @@
     "groupModules": "Módulos",
     "groupFuture": "Em breve",
     "groupAccount": "Conta",
-    "profile": "Meu Perfil"
+    "profile": "Meu Perfil",
+    "website": "Site da Igreja"
   },
   "dashboard": {
     "greeting": "Olá{name}!",
@@ -136,7 +137,8 @@
     "quickLinks": {
       "viewSchedules": "Minhas Escalas",
       "agenda": "Agenda",
-      "profile": "Meu Perfil"
+      "profile": "Meu Perfil",
+      "website": "Site da Igreja"
     },
     "errorLoading": "Erro ao carregar dados do painel pessoal.",
     "stats": {
@@ -157,7 +159,8 @@
         "ministries": "Ministérios",
         "schedules": "Escalas",
         "agenda": "Agenda",
-        "profile": "Meu Perfil"
+        "profile": "Meu Perfil",
+        "website": "Site da Igreja"
       },
       "stats": {
         "ministries": "Ministérios na liderança",
@@ -698,8 +701,8 @@
       "ministrySearchEmpty": "Nenhum ministério disponível encontrado.",
       "noSelectedMinistries": "Nenhum ministério selecionado.",
       "removeMinistryLabel": "Remover {name}",
-        "requiresScheduleLabel": "Precisa de escala",
-        "scheduleNotUsedLabel": "Não utiliza escala",
+      "requiresScheduleLabel": "Precisa de escala",
+      "scheduleNotUsedLabel": "Não utiliza escala",
       "descriptionLabel": "Descrição / Pautas",
       "descriptionPlaceholder": "Informações extras ou cronograma do evento...",
       "editTooltip": "Editar evento",

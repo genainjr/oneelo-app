@@ -1,6 +1,7 @@
 import { Plano } from '@prisma/client';
 import {
   canAddMember,
+  canUseCustomDomain,
   getDefaultStoredMemberLimit,
   getEffectiveMemberLimit,
   isUnlimitedMembers,
@@ -9,6 +10,14 @@ import {
 } from './tenant-plan';
 
 describe('tenant-plan utils', () => {
+  describe('canUseCustomDomain', () => {
+    it('deve permitir domínio próprio apenas para o plano PROFISSIONAL', () => {
+      expect(canUseCustomDomain(Plano.PROFISSIONAL)).toBe(true);
+      expect(canUseCustomDomain(Plano.BASICO)).toBe(false);
+      expect(canUseCustomDomain(Plano.GRATUITO)).toBe(false);
+    });
+  });
+
   describe('getDefaultStoredMemberLimit', () => {
     it('deve retornar 50 para GRATUITO', () => {
       expect(getDefaultStoredMemberLimit(Plano.GRATUITO)).toBe(50);

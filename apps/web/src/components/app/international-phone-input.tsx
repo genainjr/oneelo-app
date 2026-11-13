@@ -33,7 +33,7 @@ type InternationalPhoneInputProps = {
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
-  variant?: 'default' | 'auth';
+  variant?: 'default' | 'auth' | 'site-light' | 'site-dark';
 };
 
 function getFlag(country: CountryCode) {
@@ -114,23 +114,35 @@ export function InternationalPhoneInput({
     emitPhoneValue(nextCountry, nationalValue.replace(/\D/g, ''));
   }
 
-  const isAuth = variant === 'auth';
-  const labelClass = isAuth
-    ? 'block text-sm font-medium text-indigo-200 mb-1.5'
-    : 'text-xs font-semibold text-gray-700 uppercase tracking-wider';
-  const controlClass = isAuth
-    ? 'bg-white/10 border-white/20 text-white focus:ring-2 focus:ring-indigo-400 focus:border-transparent'
-    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-indigo-500 focus:bg-white';
+  const isDarkAuth = variant === 'auth' || variant === 'site-dark';
+  const labelClass =
+    variant === 'site-dark'
+      ? 'block text-sm font-medium text-zinc-300 mb-1.5'
+      : variant === 'auth'
+        ? 'block text-sm font-medium text-indigo-200 mb-1.5'
+        : 'text-xs font-semibold text-gray-700 uppercase tracking-wider';
+  const controlClass =
+    variant === 'site-dark'
+      ? 'bg-zinc-900/90 border-zinc-800 text-white focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400'
+      : variant === 'site-light'
+        ? 'bg-stone-50 border-stone-200 text-zinc-950 focus:border-amber-500 focus:bg-white'
+        : variant === 'auth'
+          ? 'bg-white/10 border-white/20 text-white focus:ring-2 focus:ring-indigo-400 focus:border-transparent'
+          : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-indigo-500 focus:bg-white';
 
   return (
-    <div className={isAuth ? undefined : 'space-y-1.5'}>
+    <div className={isDarkAuth ? undefined : 'space-y-1.5'}>
       <label htmlFor={id} className={labelClass}>
         {label}
         {required && ' *'}
         {optionalLabel && (
           <span className={cn(
             'ml-1 font-medium normal-case tracking-normal',
-            isAuth ? 'text-xs text-indigo-300' : 'text-[10px] text-gray-400',
+            variant === 'site-dark'
+              ? 'text-xs text-zinc-400'
+              : variant === 'auth'
+                ? 'text-xs text-indigo-300'
+                : 'text-[10px] text-gray-400',
           )}>
             {optionalLabel}
           </span>
@@ -139,6 +151,7 @@ export function InternationalPhoneInput({
       <div className="flex min-w-0">
         <select
           aria-label={countryLabel}
+          suppressHydrationWarning
           value={country}
           onChange={(event) => handleCountryChange(event.target.value as CountryCode)}
           disabled={disabled}
@@ -148,7 +161,12 @@ export function InternationalPhoneInput({
           )}
         >
           {countries.map((option) => (
-            <option key={option.code} value={option.code} className="text-gray-900">
+            <option
+              key={option.code}
+              value={option.code}
+              suppressHydrationWarning
+              className="bg-white text-gray-900"
+            >
               {getFlag(option.code)} {option.name} (+{option.callingCode})
             </option>
           ))}
@@ -166,7 +184,8 @@ export function InternationalPhoneInput({
           className={cn(
             'min-w-0 flex-1 rounded-r-xl border border-l-0 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:outline-none disabled:opacity-50',
             controlClass,
-            isAuth && 'placeholder:text-indigo-300/60',
+            variant === 'auth' && 'placeholder:text-indigo-300/60',
+            variant === 'site-dark' && 'placeholder:text-zinc-500',
           )}
         />
       </div>

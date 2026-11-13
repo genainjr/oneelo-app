@@ -17,7 +17,7 @@ export function JoinLinkCard({ slug, tenantName }: JoinLinkCardProps) {
 
   const churchName = tenantName || 'sua igreja';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://oneelo.vercel.app';
-  const joinUrl = slug ? `${origin}/join/${slug}` : '';
+  const joinUrl = slug ? `${origin}/${slug}/cadastro` : '';
 
   useEffect(() => {
     if (joinUrl && qrModalOpen) {

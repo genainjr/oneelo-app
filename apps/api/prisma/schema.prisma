@@ -284,25 +284,28 @@ model Tenant {
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
-  users             User[]
-  membros           Membro[]
-  tags              Tag[]
-  ministerios       Ministerio[]
-  escalas           Escala[]
-  eventos           Evento[]
-  auditLogs         AuditLog[]
-  pushSubscriptions PushSubscription[]
-  financePermissions FinancePermission[]
-  financialAccounts FinancialAccount[]
-  financialCategories   FinancialCategory[]
-  financialTransactions FinancialTransaction[]
-  segmentosCulto        SegmentoCulto[]
-  compatibilidadesFuncao CompatibilidadeFuncao[]
-  notifications         Notification[]
+  users                       User[]
+  membros                     Membro[]
+  tags                        Tag[]
+  ministerios                 Ministerio[]
+  escalas                     Escala[]
+  eventos                     Evento[]
+  auditLogs                   AuditLog[]
+  pushSubscriptions           PushSubscription[]
+  financePermissions          FinancePermission[]
+  financialAccounts           FinancialAccount[]
+  financialCategories         FinancialCategory[]
+  financialTransactions       FinancialTransaction[]
+  segmentosCulto              SegmentoCulto[]
+  compatibilidadesFuncao      CompatibilidadeFuncao[]
+  notifications               Notification[]
   notificationAutomationRules NotificationAutomationRule[]
   userNotificationPreferences UserNotificationPreference[]
-  documentJobs          DocumentJob[]
-  solicitacoesCadastro  SolicitacaoCadastroMembro[]
+  documentJobs                DocumentJob[]
+  solicitacoesCadastro        SolicitacaoCadastroMembro[]
+  websiteConfig               TenantWebsiteConfig?
+  churchSchedules             ChurchSchedule[]
+  tenantNews                  TenantNews[]
 
   @@map("tb_tenant")
 }
@@ -326,21 +329,21 @@ model User {
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime   @updatedAt @map("updated_at")
 
-  tenant            Tenant?            @relation(fields: [tenantId], references: [id])
-  membro            Membro?            @relation(fields: [memberId], references: [id])
-  escalasItens      EscalaItem[]
-  auditLogs         AuditLog[]
-  pushSubscriptions PushSubscription[]
-  authProviders     UserAuthProvider[]
-  financePermissions FinancePermission[]
-  financePermissionsCreated FinancePermission[] @relation("FinancePermissionCreatedBy")
-  financePermissionsUpdated FinancePermission[] @relation("FinancePermissionUpdatedBy")
-  financialTransactionsCreated FinancialTransaction[] @relation("FinancialTransactionCreatedBy")
-  financialTransactionsCancelled FinancialTransaction[] @relation("FinancialTransactionCancelledBy")
-  notificationsCreated          Notification[]          @relation("NotificationAuthor")
-  notificationRecipients        NotificationRecipient[]
-  notificationPreference        UserNotificationPreference?
-  documentJobs                  DocumentJob[]
+  tenant                         Tenant?                     @relation(fields: [tenantId], references: [id])
+  membro                         Membro?                     @relation(fields: [memberId], references: [id])
+  escalasItens                   EscalaItem[]
+  auditLogs                      AuditLog[]
+  pushSubscriptions              PushSubscription[]
+  authProviders                  UserAuthProvider[]
+  financePermissions             FinancePermission[]
+  financePermissionsCreated      FinancePermission[]         @relation("FinancePermissionCreatedBy")
+  financePermissionsUpdated      FinancePermission[]         @relation("FinancePermissionUpdatedBy")
+  financialTransactionsCreated   FinancialTransaction[]      @relation("FinancialTransactionCreatedBy")
+  financialTransactionsCancelled FinancialTransaction[]      @relation("FinancialTransactionCancelledBy")
+  notificationsCreated           Notification[]              @relation("NotificationAuthor")
+  notificationRecipients         NotificationRecipient[]
+  notificationPreference         UserNotificationPreference?
+  documentJobs                   DocumentJob[]
 
   @@index([tenantId])
   @@index([status])
@@ -381,7 +384,7 @@ model FinancialAccount {
   createdAt      DateTime             @default(now()) @map("created_at")
   updatedAt      DateTime             @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   transactions FinancialTransaction[]
 
   @@unique([tenantId, name])
@@ -400,7 +403,7 @@ model FinancialCategory {
   createdAt DateTime              @default(now()) @map("created_at")
   updatedAt DateTime              @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   transactions FinancialTransaction[]
 
   @@unique([tenantId, type, name])
@@ -438,7 +441,7 @@ model FinancialTransaction {
   account     FinancialAccount  @relation(fields: [accountId], references: [id])
   category    FinancialCategory @relation(fields: [categoryId], references: [id])
   evento      Evento?           @relation(fields: [eventoId], references: [id], onDelete: SetNull)
-  member      Membro?            @relation(fields: [memberId], references: [id])
+  member      Membro?           @relation(fields: [memberId], references: [id])
   createdBy   User              @relation("FinancialTransactionCreatedBy", fields: [createdByUserId], references: [id])
   cancelledBy User?             @relation("FinancialTransactionCancelledBy", fields: [cancelledByUserId], references: [id])
 
@@ -501,12 +504,12 @@ model Membro {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  tenant      Tenant             @relation(fields: [tenantId], references: [id])
-  tags        MembroTag[]
-  ministerios MinisterioMembro[]
-  escalas     EscalaItem[]
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id])
+  tags                  MembroTag[]
+  ministerios           MinisterioMembro[]
+  escalas               EscalaItem[]
   financialTransactions FinancialTransaction[]
-  user        User?
+  user                  User?
 
   @@index([tenantId])
   @@index([tenantId, deletedAt])
@@ -539,20 +542,20 @@ model MembroTag {
 }
 
 model Ministerio {
-  id        String   @id @default(uuid())
-  tenantId  String   @map("tenant_id")
-  nome      String   @map("name")
-  descricao String?  @map("description")
-  ativo     Boolean  @default(true) @map("is_active")
-  usaEscalas Boolean @default(true) @map("uses_schedules")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  nome       String   @map("name")
+  descricao  String?  @map("description")
+  ativo      Boolean  @default(true) @map("is_active")
+  usaEscalas Boolean  @default(true) @map("uses_schedules")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  tenant  Tenant             @relation(fields: [tenantId], references: [id])
-  membros MinisterioMembro[]
-  escalas Escala[]
-  funcoes MinisterioFuncao[]
-  eventos EventoMinisterio[]
+  tenant        Tenant             @relation(fields: [tenantId], references: [id])
+  membros       MinisterioMembro[]
+  escalas       Escala[]
+  funcoes       MinisterioFuncao[]
+  eventos       EventoMinisterio[]
   notifications Notification[]
 
   @@index([tenantId])
@@ -582,10 +585,10 @@ model MinisterioFuncao {
 }
 
 model MinisterioMembro {
-  ministerioId String       @map("ministry_id")
-  membroId     String       @map("member_id")
-  role         MinistryRole @default(MEMBER)
-  podeSerEscalado Boolean   @default(true) @map("can_be_scheduled")
+  ministerioId    String       @map("ministry_id")
+  membroId        String       @map("member_id")
+  role            MinistryRole @default(MEMBER)
+  podeSerEscalado Boolean      @default(true) @map("can_be_scheduled")
 
   ministerio         Ministerio               @relation(fields: [ministerioId], references: [id])
   membro             Membro                   @relation(fields: [membroId], references: [id])
@@ -688,10 +691,10 @@ model Evento {
   createdAt  DateTime     @default(now()) @map("created_at")
   updatedAt  DateTime     @updatedAt @map("updated_at")
 
-  tenant      Tenant             @relation(fields: [tenantId], references: [id])
-  escalasDias EscalaDia[]
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id])
+  escalasDias           EscalaDia[]
   financialTransactions FinancialTransaction[]
-  ministerios EventoMinisterio[]
+  ministerios           EventoMinisterio[]
 
   @@index([tenantId])
   @@index([tenantId, tipo])
@@ -972,4 +975,104 @@ model SolicitacaoCadastroMembro {
   @@index([tenantId, cpf])
   @@index([tenantId, email])
   @@map("tb_member_registration_request")
+}
+
+enum ModalidadeCulto {
+  PRESENCIAL @map("IN_PERSON")
+  ONLINE
+  HIBRIDO    @map("HYBRID")
+
+  @@map("worship_modality")
+}
+
+enum DnsStatus {
+  PENDING
+  ACTIVE
+  ERROR
+
+  @@map("dns_status")
+}
+
+model TenantWebsiteConfig {
+  id                     String    @id @default(uuid())
+  tenantId               String    @unique @map("tenant_id")
+  tituloHero             String?   @map("hero_title")
+  subtituloHero          String?   @map("hero_subtitle")
+  bannerUrl              String?   @map("banner_url")
+  bannerKey              String?   @map("banner_key")
+  versiculoTema          String?   @map("theme_verse")
+  versiculoReferencia    String?   @map("theme_verse_reference")
+  sobreNos               String?   @map("about_us")
+  historia               String?   @map("history")
+  visaoValores           String?   @map("vision_values")
+  pastoresNomes          String?   @map("pastors_names")
+  pastoresBio            String?   @map("pastors_bio")
+  pastoresFotoUrl        String?   @map("pastors_photo_url")
+  pastoresFotoKey        String?   @map("pastors_photo_key")
+  endereco               String?   @map("address")
+  numero                 String?   @map("address_number")
+  bairro                 String?   @map("neighborhood")
+  cidade                 String?   @map("city")
+  estado                 String?   @map("state")
+  cep                    String?   @map("postal_code")
+  googleMapsUrl          String?   @map("google_maps_url")
+  horarioSecretaria      String?   @map("office_hours")
+  instagramUrl           String?   @map("instagram_url")
+  youtubeUrl             String?   @map("youtube_url")
+  facebookUrl            String?   @map("facebook_url")
+  spotifyUrl             String?   @map("spotify_url")
+  whatsappAtendimento    String?   @map("support_whatsapp")
+  customDomain           String?   @unique @map("custom_domain")
+  dnsStatus              DnsStatus @default(PENDING) @map("dns_status")
+  dnsCheckedAt           DateTime? @map("dns_checked_at")
+  customDomainVerifiedAt DateTime? @map("custom_domain_verified_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tb_tenant_website_config")
+}
+
+model ChurchSchedule {
+  id         String          @id @default(uuid())
+  tenantId   String          @map("tenant_id")
+  diaSemana  Int             @map("day_of_week")
+  horario    String          @map("time")
+  titulo     String          @map("title")
+  descricao  String?         @map("description")
+  modalidade ModalidadeCulto @default(PRESENCIAL) @map("modality")
+  ordem      Int             @default(0) @map("display_order")
+  ativo      Boolean         @default(true) @map("is_active")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, ativo])
+  @@index([tenantId, ordem])
+  @@map("tb_church_schedule")
+}
+
+model TenantNews {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  titulo         String   @map("title")
+  slug           String
+  resumo         String?  @map("summary")
+  conteudo       String   @map("content")
+  imagemUrl      String?  @map("image_url")
+  imagemKey      String?  @map("image_key")
+  dataPublicacao DateTime @default(now()) @map("published_at")
+  destaque       Boolean  @default(false) @map("featured")
+  ativo          Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, ativo])
+  @@index([tenantId, ativo, dataPublicacao])
+  @@map("tb_tenant_news")
 }

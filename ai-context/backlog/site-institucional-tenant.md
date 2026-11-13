@@ -3,7 +3,7 @@
 ### FT-019 Site Institucional Público da Igreja (Portal Informativo & Boas-Vindas)
 
 - **Prioridade**: alta (presença digital e centralização de acolhimento dos tenants)
-- **Status**: pendente / em concepção
+- **Status**: implementado em código (FT-019A + FT-019B na branch `feature/site-institucional-tenant`; pendente validação E2E/staging com domínio real)
 - **Fase**: expansão institucional e visibilidade pública
 - **Categoria**: produto / CMS / web pública / identidade
 - **Esforço estimado**: médio a alto

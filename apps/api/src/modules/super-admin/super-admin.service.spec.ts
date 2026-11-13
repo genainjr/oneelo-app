@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SuperAdminService } from './super-admin.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -365,6 +365,31 @@ describe('SuperAdminService', () => {
       await expect(
         service.updateTenant('t-1', { slug: 'igreja-existente' }, adminId),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('deve lancar BadRequestException ao tentar criar ou atualizar tenant com slug reservado', async () => {
+      await expect(
+        service.createTenant(
+          {
+            nome: 'Igreja Teste',
+            slug: 'login',
+            adminNome: 'Admin',
+            adminEmail: 'admin@igreja.com',
+            adminSenha: 'password123',
+          },
+          adminId,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      prisma.tenant.findUnique.mockResolvedValueOnce({
+        id: 't-1',
+        nome: 'Igreja',
+        slug: 'igreja-antiga',
+      });
+
+      await expect(
+        service.updateTenant('t-1', { slug: 'configuracoes' }, adminId),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });
