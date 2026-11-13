@@ -20,6 +20,7 @@ describe('MembrosModule routing priority', () => {
   const mockMembrosService = {
     findOne: jest.fn().mockResolvedValue({ id: 'member-1' }),
     promoteVisitante: jest.fn(),
+    generateActivationLink: jest.fn(),
   };
 
   beforeAll(async () => {
@@ -147,6 +148,26 @@ describe('MembrosModule routing priority', () => {
         whatsapp: '+5585999999999',
         criarAcesso: true,
       }),
+      'user-1',
+      expect.any(String),
+    );
+  });
+
+  it('deve rotear POST /membros/:id/activation-link para MembrosController', async () => {
+    mockMembrosService.generateActivationLink.mockResolvedValue({
+      membro: { id: 'm1' },
+      user: { id: 'u1' },
+      activationLink: 'https://app.oneelo.com/activate/tok-2',
+    });
+
+    await request(app.getHttpServer())
+      .post('/membros/m1/activation-link')
+      .send({})
+      .expect(201);
+
+    expect(mockMembrosService.generateActivationLink).toHaveBeenCalledWith(
+      'tenant-1',
+      'm1',
       'user-1',
       expect.any(String),
     );

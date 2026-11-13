@@ -17,7 +17,7 @@ import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
 import { PromoteVisitanteDto } from './dto/promote-visitante.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
-import { AcaoAuditoria, MinistryRole, Role, StatusMembro } from '@prisma/client';
+import { AcaoAuditoria, MinistryRole, Role, StatusMembro, UserStatus } from '@prisma/client';
 import { AuthService } from '../auth/auth.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import type { Multer } from 'multer';
@@ -29,6 +29,16 @@ import { includesNormalizedText } from '../../common/utils/search-text';
 import { canAddMember, getEffectiveMemberLimit } from '../../common/utils/tenant-plan';
 
 const memberListInclude = {
+  user: {
+    select: {
+      id: true,
+      nome: true,
+      email: true,
+      role: true,
+      status: true,
+      activationExpiresAt: true,
+    },
+  },
   tags: {
     include: {
       tag: true,
@@ -512,12 +522,93 @@ export class MembrosService {
         },
       });
 
+      const promotedUser = userResult.user
+        ? {
+            id: userResult.user.id,
+            nome: userResult.user.nome,
+            email: userResult.user.email,
+            role: userResult.user.role,
+            status: userResult.user.status,
+            activationExpiresAt: userResult.user.activationExpiresAt ?? null,
+          }
+        : null;
+
       return {
-        membro: updatedMembro,
+        membro: {
+          ...updatedMembro,
+          user: promotedUser,
+        },
         user: userResult.user,
         activationLink: userResult.activationLink,
       };
     });
+  }
+
+  /**
+   * Gera (ou regenera) link de ativação para membro cujo usuário BASIC ainda está PENDING.
+   * Disponível para ADMIN e STAFF diretamente no gerenciamento de membros.
+   */
+  async generateActivationLink(
+    tenantId: string,
+    id: string,
+    actorId: string,
+    ip?: string,
+  ) {
+    const membro = await this.prisma.client.membro.findFirst({
+      where: { id, tenantId },
+      include: memberListInclude,
+    });
+
+    if (!membro) {
+      throw new NotFoundException('Membro não encontrado.');
+    }
+
+    if (!membro.user) {
+      throw new BadRequestException(
+        'Este membro não possui usuário de acesso vinculado.',
+      );
+    }
+
+    if (membro.user.role !== Role.BASIC) {
+      throw new ForbiddenException(
+        'Apenas usuários com perfil Membro podem receber link de ativação por esta tela.',
+      );
+    }
+
+    if (membro.user.status !== UserStatus.PENDING) {
+      throw new BadRequestException(
+        'Este usuário já concluiu a ativação ou não está pendente.',
+      );
+    }
+
+    if (!this.authService) {
+      throw new InternalServerErrorException(
+        'Serviço de autenticação indisponível para gerar link de ativação.',
+      );
+    }
+
+    const regenerated = await this.authService.regenerateActivationLink(
+      membro.user.id,
+      tenantId,
+      actorId,
+      ip,
+    );
+
+    return {
+      membro: {
+        ...membro,
+        user: {
+          id: regenerated.id,
+          nome: regenerated.nome,
+          email: regenerated.email,
+          role: regenerated.role,
+          status: regenerated.status,
+          activationExpiresAt: regenerated.activationExpiresAt ?? null,
+        },
+      },
+      user: regenerated,
+      activationLink: regenerated.activationLink,
+    };
   }
 
   async uploadMemberPhoto(

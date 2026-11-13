@@ -203,6 +203,14 @@ export interface Membro {
   observacoes?: string;
   createdAt: string;
   updatedAt: string;
+  user?: {
+    id: string;
+    nome: string;
+    email: string;
+    role: Role;
+    status?: UserStatus;
+    activationExpiresAt?: string | null;
+  } | null;
   ministerios?: (MinisterioMembro & {
     ministerio?: Pick<Ministerio, 'id' | 'nome'>;
   })[];

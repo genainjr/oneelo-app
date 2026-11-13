@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Plano, StatusMembro } from '@prisma/client';
+import { Plano, Role, StatusMembro, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import { MembrosService } from './membros.service';
@@ -423,6 +423,100 @@ describe('MembrosService - limites por plano', () => {
       await expect(
         service.promoteVisitante(tenantId, 'mem-ativo', {}, 'admin-1'),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe('generateActivationLink', () => {
+    it('deve regenerar link para membro com usuário BASIC PENDING', async () => {
+      const prisma = {
+        client: {
+          membro: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'm1',
+              tenantId,
+              nome: 'Fabiana',
+              whatsapp: '+5585991104343',
+              user: {
+                id: 'u1',
+                nome: 'Fabiana',
+                email: 'fab@igreja.com',
+                role: Role.BASIC,
+                status: UserStatus.PENDING,
+                activationExpiresAt: null,
+              },
+            }),
+          },
+        },
+      };
+
+      const authService = {
+        regenerateActivationLink: jest.fn().mockResolvedValue({
+          id: 'u1',
+          nome: 'Fabiana',
+          email: 'fab@igreja.com',
+          role: Role.BASIC,
+          status: UserStatus.PENDING,
+          activationExpiresAt: new Date('2026-11-16T12:00:00Z'),
+          activationLink: 'https://app.oneelo.com/activate/new-tok',
+        }),
+      } as any;
+
+      const service = new MembrosService(prisma as any, {} as any, authService);
+      const res = await service.generateActivationLink(tenantId, 'm1', 'staff-1', '127.0.0.1');
+
+      expect(authService.regenerateActivationLink).toHaveBeenCalledWith(
+        'u1',
+        tenantId,
+        'staff-1',
+        '127.0.0.1',
+      );
+      expect(res.activationLink).toBe('https://app.oneelo.com/activate/new-tok');
+    });
+
+    it('deve bloquear com ForbiddenException quando usuário vinculado não for BASIC', async () => {
+      const prisma = {
+        client: {
+          membro: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'm-admin',
+              tenantId,
+              user: {
+                id: 'u-admin',
+                role: Role.ADMIN,
+                status: UserStatus.PENDING,
+              },
+            }),
+          },
+        },
+      };
+
+      const service = new MembrosService(prisma as any, {} as any, {} as any);
+      await expect(
+        service.generateActivationLink(tenantId, 'm-admin', 'staff-1'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('deve bloquear com BadRequestException quando usuário já estiver ACTIVE', async () => {
+      const prisma = {
+        client: {
+          membro: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'm-active',
+              tenantId,
+              user: {
+                id: 'u-active',
+                role: Role.BASIC,
+                status: UserStatus.ACTIVE,
+              },
+            }),
+          },
+        },
+      };
+
+      const service = new MembrosService(prisma as any, {} as any, {} as any);
+      await expect(
+        service.generateActivationLink(tenantId, 'm-active', 'staff-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 

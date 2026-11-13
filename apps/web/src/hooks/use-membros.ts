@@ -131,6 +131,15 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     return res;
   }
 
+  async function generateActivationLink(id: string) {
+    const res = await api.post<PromoteVisitanteResponse>(
+      `/api/membros/${id}/activation-link`,
+      {},
+    );
+    setRawMembros((prev) => prev.map((m) => (m.id === id ? res.membro : m)));
+    return res;
+  }
+
   function applyFilter(newFilter: FilterMembros) {
     setFilter((prev) => ({ ...prev, ...newFilter }));
   }
@@ -150,5 +159,6 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     bulkTag,
     bulkDeleteMembros,
     promoteVisitante,
+    generateActivationLink,
   };
 }
