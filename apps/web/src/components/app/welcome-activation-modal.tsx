@@ -38,7 +38,9 @@ export function WelcomeActivationModal({
 
   const rawPhone = membro.whatsapp || '';
   const digits = rawPhone.replace(/\D/g, '');
-  const internationalPhone = digits.startsWith('55') ? digits : `55${digits}`;
+  const hasExplicitCountryCode = rawPhone.trim().startsWith('+');
+  const internationalPhone =
+    hasExplicitCountryCode || digits.startsWith('55') ? digits : `55${digits}`;
   const waUrl = digits ? `https://wa.me/${internationalPhone}?text=${encodeURIComponent(welcomeMessage)}` : null;
 
   async function handleCopy() {
