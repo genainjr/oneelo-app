@@ -11,7 +11,11 @@ import { locales, localeLabels, type Locale } from '@/i18n/config';
 import { FlagIcon } from '@/components/app/locale-flags';
 import { StatusBadge } from '@/components/app/status-badge';
 import { useEscalasVisualizacao, useMinhasEscalas } from '@/hooks/use-escalas-visualizacao';
-import { clearCachedTenantPwa } from '@/lib/pwa-branding';
+import { getTenantLoginPath } from '@/lib/auth-redirect';
+import {
+  clearCachedTenantPwa,
+  readCachedTenantPwa,
+} from '@/lib/pwa-branding';
 
 const ICONS = {
   dashboard: (
@@ -410,14 +414,18 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
   async function handleLogout() {
     setLoggingOut(true);
+    const tenantSlug =
+      user?.role !== 'SUPER_ADMIN'
+        ? user?.tenant?.slug || readCachedTenantPwa()?.slug || null
+        : null;
+    const loginTarget = getTenantLoginPath(tenantSlug);
     try {
       await api.post('/api/auth/logout');
     } catch (e) {
       if (!(e instanceof HttpError)) throw e;
     } finally {
       clearCachedTenantPwa();
-      router.push('/login');
-      router.refresh();
+      window.location.href = loginTarget;
     }
   }
 
