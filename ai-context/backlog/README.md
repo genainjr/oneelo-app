@@ -10,7 +10,8 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
-| 11/11/2026 | [novo-membro-auto-cadastro.md](novo-membro-auto-cadastro.md) | **FT-018: Auto-Cadastro Público de Novos Membros (com Triagem)** | ✅ **Implementado** (Link/QR Code público de auto-cadastro `/join/[slug]`, triagem pastoral com vínculo de visitante, QR Code em `/configuracoes` e WhatsApp) |
+| 13/11/2026 | [site-institucional-tenant.md](site-institucional-tenant.md) | **FT-019: Site Institucional Público do Tenant (Igreja Online)** | ⚪ **Pendente** (Portal público em /[slug] com cultos, informativos, banners, redes sociais e rota de cadastro em /[slug]/cadastro) |
+| 11/11/2026 | [novo-membro-auto-cadastro.md](novo-membro-auto-cadastro.md) | **FT-018: Auto-Cadastro Público de Novos Membros (com Triagem)** | ✅ **Implementado** (Link/QR Code público `/join/[slug]`, triagem pastoral com visitante e expansão para `/[slug]/cadastro`) |
 | 10/11/2026 | [importacao-membros-planilha.md](importacao-membros-planilha.md) | **FT-016: Importação de Membros em Lote (Excel/CSV)** | ✅ **Implementado** (Parser ExcelJS, preview dry-run, template oficial, detecção de duplicidades e exclusão em lote) |
 | 10/11/2026 | [modulo-infantil.md](modulo-infantil.md) | **FT-017: Ministério Infantil Ágil (Aulas, Alergias e Cuidados)** | ⚪ **Pendente** (Apoio pedagógico e segurança sem hardware) |
 
