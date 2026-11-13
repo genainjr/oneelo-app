@@ -95,7 +95,8 @@
     "groupModules": "Modules",
     "groupFuture": "Coming soon",
     "groupAccount": "Account",
-    "profile": "My Profile"
+    "profile": "My Profile",
+    "website": "Church Website"
   },
   "dashboard": {
     "greeting": "Hello{name}!",
@@ -136,7 +137,8 @@
     "quickLinks": {
       "viewSchedules": "My Schedules",
       "agenda": "Calendar",
-      "profile": "My Profile"
+      "profile": "My Profile",
+      "website": "Church Website"
     },
     "errorLoading": "Error loading personal panel data.",
     "stats": {
@@ -157,7 +159,8 @@
         "ministries": "Ministries",
         "schedules": "Schedules",
         "agenda": "Calendar",
-        "profile": "My Profile"
+        "profile": "My Profile",
+        "website": "Church Website"
       },
       "stats": {
         "ministries": "Leadership ministries",
@@ -698,8 +701,8 @@
       "ministrySearchEmpty": "No available ministry found.",
       "noSelectedMinistries": "No ministry selected.",
       "removeMinistryLabel": "Remove {name}",
-        "requiresScheduleLabel": "Schedule required",
-        "scheduleNotUsedLabel": "No schedule",
+      "requiresScheduleLabel": "Schedule required",
+      "scheduleNotUsedLabel": "No schedule",
       "descriptionLabel": "Description / Agenda",
       "descriptionPlaceholder": "Additional info or event schedule...",
       "editTooltip": "Edit event",

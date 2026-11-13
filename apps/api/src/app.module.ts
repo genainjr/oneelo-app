@@ -18,6 +18,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PwaModule } from './modules/pwa/pwa.module';
 import { FinanceiroModule } from './modules/financeiro/financeiro.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { WebsiteModule } from './modules/website/website.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -50,6 +51,7 @@ import { HealthController } from './health.controller';
     PwaModule,
     FinanceiroModule,
     DocumentsModule,
+    WebsiteModule,
   ],
   controllers: [HealthController],
   providers: [

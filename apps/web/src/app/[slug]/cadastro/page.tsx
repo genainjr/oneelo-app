@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { PublicJoinClient } from './join-client';
-import { getPublicTenantInfoServer } from './tenant-public';
+import { notFound } from 'next/navigation';
+import { PublicJoinClient } from '@/components/public-site/join/public-join-client';
+import { getPublicTenantInfoServer } from '@/components/public-site/join/tenant-public';
+import { isReservedSlug, normalizeSlug } from '@/lib/reserved-slugs';
 
-async function resolveOrigin() {
+async function resolveOriginInfo() {
   const headersList = await headers();
   const host =
     headersList.get('x-forwarded-host') ||
@@ -12,7 +14,8 @@ async function resolveOrigin() {
   const proto =
     headersList.get('x-forwarded-proto') ||
     (host.includes('localhost') ? 'http' : 'https');
-  return `${proto}://${host}`;
+  const isCustomDomain = Boolean(headersList.get('x-oneelo-custom-domain'));
+  return { origin: `${proto}://${host}`, isCustomDomain };
 }
 
 export async function generateMetadata({
@@ -21,14 +24,23 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const [origin, tenant] = await Promise.all([
-    resolveOrigin(),
-    getPublicTenantInfoServer(slug),
+  const cleanSlug = normalizeSlug(slug);
+  if (isReservedSlug(cleanSlug)) {
+    return {};
+  }
+
+  const [{ origin, isCustomDomain }, tenant] = await Promise.all([
+    resolveOriginInfo(),
+    getPublicTenantInfoServer(cleanSlug),
   ]);
 
-  const encodedSlug = encodeURIComponent(slug);
-  const pageUrl = `${origin}/join/${encodedSlug}`;
-  const ogImageUrl = `${origin}/join/${encodedSlug}/og`;
+  const encodedSlug = encodeURIComponent(cleanSlug);
+  const pageUrl = isCustomDomain
+    ? `${origin}/cadastro`
+    : `${origin}/${encodedSlug}/cadastro`;
+  const ogImageUrl = isCustomDomain
+    ? `${origin}/og`
+    : `${origin}/${encodedSlug}/og`;
 
   const churchName = tenant?.nome || 'Nossa Igreja';
   const title = tenant?.nome
@@ -88,7 +100,17 @@ export default async function PublicJoinPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const tenant = await getPublicTenantInfoServer(slug);
+  const cleanSlug = normalizeSlug(slug);
+  if (isReservedSlug(cleanSlug)) {
+    notFound();
+  }
 
-  return <PublicJoinClient slug={slug} initialTenant={tenant} />;
+  const [headerStore, tenant] = await Promise.all([
+    headers(),
+    getPublicTenantInfoServer(cleanSlug),
+  ]);
+  const isCustomDomain = Boolean(headerStore.get('x-oneelo-custom-domain'));
+  const homeHref = isCustomDomain ? '/' : `/${cleanSlug}`;
+
+  return <PublicJoinClient slug={cleanSlug} initialTenant={tenant} homeHref={homeHref} />;
 }

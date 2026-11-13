@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAdmin, CreateTenantPayload, UpdateTenantPayload, CreateTenantUserPayload } from '@/hooks/use-admin';
 import { Tenant, Plano } from '@/types';
 import { HttpError } from '@/lib/api';
+import { isReservedSlug, RESERVED_SLUG_ERROR_MESSAGE } from '@/lib/reserved-slugs';
 import { IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
 import { ModalShell, ModalError, ModalFooter } from '@/components/app/modal-shell';
 import { InputField, SelectField, PasswordField } from '@/components/app/form-field';
@@ -99,6 +100,10 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
     setLogoError('');
     setLoading(true);
     try {
+      if (isReservedSlug(form.slug)) {
+        setError(RESERVED_SLUG_ERROR_MESSAGE);
+        return;
+      }
       const created = await createTenant(form);
       if (logoFile && created.tenant?.id) {
         await uploadTenantLogo(created.tenant.id, logoFile);
@@ -160,7 +165,7 @@ function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSucc
 
           <div className="grid grid-cols-2 gap-3">
             <InputField label="Nome da Igreja" required value={form.nome} onChange={(e) => handleNomeChange(e.target.value)} placeholder="Igreja Exemplo" />
-            <InputField label="Slug (URL)" required value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder="igreja-exemplo" pattern="[a-z0-9-]+" />
+            <InputField label="Slug (URL)" required value={form.slug} onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} placeholder="igreja-exemplo" pattern="[a-z0-9-]+" error={form.slug && isReservedSlug(form.slug) ? RESERVED_SLUG_ERROR_MESSAGE : null} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -267,6 +272,10 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
     setError('');
     setLoading(true);
     try {
+      if (form.slug && isReservedSlug(form.slug)) {
+        setError(RESERVED_SLUG_ERROR_MESSAGE);
+        return;
+      }
       await updateTenant(tenant.id, form);
 
       if (selectedLogo) {
@@ -342,6 +351,7 @@ function EditTenantModal({ tenant, onClose, onSuccess }: { tenant: Tenant; onClo
               onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
               placeholder="igreja-exemplo"
               pattern="[a-z0-9-]+"
+              error={form.slug && isReservedSlug(form.slug) ? RESERVED_SLUG_ERROR_MESSAGE : null}
             />
           </div>
 

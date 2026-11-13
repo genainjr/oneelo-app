@@ -1,11 +1,79 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { locales, defaultLocale, type Locale } from './i18n/config';
+import { isPublicWebsitePath } from './lib/reserved-slugs';
+import {
+  extractHostname,
+  getCanonicalAppOrigin,
+  isCustomDomainAllowedPath,
+  isSystemHost,
+} from './lib/site-host';
 
 const AUTH_COOKIE = 'access_token';
 const LOCALE_COOKIE = 'NEXT_LOCALE';
+const DOMAIN_CACHE_TTL_MS = 60_000;
 
-const PUBLIC_PATHS = ['/', '/login', '/activate', '/locale', '/admin/login', '/validar-carteirinha', '/join'];
+interface DomainCacheEntry {
+  slug: string | null;
+  expiresAt: number;
+}
+
+const customDomainCache = new Map<string, DomainCacheEntry>();
+
+function getMiddlewareApiBase(): string {
+  return (
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:4001'
+  );
+}
+
+async function resolveSlugForCustomDomain(hostname: string): Promise<string | null> {
+  const now = Date.now();
+  const cached = customDomainCache.get(hostname);
+  if (cached && cached.expiresAt > now) {
+    return cached.slug;
+  }
+
+  try {
+    const res = await fetch(
+      `${getMiddlewareApiBase()}/api/public/site/resolve?domain=${encodeURIComponent(hostname)}`,
+      {
+        signal: AbortSignal.timeout(1500),
+      },
+    );
+
+    if (!res.ok) {
+      customDomainCache.set(hostname, {
+        slug: null,
+        expiresAt: now + 15_000,
+      });
+      return null;
+    }
+
+    const data = (await res.json()) as { slug?: unknown };
+    const slug =
+      typeof data.slug === 'string' && data.slug.trim() ? data.slug.trim() : null;
+
+    customDomainCache.set(hostname, {
+      slug,
+      expiresAt: now + DOMAIN_CACHE_TTL_MS,
+    });
+    return slug;
+  } catch {
+    return cached?.slug ?? null;
+  }
+}
+
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/activate',
+  '/locale',
+  '/admin/login',
+  '/validar-carteirinha',
+  '/join',
+];
 
 function detectLocale(request: NextRequest): Locale {
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
@@ -16,8 +84,10 @@ function detectLocale(request: NextRequest): Locale {
   const acceptLang = request.headers.get('accept-language') || '';
   for (const locale of locales) {
     const lang = locale.toLowerCase();
-    if (acceptLang.toLowerCase().includes(lang) ||
-        acceptLang.toLowerCase().includes(lang.substring(0, 2))) {
+    if (
+      acceptLang.toLowerCase().includes(lang) ||
+      acceptLang.toLowerCase().includes(lang.substring(0, 2))
+    ) {
       return locale;
     }
   }
@@ -38,11 +108,13 @@ function decodeJwtRole(token: string): string | null {
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = extractHostname(
+    request.headers.get('x-forwarded-host') || request.headers.get('host'),
+  );
 
   if (
-    PUBLIC_PATHS.some((p) => pathname === p || (p !== '/' && pathname.startsWith(p))) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.startsWith('/.well-known') ||
@@ -50,6 +122,53 @@ export function middleware(request: NextRequest) {
     pathname === '/sw.js' ||
     pathname === '/offline.html' ||
     /\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$/.test(pathname)
+  ) {
+    return NextResponse.next();
+  }
+
+  if (host && !isSystemHost(host)) {
+    if (isCustomDomainAllowedPath(pathname)) {
+      const slug = await resolveSlugForCustomDomain(host);
+      if (!slug) {
+        return new NextResponse('Domínio não configurado ou inativo.', {
+          status: 404,
+        });
+      }
+
+      const rewrittenPath =
+        pathname === '/' ? `/${slug}` : `/${slug}${pathname}`;
+      const rewriteUrl = request.nextUrl.clone();
+      rewriteUrl.pathname = rewrittenPath;
+
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-oneelo-custom-domain', host);
+      requestHeaders.set('x-oneelo-custom-slug', slug);
+
+      return NextResponse.rewrite(rewriteUrl, {
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    }
+
+    if (
+      pathname === '/login' ||
+      pathname.startsWith('/activate') ||
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/configuracoes')
+    ) {
+      return NextResponse.redirect(
+        new URL(`${pathname}${request.nextUrl.search}`, getCanonicalAppOrigin()),
+      );
+    }
+
+    return new NextResponse('Página não encontrada neste domínio.', { status: 404 });
+  }
+
+  if (
+    PUBLIC_PATHS.some((p) => pathname === p || (p !== '/' && pathname.startsWith(p))) ||
+    isPublicWebsitePath(pathname)
   ) {
     return NextResponse.next();
   }
@@ -87,7 +206,11 @@ export function middleware(request: NextRequest) {
     ];
     const allowedBasicPaths = ['/membros/visualizacao', '/configuracoes/notificacoes'];
 
-    if (allowedBasicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    if (
+      allowedBasicPaths.some(
+        (path) => pathname === path || pathname.startsWith(`${path}/`),
+      )
+    ) {
       return NextResponse.next();
     }
 
@@ -115,5 +238,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|\\.well-known/|manifest.webmanifest|sw.js|offline.html|api/|.*\\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|\\.well-known/|manifest.webmanifest|sw.js|offline.html|api/|.*\\.(?:jpg|jpeg|png|gif|svg|ico|webp|woff2?)$).*)',
+  ],
 };

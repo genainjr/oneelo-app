@@ -46,6 +46,18 @@ export function getTenantLogoPath(tenantId: string, file: Multer.File) {
   return `tenants/${tenantId}/logo/logo-${Date.now()}.${getImageExtension(file)}`;
 }
 
+export function getWebsiteBannerPath(tenantId: string, file: Multer.File) {
+  return `tenants/${tenantId}/website/banner-${Date.now()}.${getImageExtension(file)}`;
+}
+
+export function getWebsitePastorsPhotoPath(tenantId: string, file: Multer.File) {
+  return `tenants/${tenantId}/website/pastors-${Date.now()}.${getImageExtension(file)}`;
+}
+
+export function getWebsiteNewsImagePath(tenantId: string, newsId: string, file: Multer.File) {
+  return `tenants/${tenantId}/website/news/${newsId}/cover-${Date.now()}.${getImageExtension(file)}`;
+}
+
 export function validateFinancialReceiptUpload(file: Multer.File | undefined) {
   if (!file) {
     throw new BadRequestException('Comprovante é obrigatório.');

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   UnauthorizedException,
   ConflictException,
@@ -21,6 +22,11 @@ import {
   Plano,
 } from '@prisma/client';
 import { getDefaultStoredMemberLimit } from '../../common/utils/tenant-plan';
+import {
+  isReservedSlug,
+  normalizeSlug,
+  RESERVED_SLUG_ERROR_MESSAGE,
+} from '../../common/constants/reserved-slugs';
 import * as bcrypt from 'bcryptjs';
 import type { Multer } from 'multer';
 
@@ -97,8 +103,12 @@ export class SuperAdminService {
   }
 
   async createTenant(dto: CreateTenantDto, adminId: string, ip?: string) {
+    const cleanSlug = normalizeSlug(dto.slug);
+    if (isReservedSlug(cleanSlug)) {
+      throw new BadRequestException(RESERVED_SLUG_ERROR_MESSAGE);
+    }
     const slugExists = await this.prisma.tenant.findUnique({
-      where: { slug: dto.slug },
+      where: { slug: cleanSlug },
     });
     if (slugExists) throw new ConflictException('Slug já está em uso.');
 
@@ -116,7 +126,7 @@ export class SuperAdminService {
       const tenant = await tx.tenant.create({
         data: {
           nome: dto.nome,
-          slug: dto.slug,
+          slug: cleanSlug,
           plano,
           limiteMembros,
           email: dto.email,
@@ -159,7 +169,7 @@ export class SuperAdminService {
           ipAddress: ip ?? null,
           payloadAfter: {
             nome: dto.nome,
-            slug: dto.slug,
+            slug: cleanSlug,
             plano,
             limiteMembros,
           },
@@ -181,12 +191,18 @@ export class SuperAdminService {
     const tenant = await this.prisma.tenant.findUnique({ where: { id } });
     if (!tenant) throw new NotFoundException('Tenant não encontrado.');
 
-    if (dto.slug !== undefined && dto.slug !== tenant.slug) {
-      const existingSlug = await this.prisma.tenant.findUnique({
-        where: { slug: dto.slug },
-      });
-      if (existingSlug) {
-        throw new ConflictException('Já existe uma igreja com este slug.');
+    if (dto.slug !== undefined) {
+      const cleanSlug = normalizeSlug(dto.slug);
+      if (isReservedSlug(cleanSlug)) {
+        throw new BadRequestException(RESERVED_SLUG_ERROR_MESSAGE);
+      }
+      if (cleanSlug !== tenant.slug) {
+        const existingSlug = await this.prisma.tenant.findUnique({
+          where: { slug: cleanSlug },
+        });
+        if (existingSlug) {
+          throw new ConflictException('Já existe uma igreja com este slug.');
+        }
       }
     }
 
@@ -203,7 +219,7 @@ export class SuperAdminService {
       where: { id },
       data: {
         ...(dto.nome !== undefined && { nome: dto.nome }),
-        ...(dto.slug !== undefined && { slug: dto.slug }),
+        ...(dto.slug !== undefined && { slug: normalizeSlug(dto.slug) }),
         ...(dto.plano !== undefined && { plano: dto.plano }),
         ...(newLimiteMembros !== undefined && {
           limiteMembros: newLimiteMembros,

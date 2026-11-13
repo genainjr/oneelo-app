@@ -7,8 +7,10 @@ import {
   IsString,
   Matches,
   Min,
+  Validate,
 } from 'class-validator';
 import { Plano } from '@prisma/client';
+import { NotReservedSlugConstraint } from '../../../common/constants/reserved-slugs';
 
 export class UpdateTenantDto {
   @IsOptional()
@@ -20,6 +22,7 @@ export class UpdateTenantDto {
   @Matches(/^[a-z0-9-]+$/, {
     message: 'Slug deve conter apenas letras minúsculas, números e hífens.',
   })
+  @Validate(NotReservedSlugConstraint)
   slug?: string;
 
   @IsOptional()
