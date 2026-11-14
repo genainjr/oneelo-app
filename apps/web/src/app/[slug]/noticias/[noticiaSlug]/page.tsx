@@ -146,7 +146,7 @@ export default async function PublicTenantNewsDetailPage({
         <article className="mx-auto max-w-3xl px-4 sm:px-6">
           <Link
             href={backHref}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-700 hover:text-indigo-800"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent-ink hover:text-accent-ink-hover"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Voltar para {site.tenant.nome}</span>
@@ -193,7 +193,7 @@ export default async function PublicTenantNewsDetailPage({
             ))}
           </div>
 
-          <div className="mt-8 flex flex-col justify-between gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-6 sm:flex-row sm:items-center">
+          <div className="mt-8 flex flex-col justify-between gap-4 rounded-2xl border border-accent-soft-border bg-accent-soft/70 p-6 sm:flex-row sm:items-center">
             <div className="space-y-1">
               <p className="text-sm font-bold text-stone-900">
                 Deseja participar ou receber acompanhamento pastoral?
@@ -204,7 +204,7 @@ export default async function PublicTenantNewsDetailPage({
             </div>
             <Link
               href={cadastroHref}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-800"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground shadow-xs transition hover:bg-brand-hover"
             >
               <UserPlus className="h-4 w-4" />
               <span>Fazer Cadastro</span>

@@ -246,7 +246,7 @@ export default function EscalasVisualizacaoPage() {
             aria-expanded={exportChoiceOpen}
             aria-label="Compartilhar"
             title="Compartilhar"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-brand-foreground hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
           </button>
@@ -273,7 +273,7 @@ export default function EscalasVisualizacaoPage() {
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <StatCard title="Escalas" value={escalas.length} icon={<Calendar className="w-5 h-5" />} color="indigo" />
+        <StatCard title="Escalas" value={escalas.length} icon={<Calendar className="w-5 h-5" />} color="brand" />
         <StatCard title="Dias" value={totais.dias} icon={<List className="w-5 h-5" />} color="blue" />
         <StatCard title="Pendencias" value={totais.pendentes} icon={<AlertTriangle className="w-5 h-5" />} color="amber" />
       </div>
@@ -334,7 +334,7 @@ export default function EscalasVisualizacaoPage() {
               type="checkbox"
               checked={filterState.pendentesApenas}
               onChange={(event) => setFilterField('pendentesApenas', event.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 cursor-pointer"
+              className="h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring cursor-pointer"
             />
             Pendentes
           </label>

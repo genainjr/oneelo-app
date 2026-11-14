@@ -67,6 +67,7 @@ O projeto de adoção do OneElo Design System (ODS) avança de forma sustentáve
 * **DataTable**: Container genérico `DataTable<T>` para entidades tabulares, com paginação/ordenação e prop `renderMobileCard` que encapsula o fallback mobile (elimina `hidden md:block`/`md:hidden`). *Status: 100% de adoção nas telas tabulares alvo (`/admin`, `/membros/visualizacao`).*
 * **EntityCard**: Container de entidade presentation-only, com modos convenience e shell + skeleton nativo (`loading`). *Status: 100% de adoção nos grids alvo (`/agenda`, `/ministerios`) e como card mobile do `DataTable`.*
 * **EmptyState**: Estado vazio padronizado, delegável via props do `DataTable`. *Status: 100% de adoção em tabelas/listagens.*
+* **Tokens Semânticos de Tema (`--theme-*` / `data-brand-theme`)**: Fundação de tokens CSS e utilitários Tailwind v4 (`brand`, `accent-ink`, `accent-soft`, `accent-ring`, `sidebar-*`, `stat-brand-*`) em `globals.css`, conectada à resolução automática por tenant no `(dashboard)/layout.tsx`, telas de auth/onboarding, `Sidebar`, `BottomTabBar`, `StatCard` e manifesto PWA (`/api/pwa/[slug]/manifest.webmanifest`). *Status: 100% implementado (`unificacao-tema-tenant-plan.md`).*
 
 ---
 
@@ -79,7 +80,8 @@ O projeto de adoção do OneElo Design System (ODS) avança de forma sustentáve
 * **CRUDs (Mutações)**: ~100%
 * **Tabelas / Listagens**: ~95%
 * **Visualizações / Métricas**: ~95%
-* **Navegação (Layout Base)**: 0%
+* **Tokens Semânticos & Tema Multi-Tenant**: ~100% *(identidade Obsidiana + Âmbar unificada por tenant; One Elo Índigo preservado em rotas globais sem igreja)*
+* **Navegação (Layout Base)**: 0% *(estrutura/RBAC pendente da Fase 8; camada visual da Sidebar/BottomTabBar já tokenizada via `--theme-sidebar-*`)*
 * **Permissões (Visibilidade UI)**: 0%
 
 **Estimativa Global ODS:** **> 85%**

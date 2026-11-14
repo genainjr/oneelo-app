@@ -463,7 +463,7 @@ export default function ConfiguracoesPage() {
         </p>
         <button
           onClick={() => (window.location.href = "/")}
-          className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-all shadow-sm"
+          className="px-5 py-2 bg-brand hover:bg-brand-hover text-brand-foreground font-semibold text-sm rounded-xl transition-all shadow-sm"
         >
           {t("accessRestricted.backToDashboard")}
         </button>
@@ -474,7 +474,7 @@ export default function ConfiguracoesPage() {
   function renderUserRoleBadge(user: User) {
     const badges: Record<string, string> = {
       ADMIN: "bg-red-50 text-red-700 border-red-100",
-      STAFF: "bg-indigo-50 text-indigo-700 border-indigo-100",
+      STAFF: "bg-accent-soft text-accent-ink border-accent-soft-border",
       BASIC: "bg-gray-50 text-gray-600 border-gray-200",
     };
 
@@ -603,7 +603,7 @@ export default function ConfiguracoesPage() {
       CRIAR: "bg-emerald-50 text-emerald-700 border-emerald-100",
       ATUALIZAR: "bg-blue-50 text-blue-700 border-blue-100",
       DELETAR: "bg-rose-50 text-rose-700 border-rose-100",
-      LOGIN: "bg-indigo-50 text-indigo-700 border-indigo-100",
+      LOGIN: "bg-accent-soft text-accent-ink border-accent-soft-border",
       LOGOUT: "bg-gray-100 text-gray-600 border-gray-200",
     };
 
@@ -746,7 +746,7 @@ export default function ConfiguracoesPage() {
             className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
           >
             <svg
-              className="w-4 h-4 text-indigo-500"
+              className="w-4 h-4 text-accent-ink"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -901,7 +901,7 @@ export default function ConfiguracoesPage() {
         <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-8">
           <button
             onClick={() => setActiveTab("liturgia")}
-            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === "liturgia" ? "bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600" : "text-gray-500 hover:text-gray-700 sm:border-transparent"}`}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === "liturgia" ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink" : "text-gray-500 hover:text-gray-700 sm:border-transparent"}`}
           >
             <svg
               className="w-4 h-4 shrink-0"
@@ -925,7 +925,7 @@ export default function ConfiguracoesPage() {
               setActiveTab("usuarios");
               setUserPage(1);
             }}
-            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === "usuarios" ? "bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600" : "text-gray-500 hover:text-gray-700 sm:border-transparent"}`}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === "usuarios" ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink" : "text-gray-500 hover:text-gray-700 sm:border-transparent"}`}
           >
             <svg
               className="w-4 h-4 shrink-0"
@@ -949,7 +949,7 @@ export default function ConfiguracoesPage() {
               setActiveTab("audit");
               setAuditPage(1);
             }}
-            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === "audit" ? "bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600" : "text-gray-500 hover:text-gray-700 sm:border-transparent"}`}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-4 ${activeTab === "audit" ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink" : "text-gray-500 hover:text-gray-700 sm:border-transparent"}`}
           >
             <svg
               className="w-4 h-4 shrink-0"
@@ -974,7 +974,7 @@ export default function ConfiguracoesPage() {
           <div className="flex items-center sm:ml-auto">
             <button
               onClick={openCreate}
-              className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-all sm:w-auto sm:my-2"
+              className="flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-xl shadow-sm transition-all sm:w-auto sm:my-2"
             >
               <svg
                 className="w-4 h-4"
@@ -1250,7 +1250,7 @@ export default function ConfiguracoesPage() {
                   className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
                 >
                   <svg
-                    className="w-4 h-4 text-indigo-500"
+                    className="w-4 h-4 text-accent-ink"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"

@@ -68,7 +68,7 @@ const MODALIDADE_BADGE: Record<ModalidadeCulto, { label: string; className: stri
   },
   HIBRIDO: {
     label: 'Híbrido',
-    className: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    className: 'bg-accent-soft text-accent-ink border-accent-soft-border',
   },
 };
 
@@ -639,7 +639,7 @@ export default function ConfiguracoesSitePage() {
               href={`/${tenantSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition hover:bg-brand-hover"
             >
               <Globe className="h-4 w-4" />
               <span>Visualizar Site Público</span>
@@ -756,7 +756,7 @@ export default function ConfiguracoesSitePage() {
                 <button
                   type="submit"
                   disabled={savingConfig}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground shadow-xs transition hover:bg-brand-hover disabled:opacity-60"
                 >
                   {savingConfig ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -815,7 +815,7 @@ export default function ConfiguracoesSitePage() {
                       >
                         <div className="min-w-0 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">
+                            <span className="rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent-ink">
                               {getWeekdayLabel(item.diaSemana)} · {item.horario}
                             </span>
                             <span
@@ -981,7 +981,7 @@ export default function ConfiguracoesSitePage() {
                           href={`/${tenantSlug}/noticias/${item.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-accent-ink hover:text-accent-ink-hover"
                         >
                           <span>Abrir página</span>
                           <ExternalLink className="h-3 w-3" />
@@ -1104,7 +1104,7 @@ export default function ConfiguracoesSitePage() {
                 <button
                   type="submit"
                   disabled={savingConfig}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground shadow-xs transition hover:bg-brand-hover disabled:opacity-60"
                 >
                   {savingConfig ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1121,7 +1121,7 @@ export default function ConfiguracoesSitePage() {
             <form onSubmit={handleSaveConfig} className="space-y-6 p-6">
               <div className="space-y-4">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900">
-                  <MapPin className="h-4 w-4 text-indigo-600" />
+                  <MapPin className="h-4 w-4 text-accent-ink" />
                   Endereço e Atendimento
                 </h3>
 
@@ -1267,7 +1267,7 @@ export default function ConfiguracoesSitePage() {
                 <button
                   type="submit"
                   disabled={savingConfig}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground shadow-xs transition hover:bg-brand-hover disabled:opacity-60"
                 >
                   {savingConfig ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

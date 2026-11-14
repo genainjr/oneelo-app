@@ -153,7 +153,7 @@ interface SidebarProps {
 
 function SidebarUserAvatar({ user }: { user: AuthUser }) {
   return (
-    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-500 text-xs font-semibold text-white">
+    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand text-xs font-semibold text-brand-foreground">
       {user.membro?.fotoUrl ? (
         <img src={user.membro.fotoUrl} alt={user.membro.nome || user.nome} className="h-full w-full object-cover" />
       ) : (
@@ -180,8 +180,8 @@ const EXACT_ROOTS = [
   '/configuracoes/site',
 ];
 
-// Pill "Em breve" do menu — contraste legivel sobre o fundo indigo escuro
-const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-indigo-500/25 text-indigo-200';
+// Pill "Em breve" do menu — contraste legivel sobre o fundo da sidebar
+const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-sidebar-badge-bg text-sidebar-badge-text';
 
 export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
@@ -452,14 +452,14 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 flex flex-col bg-indigo-950 transition-all duration-300 lg:translate-x-0 lg:static lg:z-auto',
+          'fixed inset-y-0 left-0 z-30 flex flex-col bg-sidebar-bg transition-all duration-300 lg:translate-x-0 lg:static lg:z-auto',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'w-16' : 'w-64',
         )}
       >
         {/* Logo + collapse button */}
         <div className={cn(
-          'flex items-center border-b border-indigo-900 flex-shrink-0',
+          'flex items-center border-b border-sidebar-border flex-shrink-0',
           collapsed ? 'justify-center px-0 py-5' : 'gap-3 px-5 py-5',
         )}>
           {!collapsed && (
@@ -467,7 +467,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
               <img src={tenantIcon} alt={tenantName} className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="truncate text-base font-bold leading-tight text-white">{tenantName}</p>
-                <p className="text-xs text-indigo-400">por One Elo</p>
+                <p className="text-xs text-sidebar-muted">por One Elo</p>
               </div>
             </>
           )}
@@ -480,7 +480,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             <button
               onClick={() => setCollapsed(true)}
               title={t('collapse')}
-              className="flex-shrink-0 p-1.5 rounded-lg text-indigo-400 hover:bg-indigo-900 hover:text-white transition-all"
+              className="flex-shrink-0 p-1.5 rounded-lg text-sidebar-muted hover:bg-sidebar-hover hover:text-white transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -498,7 +498,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 setCollapsed(false);
               }}
               title={t('expand')}
-              className="flex items-center justify-center w-full p-2.5 rounded-xl text-indigo-400 hover:bg-indigo-900 hover:text-white transition-all mb-1"
+              className="flex items-center justify-center w-full p-2.5 rounded-xl text-sidebar-muted hover:bg-sidebar-hover hover:text-white transition-all mb-1"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -509,7 +509,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           {!user && !collapsed && (
             <div className="space-y-2 px-1 py-1" aria-hidden="true">
               {Array.from({ length: 5 }).map((_, idx) => (
-                <div key={idx} className="h-9 rounded-xl bg-indigo-900/40 animate-pulse" />
+                <div key={idx} className="h-9 rounded-xl bg-sidebar-surface/40 animate-pulse" />
               ))}
             </div>
           )}
@@ -521,7 +521,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             const sectionActive = pathname.startsWith(item.href) && item.href !== '/dashboard';
 
             const groupHeader = item.groupStart && !collapsed ? (
-              <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-500/80 select-none">
+              <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted/85 select-none">
                 {t(item.groupStart as any)}
               </p>
             ) : null;
@@ -536,10 +536,10 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                       onClick={() => toggleSection(item.href)}
                       title={sectionOpen ? t('collapseModules') : t('expandModules')}
                       className={cn(
-                        'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
+                        'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring',
                         sectionActive
-                          ? 'text-white bg-indigo-900/60'
-                          : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
+                          ? 'text-white bg-sidebar-surface/80'
+                          : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white',
                       )}
                     >
                       {item.icon}
@@ -574,10 +574,10 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                         }}
                         title={item.label}
                         className={cn(
-                          'flex items-center justify-center w-full px-0 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
+                          'flex items-center justify-center w-full px-0 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring',
                           sectionActive || collapsedSectionOpen?.href === item.href
-                            ? 'bg-indigo-500 text-white shadow-sm'
-                            : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
+                            ? 'bg-sidebar-active-bg text-sidebar-active-text shadow-sm'
+                            : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white',
                         )}
                       >
                         {item.icon}
@@ -585,21 +585,21 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
                       {collapsedSectionOpen?.href === item.href && (
                         <div
-                          className="fixed z-50 w-56 rounded-xl bg-indigo-900 border border-indigo-800 shadow-xl overflow-hidden"
+                          className="fixed z-50 w-56 rounded-xl bg-sidebar-surface border border-sidebar-popover-border shadow-xl overflow-hidden"
                           style={{
                             top: collapsedSectionOpen.top,
                             left: collapsedSectionOpen.left,
                             maxHeight: 'calc(100vh - 16px)',
                           }}
                         >
-                          <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-indigo-300 border-b border-indigo-800">
+                          <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-sidebar-muted border-b border-sidebar-popover-border">
                             {item.label}
                           </div>
                           <div className="py-1">
                             {item.children!.map((child) => (
                               <div key={child.href}>
                                 {child.divider && (
-                                  <div className="my-1 border-t border-indigo-800/80" />
+                                  <div className="my-1 border-t border-sidebar-popover-border/80" />
                                 )}
                                 <Link
                                   href={child.href}
@@ -609,10 +609,10 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                                     onClose();
                                   }}
                                   className={cn(
-                                    'flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
+                                    'flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring',
                                     isActive(child.href)
-                                      ? 'bg-indigo-800 text-white'
-                                      : 'text-indigo-300 hover:bg-indigo-800 hover:text-white',
+                                      ? 'bg-sidebar-active-bg text-sidebar-active-text font-semibold'
+                                      : 'text-sidebar-text hover:bg-sidebar-popover-hover hover:text-white',
                                   )}
                                 >
                                   {child.icon}
@@ -630,21 +630,21 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   )}
 
                   {!collapsed && sectionOpen && (
-                    <div className="mt-0.5 ml-3 pl-3 border-l border-indigo-900 space-y-0.5">
+                    <div className="mt-0.5 ml-3 pl-3 border-l border-sidebar-border space-y-0.5">
                       {item.children!.map((child) => (
                         <div key={child.href}>
                           {child.divider && (
-                            <div className="my-1 border-t border-indigo-900/60" />
+                            <div className="my-1 border-t border-sidebar-border/60" />
                           )}
                           <Link
                             href={child.href}
                             prefetch={!child.comingSoon}
                             onClick={onClose}
                             className={cn(
-                              'flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
+                              'flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring',
                               isActive(child.href)
-                                ? 'bg-indigo-500 text-white shadow-sm'
-                                : 'text-indigo-500 hover:bg-indigo-900 hover:text-indigo-300',
+                                ? 'bg-sidebar-active-bg text-sidebar-active-text font-semibold shadow-sm'
+                                : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text',
                             )}
                           >
                             {child.icon}
@@ -674,13 +674,13 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 }}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400',
+                  'flex items-center gap-3 rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring',
                   collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5',
                   active
-                    ? 'bg-indigo-500 text-white shadow-sm'
+                    ? 'bg-sidebar-active-bg text-sidebar-active-text font-semibold shadow-sm'
                     : item.comingSoon
-                      ? 'text-indigo-500 hover:bg-indigo-900 hover:text-indigo-300'
-                      : 'text-indigo-300 hover:bg-indigo-900 hover:text-white',
+                      ? 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text'
+                      : 'text-sidebar-text hover:bg-sidebar-hover hover:text-white',
                 )}
               >
                 {item.icon}
@@ -710,14 +710,14 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 setLocaleOpen((o) => !o);
               }}
               title={localeLabels[currentLocale]}
-              className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-indigo-900 transition-all"
+              className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-sidebar-hover transition-all"
             >
               <FlagIcon locale={currentLocale} className="w-6 h-4 rounded-sm" />
             </button>
           ) : (
             <button
               onClick={() => setLocaleOpen((o) => !o)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-indigo-300 hover:bg-indigo-900 hover:text-white text-xs transition-all"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sidebar-text hover:bg-sidebar-hover hover:text-white text-xs transition-all"
             >
               <FlagIcon locale={currentLocale} className="w-5 h-3.5 rounded-sm flex-shrink-0" />
               <span className="flex-1 text-left truncate">{localeLabels[currentLocale]}</span>
@@ -732,7 +732,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
           {localeOpen && (
             <div className={cn(
-              'absolute z-50 rounded-xl bg-indigo-900 border border-indigo-800 shadow-xl overflow-hidden',
+              'absolute z-50 rounded-xl bg-sidebar-surface border border-sidebar-popover-border shadow-xl overflow-hidden',
               collapsed
                 ? 'bottom-0 left-full ml-2 w-52'
                 : 'bottom-full left-0 right-0 mb-1',
@@ -744,8 +744,8 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   className={cn(
                     'w-full flex items-center gap-2.5 px-3 py-2.5 text-xs transition-colors',
                     locale === currentLocale
-                      ? 'bg-indigo-800 text-white'
-                      : 'text-indigo-300 hover:bg-indigo-800 hover:text-white',
+                      ? 'bg-sidebar-active-bg text-sidebar-active-text font-semibold'
+                      : 'text-sidebar-text hover:bg-sidebar-popover-hover hover:text-white',
                   )}
                 >
                   <FlagIcon locale={locale} className="w-5 h-3.5 rounded-sm flex-shrink-0" />
@@ -762,13 +762,13 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* User info + logout */}
-        <div className={cn('p-2 border-t border-indigo-900 flex-shrink-0', collapsed && 'flex flex-col items-center')}>
+        <div className={cn('p-2 border-t border-sidebar-border flex-shrink-0', collapsed && 'flex flex-col items-center')}>
           {user && !collapsed && (
             <div className="flex items-center gap-3 px-3 py-2 mb-1">
               <SidebarUserAvatar user={user} />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-medium truncate">{user.nome}</p>
-                <p className="text-indigo-400 text-xs truncate">{tCommon(`roles.${user.role}` as any)}</p>
+                <p className="text-sidebar-muted text-xs truncate">{tCommon(`roles.${user.role}` as any)}</p>
               </div>
             </div>
           )}
@@ -788,7 +788,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             disabled={loggingOut}
             title={collapsed ? t('logout') : undefined}
             className={cn(
-              'flex items-center gap-2 rounded-xl text-indigo-300 hover:bg-indigo-900 hover:text-white text-sm transition-all disabled:opacity-60',
+              'flex items-center gap-2 rounded-xl text-sidebar-text hover:bg-sidebar-hover hover:text-white text-sm transition-all disabled:opacity-60',
               collapsed ? 'justify-center w-10 h-10 p-0' : 'w-full px-3 py-2',
             )}
           >

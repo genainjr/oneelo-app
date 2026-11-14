@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getPublicSiteData } from '@/lib/api-website';
@@ -6,6 +6,10 @@ import { isReservedSlug, normalizeSlug } from '@/lib/reserved-slugs';
 import { isSafePublicHttpUrl } from '@/components/public-site/site-utils';
 
 export const revalidate = 60;
+
+export const viewport: Viewport = {
+  themeColor: '#09090b',
+};
 
 async function resolveOriginInfo(): Promise<{ origin: string; isCustomDomain: boolean }> {
   const headersList = await headers();
@@ -118,7 +122,10 @@ export default async function PublicTenantLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-stone-900 selection:bg-amber-400 selection:text-zinc-950">
+    <div
+      data-brand-theme="church"
+      className="min-h-screen bg-[#faf9f6] text-stone-900 selection:bg-amber-400 selection:text-zinc-950"
+    >
       {children}
     </div>
   );

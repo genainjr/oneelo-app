@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { NextIntlClientProvider } from 'next-intl';
@@ -9,6 +9,10 @@ const inter = Inter({
   variable: '--font-inter',
   display: 'swap',
 });
+
+export const viewport: Viewport = {
+  themeColor: '#0f2f73',
+};
 
 export const metadata: Metadata = {
   applicationName: 'One Elo',

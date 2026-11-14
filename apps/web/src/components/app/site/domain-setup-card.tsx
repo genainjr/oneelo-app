@@ -308,13 +308,13 @@ export function DomainSetupCard({
       </div>
 
       {!canUseCustomDomain && (
-        <div className="flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 text-sm text-indigo-900">
-          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700" />
+        <div className="flex items-start gap-3 rounded-2xl border border-accent-soft-border bg-accent-soft/70 p-4 text-sm text-slate-900">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-accent-ink" />
           <div className="space-y-1">
             <p className="font-semibold">
               Recurso exclusivo do plano Profissional (plano atual: {tenantPlano})
             </p>
-            <p className="text-xs leading-relaxed text-indigo-800/90">
+            <p className="text-xs leading-relaxed text-slate-700">
               No plano atual, o site público funciona normalmente em{' '}
               <strong>/{tenantSlug}</strong>. Para utilizar domínio próprio com
               certificado SSL automático na Vercel, solicite o upgrade para o plano
@@ -377,7 +377,7 @@ export function DomainSetupCard({
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground shadow-xs transition hover:bg-brand-hover disabled:opacity-60"
               >
                 {saving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -398,7 +398,7 @@ export function DomainSetupCard({
                     {verifying ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <RefreshCw className="h-4 w-4 text-indigo-600" />
+                      <RefreshCw className="h-4 w-4 text-accent-ink" />
                     )}
                     <span>Verificar Apontamento</span>
                   </button>
@@ -488,7 +488,7 @@ export function DomainSetupCard({
         <div
           className={`rounded-2xl border p-4 space-y-3 ${
             !showApexGuide && activeDomain
-              ? 'border-indigo-200 bg-indigo-50/30'
+              ? 'border-accent-soft-border bg-accent-soft/50'
               : 'border-gray-200 bg-white'
           }`}
         >
@@ -496,7 +496,7 @@ export function DomainSetupCard({
             <h3 className="text-sm font-bold text-gray-900">
               Opção 1: Subdomínio (CNAME — Recomendado)
             </h3>
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+            <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-ink">
               Ex: www ou site
             </span>
           </div>
@@ -519,7 +519,7 @@ export function DomainSetupCard({
             <div className="flex items-center justify-between gap-2">
               <span className="text-gray-500">Destino / Valor</span>
               <div className="flex items-center gap-1.5">
-                <code className="font-semibold text-indigo-700">
+                <code className="font-semibold text-accent-ink">
                   {dnsTargets.cnameTarget}
                 </code>
                 <button
@@ -542,7 +542,7 @@ export function DomainSetupCard({
         <div
           className={`rounded-2xl border p-4 space-y-3 ${
             showApexGuide
-              ? 'border-indigo-200 bg-indigo-50/30'
+              ? 'border-accent-soft-border bg-accent-soft/50'
               : 'border-gray-200 bg-white'
           }`}
         >
@@ -570,7 +570,7 @@ export function DomainSetupCard({
             <div className="flex items-center justify-between gap-2">
               <span className="text-gray-500">Endereço IPv4</span>
               <div className="flex items-center gap-1.5">
-                <code className="font-semibold text-indigo-700">
+                <code className="font-semibold text-accent-ink">
                   {dnsTargets.apexIp}
                 </code>
                 <button

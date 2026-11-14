@@ -171,24 +171,24 @@ export function InstallAppPrompt() {
       : `Instale ${tenantName} para abrir em uma janela própria, com experiência parecida com app.`;
 
   return (
-    <section className="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-indigo-950 shadow-sm">
+    <section className="mb-4 rounded-2xl border border-accent-soft-border bg-accent-soft px-4 py-3 text-slate-900 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white text-indigo-600 shadow-sm">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white text-accent-ink shadow-sm">
             {tenantIcon ? <Image src={tenantIcon} alt="" width={36} height={36} unoptimized className="h-full w-full object-cover" /> : <PhoneIcon />}
           </div>
           <div>
             <h2 className="text-sm font-bold">{title}</h2>
-            <p className="mt-0.5 text-sm text-indigo-800">{description}</p>
+            <p className="mt-0.5 text-sm text-slate-700">{description}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
           {!isIOSManualFlow && (
-            <button type="button" onClick={handleInstall} disabled={installing} className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-60">
+            <button type="button" onClick={handleInstall} disabled={installing} className="rounded-lg bg-brand px-3 py-2 text-xs font-bold text-brand-foreground shadow-sm transition hover:bg-brand-hover disabled:opacity-60">
               {installing ? 'Abrindo...' : 'Instalar'}
             </button>
           )}
-          <button type="button" onClick={handleDismiss} className="rounded-lg p-2 text-indigo-500 transition hover:bg-white hover:text-indigo-700" aria-label="Ocultar instalação do app">
+          <button type="button" onClick={handleDismiss} className="rounded-lg p-2 text-accent-ink transition hover:bg-white hover:text-accent-ink-hover" aria-label="Ocultar instalação do app">
             <CloseIcon />
           </button>
         </div>

@@ -59,7 +59,7 @@ export function FilterActions({
         <button
           type="submit"
           disabled={isLoadingOrDebouncing}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
         >
           <Search className="h-4 w-4" />
           {submitLabel}

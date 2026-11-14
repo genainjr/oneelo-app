@@ -128,7 +128,7 @@ export function InternationalPhoneInput({
         ? 'bg-stone-50 border-stone-200 text-zinc-950 focus:border-amber-500 focus:bg-white'
         : variant === 'auth'
           ? 'bg-white/10 border-white/20 text-white focus:ring-2 focus:ring-indigo-400 focus:border-transparent'
-          : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-indigo-500 focus:bg-white';
+          : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-accent-ring focus:bg-white';
 
   return (
     <div className={isDarkAuth ? undefined : 'space-y-1.5'}>

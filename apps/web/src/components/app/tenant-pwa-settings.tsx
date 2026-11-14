@@ -112,8 +112,8 @@ export function TenantPwaSettings({ tenant, onUpdated }: { tenant: TenantPwaPayl
             <span className="text-sm font-semibold text-gray-800">{t('shortName')}</span>
             <span className="mt-1 block text-xs text-gray-500">{t('shortNameHint')}</span>
             <div className="mt-2 flex gap-2">
-              <input value={shortName} onChange={(event) => setShortName(event.target.value.slice(0, 12))} maxLength={12} className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder={tenant.nome.slice(0, 12)} />
-              <button type="button" onClick={saveShortName} disabled={saving || !shortName.trim()} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">{saving ? t('saving') : t('save')}</button>
+              <input value={shortName} onChange={(event) => setShortName(event.target.value.slice(0, 12))} maxLength={12} className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent-ring focus:ring-2 focus:ring-accent-ring/20" placeholder={tenant.nome.slice(0, 12)} />
+              <button type="button" onClick={saveShortName} disabled={saving || !shortName.trim()} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-50">{saving ? t('saving') : t('save')}</button>
             </div>
           </label>
 
@@ -122,7 +122,7 @@ export function TenantPwaSettings({ tenant, onUpdated }: { tenant: TenantPwaPayl
             <p className="mt-1 text-xs text-gray-500">{t('iconHint')}</p>
             <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => uploadIcon(event.target.files?.[0])} />
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="rounded-xl border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50">{uploading ? t('processing') : previewUrl ? t('changeIcon') : t('uploadIcon')}</button>
+              <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="rounded-xl border border-accent-soft-border px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-soft disabled:opacity-50">{uploading ? t('processing') : previewUrl ? t('changeIcon') : t('uploadIcon')}</button>
               {previewUrl && <button type="button" onClick={removeIcon} disabled={removing} className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">{removing ? t('removing') : t('remove')}</button>}
             </div>
           </div>
@@ -143,7 +143,7 @@ export function TenantPwaSettings({ tenant, onUpdated }: { tenant: TenantPwaPayl
             {['rounded-none', 'rounded-full', 'rounded-[28%]'].map((shape, index) => (
               <div key={shape} className="space-y-2">
                 <div className={`flex h-20 w-20 items-center justify-center overflow-hidden bg-white shadow-sm ${shape}`}>
-                  {previewUrl ? <Image src={index === 0 ? squarePreviewUrl! : previewUrl} alt={t('previewAlt')} width={80} height={80} unoptimized className="h-full w-full object-cover" /> : <span className="text-xl font-bold text-indigo-700">OE</span>}
+                  {previewUrl ? <Image src={index === 0 ? squarePreviewUrl! : previewUrl} alt={t('previewAlt')} width={80} height={80} unoptimized className="h-full w-full object-cover" /> : <span className="text-xl font-bold text-accent-ink">OE</span>}
                 </div>
                 <span>{index === 0 ? t('squarePreview') : index === 1 ? t('circularPreview') : t('roundedPreview')}</span>
               </div>

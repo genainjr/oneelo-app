@@ -180,7 +180,7 @@ export default function MembrosVisualizacaoPage() {
       render: (membro) => (
         <div className="flex items-center gap-3">
           <InitialsAvatar name={membro.nome} src={membro.fotoUrl} alt={membro.nome} />
-          <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-indigo-600">
+          <button onClick={() => setSelected(membro)} className="text-left font-bold text-gray-900 hover:text-accent-ink">
             {getMemberDisplayName(membro)}
           </button>
         </div>
@@ -232,7 +232,7 @@ export default function MembrosVisualizacaoPage() {
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard title="Ativos" value={stats.ativos} icon={<Users className="w-5 h-5" />} color="emerald" />
-        <StatCard title="Com ministerio" value={stats.comMinisterio} icon={<Briefcase className="w-5 h-5" />} color="indigo" />
+        <StatCard title="Com ministerio" value={stats.comMinisterio} icon={<Briefcase className="w-5 h-5" />} color="brand" />
         <StatCard title="Aniversariantes do mes" value={stats.aniversariantes} icon={<Calendar className="w-5 h-5" />} color="amber" />
         <StatCard title="Sem telefone" value={stats.semContato} icon={<PhoneOff className="w-5 h-5" />} color="rose" />
       </div>
@@ -300,7 +300,7 @@ export default function MembrosVisualizacaoPage() {
               type="checkbox"
               checked={filterState.semTelefone}
               onChange={(event) => setFilterField('semTelefone', event.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 cursor-pointer"
+              className="h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring cursor-pointer"
             />
             Sem telefone
           </label>

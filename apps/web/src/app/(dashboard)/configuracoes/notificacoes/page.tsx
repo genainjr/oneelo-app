@@ -77,7 +77,7 @@ const STATUS_CONFIG: Record<
   },
   PROCESSING: {
     label: "Processando",
-    className: "bg-indigo-50 text-indigo-700 border border-indigo-200 animate-pulse",
+    className: "bg-cyan-50 text-cyan-700 border border-cyan-200 animate-pulse",
   },
   COMPLETED: {
     label: "Concluída",
@@ -115,7 +115,7 @@ const RECIPIENT_STATUS_CONFIG: Record<
   },
   PROCESSING: {
     label: "Enviando...",
-    className: "bg-indigo-50 text-indigo-700 border border-indigo-200 animate-pulse",
+    className: "bg-cyan-50 text-cyan-700 border border-cyan-200 animate-pulse",
   },
   SENT: {
     label: "Entregue",
@@ -637,7 +637,7 @@ export default function CentralNotificacoesPage() {
                 title="Editar notificação"
                 aria-label="Editar notificação"
               >
-                <Pencil className="w-4 h-4 text-indigo-500" />
+                <Pencil className="w-4 h-4 text-accent-ink" />
               </button>
               <button
                 type="button"
@@ -692,7 +692,7 @@ export default function CentralNotificacoesPage() {
           activeTab === "envios" ? (
             <button
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-xl shadow-sm transition max-sm:w-full max-sm:justify-center"
             >
               <Plus className="w-4 h-4" />
               <span>Nova Notificação</span>
@@ -710,7 +710,7 @@ export default function CentralNotificacoesPage() {
               onClick={() => setActiveTab("envios")}
               className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
                 activeTab === "envios"
-                  ? "bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600"
+                  ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink"
                   : "text-gray-500 hover:text-gray-700 sm:border-transparent"
               }`}
             >
@@ -722,7 +722,7 @@ export default function CentralNotificacoesPage() {
               onClick={() => setActiveTab("regras")}
               className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
                 activeTab === "regras"
-                  ? "bg-indigo-50 text-indigo-700 sm:bg-transparent sm:border-indigo-600 sm:text-indigo-600"
+                  ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink"
                   : "text-gray-500 hover:text-gray-700 sm:border-transparent"
               }`}
             >
@@ -938,7 +938,7 @@ export default function CentralNotificacoesPage() {
                         title="Editar notificação"
                         aria-label="Editar notificação"
                       >
-                        <Pencil className="w-3.5 h-3.5 text-indigo-500" />
+                        <Pencil className="w-3.5 h-3.5 text-accent-ink" />
                       </button>
                       <button
                         type="button"
@@ -997,7 +997,7 @@ export default function CentralNotificacoesPage() {
                 type="button"
                 onClick={handleRetryFailed}
                 disabled={retrying}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
               >
                 <RotateCcw
                   className={`w-4 h-4 ${retrying ? "animate-spin" : ""}`}
@@ -1014,7 +1014,7 @@ export default function CentralNotificacoesPage() {
       >
         {loadingDetail ? (
           <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-3">
-            <RefreshCw className="w-6 h-6 animate-spin text-indigo-600" />
+            <RefreshCw className="w-6 h-6 animate-spin text-accent-ink" />
             <p className="text-sm">Carregando auditoria de destinatários...</p>
           </div>
         ) : detailData ? (
@@ -1072,11 +1072,11 @@ export default function CentralNotificacoesPage() {
                   {detailData.stats.sent}
                 </p>
               </div>
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
-                <p className="text-xs text-indigo-600 font-medium">Lidas no App</p>
-                <p className="text-lg font-bold text-indigo-700">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-blue-600 font-medium">Lidas no App</p>
+                <p className="text-lg font-bold text-blue-700">
                   {detailData.stats.read ?? 0}{" "}
-                  <span className="text-xs font-normal text-indigo-500">
+                  <span className="text-xs font-normal text-blue-500">
                     ({detailData.stats.readPercentage ?? 0}%)
                   </span>
                 </p>
@@ -1256,7 +1256,7 @@ export default function CentralNotificacoesPage() {
               type="submit"
               form="notificacao-manual-form"
               disabled={creating}
-              className="px-5 py-2.5 sm:py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60 text-center"
+              className="px-5 py-2.5 sm:py-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60 text-center"
             >
               {creating
                 ? "Salvando..."
@@ -1316,9 +1316,9 @@ export default function CentralNotificacoesPage() {
           {!editingId && (
             <>
               {user?.role === "BASIC" ? (
-                <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 text-xs text-indigo-800">
+                <div className="rounded-xl bg-accent-soft border border-accent-soft-border p-3 text-xs text-gray-900">
                   <p className="font-semibold">Comunicado para o Ministério</p>
-                  <p className="mt-0.5 text-indigo-600">
+                  <p className="mt-0.5 text-accent-ink">
                     Como líder, seu comunicado será entregue a todos os membros ativos do ministério selecionado.
                   </p>
                 </div>
@@ -1379,7 +1379,7 @@ export default function CentralNotificacoesPage() {
                             userIds: Array.from(new Set([...prev.userIds, ...allWithPush])),
                           }));
                         }}
-                        className="text-xs font-medium text-indigo-600 hover:underline"
+                        className="text-xs font-medium text-accent-ink hover:underline"
                       >
                         Com push ({availableUsers.filter((u) => u.hasPush).length})
                       </button>
@@ -1399,7 +1399,7 @@ export default function CentralNotificacoesPage() {
                     placeholder="Filtrar por nome ou e-mail..."
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    className="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-accent-ring/20 focus:border-accent-ring transition-all"
                   />
 
                   {loadingUsers ? (
@@ -1437,7 +1437,7 @@ export default function CentralNotificacoesPage() {
                                       }));
                                     }
                                   }}
-                                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                  className="rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
                                 />
                                 <div className="min-w-0">
                                   <p className="font-medium text-gray-900 truncate">
@@ -1483,7 +1483,7 @@ export default function CentralNotificacoesPage() {
                       isScheduled: e.target.checked,
                     }))
                   }
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  className="rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
                 />
                 <span className="font-medium">Agendar envio para data e hora futura</span>
               </label>

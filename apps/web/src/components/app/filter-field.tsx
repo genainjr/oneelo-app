@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
  * `px-3 py-2 rounded-lg`. Sobrescreva pontualmente via `className`.
  */
 export const filterFieldClass =
-  'w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-indigo-400 focus:bg-white transition-all';
+  'w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-accent-ring focus:bg-white transition-all';
 
 function FilterLabel({ htmlFor, label }: { htmlFor?: string; label: string }) {
   return (

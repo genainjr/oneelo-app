@@ -123,7 +123,7 @@ function DayEventContext({
               </option>
             ))}
           </select>
-          {saving && <p className="mt-1 text-[10px] text-indigo-600">{tGrid('savingEventLink')}</p>}
+          {saving && <p className="mt-1 text-[10px] text-accent-ink">{tGrid('savingEventLink')}</p>}
           {error && (
             <button
               type="button"
@@ -273,7 +273,7 @@ export function EscalaGrid({
             <section key={dia.id} className="rounded-lg border border-gray-200 bg-white p-4">
               <div className={`${minimizado ? '' : 'mb-3'} flex items-start justify-between gap-3`}>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase text-indigo-600">{weekday}</p>
+                  <p className="text-xs font-bold uppercase text-accent-ink">{weekday}</p>
                   <p className="text-sm font-bold text-gray-900">{date}</p>
                   {diaTitle && (
                     <div className="mt-1 flex max-w-full flex-wrap items-center gap-1.5">
@@ -314,7 +314,7 @@ export function EscalaGrid({
                           onClick={() => moveDia(dia.id, -1)}
                           disabled={diaIndex === 0}
                           title={tGrid('dragHandle')}
-                          className="rounded-lg border border-gray-100 p-1.5 text-gray-300 transition-colors hover:text-indigo-500 disabled:opacity-30"
+                          className="rounded-lg border border-gray-100 p-1.5 text-gray-300 transition-colors hover:text-accent-ink disabled:opacity-30"
                         >
                           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
@@ -325,7 +325,7 @@ export function EscalaGrid({
                           onClick={() => moveDia(dia.id, 1)}
                           disabled={diaIndex === dias.length - 1}
                           title={tGrid('dragHandle')}
-                          className="rounded-lg border border-gray-100 p-1.5 text-gray-300 transition-colors hover:text-indigo-500 disabled:opacity-30"
+                          className="rounded-lg border border-gray-100 p-1.5 text-gray-300 transition-colors hover:text-accent-ink disabled:opacity-30"
                         >
                           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -362,7 +362,7 @@ export function EscalaGrid({
                             type="button"
                             onClick={() => onToggleCelula(dia.id, funcao.id, !isOculta)}
                             title={isOculta ? `Mostrar ${funcao.nome} neste dia` : `Ocultar ${funcao.nome} neste dia`}
-                            className="rounded-lg border border-gray-100 p-1.5 text-gray-300 transition-colors hover:text-indigo-500"
+                            className="rounded-lg border border-gray-100 p-1.5 text-gray-300 transition-colors hover:text-accent-ink"
                           >
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                               {isOculta ? (
@@ -490,7 +490,7 @@ export function EscalaGrid({
                     setOrderedDiaIds(newOrder);
                     await onReorderDias(newOrder);
                   } : undefined}
-                  className={`hover:bg-gray-50/60 transition-colors group ${isDragOver ? 'border-t-2 border-indigo-400' : ''}`}
+                  className={`hover:bg-gray-50/60 transition-colors group ${isDragOver ? 'border-t-2 border-accent-ring' : ''}`}
                 >
                   <td className="sticky left-0 z-10 w-56 min-w-56 bg-white group-hover:bg-gray-50/60 px-4 py-3 border-r border-gray-100">
                     <div className="flex items-start justify-between gap-1">
@@ -505,7 +505,7 @@ export function EscalaGrid({
                           </span>
                         )}
                         <div className="min-w-0">
-                          <div className="text-xs font-bold uppercase text-indigo-600">{weekday}</div>
+                          <div className="text-xs font-bold uppercase text-accent-ink">{weekday}</div>
                           <div className="text-sm font-bold text-gray-900">{date}</div>
                           {diaTitle && (
                             <div className="mt-1 flex max-w-[7.5rem] flex-wrap items-center gap-1.5">
@@ -570,7 +570,7 @@ export function EscalaGrid({
                                 type="button"
                                 onClick={() => onToggleCelula(dia.id, funcao.id, false)}
                                 title={`Mostrar ${funcao.nome} neste dia`}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-100 bg-white text-indigo-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-accent-soft-border bg-white text-accent-ink/70 transition-colors hover:bg-accent-soft hover:text-accent-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
                               >
                                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -595,7 +595,7 @@ export function EscalaGrid({
                             {cellItems.map((item) => (
                               <div
                                 key={item.id}
-                                className="flex items-center justify-between gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 group/item"
+                                className="flex items-center justify-between gap-1 bg-accent-soft border border-accent-soft-border rounded-lg px-2 py-1 group/item"
                               >
                                 <span className={`text-xs font-semibold truncate ${STATUS_CONFIRMACAO_COLOR[item.statusConfirmacao]}`}>
                                   {item.membro?.nome || '-'}
@@ -683,7 +683,7 @@ function AddDayControls({
     return (
       <button
         onClick={() => setAddingDia(true)}
-        className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+        className="flex items-center gap-1.5 text-xs font-semibold text-accent-ink hover:text-accent-ink-hover transition-colors"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -701,7 +701,7 @@ function AddDayControls({
         type="date"
         value={newDiaDate}
         onChange={(event) => setNewDiaDate(event.target.value)}
-        className="px-3 py-1.5 bg-white border-gray-200 text-sm focus:border-indigo-400"
+        className="px-3 py-1.5 bg-white border-gray-200 text-sm focus:border-accent-ring"
       />
       <InputField
         label={tGrid('addDayTitlePlaceholder')}
@@ -710,12 +710,12 @@ function AddDayControls({
         value={newDiaTitulo}
         onChange={(event) => setNewDiaTitulo(event.target.value)}
         placeholder={tGrid('addDayTitlePlaceholder')}
-        className="px-3 py-1.5 bg-white border-gray-200 text-sm focus:border-indigo-400"
+        className="px-3 py-1.5 bg-white border-gray-200 text-sm focus:border-accent-ring"
       />
       <button
         onClick={handleSaveDia}
         disabled={!newDiaDate || savingDia}
-        className="mt-6 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all"
+        className="mt-6 px-4 py-1.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-brand-foreground text-sm font-semibold rounded-xl transition-all"
       >
         {tGrid('addDay')}
       </button>
@@ -779,7 +779,7 @@ function CellMemberSelect({
       value={value}
       onChange={handleChange}
       disabled={saving}
-      className="w-full text-xs border-dashed border-gray-200 bg-transparent rounded-lg px-2 py-1 text-gray-400 hover:border-indigo-300 focus:border-indigo-400 cursor-pointer"
+      className="w-full text-xs border-dashed border-gray-200 bg-transparent rounded-lg px-2 py-1 text-gray-400 hover:border-accent-soft-border focus:border-accent-ring cursor-pointer"
     >
       <option value="">{addMemberLabel}</option>
       {options.map((ministerioMembro) => {

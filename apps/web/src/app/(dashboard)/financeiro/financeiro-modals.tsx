@@ -457,7 +457,7 @@ export function TransactionModal({
                     Abrir
                   </a>
                 )}
-                <button type="button" onClick={() => receiptInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                <button type="button" onClick={() => receiptInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover">
                   <Upload className="h-4 w-4" />
                   {form.receiptFile || transaction?.receiptUrl ? "Trocar" : "Inserir"}
                 </button>

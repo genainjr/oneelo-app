@@ -104,9 +104,14 @@ export function DashboardShell({
     if (!user.onboardingCompletedAt) router.replace('/onboarding');
   }, [pathname, router, user]);
 
+  const brandTheme = user && !user.tenant ? 'oneelo' : 'church';
+
   return (
     <AuthUserProvider value={{ user, setUser, loadingUser, refreshUser }}>
-      <div className="flex h-screen h-[100dvh] overflow-hidden bg-gray-50">
+      <div
+        data-brand-theme={brandTheme}
+        className="flex h-screen h-[100dvh] overflow-hidden bg-gray-50"
+      >
         <Sidebar
           user={user}
           isOpen={sidebarOpen}

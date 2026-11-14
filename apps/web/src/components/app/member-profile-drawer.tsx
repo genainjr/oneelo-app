@@ -75,7 +75,7 @@ export function MemberProfileDrawer({ membro, onClose }: MemberProfileDrawerProp
                     {ministerio.funcoesDisponiveis && ministerio.funcoesDisponiveis.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {ministerio.funcoesDisponiveis.map((funcao) => (
-                          <span key={funcao.funcaoId} className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                          <span key={funcao.funcaoId} className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent-ink">
                             {funcao.funcao?.nome}
                           </span>
                         ))}
@@ -100,9 +100,9 @@ export function MemberProfileDrawer({ membro, onClose }: MemberProfileDrawerProp
                     key={membroTag.tag.id}
                     className="rounded-full border px-2 py-0.5 text-xs font-semibold"
                     style={{
-                      borderColor: `${membroTag.tag.cor || '#6366f1'}30`,
-                      backgroundColor: `${membroTag.tag.cor || '#6366f1'}15`,
-                      color: membroTag.tag.cor || '#6366f1',
+                      borderColor: `${membroTag.tag.cor || '#71717a'}30`,
+                      backgroundColor: `${membroTag.tag.cor || '#71717a'}15`,
+                      color: membroTag.tag.cor || '#71717a',
                     }}
                   >
                     {membroTag.tag.nome}

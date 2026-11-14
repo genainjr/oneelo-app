@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, FormEvent, Suspense } from 'react';
+import { useState, useEffect, FormEvent, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, Eye, EyeOff, Loader2, LogIn, UserPlus } from 'lucide-react';
 import { api, HttpError } from '@/lib/api';
 import { getPostLoginTarget, isSafeAppRedirect } from '@/lib/auth-redirect';
-import { saveCachedTenantPwa } from '@/lib/pwa-branding';
+import { saveCachedTenantPwa, syncThemeColorMeta } from '@/lib/pwa-branding';
 import { AuthUser } from '@/types';
 import { InternationalPhoneInput } from '@/components/app/international-phone-input';
 import { ChurchBrandMark } from '@/components/public-site/church-brand-mark';
@@ -29,6 +29,10 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
   const isChurchBranded = Boolean(initialChurch);
+
+  useEffect(() => {
+    syncThemeColorMeta(isChurchBranded ? '#09090b' : '#0f2f73');
+  }, [isChurchBranded]);
 
   const [loginMode, setLoginMode] = useState<LoginMode>('email');
   const [identificador, setIdentificador] = useState('');
@@ -382,7 +386,10 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
 
   if (isChurchBranded) {
     return (
-      <div className="public-site-root relative flex min-h-screen w-full items-center justify-center overflow-x-clip bg-zinc-950 px-4 py-10 text-zinc-100">
+      <div
+        data-brand-theme="church"
+        className="public-site-root relative flex min-h-screen w-full items-center justify-center overflow-x-clip bg-zinc-950 px-4 py-10 text-zinc-100"
+      >
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:48px_48px]"
