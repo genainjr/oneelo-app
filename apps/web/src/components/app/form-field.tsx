@@ -5,7 +5,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const fieldClass =
-  'w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all disabled:opacity-50';
+  'w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-accent-ring focus:bg-white transition-all disabled:opacity-50';
 
 interface FieldWrapperProps {
   id?: string;
@@ -128,7 +128,7 @@ export function CheckboxField({
       <input
         id={id}
         type="checkbox"
-        className={cn('mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600', className)}
+        className={cn('mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring', className)}
         {...props}
       />
       <span>

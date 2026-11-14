@@ -192,7 +192,7 @@ export function ProfileNotificationSettings() {
               className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition shadow-xs shrink-0 max-sm:w-full max-sm:justify-center ${
                 pushStatus === 'enabled'
                   ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-300'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800'
+                  : 'bg-brand text-brand-foreground hover:bg-brand-hover'
               } disabled:opacity-50`}
             >
               {pushLoading ? (
@@ -247,7 +247,7 @@ export function ProfileNotificationSettings() {
             {/* Escalas de Serviço */}
             <div className="p-4 flex items-center justify-between gap-4 hover:bg-gray-50/50 transition">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 shrink-0 mt-0.5">
+                <div className="p-2 rounded-lg bg-accent-soft text-accent-ink shrink-0 mt-0.5">
                   <Clock className="w-4 h-4" />
                 </div>
                 <div className="space-y-0.5">
@@ -270,12 +270,12 @@ export function ProfileNotificationSettings() {
                 disabled={savingKey === 'notifySchedules'}
                 onClick={() => handleTogglePreference('notifySchedules')}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                  preferences.notifySchedules ? 'bg-indigo-600' : 'bg-gray-200'
+                  preferences.notifySchedules ? 'bg-brand' : 'bg-gray-200'
                 } disabled:opacity-50`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                    preferences.notifySchedules ? 'translate-x-5' : 'translate-x-0'
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    preferences.notifySchedules ? 'translate-x-5 bg-brand-foreground' : 'translate-x-0 bg-white'
                   }`}
                 />
               </button>
@@ -302,12 +302,12 @@ export function ProfileNotificationSettings() {
                 disabled={savingKey === 'notifyEvents'}
                 onClick={() => handleTogglePreference('notifyEvents')}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                  preferences.notifyEvents ? 'bg-indigo-600' : 'bg-gray-200'
+                  preferences.notifyEvents ? 'bg-brand' : 'bg-gray-200'
                 } disabled:opacity-50`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                    preferences.notifyEvents ? 'translate-x-5' : 'translate-x-0'
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    preferences.notifyEvents ? 'translate-x-5 bg-brand-foreground' : 'translate-x-0 bg-white'
                   }`}
                 />
               </button>
@@ -334,12 +334,12 @@ export function ProfileNotificationSettings() {
                 disabled={savingKey === 'notifyBirthdays'}
                 onClick={() => handleTogglePreference('notifyBirthdays')}
                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                  preferences.notifyBirthdays ? 'bg-indigo-600' : 'bg-gray-200'
+                  preferences.notifyBirthdays ? 'bg-brand' : 'bg-gray-200'
                 } disabled:opacity-50`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                    preferences.notifyBirthdays ? 'translate-x-5' : 'translate-x-0'
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    preferences.notifyBirthdays ? 'translate-x-5 bg-brand-foreground' : 'translate-x-0 bg-white'
                   }`}
                 />
               </button>

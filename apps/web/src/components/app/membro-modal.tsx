@@ -166,7 +166,7 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
             type="submit"
             form="membro-form"
             disabled={loading}
-            className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
+            className="px-5 py-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
           >
             {loading ? 'Salvando...' : 'Salvar'}
           </button>

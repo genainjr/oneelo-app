@@ -194,7 +194,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
       bodyClassName="p-4 sm:p-6"
       title={
         <div className="flex items-center gap-2">
-          <FileSpreadsheet className="h-5 w-5 text-indigo-600" />
+          <FileSpreadsheet className="h-5 w-5 text-accent-ink" />
           <span>Importar Membros via Planilha</span>
         </div>
       }
@@ -212,12 +212,12 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
         {step === 'upload' && (
           <div className="space-y-6 py-2">
             {/* Banner para download do modelo */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4.5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-accent-soft-border bg-accent-soft/60 p-4.5">
               <div className="space-y-1">
-                <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Precisa do modelo padrão?
                 </h4>
-                <p className="text-xs text-indigo-700/90">
+                <p className="text-xs text-accent-ink">
                   Baixe nossa planilha pré-formatada com as colunas corretas, exemplos e listas suspensas.
                 </p>
               </div>
@@ -225,7 +225,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                 type="button"
                 onClick={handleDownloadTemplate}
                 disabled={downloadingTemplate}
-                className="w-full sm:w-auto inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-indigo-600 border border-indigo-200 shadow-2xs hover:bg-indigo-50/80 transition-all disabled:opacity-50"
+                className="w-full sm:w-auto inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-accent-ink border border-accent-soft-border shadow-2xs hover:bg-accent-soft transition-all disabled:opacity-50"
               >
                 {downloadingTemplate ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -246,7 +246,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                 }
               }}
               onClick={() => fileInputRef.current?.click()}
-              className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/60 p-8 text-center transition-all cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/20 ${
+              className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/60 p-8 text-center transition-all cursor-pointer hover:border-accent-ring hover:bg-accent-soft/40 ${
                 uploading ? 'pointer-events-none opacity-60' : ''
               }`}
             >
@@ -262,7 +262,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                 className="hidden"
               />
 
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 shadow-2xs mb-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-accent-ink shadow-2xs mb-3">
                 {uploading ? (
                   <Loader2 className="h-7 w-7 animate-spin" />
                 ) : (
@@ -365,7 +365,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                   <label
                     className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all ${
                       estrategiaDuplicados === 'SKIP'
-                        ? 'border-indigo-600 bg-indigo-50/30'
+                        ? 'border-accent-ink bg-accent-soft/50'
                         : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
@@ -375,7 +375,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                       value="SKIP"
                       checked={estrategiaDuplicados === 'SKIP'}
                       onChange={() => setEstrategiaDuplicados('SKIP')}
-                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                      className="mt-0.5 accent-accent-ring text-accent-ink focus:ring-accent-ring"
                     />
                     <div>
                       <strong className="font-bold text-gray-900 block">Pular duplicados (Recomendado)</strong>
@@ -386,7 +386,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                   <label
                     className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-all ${
                       estrategiaDuplicados === 'UPDATE'
-                        ? 'border-indigo-600 bg-indigo-50/30'
+                        ? 'border-accent-ink bg-accent-soft/50'
                         : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
@@ -396,7 +396,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                       value="UPDATE"
                       checked={estrategiaDuplicados === 'UPDATE'}
                       onChange={() => setEstrategiaDuplicados('UPDATE')}
-                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                      className="mt-0.5 accent-accent-ring text-accent-ink focus:ring-accent-ring"
                     />
                     <div>
                       <strong className="font-bold text-gray-900 block">Atualizar cadastros existentes</strong>
@@ -422,7 +422,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                     onClick={() => setActiveFilterTab(t.id as FilterTab)}
                     className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                       activeFilterTab === t.id
-                        ? 'bg-gray-900 text-white shadow-2xs'
+                        ? 'bg-brand text-brand-foreground shadow-2xs'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
@@ -543,7 +543,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                   preview.limitePlano.excedeuLimite ||
                   (preview.validosCount === 0 && (preview.duplicadosCount === 0 || estrategiaDuplicados === 'SKIP'))
                 }
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-2xs hover:bg-indigo-700 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-bold text-brand-foreground shadow-2xs hover:bg-brand-hover transition-all disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {confirming ? (
                   <>
@@ -587,9 +587,9 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                 <span className="text-[10px] font-bold text-emerald-700 uppercase block">Inseridos</span>
                 <span className="text-lg font-black text-emerald-800">{confirmResult.inseridos}</span>
               </div>
-              <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 text-center">
-                <span className="text-[10px] font-bold text-indigo-700 uppercase block">Atualizados</span>
-                <span className="text-lg font-black text-indigo-800">{confirmResult.atualizados}</span>
+              <div className="rounded-xl border border-accent-soft-border bg-accent-soft/70 p-3 text-center">
+                <span className="text-[10px] font-bold text-accent-ink uppercase block">Atualizados</span>
+                <span className="text-lg font-black text-slate-900">{confirmResult.atualizados}</span>
               </div>
               <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-center">
                 <span className="text-[10px] font-bold text-gray-500 uppercase block">Pulados</span>
@@ -604,7 +604,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                   onSuccess();
                   handleClose();
                 }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-2.5 text-xs font-bold text-white shadow-2xs hover:bg-black transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-2.5 text-xs font-bold text-brand-foreground shadow-2xs hover:bg-brand-hover transition-all"
               >
                 Concluir e Ver Membros
                 <ArrowRight className="h-4 w-4" />

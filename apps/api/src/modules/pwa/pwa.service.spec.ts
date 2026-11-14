@@ -10,7 +10,11 @@ describe('PwaService', () => {
     findFirst.mockResolvedValue({ id: 'tenant-1', nome: 'Igreja', pwaShortName: 'Igreja' });
     const result = await service.getManifest('igreja');
     expect(result.version).toBe('oneelo');
-    expect(result.manifest).toMatchObject({ name: 'One Elo', short_name: 'One Elo' });
+    expect(result.manifest).toMatchObject({
+      name: 'One Elo',
+      short_name: 'One Elo',
+      theme_color: '#0f2f73',
+    });
   });
 
   it('retorna manifesto personalizado com id estavel do tenant', async () => {
@@ -29,8 +33,9 @@ describe('PwaService', () => {
       short_name: 'Comunidade',
       id: '/pwa/tenant/tenant-1',
       start_url: '/dashboard?source=pwa',
+      theme_color: '#09090b',
     });
-    expect(result.version).toBe(`${new Date('2026-07-18T12:00:00Z').getTime()}-3`);
+    expect(result.version).toBe(`${new Date('2026-07-18T12:00:00Z').getTime()}-4`);
     expect(result.manifest.icons).toEqual(expect.arrayContaining([
       expect.objectContaining({ src: expect.stringContaining('icon-192.png?v='), purpose: 'any' }),
       expect.objectContaining({ src: expect.stringContaining('icon-512.png?v='), purpose: 'any' }),

@@ -1,6 +1,6 @@
 import type { AuthUser } from '@/types';
 
-export const TENANT_MANIFEST_REVISION = '3';
+export const TENANT_MANIFEST_REVISION = '4';
 const TENANT_PWA_CACHE_KEY = 'oneelo:tenant-pwa-meta';
 
 export type TenantPwaBranding = NonNullable<AuthUser['tenant']>;
@@ -55,6 +55,22 @@ export function clearCachedTenantPwa(): void {
     localStorage.removeItem(TENANT_PWA_CACHE_KEY);
   } catch {
     // ignore storage errors
+  }
+}
+
+export function syncThemeColorMeta(themeColor: string): void {
+  if (typeof document === 'undefined') return;
+
+  let themeColorMeta = document.head.querySelector<HTMLMetaElement>(
+    'meta[name="theme-color"]',
+  );
+  if (!themeColorMeta) {
+    themeColorMeta = document.createElement('meta');
+    themeColorMeta.name = 'theme-color';
+    document.head.appendChild(themeColorMeta);
+  }
+  if (themeColorMeta.content !== themeColor) {
+    themeColorMeta.content = themeColor;
   }
 }
 
@@ -118,6 +134,8 @@ export function syncTenantPwaHead(tenant?: TenantPwaBranding | null): void {
   if (appNameMeta.content !== appTitle) {
     appNameMeta.content = appTitle;
   }
+
+  syncThemeColorMeta(tenant ? '#09090b' : '#0f2f73');
 
   if (customPwa && tenant?.nome && !document.title.includes(tenant.nome)) {
     document.title = `${tenant.nome} | One Elo`;

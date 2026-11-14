@@ -89,7 +89,7 @@ export function SearchCombobox<T extends SearchComboboxOption>({
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-9 text-sm transition-all focus:border-indigo-500 focus:bg-white focus:outline-none disabled:opacity-50"
+          className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-9 text-sm transition-all focus:border-accent-ring focus:bg-white focus:outline-none disabled:opacity-50"
         />
         {selected && (
           <button type="button" onClick={onClear} aria-label="Limpar seleção" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600">
@@ -103,7 +103,7 @@ export function SearchCombobox<T extends SearchComboboxOption>({
               const secondaryText = getSecondaryText?.(option);
               const displayText = getDisplayText?.(option) ?? option.nome ?? '';
               return (
-                <button key={option.id} type="button" role="option" aria-selected={selected?.id === option.id} onClick={() => handleSelect(option)} className="flex w-full flex-col px-4 py-2.5 text-left transition-colors hover:bg-indigo-50">
+                <button key={option.id} type="button" role="option" aria-selected={selected?.id === option.id} onClick={() => handleSelect(option)} className="flex w-full flex-col px-4 py-2.5 text-left transition-colors hover:bg-accent-soft">
                   <span className="text-sm font-semibold text-gray-800">{displayText}</span>
                   {secondaryText && <span className="text-xs text-gray-400">{secondaryText}</span>}
                 </button>

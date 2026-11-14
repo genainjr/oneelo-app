@@ -28,8 +28,8 @@ export function WeekdaySelector({ selectedDays, onToggle, getLabel, ariaLabel }:
             onClick={() => onToggle(value)}
             className={`inline-flex h-8 items-center justify-center rounded-xl border px-3 text-xs font-bold transition-all select-none ${
               selected
-                ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
-                : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-300 hover:text-indigo-600'
+                ? 'border-brand bg-brand text-brand-foreground shadow-sm'
+                : 'border-gray-200 bg-white text-gray-500 hover:border-accent-soft-border hover:text-accent-ink'
             }`}
           >
             {getLabel(key)}

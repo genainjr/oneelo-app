@@ -59,11 +59,11 @@ export function JoinLinkCard({ slug, tenantName }: JoinLinkCardProps) {
 
   return (
     <>
-      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/20 to-indigo-50/40 p-6 shadow-xs">
+      <div className="rounded-2xl border border-accent-soft-border bg-gradient-to-br from-white to-accent-soft/60 p-6 shadow-xs">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2 max-w-xl">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-brand-foreground shadow-xs">
                 <Smartphone className="h-4 w-4" />
               </span>
               <h3 className="text-base font-semibold text-gray-900">
@@ -111,7 +111,7 @@ export function JoinLinkCard({ slug, tenantName }: JoinLinkCardProps) {
               onClick={() => setQrModalOpen(true)}
               className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-2xs hover:bg-gray-50 active:scale-95 transition-all"
             >
-              <QrCode className="h-4 w-4 text-indigo-600" />
+              <QrCode className="h-4 w-4 text-accent-ink" />
               <span>Ver QR Code</span>
             </button>
 
@@ -182,7 +182,7 @@ export function JoinLinkCard({ slug, tenantName }: JoinLinkCardProps) {
                 type="button"
                 onClick={handleDownloadQr}
                 disabled={!qrDataUrl}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground shadow-xs hover:bg-brand-hover disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
                 Baixar Imagem PNG

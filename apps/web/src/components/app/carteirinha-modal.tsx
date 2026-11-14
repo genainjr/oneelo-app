@@ -289,9 +289,9 @@ export function CarteirinhaModal({
           )}
         </div>
         <span
-          className={`rounded-md bg-indigo-600 ${
+          className={`rounded-md bg-brand ${
             isLarge ? 'px-2.5 py-0.5 text-[10px] sm:text-xs' : 'px-2 py-0.5 text-[9px]'
-          } font-black tracking-wider text-white uppercase shadow-2xs`}
+          } font-black tracking-wider text-brand-foreground uppercase shadow-2xs`}
         >
           Carteira de Membro
         </span>
@@ -319,14 +319,14 @@ export function CarteirinhaModal({
           >
             {displayName}
           </h4>
-          <p className={`${isLarge ? 'text-xs sm:text-sm font-bold' : 'text-xs font-bold'} text-indigo-600 uppercase tracking-wide mt-0.5`}>
+          <p className={`${isLarge ? 'text-xs sm:text-sm font-bold' : 'text-xs font-bold'} text-accent-ink uppercase tracking-wide mt-0.5`}>
             {roleLabel}
           </p>
           <div className="mt-1.5">
             <span
-              className={`inline-block bg-indigo-50 border border-indigo-100 rounded-md ${
+              className={`inline-block bg-accent-soft border border-accent-soft-border rounded-md ${
                 isLarge ? 'px-2.5 py-0.5 text-[11px] sm:text-xs' : 'px-1.5 py-0.5 text-[9.5px]'
-              } font-bold text-indigo-700 truncate ${isLarge ? 'max-w-[300px]' : 'max-w-[180px]'}`}
+              } font-bold text-accent-ink truncate ${isLarge ? 'max-w-[300px]' : 'max-w-[180px]'}`}
             >
               {churchName}
             </span>
@@ -417,7 +417,7 @@ export function CarteirinhaModal({
                 alt="QR Code Autenticidade"
                 className={`${isLarge ? 'h-24 w-24 sm:h-28 sm:w-28' : 'h-16 w-16'} object-contain`}
               />
-              <span className="mt-1 text-[8.5px] sm:text-[10px] font-bold text-indigo-600 group-hover:underline uppercase tracking-tight flex items-center gap-0.5">
+              <span className="mt-1 text-[8.5px] sm:text-[10px] font-bold text-accent-ink group-hover:underline uppercase tracking-tight flex items-center gap-0.5">
                 Validar ↗
               </span>
             </a>
@@ -514,7 +514,7 @@ export function CarteirinhaModal({
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-[10.5px] text-slate-200 hover:bg-slate-700 font-semibold transition-colors"
                 title={isCnhMode ? 'Mudar para visualização horizontal pequena' : 'Mudar para modo CNH ampliado'}
               >
-                <RotateCw className="h-3 w-3 text-indigo-400" />
+                <RotateCw className="h-3 w-3 text-sidebar-active-text" />
                 <span>{isCnhMode ? 'Padrão' : 'Girar'}</span>
               </button>
             )}
@@ -535,7 +535,7 @@ export function CarteirinhaModal({
             {isMobileCnhActive ? (
               <>
                 <span>Apresente com o celular deitado</span>
-                <span className="text-indigo-400 font-semibold">• Deslize para verso</span>
+                <span className="text-sidebar-active-text font-semibold">• Deslize para verso</span>
               </>
             ) : (
               <span>Deslize para o lado para ver frente, verso e QR Code</span>
@@ -725,7 +725,7 @@ export function CarteirinhaModal({
             type="button"
             onClick={handleEmitir}
             disabled={downloading}
-            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-indigo-500 disabled:opacity-50 transition-colors w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-2.5 text-xs sm:text-sm font-bold text-brand-foreground shadow-xs hover:bg-brand-hover disabled:opacity-50 transition-colors w-full sm:w-auto"
           >
             {downloading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

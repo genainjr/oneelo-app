@@ -11,7 +11,7 @@ export function InitialsAvatar({ name, src, alt }: { name: string; src?: string 
   }
 
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold uppercase text-indigo-700">
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold uppercase text-accent-ink">
       {name.substring(0, 2)}
     </div>
   );

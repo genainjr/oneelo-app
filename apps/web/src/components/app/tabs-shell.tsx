@@ -67,7 +67,7 @@ export function TabsShell({
               className={cn(
                 'flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors',
                 isActive
-                  ? 'border-indigo-600 text-indigo-600'
+                  ? 'border-accent-ink text-accent-ink'
                   : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200',
                 tab.disabled && 'opacity-40 cursor-not-allowed pointer-events-none',
               )}
@@ -78,7 +78,7 @@ export function TabsShell({
                   className={cn(
                     'inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-bold',
                     isActive
-                      ? 'bg-indigo-100 text-indigo-700'
+                      ? 'bg-accent-soft text-accent-ink'
                       : 'bg-gray-100 text-gray-500',
                   )}
                 >

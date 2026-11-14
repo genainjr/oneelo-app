@@ -255,7 +255,7 @@ export default function AgendaVisualizacaoPage() {
                 aria-expanded={exportChoiceOpen}
                 aria-label="Compartilhar"
                 title="Compartilhar"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-brand-foreground hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
               </button>
@@ -285,7 +285,7 @@ export default function AgendaVisualizacaoPage() {
         <ExportShareErrorBanner error={exportError} />
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard title={t('view.stats.total')} value={stats.total} icon={<CalendarDays className="w-5 h-5" />} color="indigo" />
+          <StatCard title={t('view.stats.total')} value={stats.total} icon={<CalendarDays className="w-5 h-5" />} color="brand" />
           <StatCard title={t('view.stats.scheduled')} value={stats.agendados} icon={<CircleDashed className="w-5 h-5" />} color="blue" />
           <StatCard title={t('view.stats.completed')} value={stats.realizados} icon={<ListChecks className="w-5 h-5" />} color="emerald" />
           <StatCard title={t('view.stats.cancelled')} value={stats.cancelados} icon={<TriangleAlert className="w-5 h-5" />} color="rose" />

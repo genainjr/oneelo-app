@@ -51,7 +51,7 @@ export function EscalaReadonlyGrid({ escala }: EscalaReadonlyGridProps) {
             <section key={dia.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
               <div className="flex items-start justify-between gap-4 bg-gray-50 px-4 py-3">
                 <div>
-                  <p className="text-xs font-bold uppercase text-indigo-600">{weekday}</p>
+                  <p className="text-xs font-bold uppercase text-accent-ink">{weekday}</p>
                   <p className="text-sm font-bold text-gray-900">{date}</p>
                   {diaTitle && (
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
@@ -123,7 +123,7 @@ export function EscalaReadonlyGrid({ escala }: EscalaReadonlyGridProps) {
               <div className={minimizado ? '' : 'mb-3'}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold uppercase text-indigo-600">{weekday}</p>
+                    <p className="text-xs font-bold uppercase text-accent-ink">{weekday}</p>
                     <p className="text-sm font-bold text-gray-900">{date}</p>
                     {diaTitle && (
                       <div className="flex flex-wrap items-center gap-1.5">

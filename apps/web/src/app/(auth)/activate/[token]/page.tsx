@@ -2,9 +2,10 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { ChurchBrandMark } from '@/components/public-site/church-brand-mark';
 import { api, HttpError } from '@/lib/api';
 import { getPostLoginTarget } from '@/lib/auth-redirect';
-import { saveCachedTenantPwa } from '@/lib/pwa-branding';
+import { saveCachedTenantPwa, syncThemeColorMeta } from '@/lib/pwa-branding';
 import { AuthUser } from '@/types';
 
 type ActivationDetails = {
@@ -102,37 +103,100 @@ export default function ActivateAccountPage() {
   }
 
   const logoUrl = details?.tenant?.logoUrl || '/logo.jpg';
+  const hasTenant = !loading && Boolean(details?.tenant);
+
+  useEffect(() => {
+    if (loading) return;
+    syncThemeColorMeta(details?.tenant ? '#09090b' : '#0f2f73');
+  }, [loading, details]);
 
   return (
-    <main className="w-full max-w-md px-6">
-      <div className="mb-8 text-center">
-        <img
-          src={logoUrl}
-          alt={details?.tenant?.nome || 'One Elo'}
-          className="mx-auto mb-4 h-16 w-16 rounded-2xl object-cover shadow-lg shadow-indigo-500/30"
-        />
-        <h1 className="text-3xl font-bold tracking-tight text-white">Ativar conta</h1>
-        <p className="mt-1 text-sm text-indigo-200">
-          {details?.tenant?.nome || 'One Elo'}
-        </p>
-      </div>
+    <div
+      data-brand-theme={hasTenant ? 'church' : undefined}
+      className={
+        loading
+          ? 'flex min-h-screen w-full items-center justify-center bg-zinc-950 py-8 text-zinc-100'
+          : hasTenant
+            ? 'public-site-root relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-zinc-950 py-8 text-zinc-100'
+            : 'flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-indigo-950 via-indigo-900 to-purple-900 py-8'
+      }
+    >
+      {hasTenant && (
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div className="absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-amber-500/10 blur-3xl" />
+          <div
+            className="absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage:
+                'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }}
+          />
+        </div>
+      )}
+      <main className="relative z-10 w-full max-w-md px-6">
+        <div className="mb-8 text-center">
+          {loading ? (
+            <>
+              <div className="mx-auto mb-4 h-16 w-16 animate-pulse rounded-2xl bg-zinc-800/80" />
+              <div className="mx-auto h-8 w-44 animate-pulse rounded-lg bg-zinc-800/80" />
+              <div className="mx-auto mt-2 h-4 w-32 animate-pulse rounded bg-zinc-800/60" />
+            </>
+          ) : hasTenant ? (
+            <>
+              <div className="mx-auto mb-4 flex justify-center">
+                <ChurchBrandMark
+                  logoUrl={details?.tenant?.logoUrl}
+                  churchName={details?.tenant?.nome || 'Igreja'}
+                  size="lg"
+                />
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight text-white">Ativar conta</h1>
+              <p className="mt-1 text-sm text-amber-400">{details?.tenant?.nome}</p>
+            </>
+          ) : (
+            <>
+              <img
+                src={logoUrl}
+                alt="One Elo"
+                className="mx-auto mb-4 h-16 w-16 rounded-2xl object-cover shadow-lg shadow-indigo-500/30"
+              />
+              <h1 className="text-3xl font-bold tracking-tight text-white">Ativar conta</h1>
+              <p className="mt-1 text-sm text-indigo-200">One Elo</p>
+            </>
+          )}
+        </div>
 
-      <section className="rounded-2xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-sm">
-        {loading ? (
-          <div className="space-y-4 animate-pulse">
-            <div className="h-5 rounded bg-white/15" />
-            <div className="h-10 rounded-xl bg-white/15" />
-            <div className="h-10 rounded-xl bg-white/15" />
-          </div>
-        ) : details ? (
-          <>
-            <div className="mb-6">
-              <p className="text-sm font-semibold uppercase tracking-wide text-indigo-200">
-                Bem-vindo
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-white">{details.user.nome}</h2>
-              <p className="mt-1 text-sm text-indigo-200/80">{details.user.email}</p>
+        <section
+          className={
+            loading || hasTenant
+              ? 'rounded-2xl border border-zinc-800 bg-[#121216] p-8 shadow-2xl'
+              : 'rounded-2xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-sm'
+          }
+        >
+          {loading ? (
+            <div className="space-y-4 animate-pulse">
+              <div className="h-5 rounded bg-zinc-800" />
+              <div className="h-10 rounded-xl bg-zinc-800" />
+              <div className="h-10 rounded-xl bg-zinc-800" />
             </div>
+          ) : details ? (
+            <>
+              <div className="mb-6">
+                <p
+                  className={
+                    hasTenant
+                      ? 'text-sm font-semibold uppercase tracking-wide text-amber-400'
+                      : 'text-sm font-semibold uppercase tracking-wide text-indigo-200'
+                  }
+                >
+                  Bem-vindo
+                </p>
+                <h2 className="mt-1 text-xl font-semibold text-white">{details.user.nome}</h2>
+                <p className={hasTenant ? 'mt-1 text-sm text-zinc-400' : 'mt-1 text-sm text-indigo-200/80'}>
+                  {details.user.email}
+                </p>
+              </div>
 
             <div className="mb-6 space-y-4">
               <button
@@ -152,17 +216,30 @@ export default function ActivateAccountPage() {
               </button>
 
               <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-white/15" />
-                <span className="text-xs font-semibold uppercase tracking-wide text-indigo-200/70">
+                <div className={hasTenant ? 'h-px flex-1 bg-zinc-800' : 'h-px flex-1 bg-white/15'} />
+                <span
+                  className={
+                    hasTenant
+                      ? 'text-xs font-semibold uppercase tracking-wide text-zinc-500'
+                      : 'text-xs font-semibold uppercase tracking-wide text-indigo-200/70'
+                  }
+                >
                   ou crie uma senha
                 </span>
-                <div className="h-px flex-1 bg-white/15" />
+                <div className={hasTenant ? 'h-px flex-1 bg-zinc-800' : 'h-px flex-1 bg-white/15'} />
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="senha" className="mb-1.5 block text-sm font-medium text-indigo-100">
+                <label
+                  htmlFor="senha"
+                  className={
+                    hasTenant
+                      ? 'mb-1.5 block text-sm font-medium text-zinc-300'
+                      : 'mb-1.5 block text-sm font-medium text-indigo-100'
+                  }
+                >
                   Criar senha
                 </label>
                 <input
@@ -173,13 +250,24 @@ export default function ActivateAccountPage() {
                   minLength={6}
                   value={senha}
                   onChange={(event) => setSenha(event.target.value)}
-                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder-indigo-200/60 outline-none transition focus:border-transparent focus:ring-2 focus:ring-indigo-400"
+                  className={
+                    hasTenant
+                      ? 'w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white placeholder-zinc-500 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20'
+                      : 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder-indigo-200/60 outline-none transition focus:border-transparent focus:ring-2 focus:ring-indigo-400'
+                  }
                   placeholder="Minimo 6 caracteres"
                 />
               </div>
 
               <div>
-                <label htmlFor="confirmar-senha" className="mb-1.5 block text-sm font-medium text-indigo-100">
+                <label
+                  htmlFor="confirmar-senha"
+                  className={
+                    hasTenant
+                      ? 'mb-1.5 block text-sm font-medium text-zinc-300'
+                      : 'mb-1.5 block text-sm font-medium text-indigo-100'
+                  }
+                >
                   Confirmar senha
                 </label>
                 <input
@@ -190,7 +278,11 @@ export default function ActivateAccountPage() {
                   minLength={6}
                   value={confirmarSenha}
                   onChange={(event) => setConfirmarSenha(event.target.value)}
-                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder-indigo-200/60 outline-none transition focus:border-transparent focus:ring-2 focus:ring-indigo-400"
+                  className={
+                    hasTenant
+                      ? 'w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white placeholder-zinc-500 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20'
+                      : 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder-indigo-200/60 outline-none transition focus:border-transparent focus:ring-2 focus:ring-indigo-400'
+                  }
                   placeholder="Repita a senha"
                 />
               </div>
@@ -204,7 +296,11 @@ export default function ActivateAccountPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex w-full items-center justify-center rounded-xl bg-indigo-500 px-4 py-2.5 font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className={
+                  hasTenant
+                    ? 'flex w-full items-center justify-center rounded-xl bg-[var(--site-accent)] px-4 py-2.5 font-semibold text-[var(--site-accent-foreground)] shadow-lg shadow-amber-500/10 transition hover:bg-[var(--site-accent-hover)] disabled:cursor-not-allowed disabled:opacity-60'
+                    : 'flex w-full items-center justify-center rounded-xl bg-indigo-500 px-4 py-2.5 font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60'
+                }
               >
                 {submitting ? 'Ativando...' : 'Ativar conta'}
               </button>
@@ -213,12 +309,13 @@ export default function ActivateAccountPage() {
         ) : (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-white">Link indisponivel</h2>
-            <p className="text-sm text-indigo-100">
+            <p className={hasTenant ? 'text-sm text-zinc-300' : 'text-sm text-indigo-100'}>
               {error || 'Este link expirou ou nao e mais valido. Solicite um novo link ao administrador.'}
             </p>
           </div>
         )}
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
   );
 }

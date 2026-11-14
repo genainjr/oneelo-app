@@ -236,10 +236,10 @@ export default function FinanceiroPage() {
           <button
             type="button"
             onClick={() => { setFormError(""); setModal({ type: "account", item }); }}
-            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
+            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-blue-600 transition-all hover:border-blue-200 hover:bg-blue-50"
             title="Editar"
           >
-            <Pencil className="h-4 w-4 text-indigo-500" />
+            <Pencil className="h-4 w-4 text-blue-600" />
           </button>
           {item.active && (
             <button
@@ -279,10 +279,10 @@ export default function FinanceiroPage() {
           <button
             type="button"
             onClick={() => { setFormError(""); setModal({ type: "category", item }); }}
-            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
+            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-blue-600 transition-all hover:border-blue-200 hover:bg-blue-50"
             title="Editar"
           >
-            <Pencil className="h-4 w-4 text-indigo-500" />
+            <Pencil className="h-4 w-4 text-blue-600" />
           </button>
           {item.active && (
             <button
@@ -461,7 +461,7 @@ export default function FinanceiroPage() {
           title="Configure o primeiro gestor financeiro"
           description="Acesse Configurações > Usuários, edite o usuário responsável e marque Gestor financeiro em Permissões específicas."
           icon={<ShieldCheck className="h-7 w-7" />}
-          action={<Link href="/configuracoes" className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">Ir para Configurações</Link>}
+          action={<Link href="/configuracoes" className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition hover:bg-brand-hover">Ir para Configurações</Link>}
         />
       </div>
     );
@@ -641,7 +641,7 @@ export default function FinanceiroPage() {
                       </span>
                     )}
                     {item.receiptUrl && (
-                      <a href={item.receiptUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-indigo-600 hover:text-indigo-700">
+                      <a href={item.receiptUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-accent-ink hover:text-accent-ink-hover">
                         <FileText className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">Comprovante: {item.receiptFileName || "Abrir"}</span>
                       </a>
@@ -669,10 +669,10 @@ export default function FinanceiroPage() {
                       <button
                         type="button"
                         onClick={() => { setFormError(""); setModal({ type: "transaction", item }); }}
-                        className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
+                        className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-blue-600 transition-all hover:border-blue-200 hover:bg-blue-50"
                         title="Editar"
                       >
-                        <Pencil className="h-4 w-4 text-indigo-500" />
+                        <Pencil className="h-4 w-4 text-blue-600" />
                       </button>
                     )}
                     {canCancelTransaction && item.status !== "CANCELLED" && (

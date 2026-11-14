@@ -158,7 +158,7 @@ export default function MinisteriosVisualizacaoPage() {
           title={t("view.stats.total")}
           value={stats.total}
           icon={<Building2 className="w-5 h-5" />}
-          color="indigo"
+          color="brand"
         />
         <StatCard
           title={t("view.stats.members")}
@@ -292,11 +292,11 @@ export default function MinisteriosVisualizacaoPage() {
                     <div key={`${ministerio.id}-${item.membroId}`} className="rounded-lg bg-gray-50 px-2.5 py-2">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-semibold text-gray-800">{getMemberDisplayName(item.membro)}</p>
-                        {showRole && <span className="text-[11px] font-semibold text-indigo-600">{t(`members.roles.${item.role}` as any)}</span>}
+                        {showRole && <span className="text-[11px] font-semibold text-accent-ink">{t(`members.roles.${item.role}` as any)}</span>}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {item.funcoesDisponiveis?.length ? item.funcoesDisponiveis.map(({ funcao }) => (
-                          <span key={funcao.id} className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700">{funcao.nome}</span>
+                          <span key={funcao.id} className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent-ink">{funcao.nome}</span>
                         )) : ministerio.usaEscalas && item.podeSerEscalado ? (
                           <span className="text-[11px] text-gray-500">{t("view.allFunctions")}</span>
                         ) : null}
@@ -353,7 +353,7 @@ export default function MinisteriosVisualizacaoPage() {
                               <span className="min-w-0 flex-1 whitespace-normal break-words text-sm font-semibold leading-snug text-gray-800">
                                 {getMemberDisplayName(item.membro)}
                               </span>
-                              <span className="shrink-0 pt-0.5 text-[11px] font-semibold text-indigo-600">
+                              <span className="shrink-0 pt-0.5 text-[11px] font-semibold text-accent-ink">
                                 {t(`members.roles.${item.role}` as any)}
                               </span>
                             </div>
@@ -375,7 +375,7 @@ export default function MinisteriosVisualizacaoPage() {
                           ministerio.funcoes!.map((funcao) => (
                             <span
                               key={funcao.id}
-                              className="inline-flex items-center rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700"
+                              className="inline-flex items-center rounded-lg border border-accent-soft-border bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-ink"
                             >
                               {funcao.nome}
                             </span>

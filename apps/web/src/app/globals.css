@@ -2,11 +2,96 @@
 
 :root {
   --font-inter: 'Inter', sans-serif;
-  --color-primary: #4f46e5;
-  --color-primary-hover: #4338ca;
-  --color-sidebar-bg: #1e1b4b;
-  --color-sidebar-text: #c7d2fe;
-  --color-sidebar-active: #4f46e5;
+
+  /* Tokens semânticos padrão: identidade oficial One Elo (Índigo) */
+  --theme-brand: #4f46e5;
+  --theme-brand-hover: #4338ca;
+  --theme-brand-foreground: #ffffff;
+  --theme-brand-shadow: rgba(79, 70, 229, 0.2);
+
+  --theme-accent-ink: #4338ca;
+  --theme-accent-ink-hover: #3730a3;
+  --theme-accent-soft: #eef2ff;
+  --theme-accent-soft-hover: #e0e7ff;
+  --theme-accent-soft-border: #c7d2fe;
+  --theme-accent-ring: #6366f1;
+
+  --theme-stat-brand-bg: #eef2ff;
+  --theme-stat-brand-text: #4f46e5;
+
+  --theme-sidebar-bg: #1e1b4b;
+  --theme-sidebar-surface: #312e81;
+  --theme-sidebar-border: #312e81;
+  --theme-sidebar-popover-border: #3730a3;
+  --theme-sidebar-hover: #312e81;
+  --theme-sidebar-popover-hover: #3730a3;
+  --theme-sidebar-active-bg: #6366f1;
+  --theme-sidebar-active-text: #ffffff;
+  --theme-sidebar-text: #a5b4fc;
+  --theme-sidebar-muted: #818cf8;
+  --theme-sidebar-ring: #818cf8;
+  --theme-sidebar-badge-bg: rgba(99, 102, 241, 0.25);
+  --theme-sidebar-badge-text: #c7d2fe;
+}
+
+/* Tema padrão unificado da igreja: Obsidiana + Âmbar (pronto para override por tenant na FT-012) */
+[data-brand-theme="church"],
+.public-site-root {
+  --theme-brand: #fbbf24;
+  --theme-brand-hover: #f59e0b;
+  --theme-brand-foreground: #09090b;
+  --theme-brand-shadow: rgba(245, 158, 11, 0.2);
+
+  --theme-accent-ink: #b45309;
+  --theme-accent-ink-hover: #92400e;
+  --theme-accent-soft: #fef3c7;
+  --theme-accent-soft-hover: #fde68a;
+  --theme-accent-soft-border: #fcd34d;
+  --theme-accent-ring: #d97706;
+
+  --theme-stat-brand-bg: #fef3c7;
+  --theme-stat-brand-text: #b45309;
+
+  --theme-sidebar-bg: #09090b;
+  --theme-sidebar-surface: #18181b;
+  --theme-sidebar-border: #27272a;
+  --theme-sidebar-popover-border: #3f3f46;
+  --theme-sidebar-hover: #27272a;
+  --theme-sidebar-popover-hover: #27272a;
+  --theme-sidebar-active-bg: #fbbf24;
+  --theme-sidebar-active-text: #09090b;
+  --theme-sidebar-text: #d4d4d8;
+  --theme-sidebar-muted: #a1a1aa;
+  --theme-sidebar-ring: #fbbf24;
+  --theme-sidebar-badge-bg: rgba(251, 191, 36, 0.16);
+  --theme-sidebar-badge-text: #fcd34d;
+}
+
+@theme inline {
+  --color-brand: var(--theme-brand);
+  --color-brand-hover: var(--theme-brand-hover);
+  --color-brand-foreground: var(--theme-brand-foreground);
+  --color-accent-ink: var(--theme-accent-ink);
+  --color-accent-ink-hover: var(--theme-accent-ink-hover);
+  --color-accent-soft: var(--theme-accent-soft);
+  --color-accent-soft-hover: var(--theme-accent-soft-hover);
+  --color-accent-soft-border: var(--theme-accent-soft-border);
+  --color-accent-ring: var(--theme-accent-ring);
+  --color-stat-brand-bg: var(--theme-stat-brand-bg);
+  --color-stat-brand-text: var(--theme-stat-brand-text);
+  --color-sidebar-bg: var(--theme-sidebar-bg);
+  --color-sidebar-surface: var(--theme-sidebar-surface);
+  --color-sidebar-border: var(--theme-sidebar-border);
+  --color-sidebar-popover-border: var(--theme-sidebar-popover-border);
+  --color-sidebar-hover: var(--theme-sidebar-hover);
+  --color-sidebar-popover-hover: var(--theme-sidebar-popover-hover);
+  --color-sidebar-active-bg: var(--theme-sidebar-active-bg);
+  --color-sidebar-active-text: var(--theme-sidebar-active-text);
+  --color-sidebar-text: var(--theme-sidebar-text);
+  --color-sidebar-muted: var(--theme-sidebar-muted);
+  --color-sidebar-ring: var(--theme-sidebar-ring);
+  --color-sidebar-badge-bg: var(--theme-sidebar-badge-bg);
+  --color-sidebar-badge-text: var(--theme-sidebar-badge-text);
 }
 
 * {

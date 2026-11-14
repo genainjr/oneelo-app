@@ -226,7 +226,7 @@ export function CompletarCadastroModal({
             type="submit"
             form="completar-cadastro-form"
             disabled={loading}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-xs disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-brand-foreground bg-brand hover:bg-brand-hover transition-colors shadow-xs disabled:opacity-50"
           >
             <UserCheck className="h-4 w-4" />
             <span>{loading ? 'Salvando...' : 'Salvar e Continuar'}</span>

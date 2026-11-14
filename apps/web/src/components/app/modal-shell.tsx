@@ -72,7 +72,7 @@ export function ModalShell({
         <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-6 border-b border-gray-100">
           <div className="flex min-w-0 items-center gap-3">
             {icon && (
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-ink">
                 {icon}
               </div>
             )}
@@ -182,7 +182,7 @@ export function ModalFooter({
           form={form}
           onClick={onClick}
           disabled={loading || disabled}
-          className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-xl shadow-xs transition-all disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {primaryLabel}
