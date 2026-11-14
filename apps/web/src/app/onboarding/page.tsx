@@ -31,6 +31,7 @@ import {
   readCachedTenantPwa,
   saveCachedTenantPwa,
   syncTenantPwaHead,
+  type TenantPwaBranding,
 } from '@/lib/pwa-branding';
 import type { AuthUser } from '@/types';
 
@@ -53,6 +54,7 @@ const PUSH_BLOCKED_STATUS: PushSupportStatus[] = [
 export default function OnboardingPage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [cachedTenant, setCachedTenant] = useState<TenantPwaBranding | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [step, setStep] = useState<Step>('install');
   const [stepState, setStepState] = useState<Record<Step, StepState>>({
@@ -74,10 +76,17 @@ export default function OnboardingPage() {
   const currentStepIndex = STEPS.findIndex((item) => item.id === step);
 
   useEffect(() => {
+    let active = true;
     const cached = readCachedTenantPwa();
-    if (cached) syncTenantPwaHead(cached);
+    if (cached) {
+      syncTenantPwaHead(cached);
+      Promise.resolve().then(() => {
+        if (active) setCachedTenant(cached);
+      });
+    }
     api.get<AuthUser>('/api/auth/me', { cache: 'no-store' })
       .then((currentUser) => {
+        if (!active) return;
         if (!isOnboardingEnabled() || currentUser.onboardingCompletedAt) {
           router.replace(getPostLoginTarget(currentUser));
           return;
@@ -92,9 +101,16 @@ export default function OnboardingPage() {
         setUser(currentUser);
       })
       .catch(() => {
+        if (!active) return;
         router.replace('/login?redirect=/onboarding');
       })
-      .finally(() => setLoadingUser(false));
+      .finally(() => {
+        if (active) setLoadingUser(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   useEffect(() => {
@@ -226,12 +242,13 @@ export default function OnboardingPage() {
     (pushStatus === 'default' || pushStatus === 'disabled');
   const iosNeedsInstalledAppForPush = platform === 'ios' && !standalone;
   const pushBlocked = PUSH_BLOCKED_STATUS.includes(pushStatus) || iosNeedsInstalledAppForPush;
+  const brandTheme = user ? (user.tenant ? 'church' : 'oneelo') : cachedTenant ? 'church' : undefined;
 
   if (loadingUser) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
+      <main data-brand-theme={brandTheme} className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
         <div className="flex items-center gap-3 text-sm font-medium text-gray-600">
-          <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+          <Loader2 className={`h-5 w-5 animate-spin ${brandTheme ? 'text-accent-ink' : 'text-zinc-500'}`} />
           Carregando primeiro acesso...
         </div>
       </main>
@@ -239,11 +256,11 @@ export default function OnboardingPage() {
   }
 
   if (iosManualFlow && !standalone) {
-    return <IOSInstallGuide userName={user?.nome} />;
+    return <IOSInstallGuide userName={user?.nome} brandTheme={brandTheme} />;
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main data-brand-theme={brandTheme} className="min-h-screen bg-gray-50">
       <div className="mx-auto w-full max-w-5xl p-4 md:p-6">
         <PageHeader
           title="Configuracao inicial"
@@ -252,7 +269,7 @@ export default function OnboardingPage() {
             <div className="flex items-center gap-3">
               <StatusBadge
                 label={`Passo ${currentStepIndex + 1} de ${STEPS.length}`}
-                className="border-indigo-100 bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700"
+                className="border-accent-soft-border bg-accent-soft px-2.5 py-1 font-bold text-accent-ink"
               />
               <img src="/logo.jpg" alt="One Elo" className="h-9 w-9 rounded-lg object-cover" />
             </div>
@@ -278,7 +295,7 @@ export default function OnboardingPage() {
                     disabled={!available}
                     className={`flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition ${
                       active
-                        ? 'border-indigo-100 bg-indigo-50 text-indigo-900'
+                        ? 'border-accent-soft-border bg-accent-soft text-slate-900'
                         : available
                           ? 'border-gray-100 bg-white text-gray-700 hover:bg-gray-50'
                           : 'border-gray-100 bg-gray-50 text-gray-400'
@@ -289,7 +306,7 @@ export default function OnboardingPage() {
                         done
                           ? 'bg-emerald-100 text-emerald-700'
                           : active
-                            ? 'bg-white text-indigo-700'
+                            ? 'bg-white text-accent-ink'
                             : 'bg-gray-100 text-gray-400'
                       }`}
                     >
@@ -327,15 +344,15 @@ export default function OnboardingPage() {
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                     <ol className="grid gap-3 text-sm text-gray-700 sm:grid-cols-3">
                       <li className="rounded-lg bg-white p-3">
-                        <span className="block text-xs font-bold uppercase text-indigo-600">1</span>
+                        <span className="block text-xs font-bold uppercase text-accent-ink">1</span>
                         <span className="mt-1 block font-semibold">Compartilhar</span>
                       </li>
                       <li className="rounded-lg bg-white p-3">
-                        <span className="block text-xs font-bold uppercase text-indigo-600">2</span>
+                        <span className="block text-xs font-bold uppercase text-accent-ink">2</span>
                         <span className="mt-1 block font-semibold">Adicionar a Tela de Inicio</span>
                       </li>
                       <li className="rounded-lg bg-white p-3">
-                        <span className="block text-xs font-bold uppercase text-indigo-600">3</span>
+                        <span className="block text-xs font-bold uppercase text-accent-ink">3</span>
                         <span className="mt-1 block font-semibold">Abrir pelo icone</span>
                       </li>
                     </ol>
@@ -353,7 +370,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={leaveCompletedInstallStep}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover"
                     >
                       Continuar
                       <ArrowRight className="h-4 w-4" />
@@ -367,7 +384,7 @@ export default function OnboardingPage() {
                       type="button"
                       onClick={handleInstall}
                       disabled={!canInstall || installing}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
                     >
                       {installing && <Loader2 className="h-4 w-4 animate-spin" />}
                       Instalar agora
@@ -376,7 +393,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={skipInstall}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover"
                     >
                       Continuar
                       <ArrowRight className="h-4 w-4" />
@@ -423,7 +440,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => goNext('notifications')}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover"
                     >
                       Continuar
                       <ArrowRight className="h-4 w-4" />
@@ -434,7 +451,7 @@ export default function OnboardingPage() {
                         type="button"
                         onClick={handleEnablePush}
                         disabled={!canEnablePush || pushLoading || iosNeedsInstalledAppForPush}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
                       >
                         {pushLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                         Ativar notificações
@@ -485,7 +502,7 @@ export default function OnboardingPage() {
                     type="button"
                     onClick={() => completeOnboarding('/meu-perfil')}
                     disabled={finishing}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {finishing && <Loader2 className="h-4 w-4 animate-spin" />}
                     Concluir e revisar perfil
@@ -543,11 +560,11 @@ function StepContent({
 }) {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
-      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-accent-soft text-accent-ink">
         {icon}
       </div>
       <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">{eyebrow}</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-accent-ink">{eyebrow}</p>
         <h2 className="mt-2 text-xl font-bold leading-tight text-gray-900">
           {title}
         </h2>
@@ -583,9 +600,15 @@ function ActionRow({ children }: { children: ReactNode }) {
   return <div className="flex flex-col gap-3 sm:flex-row">{children}</div>;
 }
 
-function IOSInstallGuide({ userName }: { userName?: string }) {
+function IOSInstallGuide({
+  userName,
+  brandTheme,
+}: {
+  userName?: string;
+  brandTheme?: 'church' | 'oneelo';
+}) {
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main data-brand-theme={brandTheme} className="min-h-screen bg-gray-50">
       <div className="mx-auto w-full max-w-3xl p-4 pb-8 md:p-6">
         <PageHeader
           title="Primeiro acesso"
@@ -594,7 +617,7 @@ function IOSInstallGuide({ userName }: { userName?: string }) {
             <div className="flex items-center gap-3">
               <StatusBadge
                 label="Passo 1 de 3"
-                className="border-indigo-100 bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700"
+                className="border-accent-soft-border bg-accent-soft px-2.5 py-1 font-bold text-accent-ink"
               />
               <img src="/logo.jpg" alt="One Elo" className="h-9 w-9 rounded-lg object-cover" />
             </div>
@@ -605,7 +628,7 @@ function IOSInstallGuide({ userName }: { userName?: string }) {
         <section className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm md:p-7">
           <div className="mx-auto max-w-2xl">
             <div className="text-center">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-accent-soft text-accent-ink">
                 <Smartphone className="h-7 w-7" />
               </span>
               <h1 className="mt-4 text-xl font-bold text-gray-900">
@@ -654,7 +677,7 @@ function IOSInstallGuide({ userName }: { userName?: string }) {
               </IOSGuideStep>
             </ol>
 
-            <div className="mt-10 flex items-start gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-4 text-indigo-900">
+            <div className="mt-10 flex items-start gap-3 rounded-lg border border-accent-soft-border bg-accent-soft px-4 py-4 text-slate-900">
               <img src="/apple-touch-icon.png" alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
               <div>
                 <p className="text-sm font-bold">Para continuar</p>
@@ -684,7 +707,7 @@ function IOSGuideStep({
   return (
     <li>
       <div className="mb-3 flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-sm font-bold text-brand-foreground">
           {number}
         </span>
         <div>

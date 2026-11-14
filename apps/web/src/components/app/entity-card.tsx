@@ -41,7 +41,7 @@ export function EntityCard({
   const containerClass = cn(
     'bg-white rounded-2xl border border-gray-100 shadow-sm transition-all',
     !loading && 'hover:shadow-md',
-    onClick && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+    onClick && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring',
     className
   );
 

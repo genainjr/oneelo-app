@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { syncThemeColorMeta } from '@/lib/pwa-branding';
 import { formatDate } from '@/lib/utils';
 
 type ValidacaoResponse = {
@@ -60,12 +61,19 @@ export default function ValidarCarteirinhaPage() {
     };
   }, [id]);
 
+  useEffect(() => {
+    syncThemeColorMeta(data?.igreja ? '#09090b' : '#0f2f73');
+  }, [data?.igreja]);
+
   return (
-    <div className="min-h-screen bg-slate-900 py-10 px-4 flex flex-col items-center justify-center font-sans">
+    <div
+      data-brand-theme={data?.igreja ? 'church' : undefined}
+      className="min-h-screen bg-zinc-950 py-10 px-4 flex flex-col items-center justify-center font-sans"
+    >
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
         {loading ? (
           <div className="p-10 flex flex-col items-center justify-center text-center">
-            <svg className="h-10 w-10 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+            <svg className="h-10 w-10 animate-spin text-zinc-500" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
@@ -93,7 +101,7 @@ export default function ValidarCarteirinhaPage() {
         ) : (
           <div>
             {/* Top Church Header */}
-            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 text-center border-b border-indigo-900/50">
+            <div className="bg-sidebar-bg text-sidebar-text p-6 text-center border-b border-sidebar-border">
               <div className="flex items-center justify-center gap-3">
                 {data.igreja.logoUrl ? (
                   <img
@@ -102,12 +110,12 @@ export default function ValidarCarteirinhaPage() {
                     className="h-10 w-10 object-contain rounded-lg bg-white/10 p-1"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-base text-white shadow-inner">
+                  <div className="h-10 w-10 rounded-xl bg-brand flex items-center justify-center font-bold text-base text-brand-foreground shadow-inner">
                     {data.igreja.nome.slice(0, 1).toUpperCase()}
                   </div>
                 )}
                 <div className="text-left">
-                  <p className="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold">Igreja Emissora</p>
+                  <p className="text-[11px] uppercase tracking-wider text-sidebar-active-text font-semibold">Igreja Emissora</p>
                   <h1 className="text-base font-bold text-white line-clamp-1">{data.igreja.nome}</h1>
                 </div>
               </div>
@@ -128,7 +136,7 @@ export default function ValidarCarteirinhaPage() {
                   <img
                     src={data.membro.fotoUrl}
                     alt={data.membro.nome}
-                    className="w-20 h-24 rounded-xl object-cover border-2 border-indigo-100 shadow-sm"
+                    className="w-20 h-24 rounded-xl object-cover border-2 border-accent-soft-border shadow-sm"
                   />
                 ) : (
                   <div className="w-20 h-24 rounded-xl bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400">
@@ -143,7 +151,7 @@ export default function ValidarCarteirinhaPage() {
                   <h2 className="text-lg font-bold text-slate-900 leading-tight">
                     {data.membro.nome}
                   </h2>
-                  <p className="text-sm font-semibold text-indigo-600">
+                  <p className="text-sm font-semibold text-accent-ink">
                     {data.membro.cargo || 'Membro'}
                   </p>
                   <div className="pt-1 flex items-center gap-2">

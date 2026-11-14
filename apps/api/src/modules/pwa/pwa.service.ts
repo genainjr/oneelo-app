@@ -18,7 +18,7 @@ const ONEELO_MANIFEST = {
   ],
 };
 
-const TENANT_MANIFEST_REVISION = '3';
+const TENANT_MANIFEST_REVISION = '4';
 
 @Injectable()
 export class PwaService {
@@ -53,6 +53,7 @@ export class PwaService {
       version,
       manifest: {
         ...ONEELO_MANIFEST,
+        theme_color: '#09090b',
         name: tenant.pwaShortName,
         short_name: tenant.pwaShortName,
         id: `/pwa/tenant/${tenant.id}`,

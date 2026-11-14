@@ -170,7 +170,7 @@ export function PushNotificationButton() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 px-4">
           <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl">
             <div className="mb-4 flex items-start gap-3">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent-ink">
                 <BellIcon enabled />
               </div>
               <div className="space-y-1">
@@ -199,7 +199,7 @@ export function PushNotificationButton() {
               <button
                 type="button"
                 onClick={handleEnableConfirmed}
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover"
               >
                 Permitir notificações
               </button>

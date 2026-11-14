@@ -71,7 +71,7 @@ function SortCaret({ active, direction }: { active: boolean; direction?: 'asc' |
     <svg
       className={cn(
         'h-3 w-3 shrink-0 transition-transform',
-        active ? 'text-indigo-600' : 'text-gray-300',
+        active ? 'text-accent-ink' : 'text-gray-300',
         active && direction === 'asc' && 'rotate-180',
       )}
       fill="none"
@@ -180,7 +180,7 @@ export function DataTable<T>({
                       if (el) el.indeterminate = !!someSelected;
                     }}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    className="w-4 h-4 accent-accent-ring border-gray-300 rounded focus:ring-accent-ring"
                   />
                 </th>
               )}
@@ -251,7 +251,7 @@ export function DataTable<T>({
                     key={id}
                     className={cn(
                       'hover:bg-gray-50/50 transition-colors',
-                      isSelected && 'bg-indigo-50/30'
+                      isSelected && 'bg-accent-soft/50'
                     )}
                   >
                     {onSelectChange && (
@@ -260,7 +260,7 @@ export function DataTable<T>({
                           type="checkbox"
                           checked={isSelected}
                           onChange={(e) => handleSelectRow(id, e.target.checked)}
-                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                          className="w-4 h-4 accent-accent-ring text-accent-ink border-gray-300 rounded focus:ring-accent-ring"
                         />
                       </td>
                     )}

@@ -6,14 +6,15 @@ interface StatCardProps {
   value: number | string;
   description?: string;
   icon: React.ReactNode;
-  color?: 'indigo' | 'emerald' | 'amber' | 'blue' | 'rose';
+  color?: 'brand' | 'indigo' | 'emerald' | 'amber' | 'blue' | 'rose';
   loading?: boolean;
   href?: string;
   action?: React.ReactNode;
 }
 
 const colorMap = {
-  indigo: 'bg-indigo-50 text-indigo-600',
+  brand: 'bg-stat-brand-bg text-stat-brand-text',
+  indigo: 'bg-stat-brand-bg text-stat-brand-text',
   emerald: 'bg-emerald-50 text-emerald-600',
   amber: 'bg-amber-50 text-amber-600',
   blue: 'bg-blue-50 text-blue-600',
@@ -25,7 +26,7 @@ export function StatCard({
   value,
   description,
   icon,
-  color = 'indigo',
+  color = 'brand',
   loading = false,
   href,
   action,

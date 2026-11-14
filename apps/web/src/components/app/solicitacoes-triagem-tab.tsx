@@ -250,7 +250,7 @@ export function SolicitacoesTriagemTab({
 
       {loading ? (
         <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <Loader2 className="h-7 w-7 animate-spin text-indigo-600 mb-3" />
+          <Loader2 className="h-7 w-7 animate-spin text-accent-ink mb-3" />
           <span className="text-sm font-medium text-gray-500">Carregando fichas de cadastro...</span>
         </div>
       ) : loadError ? (
@@ -265,7 +265,7 @@ export function SolicitacoesTriagemTab({
           <button
             type="button"
             onClick={loadItems}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover"
           >
             <RefreshCw className="h-4 w-4" />
             Tentar novamente
@@ -303,7 +303,7 @@ export function SolicitacoesTriagemTab({
                       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold ${
                         item.tipo === 'VISITANTE'
                           ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                          : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          : 'bg-accent-soft text-accent-ink border border-accent-soft-border'
                       }`}
                     >
                       {item.tipo === 'VISITANTE' ? (
@@ -313,7 +313,7 @@ export function SolicitacoesTriagemTab({
                         </>
                       ) : (
                         <>
-                          <UserPlus className="h-3.5 w-3.5 text-indigo-600" />
+                          <UserPlus className="h-3.5 w-3.5 text-accent-ink" />
                           Quero ser Membro
                         </>
                       )}
@@ -445,7 +445,7 @@ export function SolicitacoesTriagemTab({
                       type="button"
                       onClick={() => handleAprovar(item.id)}
                       disabled={actionLoadingId === item.id}
-                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-2xs hover:bg-indigo-700 active:scale-95 transition-all"
+                      className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-2xs hover:bg-brand-hover active:scale-95 transition-all"
                     >
                       {actionLoadingId === item.id ? (
                         <>

@@ -203,7 +203,7 @@ function UsuarioModalContent({
             type="submit"
             form="usuario-form"
             disabled={loading}
-            className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60 flex items-center gap-2"
+            className="px-5 py-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60 flex items-center gap-2"
           >
             {loading && <LoaderCircle className="h-4 w-4 animate-spin" />}
             {loading ? "Salvando..." : "Salvar"}
@@ -343,7 +343,7 @@ function UsuarioModalContent({
             </div>
           )}
 
-          <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-xs text-indigo-700 leading-relaxed">
+          <div className="p-3 bg-accent-soft border border-accent-soft-border rounded-xl text-xs text-accent-ink leading-relaxed">
             <strong>Perfis:</strong> Administrador tem acesso total; Colaborador
             pode gerenciar membros e escalas; Basico tem acesso somente leitura.
             {!isEditing && (

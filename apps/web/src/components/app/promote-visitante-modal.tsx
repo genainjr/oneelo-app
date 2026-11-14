@@ -96,7 +96,7 @@ function PromoteVisitanteModalContent({
             type="submit"
             form="promote-visitante-form"
             disabled={loading}
-            className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
+            className="px-5 py-2 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
           >
             {loading ? 'Promovendo...' : 'Promover a Membro'}
           </button>
@@ -124,7 +124,7 @@ function PromoteVisitanteModalContent({
             type="checkbox"
             checked={criarAcesso}
             onChange={(e) => setCriarAcesso(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
           />
           <span className="text-xs text-gray-700 leading-relaxed">
             <span className="block font-semibold text-gray-900">

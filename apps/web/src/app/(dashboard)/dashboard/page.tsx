@@ -24,7 +24,7 @@ export default function DashboardPage() {
       key: 'totalMembrosAtivos' as const,
       title: t('stats.activeMembers'),
       description: t('stats.activeMembersDesc'),
-      color: 'indigo' as const,
+      color: 'brand' as const,
       href: '/membros/visualizacao',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -137,10 +137,10 @@ export default function DashboardPage() {
             <a
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-indigo-50 hover:border-indigo-100 border border-transparent transition-all group"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gray-50 hover:bg-accent-soft hover:border-accent-soft-border border border-transparent transition-all group"
             >
               <span className="text-2xl">{item.emoji}</span>
-              <span className="text-xs font-medium text-gray-600 group-hover:text-indigo-700 text-center">
+              <span className="text-xs font-medium text-gray-600 group-hover:text-accent-ink text-center">
                 {item.label}
               </span>
             </a>

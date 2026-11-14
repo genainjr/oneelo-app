@@ -236,7 +236,7 @@ export default function FinanceiroVisualizacaoPage() {
           title="Configure o primeiro gestor financeiro"
           description="Acesse Configurações > Usuários, edite o usuário responsável e marque Gestor financeiro em Permissões específicas."
           icon={<ShieldCheck className="h-7 w-7" />}
-          action={<Link href="/configuracoes" className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">Ir para Configurações</Link>}
+          action={<Link href="/configuracoes" className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition hover:bg-brand-hover">Ir para Configurações</Link>}
         />
       </div>
     );
@@ -261,7 +261,7 @@ export default function FinanceiroVisualizacaoPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="indigo" />
+        <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" />
         <StatCard title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} lançamentos no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" />
         <StatCard title="Despesas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" />
       </div>
@@ -417,7 +417,7 @@ export default function FinanceiroVisualizacaoPage() {
                       </span>
                     )}
                     {item.receiptUrl && (
-                      <a href={item.receiptUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-indigo-600 hover:text-indigo-700">
+                      <a href={item.receiptUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-accent-ink hover:text-accent-ink-hover">
                         <FileText className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">Comprovante: {item.receiptFileName || "Abrir"}</span>
                       </a>

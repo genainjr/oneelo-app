@@ -443,7 +443,7 @@ export default function EscalasPage() {
             <button
               id="btn-nova-escala"
               onClick={() => setIsCreateOpen(true)}
-              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
+              className="flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand-hover max-sm:w-full"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -478,7 +478,7 @@ export default function EscalasPage() {
           <div className="space-y-2">
             {[t('ai.feature1'), t('ai.feature2'), t('ai.feature3')].map((item) => (
               <div key={item} className="flex items-center gap-2 text-xs text-gray-600">
-                <svg className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-3.5 h-3.5 text-accent-ink flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
                 {item}
@@ -493,13 +493,13 @@ export default function EscalasPage() {
           type="button"
           onClick={() => setAiToastOpen(true)}
           title={t('ai.badge')}
-          className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
+          className="flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand-hover max-sm:w-full"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
           {t('generateAI')}
-          <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+          <span className="rounded-md bg-brand-foreground/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-brand-foreground">
             {t('aiComingSoon')}
           </span>
         </button>
@@ -580,7 +580,7 @@ export default function EscalasPage() {
                 onClick={() => fetchDetail(e)}
                 className={`shrink-0 w-56 text-left p-4 rounded-2xl border transition-all ${
                   selectedEscala?.id === e.id
-                    ? 'border-indigo-300 bg-indigo-50 shadow-sm'
+                    ? 'border-accent-soft-border bg-accent-soft shadow-sm'
                     : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'
                 }`}
               >
@@ -863,7 +863,7 @@ export default function EscalasPage() {
                   if (newDiasSemana.includes(new Date(newAno, newMes - 1, d).getDay())) count++;
                 }
                 return (
-                  <p className="text-xs text-indigo-600 font-semibold">
+                  <p className="text-xs text-accent-ink font-semibold">
                     {count === 1 ? t('modal.dayGenerated', { count }) : t('modal.daysGenerated', { count })}
                   </p>
                 );
@@ -913,7 +913,7 @@ export default function EscalasPage() {
                         <label
                           key={evento.id}
                           className={`flex cursor-pointer gap-3 rounded-xl border p-3 transition-colors ${
-                            selected ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 hover:border-indigo-200'
+                            selected ? 'border-accent-ring bg-accent-soft' : 'border-gray-200 hover:border-accent-soft-border'
                           }`}
                         >
                           <input
@@ -926,7 +926,7 @@ export default function EscalasPage() {
                                   : [...current, evento.id],
                               )
                             }
-                            className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600"
+                            className="mt-1 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
                           />
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-semibold text-gray-800">{evento.titulo}</span>
@@ -942,7 +942,7 @@ export default function EscalasPage() {
                   </div>
                 )}
 
-                <p className="text-xs font-semibold text-indigo-700">
+                <p className="text-xs font-semibold text-accent-ink">
                   {t('modal.eventsSelected', { count: selectedEventoIds.length })}
                 </p>
               </div>

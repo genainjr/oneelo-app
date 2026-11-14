@@ -24,7 +24,7 @@ import type {
 const RULE_ICONS: Record<NotificationAutomationType, React.ReactNode> = {
   BIRTHDAY_PERSONAL: <Gift className="w-5 h-5 text-pink-500" />,
   BIRTHDAY_COMMUNITY: <PartyPopper className="w-5 h-5 text-amber-500" />,
-  SCHEDULE_DAY_REMINDER: <Clock className="w-5 h-5 text-indigo-500" />,
+  SCHEDULE_DAY_REMINDER: <Clock className="w-5 h-5 text-accent-ink" />,
   SCHEDULE_CONFIRMATION_24H: <AlertCircle className="w-5 h-5 text-rose-500" />,
   EVENT_REMINDER_BEFORE: <Calendar className="w-5 h-5 text-emerald-500" />,
 };
@@ -170,7 +170,7 @@ export function NotificationAutomationRulesPanel() {
         action={
           <button
             onClick={loadRules}
-            className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition"
+            className="px-4 py-2 text-sm font-semibold text-brand-foreground bg-brand rounded-xl hover:bg-brand-hover transition"
           >
             Tentar novamente
           </button>
@@ -182,10 +182,10 @@ export function NotificationAutomationRulesPanel() {
   return (
     <div className="space-y-6">
       {/* Top Banner and Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-white border border-indigo-100 rounded-2xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-accent-soft/70 border border-accent-soft-border rounded-2xl">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" />
+            <Sparkles className="w-5 h-5 text-accent-ink shrink-0" />
             <h3 className="text-base font-bold text-gray-900">
               Automações Inteligentes da Igreja
             </h3>
@@ -199,10 +199,10 @@ export function NotificationAutomationRulesPanel() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 rounded-xl shadow-xs transition shrink-0 max-sm:w-full"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-brand-foreground bg-brand hover:bg-brand-hover disabled:opacity-50 rounded-xl shadow-xs transition shrink-0 max-sm:w-full"
         >
           {saving && (
-            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-brand-foreground/30 border-t-brand-foreground rounded-full animate-spin" />
           )}
           <span>{saving ? 'Salvando...' : 'Salvar'}</span>
         </button>
@@ -246,7 +246,7 @@ export function NotificationAutomationRulesPanel() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h4 className="text-base font-bold text-gray-900">{rule.nome}</h4>
                       {rule.isCustom ? (
-                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-accent-soft text-accent-ink border border-accent-soft-border">
                           Personalizado
                         </span>
                       ) : (
@@ -283,7 +283,7 @@ export function NotificationAutomationRulesPanel() {
                   <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
                     <span
                       className={`text-xs font-semibold ${
-                        rule.ativo ? 'text-indigo-600' : 'text-gray-400'
+                        rule.ativo ? 'text-accent-ink' : 'text-gray-400'
                       }`}
                     >
                       {rule.ativo ? 'Ativada' : 'Desativada'}
@@ -293,13 +293,13 @@ export function NotificationAutomationRulesPanel() {
                       role="switch"
                       aria-checked={rule.ativo}
                       onClick={() => handleFieldChange(rule.tipo, 'ativo', !rule.ativo)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                        rule.ativo ? 'bg-indigo-600' : 'bg-gray-200'
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-accent-ring focus:ring-offset-2 ${
+                        rule.ativo ? 'bg-brand' : 'bg-gray-200'
                       }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                          rule.ativo ? 'translate-x-5' : 'translate-x-0'
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          rule.ativo ? 'translate-x-5 bg-brand-foreground' : 'translate-x-0 bg-white'
                         }`}
                       />
                     </button>
@@ -384,7 +384,7 @@ export function NotificationAutomationRulesPanel() {
                             key={v}
                             type="button"
                             onClick={() => insertVariable(rule.tipo, v)}
-                            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold font-mono rounded-lg border border-indigo-100 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-200 transition active:scale-95"
+                            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold font-mono rounded-lg border border-accent-soft-border bg-accent-soft/70 text-accent-ink hover:bg-accent-soft transition active:scale-95"
                             title={`Clique para inserir ${v}`}
                           >
                             + {v}

@@ -77,17 +77,17 @@ export function ExportShareDialog({
               <button
                 type="button"
                 onClick={onExportPdf}
-                className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-accent-ring hover:bg-accent-soft focus:outline-none focus:ring-2 focus:ring-accent-ring"
               >
-                <FileText className="h-5 w-5 shrink-0 text-indigo-700" />
+                <FileText className="h-5 w-5 shrink-0 text-accent-ink" />
                 <strong className="text-sm font-bold text-slate-900">PDF</strong>
               </button>
               <button
                 type="button"
                 onClick={onChooseImageOption}
-                className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 text-left hover:border-accent-ring hover:bg-accent-soft focus:outline-none focus:ring-2 focus:ring-accent-ring"
               >
-                <ImageDown className="h-5 w-5 shrink-0 text-indigo-700" />
+                <ImageDown className="h-5 w-5 shrink-0 text-accent-ink" />
                 <strong className="text-sm font-bold text-slate-900">Imagem</strong>
               </button>
             </div>
@@ -111,8 +111,8 @@ export function ExportShareDialog({
                     onClick={() => onSelectWeek(option.page)}
                     className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-colors ${
                       isSelected
-                        ? 'border-indigo-600 bg-indigo-50/80 text-indigo-950'
-                        : 'border-slate-200 bg-white text-slate-800 hover:border-indigo-300 hover:bg-slate-50'
+                        ? 'border-accent-ink bg-accent-soft text-slate-900'
+                        : 'border-slate-200 bg-white text-slate-800 hover:border-accent-soft-border hover:bg-slate-50'
                     }`}
                   >
                     <div>
@@ -123,7 +123,7 @@ export function ExportShareDialog({
                           : `${option.eventCount} eventos`}
                       </span>
                     </div>
-                    {isSelected && <Check className="h-4 w-4 shrink-0 text-indigo-600" />}
+                    {isSelected && <Check className="h-4 w-4 shrink-0 text-accent-ink" />}
                   </button>
                 );
               })}
@@ -134,8 +134,8 @@ export function ExportShareDialog({
                   onClick={() => onSelectWeek('todas')}
                   className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-colors ${
                     selectedWeek === 'todas'
-                      ? 'border-indigo-600 bg-indigo-50/80 text-indigo-950'
-                      : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:border-indigo-300 hover:bg-slate-100'
+                      ? 'border-accent-ink bg-accent-soft text-slate-900'
+                      : 'border-slate-200 bg-slate-50/60 text-slate-700 hover:border-accent-soft-border hover:bg-slate-100'
                   }`}
                 >
                   <div>
@@ -144,7 +144,7 @@ export function ExportShareDialog({
                       {weeklyOptions.length} imagens do período
                     </span>
                   </div>
-                  {selectedWeek === 'todas' && <Check className="h-4 w-4 shrink-0 text-indigo-600" />}
+                  {selectedWeek === 'todas' && <Check className="h-4 w-4 shrink-0 text-accent-ink" />}
                 </button>
               )}
             </div>
@@ -153,7 +153,7 @@ export function ExportShareDialog({
               <button
                 type="button"
                 onClick={() => onExportImages(selectedWeek)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-brand-foreground hover:bg-brand-hover"
               >
                 <ImageDown className="h-4 w-4" />
                 {selectedWeek === 'todas' ? 'Gerar todas as semanas' : 'Gerar imagem da semana'}
@@ -187,12 +187,12 @@ export function ExportSharePreparedBanner({
   if (preparedFiles.length === 0) return null;
 
   return (
-    <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+    <div className="mb-4 rounded-lg border border-accent-soft-border bg-accent-soft p-4 text-sm text-slate-900">
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onShare}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-bold text-brand-foreground hover:bg-brand-hover"
         >
           <Share2 className="h-4 w-4" />
           Compartilhar
@@ -200,7 +200,7 @@ export function ExportSharePreparedBanner({
         <button
           type="button"
           onClick={onDownload}
-          className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100"
+          className="inline-flex items-center gap-2 rounded-lg border border-accent-soft-border bg-white px-3 py-2 text-sm font-bold text-accent-ink hover:bg-accent-soft"
         >
           <Download className="h-4 w-4" />
           Baixar

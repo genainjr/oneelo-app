@@ -36,8 +36,8 @@ export function CreationModeSelector<T extends string>({
               className={cn(
                 'rounded-xl border p-3 text-left transition-colors',
                 active
-                  ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200',
+                  ? 'border-accent-ring bg-accent-soft text-accent-ink'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-accent-soft-border',
               )}
             >
               <span className="block text-sm font-semibold">{option.title}</span>

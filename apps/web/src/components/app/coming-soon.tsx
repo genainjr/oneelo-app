@@ -20,12 +20,12 @@ export function ComingSoon({ title, description, icon, features, phase }: Coming
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-6">
-        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent-soft text-accent-ink border border-accent-soft-border mb-6">
+        <span className="w-1.5 h-1.5 rounded-full bg-accent-ring animate-pulse" />
         {t('badge')}{phase ? ` · ${phase}` : ''}
       </span>
 
-      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center mb-6 shadow-lg text-white">
+      <div className="w-20 h-20 rounded-3xl bg-brand flex items-center justify-center mb-6 shadow-lg text-brand-foreground">
         {icon}
       </div>
 
@@ -39,9 +39,9 @@ export function ComingSoon({ title, description, icon, features, phase }: Coming
               key={i}
               className="flex items-start gap-3 p-4 bg-white border border-gray-100 rounded-2xl text-left shadow-xs"
             >
-              <div className="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-7 h-7 rounded-xl bg-accent-soft flex items-center justify-center flex-shrink-0 mt-0.5">
                 <svg
-                  className="w-3.5 h-3.5 text-indigo-600"
+                  className="w-3.5 h-3.5 text-accent-ink"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

@@ -62,7 +62,7 @@ export function ImageUploadPanel({
             {imageUrl ? (
               <img src={imageUrl} alt={alt || fallbackName} className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-indigo-50 text-sm font-bold text-indigo-700">
+              <div className="flex h-full w-full items-center justify-center bg-accent-soft text-sm font-bold text-accent-ink">
                 {getInitials(fallbackName)}
               </div>
             )}
@@ -78,7 +78,7 @@ export function ImageUploadPanel({
             type="button"
             onClick={onUploadClick}
             disabled={busy}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {uploading ? uploadingLabel : imageUrl ? replaceLabel : uploadLabel}

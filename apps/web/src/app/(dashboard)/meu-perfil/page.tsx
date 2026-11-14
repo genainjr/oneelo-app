@@ -394,7 +394,7 @@ export default function MeuPerfilPage() {
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Dados da conta</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-accent-ink">Dados da conta</p>
                 <h2 className="mt-1 text-lg font-bold text-gray-900">{user.nome}</h2>
                 <p className="text-sm text-gray-500">{user.email}</p>
               </div>
@@ -493,7 +493,7 @@ export default function MeuPerfilPage() {
                   <button
                     type="submit"
                     disabled={!hasPassword || loginPhoneLoading}
-                    className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {loginPhoneLoading ? 'Salvando...' : 'Salvar telefone de login'}
                   </button>
@@ -644,7 +644,7 @@ export default function MeuPerfilPage() {
                 <button
                   type="submit"
                   disabled={profileLoading}
-                  className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {profileLoading ? 'Salvando...' : 'Salvar dados'}
                 </button>
@@ -704,7 +704,7 @@ export default function MeuPerfilPage() {
                 <button
                   type="submit"
                   disabled={passwordLoading}
-                  className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {passwordLoading ? 'Salvando...' : hasPassword ? 'Alterar senha' : 'Criar senha'}
                 </button>
@@ -753,7 +753,7 @@ export default function MeuPerfilPage() {
                               className="h-11 w-11 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-sm font-bold text-indigo-700 ring-1 ring-gray-200">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-sm font-bold text-accent-ink ring-1 ring-gray-200">
                               {label.slice(0, 1)}
                             </div>
                           )}
@@ -816,16 +816,16 @@ export default function MeuPerfilPage() {
                   <button
                     type="button"
                     onClick={handleAbrirCarteirinha}
-                    className="relative inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs transition-all hover:bg-indigo-100"
+                    className="relative inline-flex items-center gap-1.5 rounded-xl border border-accent-soft-border bg-accent-soft px-3 py-1.5 text-xs font-bold text-accent-ink shadow-2xs transition-all hover:bg-accent-soft-hover"
                   >
-                    <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-4 w-4 text-accent-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                     </svg>
                     <span>Minha Carteirinha Digital</span>
                     {isCadastroIncompleto(user.membro) && (
                       <span className="relative flex h-2 w-2 ml-0.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600" />
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-ring opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-ink" />
                       </span>
                     )}
                   </button>
@@ -852,7 +852,7 @@ export default function MeuPerfilPage() {
                 {user.membro.ministerios?.length ? (
                   <div className="flex flex-wrap gap-2">
                     {user.membro.ministerios.map((item) => (
-                      <span key={item.ministerio.id} className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
+                      <span key={item.ministerio.id} className="rounded-xl border border-accent-soft-border bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-ink">
                         {item.ministerio.nome} - {MINISTRY_ROLE_LABEL[item.role] || item.role}
                       </span>
                     ))}

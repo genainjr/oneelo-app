@@ -381,7 +381,7 @@ export default function MinisteriosPage() {
           canManage ? (
             <button
               onClick={() => { setSelectedMinisterio(null); setIsModalOpen(true); }}
-              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
+              className="flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand-hover max-sm:w-full"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -463,7 +463,7 @@ export default function MinisteriosPage() {
                         {cardLeaders.length > 0 ? cardLeaders.map((leader) => (
                           <div key={`${leader.role}-${leader.nome}`} className="flex items-start justify-between gap-2">
                             <span className="min-w-0 flex-1 whitespace-normal break-words text-sm font-semibold leading-snug text-gray-800">{leader.nome}</span>
-                            <span className="shrink-0 pt-0.5 text-[11px] font-semibold text-indigo-600">{t(`members.roles.${leader.role}` as any)}</span>
+                            <span className="shrink-0 pt-0.5 text-[11px] font-semibold text-accent-ink">{t(`members.roles.${leader.role}` as any)}</span>
                           </div>
                         )) : <p className="text-sm text-gray-400">{t('card.noLeader')}</p>}
                       </div>
@@ -473,7 +473,7 @@ export default function MinisteriosPage() {
                       <p className="mb-1.5 text-xs font-semibold text-gray-600">{t('view.sections.functions')}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {(m.funcoes || []).length > 0 ? m.funcoes!.map((funcao) => (
-                          <span key={funcao.id} className="inline-flex items-center rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{funcao.nome}</span>
+                          <span key={funcao.id} className="inline-flex items-center rounded-lg border border-accent-soft-border bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-ink">{funcao.nome}</span>
                         )) : <p className="text-sm text-gray-400">{t('view.noFunctions')}</p>}
                       </div>
                     </div>
@@ -575,7 +575,7 @@ export default function MinisteriosPage() {
                 {canManage && (
                   <>
                     <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
-                      <input type="checkbox" checked={usaEscalas} onChange={(event) => setUsaEscalas(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                      <input type="checkbox" checked={usaEscalas} onChange={(event) => setUsaEscalas(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring" />
                       <span>
                         <span className="block text-sm font-semibold text-gray-800">{t('scheduleEligibility.ministryLabel')}</span>
                         <span className="mt-0.5 block text-xs leading-5 text-gray-500">{t('scheduleEligibility.ministryHelp')}</span>
@@ -616,7 +616,7 @@ export default function MinisteriosPage() {
                           id="add-role"
                           value={selectedRoleToAdd}
                           onChange={(e) => setSelectedRoleToAdd(e.target.value as MinistryRole)}
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-accent-ring"
                         >
                           <option value="MEMBER">{t('members.roles.MEMBER')}</option>
                           <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
@@ -625,7 +625,7 @@ export default function MinisteriosPage() {
                       </div>
                       {detailedInfo?.usaEscalas && (
                         <label className="flex min-h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600">
-                          <input type="checkbox" checked={podeSerEscaladoToAdd} onChange={(event) => setPodeSerEscaladoToAdd(event.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                          <input type="checkbox" checked={podeSerEscaladoToAdd} onChange={(event) => setPodeSerEscaladoToAdd(event.target.checked)} className="h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring" />
                           {t('scheduleEligibility.memberShortLabel')}
                         </label>
                       )}
@@ -633,7 +633,7 @@ export default function MinisteriosPage() {
                         type="button"
                         onClick={handleAddMembro}
                         disabled={!selectedMembroToAdd}
-                        className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm lg:w-auto lg:flex-none"
+                        className="w-full px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-brand-foreground font-semibold rounded-xl text-sm lg:w-auto lg:flex-none"
                       >
                         {t('functions.add')}
                       </button>
@@ -657,7 +657,7 @@ export default function MinisteriosPage() {
                         <div key={item.membroId} className="divide-y divide-gray-50">
                           <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-50/50">
                             <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs uppercase">
+                              <div className="flex items-center justify-center w-7 h-7 rounded-full border border-accent-soft-border bg-accent-soft text-accent-ink font-bold text-xs uppercase">
                                 {item.membro?.nome?.substring(0, 2) ?? '??'}
                               </div>
                               <div>
@@ -670,7 +670,7 @@ export default function MinisteriosPage() {
                                 <select
                                   value={item.role}
                                   onChange={(e) => handleChangeRole(item.membroId, e.target.value as MinistryRole)}
-                                  className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500"
+                                  className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-accent-ring"
                                 >
                                   <option value="MEMBER">{t('members.roles.MEMBER')}</option>
                                   <option value="ASSISTANT_LEADER">{t('members.roles.ASSISTANT_LEADER')}</option>
@@ -680,7 +680,7 @@ export default function MinisteriosPage() {
                               {detailedInfo?.usaEscalas && (
                                 <button
                                   onClick={() => setExpandedMembro(isExpanded ? null : item.membroId)}
-                                  className={`p-1 rounded-lg transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                                  className={`p-1 rounded-lg transition-colors ${isExpanded ? 'bg-accent-soft text-accent-ink' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
                                   title={t('members.availableFunctions')}
                                 >
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -701,15 +701,15 @@ export default function MinisteriosPage() {
                             </div>
                           </div>
                           {isExpanded && (
-                            <div className="px-4 py-3 bg-indigo-50/40">
+                            <div className="px-4 py-3 bg-accent-soft/40">
                               {detailedInfo?.usaEscalas && (
-                                <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-indigo-100 bg-white p-3">
+                                <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-accent-soft-border bg-white p-3">
                                   <input
                                     type="checkbox"
                                     checked={elegibilidadePorMembro[item.membroId] ?? true}
                                     onChange={(event) => setElegibilidadePorMembro((current) => ({ ...current, [item.membroId]: event.target.checked }))}
                                     disabled={!canManageSelectedMinisterio}
-                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600"
+                                    className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
                                   />
                                   <span>
                                     <span className="block text-xs font-bold text-gray-700">{t('scheduleEligibility.memberLabel')}</span>
@@ -722,7 +722,7 @@ export default function MinisteriosPage() {
                                 {ministerioFuncoes.map((f: any) => {
                                   const checked = selectedFuncoes.includes(f.id);
                                   return (
-                                    <label key={f.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all select-none ${checked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
+                                    <label key={f.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all select-none ${checked ? 'bg-brand text-brand-foreground border-brand' : 'bg-white text-gray-600 border-gray-200 hover:border-accent-soft-border'}`}>
                                       <input type="checkbox" className="sr-only" checked={checked} onChange={() => toggleFuncaoMembro(item.membroId, f.id)} disabled={!canManageSelectedMinisterio} />
                                       {checked && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                       {f.nome}
@@ -735,7 +735,7 @@ export default function MinisteriosPage() {
                                   <button
                                     onClick={() => handleSaveFuncoesMembro(item.membroId)}
                                     disabled={savingFuncoesMembro === item.membroId}
-                                    className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 transition-colors"
+                                    className="px-4 py-1.5 text-xs font-semibold text-brand-foreground bg-brand hover:bg-brand-hover rounded-lg disabled:opacity-50 transition-colors"
                                   >
                                     {savingFuncoesMembro === item.membroId ? t('members.saving') : t('members.saveFunctions')}
                                   </button>
@@ -766,7 +766,7 @@ export default function MinisteriosPage() {
                         onChange={(e) => setNovaFuncao(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFuncao(); } }}
                         placeholder={t('functions.functionPlaceholder')}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-accent-ring focus:bg-white transition-all"
                       />
                     </div>
                     <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="px-4 py-2.5 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-sm">{t('functions.add')}</button>
@@ -790,7 +790,7 @@ export default function MinisteriosPage() {
                                     {fConfig.segmentos.map((s) => (
                                       <span
                                         key={s.segmento.id}
-                                        className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                        className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-accent-soft text-accent-ink border border-accent-soft-border"
                                       >
                                         {s.segmento.nome}
                                       </span>
@@ -817,9 +817,9 @@ export default function MinisteriosPage() {
                                 onClick={() => handleOpenConfigureFuncao(fConfig)}
                                 title={t('functions.editTitle')}
                                 aria-label={t('functions.editTitle')}
-                                className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl bg-white hover:bg-gray-50 text-indigo-500 transition-all flex items-center justify-center"
+                                className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl bg-white hover:bg-gray-50 text-accent-ink transition-all flex items-center justify-center"
                               >
-                                <Pencil className="w-4 h-4 text-indigo-500" />
+                                <Pencil className="w-4 h-4 text-accent-ink" />
                               </button>
                             )}
                             {canManage && (
@@ -864,7 +864,7 @@ export default function MinisteriosPage() {
                 rows={3}
               />
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <input type="checkbox" checked={usaEscalas} onChange={(event) => setUsaEscalas(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                <input type="checkbox" checked={usaEscalas} onChange={(event) => setUsaEscalas(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring" />
                 <span>
                   <span className="block text-sm font-semibold text-gray-800">{t('scheduleEligibility.ministryLabel')}</span>
                   <span className="mt-0.5 block text-xs leading-5 text-gray-500">{t('scheduleEligibility.ministryHelp')}</span>
@@ -889,7 +889,7 @@ export default function MinisteriosPage() {
                 {funcoes.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-1">
                     {funcoes.map((f) => (
-                      <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-100">
+                      <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-soft text-accent-ink text-xs font-semibold rounded-lg border border-accent-soft-border">
                         {f}
                         <button type="button" onClick={() => handleRemoveFuncao(f)} className="hover:text-red-500">×</button>
                       </span>

@@ -409,7 +409,7 @@ export default function AgendaPage() {
           canManage ? (
             <button
               onClick={openCreate}
-              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 max-sm:w-full"
+              className="flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand-hover max-sm:w-full"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -608,7 +608,7 @@ export default function AgendaPage() {
                         <button
                           type="button"
                           onClick={() => setPendingNotifyEvento(ev)}
-                          className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-indigo-600 transition-all hover:border-indigo-300 hover:bg-indigo-50"
+                          className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-accent-ink transition-all hover:border-accent-soft-border hover:bg-accent-soft"
                           title="Divulgar e convidar membros para adicionar à agenda"
                           aria-label="Divulgar e convidar membros para adicionar à agenda"
                         >
@@ -641,7 +641,7 @@ export default function AgendaPage() {
                         className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
                         title={t('modal.editTooltip')}
                       >
-                        <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="w-4 h-4 text-accent-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -766,9 +766,9 @@ export default function AgendaPage() {
                               role="checkbox"
                               aria-checked={config?.requerEscala ?? false}
                               onClick={() => toggleRequerEscala(ministerio.id)}
-                              className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700"
+                              className="flex items-center gap-1.5 text-xs font-semibold text-accent-ink"
                             >
-                              <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${config?.requerEscala ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-indigo-300 bg-white'}`}>
+                              <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${config?.requerEscala ? 'border-brand bg-brand text-brand-foreground' : 'border-accent-soft-border bg-white'}`}>
                                 {config?.requerEscala && <Check className="h-3 w-3" strokeWidth={2.5} />}
                               </span>
                               {t('modal.requiresScheduleLabel')}
@@ -813,7 +813,7 @@ export default function AgendaPage() {
                 <InputField id="ev-fim" label={t('modal.endTime')} type="datetime-local" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
               </div>
             ) : (
-              <section className="space-y-4 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+              <section className="space-y-4 rounded-2xl border border-accent-soft-border bg-accent-soft/40 p-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <InputField id="batch-start" label={t('batch.startDate')} type="date" required value={weeklyStartDate} onChange={(event) => setWeeklyStartDate(event.target.value)} />
                   <InputField id="batch-end" label={t('batch.endDate')} type="date" required value={weeklyEndDate} min={weeklyStartDate || undefined} onChange={(event) => setWeeklyEndDate(event.target.value)} />
@@ -833,7 +833,7 @@ export default function AgendaPage() {
                   />
                   <div className="space-y-2 pt-1">
                     {weeklyDays.filter((day) => day.enabled).map((day) => (
-                      <div key={day.weekday} className="space-y-3 rounded-xl border border-indigo-200 bg-white p-3">
+                      <div key={day.weekday} className="space-y-3 rounded-xl border border-accent-soft-border bg-white p-3">
                         <p className="text-sm font-semibold text-gray-700">
                           {t(`batch.weekdays.${WEEKDAY_TRANSLATION_KEYS[day.weekday]}`)}
                         </p>
@@ -854,7 +854,7 @@ export default function AgendaPage() {
                       <p className="text-xs text-gray-500">{t('batch.previewCount', { count: batchOccurrences.length, max: EVENT_BATCH_MAX_OCCURRENCES })}</p>
                     </div>
                     {removedOccurrenceCount > 0 && (
-                      <button type="button" onClick={() => setExcludedOccurrences(new Set())} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+                      <button type="button" onClick={() => setExcludedOccurrences(new Set())} className="text-xs font-semibold text-accent-ink hover:text-accent-ink-hover">
                         {t('batch.restoreRemoved', { count: removedOccurrenceCount })}
                       </button>
                     )}

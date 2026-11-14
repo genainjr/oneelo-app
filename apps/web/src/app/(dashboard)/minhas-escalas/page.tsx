@@ -120,8 +120,8 @@ export default function MinhasEscalasPage() {
       <div key={item.id} className="rounded-lg border border-gray-100 bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase text-indigo-600">{item.escala.ministerio?.nome || 'Ministerio'}</p>
-            <p className="mt-1 text-xs font-bold uppercase text-indigo-600">{weekday}</p>
+            <p className="text-xs font-bold uppercase text-accent-ink">{item.escala.ministerio?.nome || 'Ministerio'}</p>
+            <p className="mt-1 text-xs font-bold uppercase text-accent-ink">{weekday}</p>
             <h3 className="text-base font-bold text-gray-900">{date}</h3>
             {item.titulo && <p className="mt-0.5 text-sm text-gray-500">{item.titulo}</p>}
           </div>
@@ -192,7 +192,7 @@ export default function MinhasEscalasPage() {
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <StatCard title="Proximas" value={futuras.length} icon={<Calendar className="w-5 h-5" />} color="indigo" />
+        <StatCard title="Proximas" value={futuras.length} icon={<Calendar className="w-5 h-5" />} color="brand" />
         <StatCard title="Pendentes" value={pendentes.length} icon={<AlertTriangle className="w-5 h-5" />} color="amber" />
         <StatCard title="Historico" value={passadas.length} icon={<List className="w-5 h-5" />} color="blue" />
       </div>

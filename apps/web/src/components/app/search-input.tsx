@@ -40,7 +40,7 @@ export function SearchInput({
         disabled={disabled}
         className={cn(
           'w-full pl-9 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm',
-          'focus:outline-none focus:border-indigo-500 focus:bg-white transition-all',
+          'focus:outline-none focus:border-accent-ring focus:bg-white transition-all',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           className
         )}

@@ -130,7 +130,7 @@ export default function MembrosPage() {
 
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagName, setNewTagName] = useState('');
-  const [newTagColor, setNewTagColor] = useState('#4f46e5');
+  const [newTagColor, setNewTagColor] = useState('#52525b');
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [pendingDeleteMembro, setPendingDeleteMembro] = useState<Membro | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -415,7 +415,7 @@ export default function MembrosPage() {
       render: (m) => (
         <div className="flex items-center gap-3">
           <InitialsAvatar name={m.nome} src={m.fotoUrl} alt={m.nome} />
-          <span className="font-bold text-gray-900 hover:text-indigo-600 cursor-pointer" onClick={() => { setEditingMembro(m); setIsModalOpen(true); }}>
+          <span className="font-bold text-gray-900 hover:text-accent-ink cursor-pointer" onClick={() => { setEditingMembro(m); setIsModalOpen(true); }}>
             {m.nome}
           </span>
         </div>
@@ -493,7 +493,7 @@ export default function MembrosPage() {
           )}
           <button
             onClick={() => setCarteirinhaMembro(m)}
-            className="p-2 border border-gray-200 hover:border-indigo-300 rounded-xl text-indigo-600 bg-white transition-all hover:bg-indigo-50 flex items-center justify-center"
+            className="p-2 border border-gray-200 hover:border-accent-soft-border rounded-xl text-accent-ink bg-white transition-all hover:bg-accent-soft flex items-center justify-center"
             title="Carteirinha Digital"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -508,7 +508,7 @@ export default function MembrosPage() {
             className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
             title={t('editTooltip')}
           >
-            <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-accent-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
@@ -562,7 +562,7 @@ export default function MembrosPage() {
                 setEditingMembro(null);
                 setIsModalOpen(true);
               }}
-              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700"
+              className="flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand-hover"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -608,7 +608,7 @@ export default function MembrosPage() {
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-all ${
             activeTab === 'membros'
-              ? 'border-indigo-600 text-indigo-600'
+              ? 'border-accent-ink text-accent-ink'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -620,7 +620,7 @@ export default function MembrosPage() {
           onClick={() => setActiveTab('fichas')}
           className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-all ${
             activeTab === 'fichas'
-              ? 'border-indigo-600 text-indigo-600'
+              ? 'border-accent-ink text-accent-ink'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -707,7 +707,7 @@ export default function MembrosPage() {
                         borderColor: active ? tag.cor : `${tag.cor}99`,
                       }}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold border rounded-lg transition-all shadow-2xs hover:shadow-xs ${
-                        active ? 'ring-2 ring-offset-1 ring-indigo-200' : 'opacity-90'
+                        active ? 'ring-2 ring-offset-1 ring-accent-ring/40' : 'opacity-90'
                       }`}
                     >
                       {active && (
@@ -723,7 +723,7 @@ export default function MembrosPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewTagInput(true)}
-                  className="px-2 py-1 text-xs font-medium border border-dashed border-gray-300 hover:border-indigo-500 rounded-lg text-gray-500 hover:text-indigo-600 transition-all flex items-center gap-1"
+                  className="px-2 py-1 text-xs font-medium border border-dashed border-gray-300 hover:border-accent-ring rounded-lg text-gray-500 hover:text-accent-ink transition-all flex items-center gap-1"
                 >
                   {t('filter.newTag')}
                 </button>
@@ -738,7 +738,7 @@ export default function MembrosPage() {
                   onClick={() => {
                     setFilterField('operacao', 'AND');
                   }}
-                  className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'AND' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
+                  className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'AND' ? 'bg-brand text-brand-foreground shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
                 >
                   AND (E)
                 </button>
@@ -747,7 +747,7 @@ export default function MembrosPage() {
                   onClick={() => {
                     setFilterField('operacao', 'OR');
                   }}
-                  className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'OR' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
+                  className={`px-2 py-1 text-xs font-semibold rounded-lg transition-all ${filterState.operacao === 'OR' ? 'bg-brand text-brand-foreground shadow-xs' : 'text-gray-600 hover:bg-gray-200'}`}
                 >
                   OR (OU)
                 </button>
@@ -793,7 +793,7 @@ export default function MembrosPage() {
                   type="text"
                   value={newTagColor}
                   onChange={(e) => setNewTagColor(e.target.value)}
-                  className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                  className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-accent-ring focus:bg-white transition-all"
                 />
               </div>
             </div>
@@ -826,7 +826,7 @@ export default function MembrosPage() {
                 className={`font-bold ${STATUS_MEMBRO_COLOR[membro.status]}`}
               />
             }
-            className={selectedIds.includes(membro.id) ? 'ring-2 ring-indigo-200 border-indigo-200' : ''}
+            className={selectedIds.includes(membro.id) ? 'ring-2 ring-accent-ring/40 border-accent-soft-border' : ''}
             meta={(membro.ministerios || [])
               .map((ministerio) => ministerio.ministerio?.nome)
               .filter(Boolean)
@@ -843,14 +843,14 @@ export default function MembrosPage() {
                 }}
                 className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-3 text-xs font-semibold transition-all ${
                   selectedIds.includes(membro.id)
-                    ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                    ? 'border-accent-soft-border bg-accent-soft text-accent-ink'
                     : 'border-gray-100 bg-gray-50 text-gray-600 hover:bg-gray-100'
                 }`}
                 aria-pressed={selectedIds.includes(membro.id)}
               >
                 <span>{selectedIds.includes(membro.id) ? 'Selecionado' : 'Selecionar para tags'}</span>
                 <svg
-                  className={`h-4 w-4 ${selectedIds.includes(membro.id) ? 'text-indigo-600' : 'text-gray-400'}`}
+                  className={`h-4 w-4 ${selectedIds.includes(membro.id) ? 'text-accent-ink' : 'text-gray-400'}`}
                   fill={selectedIds.includes(membro.id) ? 'currentColor' : 'none'}
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -893,7 +893,7 @@ export default function MembrosPage() {
                 )}
                 <button
                   onClick={() => setCarteirinhaMembro(membro)}
-                  className="p-2 border border-gray-200 hover:border-indigo-300 rounded-xl text-indigo-600 bg-white transition-all hover:bg-indigo-50 flex items-center justify-center"
+                  className="p-2 border border-gray-200 hover:border-accent-soft-border rounded-xl text-accent-ink bg-white transition-all hover:bg-accent-soft flex items-center justify-center"
                   title="Carteirinha Digital"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -908,7 +908,7 @@ export default function MembrosPage() {
                   className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
                   title={t('editTooltip')}
                 >
-                  <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4 text-accent-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </button>
@@ -935,7 +935,7 @@ export default function MembrosPage() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-shrink-0 text-sm font-medium text-gray-700">
-                <span className="mr-2 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-bold text-white">
+                <span className="mr-2 rounded-lg bg-brand px-2.5 py-1 text-xs font-bold text-brand-foreground">
                   {selectedIds.length}
                 </span>
                 {t('bulk.selected', { count: selectedIds.length })}
@@ -995,7 +995,7 @@ export default function MembrosPage() {
                             );
                           }}
                           className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all ${
-                            active ? 'ring-2 ring-offset-1 ring-indigo-200' : 'opacity-90'
+                            active ? 'ring-2 ring-offset-1 ring-accent-ring/40' : 'opacity-90'
                           }`}
                           style={{
                             backgroundColor: active ? tag.cor : 'transparent',
@@ -1019,7 +1019,7 @@ export default function MembrosPage() {
               <button
                 onClick={handleBulkApply}
                 disabled={selectedBulkTags.length === 0}
-                className="w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="w-full rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-all hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 {t('bulk.apply')}
               </button>
@@ -1028,9 +1028,9 @@ export default function MembrosPage() {
                 type="button"
                 onClick={() => handleEmitirCarteirinhas(selectedIds)}
                 disabled={batchLoading}
-                className="w-full rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition-all hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto flex items-center justify-center gap-1.5 shrink-0"
+                className="w-full rounded-xl border border-accent-soft-border bg-accent-soft px-4 py-2 text-sm font-semibold text-accent-ink transition-all hover:bg-accent-soft-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto flex items-center justify-center gap-1.5 shrink-0"
               >
-                <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4 text-accent-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 {batchLoading ? 'Solicitando...' : `Emitir Carteirinhas (${selectedIds.length})`}
