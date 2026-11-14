@@ -743,10 +743,10 @@ export default function ConfiguracoesPage() {
           <button
             onClick={() => openEdit(u)}
             title={t("users.editTooltip")}
-            className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+            className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl text-blue-600 bg-white transition-all hover:bg-blue-50 flex items-center justify-center"
           >
             <svg
-              className="w-4 h-4 text-accent-ink"
+              className="w-4 h-4 text-blue-600"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -1247,10 +1247,10 @@ export default function ConfiguracoesPage() {
                 <button
                   onClick={() => openEdit(user)}
                   title={t("users.editTooltip")}
-                  className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+                  className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl text-blue-600 bg-white transition-all hover:bg-blue-50 flex items-center justify-center"
                 >
                   <svg
-                    className="w-4 h-4 text-accent-ink"
+                    className="w-4 h-4 text-blue-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"

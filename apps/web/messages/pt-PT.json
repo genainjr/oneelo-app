@@ -96,7 +96,7 @@
     "groupFuture": "Em breve",
     "groupAccount": "Conta",
     "profile": "O meu perfil",
-    "website": "Site da Igreja"
+    "website": "Site da Comunidade"
   },
   "dashboard": {
     "greeting": "Olá{name}!",
@@ -138,7 +138,7 @@
       "viewSchedules": "Minhas Escalas",
       "agenda": "Agenda",
       "profile": "O meu perfil",
-      "website": "Site da Igreja"
+      "website": "Site da Comunidade"
     },
     "errorLoading": "Erro ao carregar dados do painel pessoal.",
     "stats": {
@@ -160,7 +160,7 @@
         "schedules": "Escalas",
         "agenda": "Agenda",
         "profile": "O meu perfil",
-        "website": "Site da Igreja"
+        "website": "Site da Comunidade"
       },
       "stats": {
         "ministries": "Ministérios na liderança",

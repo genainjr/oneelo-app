@@ -96,7 +96,7 @@
     "groupFuture": "Coming soon",
     "groupAccount": "Account",
     "profile": "My Profile",
-    "website": "Church Website"
+    "website": "Community Website"
   },
   "dashboard": {
     "greeting": "Hello{name}!",
@@ -138,7 +138,7 @@
       "viewSchedules": "My Schedules",
       "agenda": "Calendar",
       "profile": "My Profile",
-      "website": "Church Website"
+      "website": "Community Website"
     },
     "errorLoading": "Error loading personal panel data.",
     "stats": {
@@ -160,7 +160,7 @@
         "schedules": "Schedules",
         "agenda": "Calendar",
         "profile": "My Profile",
-        "website": "Church Website"
+        "website": "Community Website"
       },
       "stats": {
         "ministries": "Leadership ministries",

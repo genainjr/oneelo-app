@@ -236,10 +236,10 @@ export default function FinanceiroPage() {
           <button
             type="button"
             onClick={() => { setFormError(""); setModal({ type: "account", item }); }}
-            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
+            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-blue-600 transition-all hover:border-blue-200 hover:bg-blue-50"
             title="Editar"
           >
-            <Pencil className="h-4 w-4 text-accent-ink" />
+            <Pencil className="h-4 w-4 text-blue-600" />
           </button>
           {item.active && (
             <button
@@ -279,10 +279,10 @@ export default function FinanceiroPage() {
           <button
             type="button"
             onClick={() => { setFormError(""); setModal({ type: "category", item }); }}
-            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
+            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-blue-600 transition-all hover:border-blue-200 hover:bg-blue-50"
             title="Editar"
           >
-            <Pencil className="h-4 w-4 text-accent-ink" />
+            <Pencil className="h-4 w-4 text-blue-600" />
           </button>
           {item.active && (
             <button
@@ -669,10 +669,10 @@ export default function FinanceiroPage() {
                       <button
                         type="button"
                         onClick={() => { setFormError(""); setModal({ type: "transaction", item }); }}
-                        className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
+                        className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-blue-600 transition-all hover:border-blue-200 hover:bg-blue-50"
                         title="Editar"
                       >
-                        <Pencil className="h-4 w-4 text-accent-ink" />
+                        <Pencil className="h-4 w-4 text-blue-600" />
                       </button>
                     )}
                     {canCancelTransaction && item.status !== "CANCELLED" && (

@@ -290,9 +290,9 @@ export function LiturgiaEscalasSettings() {
                 onClick={() => handleOpenEditSegment(seg)}
                 title={t('liturgia.segments.edit')}
                 aria-label={t('liturgia.segments.edit')}
-                className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+                className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl text-blue-600 bg-white transition-all hover:bg-blue-50 flex items-center justify-center"
               >
-                <Pencil className="w-4 h-4 text-accent-ink" />
+                <Pencil className="w-4 h-4 text-blue-600" />
               </button>
               <button
                 type="button"
@@ -377,9 +377,9 @@ export function LiturgiaEscalasSettings() {
               onClick={() => handleOpenEditRule(r)}
               title={t('liturgia.matrix.editRule')}
               aria-label={t('liturgia.matrix.editRule')}
-              className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+              className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl text-blue-600 bg-white transition-all hover:bg-blue-50 flex items-center justify-center"
             >
-              <Pencil className="w-4 h-4 text-accent-ink" />
+              <Pencil className="w-4 h-4 text-blue-600" />
             </button>
             <button
               type="button"
@@ -529,9 +529,9 @@ export function LiturgiaEscalasSettings() {
                       onClick={() => handleOpenEditSegment(seg)}
                       title={t('liturgia.segments.edit')}
                       aria-label={t('liturgia.segments.edit')}
-                      className="p-1.5 border border-gray-200 hover:border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-accent-ink flex items-center justify-center"
+                      className="p-1.5 border border-gray-200 hover:border-blue-200 rounded-lg bg-white hover:bg-blue-50 text-blue-600 flex items-center justify-center"
                     >
-                      <Pencil className="w-4 h-4 text-accent-ink" />
+                      <Pencil className="w-4 h-4 text-blue-600" />
                     </button>
                     <button
                       type="button"
@@ -642,9 +642,9 @@ export function LiturgiaEscalasSettings() {
                       onClick={() => handleOpenEditRule(r)}
                       title={t('liturgia.matrix.editRule')}
                       aria-label={t('liturgia.matrix.editRule')}
-                      className="p-1.5 border border-gray-200 hover:border-gray-300 rounded-lg text-accent-ink bg-white hover:bg-gray-50 transition-all flex items-center justify-center"
+                      className="p-1.5 border border-gray-200 hover:border-blue-200 rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-all flex items-center justify-center"
                     >
-                      <Pencil className="w-4 h-4 text-accent-ink" />
+                      <Pencil className="w-4 h-4 text-blue-600" />
                     </button>
                     <button
                       type="button"

@@ -32,6 +32,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/integracoes': 'Integrações',
   '/configuracoes': 'Configurações',
   '/configuracoes/notificacoes': 'Central de Notificações',
+  '/configuracoes/site': 'Site da Comunidade',
   '/meu-perfil': 'Meu Perfil',
   '/onboarding': 'Primeiros Passos',
 };

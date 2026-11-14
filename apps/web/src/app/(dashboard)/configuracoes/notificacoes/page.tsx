@@ -633,11 +633,11 @@ export default function CentralNotificacoesPage() {
               <button
                 type="button"
                 onClick={() => openEditModal(item)}
-                className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+                className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl text-blue-600 bg-white transition-all hover:bg-blue-50 flex items-center justify-center"
                 title="Editar notificação"
                 aria-label="Editar notificação"
               >
-                <Pencil className="w-4 h-4 text-accent-ink" />
+                <Pencil className="w-4 h-4 text-blue-600" />
               </button>
               <button
                 type="button"
@@ -934,11 +934,11 @@ export default function CentralNotificacoesPage() {
                       <button
                         type="button"
                         onClick={() => openEditModal(item)}
-                        className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all flex items-center justify-center"
+                        className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl text-blue-600 bg-white transition-all hover:bg-blue-50 flex items-center justify-center"
                         title="Editar notificação"
                         aria-label="Editar notificação"
                       >
-                        <Pencil className="w-3.5 h-3.5 text-accent-ink" />
+                        <Pencil className="w-3.5 h-3.5 text-blue-600" />
                       </button>
                       <button
                         type="button"

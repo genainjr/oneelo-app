@@ -769,7 +769,7 @@ export default function MinisteriosPage() {
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-accent-ring focus:bg-white transition-all"
                       />
                     </div>
-                    <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="px-4 py-2.5 bg-gray-800 hover:bg-gray-900 disabled:opacity-50 text-white font-semibold rounded-xl text-sm">{t('functions.add')}</button>
+                    <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="px-4 py-2.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-brand-foreground font-semibold rounded-xl text-sm">{t('functions.add')}</button>
                   </div>
                 )}
                 {funcoes.length === 0 ? (
@@ -817,9 +817,9 @@ export default function MinisteriosPage() {
                                 onClick={() => handleOpenConfigureFuncao(fConfig)}
                                 title={t('functions.editTitle')}
                                 aria-label={t('functions.editTitle')}
-                                className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl bg-white hover:bg-gray-50 text-accent-ink transition-all flex items-center justify-center"
+                                className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl bg-white hover:bg-blue-50 text-blue-600 transition-all flex items-center justify-center"
                               >
-                                <Pencil className="w-4 h-4 text-accent-ink" />
+                                <Pencil className="w-4 h-4 text-blue-600" />
                               </button>
                             )}
                             {canManage && (
@@ -883,7 +883,7 @@ export default function MinisteriosPage() {
                       placeholder={t('functions.functionPlaceholder')}
                     />
                   </div>
-                  <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="shrink-0 px-3 py-2.5 bg-gray-800 text-white text-sm font-semibold rounded-xl hover:bg-gray-900 disabled:opacity-50">{t('functions.add')}</button>
+                  <button type="button" onClick={handleAddFuncao} disabled={!novaFuncao.trim()} className="shrink-0 px-3 py-2.5 bg-brand text-brand-foreground text-sm font-semibold rounded-xl hover:bg-brand-hover disabled:opacity-50">{t('functions.add')}</button>
                 </div>
                 <p className="text-xs text-gray-400">{t('functions.description')}</p>
                 {funcoes.length > 0 && (
