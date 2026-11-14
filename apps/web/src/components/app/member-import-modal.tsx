@@ -422,7 +422,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                     onClick={() => setActiveFilterTab(t.id as FilterTab)}
                     className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                       activeFilterTab === t.id
-                        ? 'bg-gray-900 text-white shadow-2xs'
+                        ? 'bg-brand text-brand-foreground shadow-2xs'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
@@ -604,7 +604,7 @@ export function MemberImportModal({ isOpen, onClose, onSuccess }: MemberImportMo
                   onSuccess();
                   handleClose();
                 }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-2.5 text-xs font-bold text-white shadow-2xs hover:bg-black transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-2.5 text-xs font-bold text-brand-foreground shadow-2xs hover:bg-brand-hover transition-all"
               >
                 Concluir e Ver Membros
                 <ArrowRight className="h-4 w-4" />

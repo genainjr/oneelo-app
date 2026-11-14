@@ -505,10 +505,10 @@ export default function MembrosPage() {
               setEditingMembro(m);
               setIsModalOpen(true);
             }}
-            className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+            className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl text-blue-600 bg-white transition-all hover:bg-blue-50 flex items-center justify-center"
             title={t('editTooltip')}
           >
-            <svg className="w-4 h-4 text-accent-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
@@ -905,10 +905,10 @@ export default function MembrosPage() {
                     setEditingMembro(membro);
                     setIsModalOpen(true);
                   }}
-                  className="p-2 border border-gray-200 hover:border-gray-300 rounded-xl text-gray-600 bg-white transition-all hover:bg-gray-50 flex items-center justify-center"
+                  className="p-2 border border-gray-200 hover:border-blue-200 rounded-xl text-blue-600 bg-white transition-all hover:bg-blue-50 flex items-center justify-center"
                   title={t('editTooltip')}
                 >
-                  <svg className="w-4 h-4 text-accent-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </button>
