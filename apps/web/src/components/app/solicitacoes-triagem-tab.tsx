@@ -10,12 +10,19 @@ import { FilterShell, FilterActions } from '@/components/app/filter-shell';
 import { FilterInput, FilterSelect } from '@/components/app/filter-field';
 import { EmptyState } from '@/components/app/empty-state';
 import {
+  SolicitacaoDuplicidadeModal,
+  type SolicitacaoItem,
+  type SolicitacaoMergeSubmitPayload,
+  type UserAccessOutcome,
+} from '@/components/app/solicitacao-duplicidade-modal';
+import {
   Heart,
   UserPlus,
   AlertTriangle,
   CheckCircle,
+  CheckCircle2,
   XCircle,
-  Link as LinkIcon,
+  GitMerge,
   Loader2,
   Calendar,
   Phone,
@@ -24,35 +31,94 @@ import {
   Inbox,
 } from 'lucide-react';
 
-interface SolicitacaoItem {
-  id: string;
-  tenantId: string;
-  tipo: 'VISITANTE' | 'MEMBRO';
-  status: 'PENDENTE' | 'APROVADO' | 'REJEITADO';
-  nome: string;
-  telefone: string;
-  cpf: string | null;
-  email: string | null;
-  dataNascimento: string | null;
-  sexo: string | null;
-  estadoCivil: string | null;
-  batizadoAguas: boolean | null;
-  igrejaAnterior: string | null;
-  quemConvidou: string | null;
-  observacoes: string | null;
-  createdAt: string;
-  duplicidade: {
-    isDuplicate: boolean;
-    membroExistenteId?: string;
-    membroExistenteNome?: string;
-    membroExistenteStatus?: string;
-    motivoDuplicidade?: string;
-  };
+interface AprovarSolicitacaoResponse {
+  membro: any;
+  user: any;
+  activationLink: string | null;
+  userAccessOutcome?: UserAccessOutcome;
 }
 
 interface SolicitacoesTriagemTabProps {
   onCountChanged?: () => void;
   tenantName?: string;
+}
+
+function getMotivoDuplicidadeLabel(
+  motivo?: SolicitacaoItem['duplicidade']['motivoDuplicidade'],
+): string {
+  switch (motivo) {
+    case 'CPF':
+      return 'CPF';
+    case 'TELEFONE':
+      return 'Telefone';
+    case 'EMAIL':
+      return 'E-mail';
+    case 'NOME_EXATO':
+      return 'Nome Exato';
+    case 'FICHA_PENDENTE':
+      return 'Ficha Pendente';
+    default:
+      return 'Similar';
+  }
+}
+
+function getDuplicityAccessHint(
+  duplicidade: SolicitacaoItem['duplicidade'],
+): string {
+  const user = duplicidade.usuarioExistente;
+  const isVisitor = duplicidade.membroExistenteStatus === 'VISITANTE';
+
+  if (!user) {
+    return isVisitor
+      ? 'Visitante ainda sem acesso. Você pode revisar os dados, promover a Membro Ativo e gerar convite de usuário.'
+      : 'Membro ativo sem usuário de acesso. Revise os dados para atualizar o cadastro e criar o convite de ativação.';
+  }
+
+  if (user.role !== 'BASIC') {
+    return `Possui conta administrativa (${user.role} · ${user.email}). Apenas os dados cadastrais do membro podem ser atualizados.`;
+  }
+
+  if (user.status === 'DISABLED') {
+    return `Usuário desativado (${user.email}). Apenas os dados cadastrais serão atualizados (a conta não será reativada).`;
+  }
+
+  if (user.status === 'ACTIVE') {
+    return `Usuário já ativo (${user.email}). Revise para atualizar apenas os dados cadastrais sem duplicar cadastro.`;
+  }
+
+  return `Convite de acesso pendente (${user.email}). Revise para atualizar os dados e gerar novo link de ativação (72h).`;
+}
+
+function buildUpdateOnlyFeedback(
+  nome: string,
+  outcome?: UserAccessOutcome,
+): { title: string; description: string } {
+  switch (outcome) {
+    case 'ALREADY_ACTIVE':
+      return {
+        title: `Cadastro de ${nome} atualizado com sucesso.`,
+        description:
+          'A conta de usuário desse membro já está ativa — nenhum novo acesso foi criado e o login atual permanece intacto.',
+      };
+    case 'DISABLED':
+      return {
+        title: `Cadastro de ${nome} atualizado com sucesso.`,
+        description:
+          'O usuário vinculado está desativado; apenas os dados cadastrais do membro foram atualizados sem reativar a conta.',
+      };
+    case 'PROTECTED_ROLE':
+      return {
+        title: `Dados do membro ${nome} atualizados com sucesso.`,
+        description:
+          'A conta administrativa vinculada foi preservada intacta sem alterações de permissão ou credencial.',
+      };
+    default:
+      return {
+        title: `Cadastro de ${nome} atualizado com sucesso.`,
+        description:
+          'Os dados selecionados foram aplicados ao cadastro existente e a ficha foi concluída sem gerar duplicidade.',
+      };
+  }
 }
 
 export function SolicitacoesTriagemTab({
@@ -90,12 +156,29 @@ export function SolicitacoesTriagemTab({
     membro: any;
     user: any;
     activationLink: string | null;
+    title?: string;
+    badgeTitle?: string;
+    description?: string;
   }>({
     isOpen: false,
     membro: null,
     user: null,
     activationLink: null,
   });
+
+  // Modal de revisão/mesclagem de duplicidade
+  const [reviewModalItem, setReviewModalItem] = useState<SolicitacaoItem | null>(null);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  // Confirmação explícita de homônimo (NOME_EXATO)
+  const [homonymConfirmItem, setHomonymConfirmItem] = useState<SolicitacaoItem | null>(null);
+
+  // Feedback para atualizações concluídas sem geração de link
+  const [successBanner, setSuccessBanner] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
 
   async function loadItems() {
     try {
@@ -116,30 +199,99 @@ export function SolicitacoesTriagemTab({
     loadItems();
   }, [filterStatus]);
 
-  async function handleAprovar(id: string, vincularMembroId?: string) {
-    try {
-      setActionLoadingId(id);
-      setActionError(null);
-      const res = await api.post<any>(
-        `/api/membros/solicitacoes/${id}/aprovar`,
-        vincularMembroId ? { vincularMembroId } : {},
-      );
+  async function applyApprovalSuccess(
+    res: AprovarSolicitacaoResponse,
+    item: SolicitacaoItem,
+    isLinkFlow: boolean,
+  ) {
+    await loadItems();
+    onCountChanged?.();
 
-      // Recarrega lista e atualiza contador de badge
-      await loadItems();
-      onCountChanged?.();
-
-      // Abre modal de acolhimento para membros (ou visitantes)
+    if (res.activationLink) {
+      const isRegenerated = res.userAccessOutcome === 'REGENERATED';
+      setSuccessBanner(null);
       setWelcomeModal({
         isOpen: true,
         membro: res.membro,
         user: res.user,
         activationLink: res.activationLink,
+        title: isRegenerated
+          ? 'Cadastro Atualizado e Novo Link Gerado!'
+          : isLinkFlow
+            ? 'Cadastro Atualizado e Acesso Criado!'
+            : undefined,
+        badgeTitle: isRegenerated
+          ? `${res.membro.nome} atualizado com novo link de ativação!`
+          : isLinkFlow
+            ? `${res.membro.nome} atualizado e vinculado ao acesso!`
+            : undefined,
+        description: isRegenerated
+          ? 'Dados atualizados no cadastro existente e novo token válido por 72 horas gerado. Envie no WhatsApp abaixo.'
+          : undefined,
       });
+      return;
+    }
+
+    if (!isLinkFlow && item.tipo === 'VISITANTE') {
+      setSuccessBanner(null);
+      setWelcomeModal({
+        isOpen: true,
+        membro: res.membro,
+        user: res.user,
+        activationLink: null,
+      });
+      return;
+    }
+
+    setSuccessBanner(
+      buildUpdateOnlyFeedback(res.membro?.nome || item.nome, res.userAccessOutcome),
+    );
+  }
+
+  async function handleAprovar(
+    item: SolicitacaoItem,
+    permitirCriarNovoMesmoDuplicado = false,
+  ) {
+    try {
+      setActionLoadingId(item.id);
+      setActionError(null);
+      const res = await api.post<AprovarSolicitacaoResponse>(
+        `/api/membros/solicitacoes/${item.id}/aprovar`,
+        permitirCriarNovoMesmoDuplicado
+          ? { permitirCriarNovoMesmoDuplicado: true }
+          : {},
+      );
+      setHomonymConfirmItem(null);
+      await applyApprovalSuccess(res, item, false);
     } catch (err: any) {
       setActionError(err?.message || 'Erro ao aprovar ficha.');
     } finally {
       setActionLoadingId(null);
+    }
+  }
+
+  function openReviewModal(item: SolicitacaoItem) {
+    setReviewError(null);
+    setActionError(null);
+    setReviewModalItem(item);
+  }
+
+  async function handleConfirmMerge(payload: SolicitacaoMergeSubmitPayload) {
+    if (!reviewModalItem) return;
+    const currentItem = reviewModalItem;
+    try {
+      setReviewSubmitting(true);
+      setReviewError(null);
+      const res = await api.post<AprovarSolicitacaoResponse>(
+        `/api/membros/solicitacoes/${currentItem.id}/aprovar`,
+        payload,
+      );
+      setReviewModalItem(null);
+      await applyApprovalSuccess(res, currentItem, true);
+    } catch (err: any) {
+      setReviewError(err?.message || 'Não foi possível atualizar o cadastro existente.');
+    } finally {
+      setReviewSubmitting(false);
     }
   }
 
@@ -235,6 +387,27 @@ export function SolicitacoesTriagemTab({
         </div>
       </FilterShell>
 
+      {successBanner && (
+        <div className="p-4 text-sm text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-emerald-950">{successBanner.title}</p>
+              <p className="text-xs sm:text-sm text-emerald-800 mt-0.5">
+                {successBanner.description}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessBanner(null)}
+            className="font-semibold text-emerald-700 opacity-75 hover:opacity-100 shrink-0"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
+
       {actionError && (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl flex items-center justify-between gap-3">
           <span>{actionError}</span>
@@ -287,9 +460,17 @@ export function SolicitacoesTriagemTab({
         <div className="space-y-4">
           {filteredItems.map((item) => {
             const isPending = item.status === 'PENDENTE';
-            const isVisitorDuplicate =
+            const hasExistingMemberMatch =
               item.duplicidade.isDuplicate &&
+              Boolean(item.duplicidade.membroExistenteId);
+            const isVisitorDuplicate =
+              hasExistingMemberMatch &&
               item.duplicidade.membroExistenteStatus === 'VISITANTE';
+            const isPendingSheetDuplicate =
+              item.duplicidade.isDuplicate && !hasExistingMemberMatch;
+            const isExactNameHomonym =
+              hasExistingMemberMatch &&
+              item.duplicidade.motivoDuplicidade === 'NOME_EXATO';
 
             return (
               <div
@@ -381,43 +562,35 @@ export function SolicitacoesTriagemTab({
                 {/* Bloco de Duplicidade Inteligente */}
                 {item.duplicidade.isDuplicate && isPending && (
                   <div
-                    className={`rounded-xl p-3.5 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 border ${
-                      isVisitorDuplicate
-                        ? 'bg-amber-50/80 border-amber-200 text-amber-900'
-                        : 'bg-rose-50/80 border-rose-200 text-rose-900'
+                    className={`rounded-xl p-3.5 text-sm border ${
+                      isVisitorDuplicate || isPendingSheetDuplicate
+                        ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                        : 'bg-rose-50/80 border-rose-200 text-rose-950'
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
-                      <AlertTriangle className="h-4 w-4 shrink-0 mt-1 text-amber-600" />
-                      <div>
+                      <AlertTriangle
+                        className={`h-4 w-4 shrink-0 mt-1 ${
+                          isVisitorDuplicate || isPendingSheetDuplicate
+                            ? 'text-amber-600'
+                            : 'text-rose-600'
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
                         <p className="font-semibold">
-                          {isVisitorDuplicate
-                            ? `Já cadastrado como Visitante: "${item.duplicidade.membroExistenteNome}"`
-                            : `Cadastro similar existente: "${item.duplicidade.membroExistenteNome}" (${item.duplicidade.motivoDuplicidade})`}
+                          {isPendingSheetDuplicate
+                            ? `Outra ficha pendente similar: "${item.duplicidade.membroExistenteNome}"`
+                            : isVisitorDuplicate
+                              ? `Já cadastrado como Visitante: "${item.duplicidade.membroExistenteNome}" (${getMotivoDuplicidadeLabel(item.duplicidade.motivoDuplicidade)})`
+                              : `Cadastro ativo existente: "${item.duplicidade.membroExistenteNome}" (${getMotivoDuplicidadeLabel(item.duplicidade.motivoDuplicidade)})`}
                         </p>
-                        <p className="opacity-85 text-xs sm:text-sm mt-0.5">
-                          {isVisitorDuplicate
-                            ? 'Você pode promover este visitante diretamente a Membro Ativo vinculando os registros.'
-                            : 'Verifique se esta pessoa já possui cadastro ativo para evitar duplicidades.'}
+                        <p className="opacity-90 text-xs sm:text-sm mt-0.5 leading-relaxed">
+                          {isPendingSheetDuplicate
+                            ? 'Já existe outra solicitação aguardando aprovação com dados semelhantes. Ao aprovar uma delas, a outra passará a permitir revisão e atualização desse cadastro.'
+                            : getDuplicityAccessHint(item.duplicidade)}
                         </p>
                       </div>
                     </div>
-
-                    {isVisitorDuplicate && item.tipo === 'MEMBRO' && (
-                      <button
-                        type="button"
-                        onClick={() => handleAprovar(item.id, item.duplicidade.membroExistenteId)}
-                        disabled={actionLoadingId === item.id}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-2xs hover:bg-amber-700 active:scale-95 transition-all shrink-0"
-                      >
-                        {actionLoadingId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <LinkIcon className="h-4 w-4" />
-                        )}
-                        Vincular ao Visitante Existente
-                      </button>
-                    )}
                   </div>
                 )}
 
@@ -441,24 +614,52 @@ export function SolicitacoesTriagemTab({
                       Rejeitar Ficha
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleAprovar(item.id)}
-                      disabled={actionLoadingId === item.id}
-                      className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-2xs hover:bg-brand-hover active:scale-95 transition-all"
-                    >
-                      {actionLoadingId === item.id ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Aprovando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-4 w-4" />
-                          <span>Aprovar Cadastro</span>
-                        </>
-                      )}
-                    </button>
+                    {hasExistingMemberMatch ? (
+                      <>
+                        {isExactNameHomonym && (
+                          <button
+                            type="button"
+                            onClick={() => setHomonymConfirmItem(item)}
+                            disabled={actionLoadingId === item.id}
+                            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
+                          >
+                            Criar como Pessoa Diferente
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openReviewModal(item)}
+                          disabled={actionLoadingId === item.id}
+                          className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-2xs hover:bg-brand-hover active:scale-95 transition-all"
+                        >
+                          <GitMerge className="h-4 w-4" />
+                          <span>
+                            {isVisitorDuplicate && item.tipo === 'MEMBRO'
+                              ? 'Revisar e Promover Visitante'
+                              : 'Revisar e Atualizar Cadastro'}
+                          </span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleAprovar(item)}
+                        disabled={actionLoadingId === item.id}
+                        className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-2xs hover:bg-brand-hover active:scale-95 transition-all"
+                      >
+                        {actionLoadingId === item.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Aprovando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Aprovar Cadastro</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -532,15 +733,85 @@ export function SolicitacoesTriagemTab({
         </ModalShell>
       )}
 
+      {/* Modal de Revisão Side-by-Side para Duplicidades */}
+      <SolicitacaoDuplicidadeModal
+        isOpen={Boolean(reviewModalItem)}
+        item={reviewModalItem}
+        submitting={reviewSubmitting}
+        error={reviewError}
+        onClose={() => {
+          if (!reviewSubmitting) {
+            setReviewModalItem(null);
+            setReviewError(null);
+          }
+        }}
+        onConfirm={handleConfirmMerge}
+      />
+
+      {/* Confirmação explícita para homônimo (NOME_EXATO) */}
+      {homonymConfirmItem && (
+        <ModalShell
+          isOpen
+          title="Confirmar Cadastro como Pessoa Diferente"
+          onClose={() => {
+            if (actionLoadingId !== homonymConfirmItem.id) {
+              setHomonymConfirmItem(null);
+            }
+          }}
+          size="sm"
+          bodyClassName="p-6"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setHomonymConfirmItem(null)}
+                disabled={actionLoadingId === homonymConfirmItem.id}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAprovar(homonymConfirmItem, true)}
+                disabled={actionLoadingId === homonymConfirmItem.id}
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover disabled:opacity-60"
+              >
+                {actionLoadingId === homonymConfirmItem.id && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                Criar Novo Cadastro
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Existe outro cadastro chamado{' '}
+            <strong>{homonymConfirmItem.duplicidade.membroExistenteNome}</strong>. Confirma que{' '}
+            <strong>{homonymConfirmItem.nome}</strong> é outra pessoa (homônimo) e deve ser criada
+            como um cadastro separado?
+          </p>
+        </ModalShell>
+      )}
+
       {/* Modal de Envio no WhatsApp pós-aprovação */}
       {welcomeModal.isOpen && welcomeModal.membro && (
         <WelcomeActivationModal
           isOpen={welcomeModal.isOpen}
-          onClose={() => setWelcomeModal({ isOpen: false, membro: null, user: null, activationLink: null })}
+          onClose={() =>
+            setWelcomeModal({
+              isOpen: false,
+              membro: null,
+              user: null,
+              activationLink: null,
+            })
+          }
           membro={welcomeModal.membro}
           user={welcomeModal.user}
           activationLink={welcomeModal.activationLink}
           tenantName={tenantName}
+          title={welcomeModal.title}
+          badgeTitle={welcomeModal.badgeTitle}
+          description={welcomeModal.description}
         />
       )}
     </div>

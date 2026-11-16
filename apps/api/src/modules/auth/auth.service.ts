@@ -1225,16 +1225,28 @@ export class AuthService {
     };
   }
 
-  async regenerateActivationLink(
-    id: string,
-    tenantId: string,
-    actorId: string,
-    ip?: string,
+  async regeneratePendingActivationInTx(
+    prismaLike: PrismaService | Prisma.TransactionClient,
+    params: {
+      userId: string;
+      tenantId: string;
+      actorId: string;
+      ip?: string;
+      nome?: string;
+      email?: string;
+      telefoneLogin?: string | null;
+      regenerarLink?: boolean;
+      origemAuditoria?: string;
+    },
   ) {
-    const user = await this.prisma.user.findFirst({
-      where: { id, tenantId },
+    const user = await prismaLike.user.findFirst({
+      where: { id: params.userId, tenantId: params.tenantId },
       select: {
         id: true,
+        nome: true,
+        email: true,
+        telefoneLogin: true,
+        role: true,
         status: true,
         activationTokenHash: true,
         activationExpiresAt: true,
@@ -1251,35 +1263,109 @@ export class AuthService {
       );
     }
 
-    const activation = this.createActivationToken();
-    const updated = await this.prisma.user.update({
-      where: { id },
-      data: {
-        activationTokenHash: activation.tokenHash,
-        activationExpiresAt: activation.expiresAt,
-        activationCreatedAt: activation.createdAt,
-      },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
-        ativo: true,
-        status: true,
-        activationExpiresAt: true,
-        activationCreatedAt: true,
-        activatedAt: true,
-        onboardingCompletedAt: true,
-        createdAt: true,
-      },
-    });
+    const updateData: Prisma.UserUpdateInput = {};
 
-    await this.prisma.auditLog.create({
+    if (params.nome !== undefined && params.nome.trim()) {
+      const cleanNome = params.nome.trim();
+      if (cleanNome !== user.nome) {
+        updateData.nome = cleanNome;
+      }
+    }
+
+    if (params.email !== undefined) {
+      const normalizedEmail = params.email.trim().toLowerCase();
+      if (!normalizedEmail) {
+        throw new BadRequestException('Informe um e-mail valido para o usuario.');
+      }
+      if (normalizedEmail !== user.email) {
+        const emailConflict = await prismaLike.user.findFirst({
+          where: { email: normalizedEmail, NOT: { id: user.id } },
+          select: { id: true },
+        });
+        if (emailConflict) {
+          throw new ConflictException('Já existe um usuário com este e-mail.');
+        }
+        updateData.email = normalizedEmail;
+      }
+    }
+
+    if (params.telefoneLogin !== undefined) {
+      let normalizedPhone: string | null = null;
+      if (typeof params.telefoneLogin === 'string' && params.telefoneLogin.trim()) {
+        try {
+          normalizedPhone = this.normalizePhoneForWrite(params.telefoneLogin);
+        } catch {
+          normalizedPhone = null;
+        }
+      }
+
+      if (normalizedPhone !== user.telefoneLogin) {
+        if (normalizedPhone) {
+          const phoneConflict = await prismaLike.user.findFirst({
+            where: { telefoneLogin: normalizedPhone, NOT: { id: user.id } },
+            select: { id: true },
+          });
+          if (phoneConflict) {
+            throw new ConflictException(
+              'Este telefone já está em uso por outro usuário.',
+            );
+          }
+        }
+        updateData.telefoneLogin = normalizedPhone;
+      }
+    }
+
+    const shouldRegenerateLink = params.regenerarLink !== false;
+    const activation = shouldRegenerateLink ? this.createActivationToken() : null;
+
+    if (activation) {
+      updateData.activationTokenHash = activation.tokenHash;
+      updateData.activationExpiresAt = activation.expiresAt;
+      updateData.activationCreatedAt = activation.createdAt;
+    }
+
+    let updated: {
+      id: string;
+      nome: string;
+      email: string;
+      role: Role;
+      ativo: boolean;
+      status: UserStatus;
+      activationExpiresAt: Date | null;
+      activationCreatedAt: Date | null;
+      activatedAt: Date | null;
+      onboardingCompletedAt: Date | null;
+      createdAt: Date;
+    };
+
+    try {
+      updated = await prismaLike.user.update({
+        where: { id: user.id },
+        data: updateData,
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          role: true,
+          ativo: true,
+          status: true,
+          activationExpiresAt: true,
+          activationCreatedAt: true,
+          activatedAt: true,
+          onboardingCompletedAt: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      this.rethrowPhoneUniqueConflict(error);
+    }
+
+    await prismaLike.auditLog.create({
       data: {
-        tenantId,
-        userId: actorId,
+        tenantId: params.tenantId,
+        userId: params.actorId,
         entidade: 'usuarios',
-        entidadeId: id,
+        entidadeId: user.id,
         acao: AcaoAuditoria.ATUALIZAR,
         payloadBefore: {
           status: user.status,
@@ -1289,15 +1375,32 @@ export class AuthService {
           status: updated.status,
           activationExpiresAt:
             updated.activationExpiresAt?.toISOString() ?? null,
+          ...(params.origemAuditoria ? { origem: params.origemAuditoria } : {}),
         },
-        ipAddress: ip,
+        ipAddress: params.ip,
       },
     });
 
     return {
       ...updated,
-      activationLink: this.buildActivationLink(activation.token),
+      activationLink: activation
+        ? this.buildActivationLink(activation.token)
+        : null,
     };
+  }
+
+  async regenerateActivationLink(
+    id: string,
+    tenantId: string,
+    actorId: string,
+    ip?: string,
+  ) {
+    return this.regeneratePendingActivationInTx(this.prisma, {
+      userId: id,
+      tenantId,
+      actorId,
+      ip,
+    });
   }
 
   async updateUser(

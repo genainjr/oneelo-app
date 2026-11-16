@@ -18,16 +18,48 @@ import {
   normalizePhone,
   extractPhoneDigits,
   checkMemberDuplicity,
+  loadMemberDuplicityContext,
   DuplicityCheckResult,
 } from './member-deduplication.helper';
 import {
   AcaoAuditoria,
+  Prisma,
   Role,
   StatusMembro,
   StatusSolicitacaoCadastro,
   TipoSolicitacaoCadastro,
+  UserStatus,
 } from '@prisma/client';
 import { canAddMember } from '../../common/utils/tenant-plan';
+
+export const SOLICITACAO_MERGE_FIELDS = [
+  'nome',
+  'whatsapp',
+  'email',
+  'cpf',
+  'dataNascimento',
+  'sexo',
+  'estadoCivil',
+] as const;
+
+export type SolicitacaoMergeField = (typeof SOLICITACAO_MERGE_FIELDS)[number];
+
+export type UserAccessOutcome =
+  | 'CREATED'
+  | 'REGENERATED'
+  | 'ALREADY_ACTIVE'
+  | 'DISABLED'
+  | 'PROTECTED_ROLE'
+  | 'NONE';
+
+export interface AprovarSolicitacaoOptions {
+  vincularMembroId?: string;
+  camposAtualizar?: SolicitacaoMergeField[];
+  anexarObservacoes?: boolean;
+  criarOuRegenerarAcesso?: boolean;
+  promoverParaAtivo?: boolean;
+  permitirCriarNovoMesmoDuplicado?: boolean;
+}
 
 export interface SolicitacaoComDuplicidade {
   id: string;
@@ -281,15 +313,42 @@ export class SolicitacoesCadastroService {
       orderBy: { createdAt: 'desc' },
     });
 
+    if (list.length === 0) {
+      return [];
+    }
+
+    const preloadedPending =
+      !status || status === StatusSolicitacaoCadastro.PENDENTE
+        ? list
+            .filter((item) => item.status === StatusSolicitacaoCadastro.PENDENTE)
+            .map((item) => ({
+              id: item.id,
+              nome: item.nome,
+              telefone: item.telefone,
+              cpf: item.cpf,
+            }))
+        : undefined;
+
+    const duplicityContext = await loadMemberDuplicityContext(
+      this.prisma,
+      tenantId,
+      preloadedPending,
+    );
+
     const enriched: SolicitacaoComDuplicidade[] = [];
     for (const item of list) {
-      const duplicidade = await checkMemberDuplicity(this.prisma, tenantId, {
-        telefone: item.telefone,
-        cpf: item.cpf,
-        email: item.email,
-        nome: item.nome,
-        excludeSolicitacaoId: item.id,
-      });
+      const duplicidade = await checkMemberDuplicity(
+        this.prisma,
+        tenantId,
+        {
+          telefone: item.telefone,
+          cpf: item.cpf,
+          email: item.email,
+          nome: item.nome,
+          excludeSolicitacaoId: item.id,
+        },
+        duplicityContext,
+      );
 
       enriched.push({
         ...item,
@@ -392,41 +451,371 @@ export class SolicitacoesCadastroService {
   }
 
   /**
-   * Aprova uma ficha de auto-cadastro com criação de membro ou vínculo com visitante existente
+   * Aprova uma ficha de auto-cadastro com criação de membro ou vínculo/atualização de cadastro existente
    */
   async aprovarSolicitacao(
     tenantId: string,
     id: string,
     actorId: string,
-    options: { vincularMembroId?: string } = {},
+    options: AprovarSolicitacaoOptions = {},
     ip?: string,
   ) {
-    const solicitacao = await this.prisma.solicitacaoCadastroMembro.findFirst({
-      where: { id, tenantId },
-    });
-
-    if (!solicitacao) {
-      throw new NotFoundException('Ficha não encontrada.');
-    }
-
-    if (solicitacao.status !== StatusSolicitacaoCadastro.PENDENTE) {
-      throw new BadRequestException('Esta ficha já foi processada.');
-    }
-
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { plano: true, limiteMembros: true },
-    });
-
-    if (!tenant) {
-      throw new NotFoundException('Tenant não encontrado.');
-    }
-
-    const notesBlock = this.formatNotesBlock(solicitacao);
-
-    // Executa atomicamente em transação
+    // Executa atomicamente em transação com claim da ficha pendente
     return this.prisma.$transaction(async (tx) => {
-      // 1. FLUXO VISITANTE: apenas cria o membro como VISITANTE, sem usuário e sem validar quota
+      const solicitacao = await tx.solicitacaoCadastroMembro.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!solicitacao) {
+        throw new NotFoundException('Ficha não encontrada.');
+      }
+
+      if (solicitacao.status !== StatusSolicitacaoCadastro.PENDENTE) {
+        throw new BadRequestException('Esta ficha já foi processada.');
+      }
+
+      const tenant = await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: { plano: true, limiteMembros: true },
+      });
+
+      if (!tenant) {
+        throw new NotFoundException('Tenant não encontrado.');
+      }
+
+      const claim = await tx.solicitacaoCadastroMembro.updateMany({
+        where: {
+          id,
+          tenantId,
+          status: StatusSolicitacaoCadastro.PENDENTE,
+        },
+        data: {
+          status: StatusSolicitacaoCadastro.APROVADO,
+          processedAt: new Date(),
+          processedByUserId: actorId,
+        },
+      });
+
+      if (claim.count === 0) {
+        throw new BadRequestException('Esta ficha já foi processada.');
+      }
+
+      const notesBlock = this.formatNotesBlock(solicitacao);
+
+      // 1. FLUXO COM VÍNCULO / ATUALIZAÇÃO DE MEMBRO EXISTENTE (avaliado antes de tipo VISITANTE)
+      if (options.vincularMembroId) {
+        const existingMembro = await tx.membro.findFirst({
+          where: { id: options.vincularMembroId, tenantId, deletedAt: null },
+          include: {
+            user: {
+              select: {
+                id: true,
+                nome: true,
+                email: true,
+                telefoneLogin: true,
+                role: true,
+                status: true,
+                ativo: true,
+                activationExpiresAt: true,
+              },
+            },
+          },
+        });
+
+        if (!existingMembro) {
+          throw new NotFoundException('Membro para vínculo não encontrado.');
+        }
+
+        // Membro ATIVO nunca sofre downgrade para VISITANTE
+        const shouldPromote =
+          existingMembro.status === StatusMembro.ATIVO
+            ? false
+            : options.promoverParaAtivo !== undefined
+              ? options.promoverParaAtivo
+              : solicitacao.tipo === TipoSolicitacaoCadastro.MEMBRO;
+
+        const targetStatus =
+          existingMembro.status === StatusMembro.ATIVO
+            ? StatusMembro.ATIVO
+            : shouldPromote
+              ? StatusMembro.ATIVO
+              : existingMembro.status;
+
+        // Valida cota do plano apenas quando um membro não-ativo é promovido a ATIVO
+        if (
+          existingMembro.status !== StatusMembro.ATIVO &&
+          targetStatus === StatusMembro.ATIVO
+        ) {
+          const totalAtivos = await tx.membro.count({
+            where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
+          });
+          if (!canAddMember(tenant, totalAtivos)) {
+            throw new ForbiddenException(
+              'Limite de membros ativos do plano atingido. Faça upgrade para aprovar mais membros.',
+            );
+          }
+        }
+
+        const solicitacaoEmailNorm = solicitacao.email
+          ? normalizeEmail(solicitacao.email)
+          : null;
+        const solicitacaoCpfNorm = solicitacao.cpf
+          ? (normalizeCpf(solicitacao.cpf).cpf ?? solicitacao.cpf)
+          : null;
+
+        const updateData: Prisma.MembroUpdateInput = {
+          status: targetStatus,
+        };
+        const selectedFields = options.camposAtualizar
+          ? new Set<SolicitacaoMergeField>(options.camposAtualizar)
+          : null;
+
+        if (selectedFields) {
+          if (selectedFields.has('nome') && solicitacao.nome?.trim()) {
+            updateData.nome = solicitacao.nome.trim();
+          }
+          if (selectedFields.has('whatsapp') && solicitacao.telefone?.trim()) {
+            updateData.whatsapp = solicitacao.telefone.trim();
+          }
+          if (selectedFields.has('email') && solicitacaoEmailNorm) {
+            updateData.email = solicitacaoEmailNorm;
+          }
+          if (selectedFields.has('cpf') && solicitacaoCpfNorm) {
+            updateData.cpf = solicitacaoCpfNorm;
+          }
+          if (
+            selectedFields.has('dataNascimento') &&
+            solicitacao.dataNascimento
+          ) {
+            updateData.dataNascimento = solicitacao.dataNascimento;
+          }
+          if (selectedFields.has('sexo') && solicitacao.sexo) {
+            updateData.sexo = solicitacao.sexo;
+          }
+          if (selectedFields.has('estadoCivil') && solicitacao.estadoCivil) {
+            updateData.estadoCivil = solicitacao.estadoCivil;
+          }
+        } else {
+          // Retrocompatibilidade quando camposAtualizar não for enviado
+          updateData.nome = existingMembro.nome || solicitacao.nome;
+          updateData.whatsapp =
+            solicitacao.telefone || existingMembro.whatsapp;
+          updateData.email = solicitacaoEmailNorm || existingMembro.email;
+          updateData.cpf = existingMembro.cpf ?? solicitacaoCpfNorm ?? null;
+          updateData.dataNascimento =
+            existingMembro.dataNascimento ?? solicitacao.dataNascimento ?? null;
+          updateData.sexo = existingMembro.sexo ?? solicitacao.sexo ?? null;
+          updateData.estadoCivil =
+            existingMembro.estadoCivil ?? solicitacao.estadoCivil ?? null;
+        }
+
+        const shouldAppendNotes = options.anexarObservacoes !== false;
+        if (shouldAppendNotes) {
+          updateData.observacoes = existingMembro.observacoes
+            ? `${existingMembro.observacoes}\n\n${notesBlock}`
+            : notesBlock;
+        }
+
+        const payloadBefore = {
+          status: existingMembro.status,
+          nome: existingMembro.nome,
+          whatsapp: existingMembro.whatsapp,
+          email: existingMembro.email,
+          cpf: existingMembro.cpf,
+          dataNascimento: existingMembro.dataNascimento,
+          sexo: existingMembro.sexo,
+          estadoCivil: existingMembro.estadoCivil,
+        };
+
+        const updatedMembro = await tx.membro.update({
+          where: { id: existingMembro.id },
+          data: updateData,
+        });
+
+        const wantsAccess =
+          options.criarOuRegenerarAcesso !== undefined
+            ? options.criarOuRegenerarAcesso
+            : targetStatus === StatusMembro.ATIVO &&
+              solicitacao.tipo === TipoSolicitacaoCadastro.MEMBRO;
+        const canReceiveBasicUser = targetStatus === StatusMembro.ATIVO;
+
+        let finalUser: any = null;
+        let activationLink: string | null = null;
+        let userAccessOutcome: UserAccessOutcome = 'NONE';
+        let resolvedUserId: string | null = existingMembro.user?.id ?? null;
+
+        if (!existingMembro.user) {
+          if (canReceiveBasicUser && wantsAccess) {
+            const finalEmail = (
+              updatedMembro.email ||
+              solicitacaoEmailNorm ||
+              ''
+            )
+              .trim()
+              .toLowerCase();
+            if (!finalEmail) {
+              throw new BadRequestException(
+                'Informe um e-mail válido no cadastro para criar o usuário de acesso.',
+              );
+            }
+
+            const userResult = await this.authService.createPendingBasicUserInTx(
+              tx,
+              {
+                tenantId,
+                nome: updatedMembro.nome,
+                email: finalEmail,
+                telefoneLogin: updatedMembro.whatsapp ?? solicitacao.telefone,
+                memberId: updatedMembro.id,
+                actorId,
+                ip,
+              },
+            );
+            finalUser = userResult.user;
+            activationLink = userResult.activationLink;
+            userAccessOutcome = 'CREATED';
+            resolvedUserId = userResult.user.id;
+          }
+        } else {
+          const existingUser = existingMembro.user;
+          const sanitizedExistingUser = {
+            id: existingUser.id,
+            nome: existingUser.nome,
+            email: existingUser.email,
+            role: existingUser.role,
+            status: existingUser.status,
+            activationExpiresAt: existingUser.activationExpiresAt ?? null,
+          };
+
+          if (existingUser.role !== Role.BASIC) {
+            finalUser = sanitizedExistingUser;
+            userAccessOutcome = 'PROTECTED_ROLE';
+          } else if (existingUser.status === UserStatus.DISABLED) {
+            finalUser = sanitizedExistingUser;
+            userAccessOutcome = 'DISABLED';
+          } else if (existingUser.status !== UserStatus.PENDING) {
+            finalUser = sanitizedExistingUser;
+            userAccessOutcome = 'ALREADY_ACTIVE';
+          } else {
+            const syncNome =
+              selectedFields?.has('nome') && updatedMembro.nome
+                ? updatedMembro.nome
+                : undefined;
+            const syncEmail =
+              selectedFields?.has('email') && updatedMembro.email
+                ? updatedMembro.email
+                : undefined;
+            const syncTelefone =
+              selectedFields?.has('whatsapp')
+                ? (updatedMembro.whatsapp ?? null)
+                : undefined;
+
+            const shouldTouchPendingUser =
+              wantsAccess ||
+              syncNome !== undefined ||
+              syncEmail !== undefined ||
+              syncTelefone !== undefined;
+
+            if (shouldTouchPendingUser) {
+              const regenerated =
+                await this.authService.regeneratePendingActivationInTx(tx, {
+                  userId: existingUser.id,
+                  tenantId,
+                  actorId,
+                  ip,
+                  nome: syncNome,
+                  email: syncEmail,
+                  telefoneLogin: syncTelefone,
+                  regenerarLink: wantsAccess,
+                  origemAuditoria: 'auto_cadastro_vinculo_atualizado',
+                });
+              finalUser = regenerated;
+              activationLink = regenerated.activationLink;
+              userAccessOutcome = wantsAccess ? 'REGENERATED' : 'NONE';
+            } else {
+              finalUser = sanitizedExistingUser;
+              userAccessOutcome = 'NONE';
+            }
+          }
+        }
+
+        await tx.solicitacaoCadastroMembro.update({
+          where: { id },
+          data: {
+            status: StatusSolicitacaoCadastro.APROVADO,
+            membroId: updatedMembro.id,
+            userId: resolvedUserId,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            tenantId,
+            userId: actorId,
+            entidade: 'membros',
+            entidadeId: updatedMembro.id,
+            acao: AcaoAuditoria.ATUALIZAR,
+            payloadBefore,
+            payloadAfter: {
+              origem: 'auto_cadastro_membro_vinculado',
+              statusAnterior: existingMembro.status,
+              novoStatus: updatedMembro.status,
+              camposAtualizados: selectedFields
+                ? Array.from(selectedFields)
+                : 'retrocompat_lacunas',
+              anexarObservacoes: shouldAppendNotes,
+              userAccessOutcome,
+            },
+            ipAddress: ip,
+          },
+        });
+
+        return {
+          membro: updatedMembro,
+          user: finalUser,
+          activationLink,
+          userAccessOutcome,
+        };
+      }
+
+      // 2. PROTEÇÃO CONTRA DUPLICATA ACIDENTAL AO CRIAR NOVO CADASTRO SEM VÍNCULO
+      const duplicityInTx = await checkMemberDuplicity(tx, tenantId, {
+        telefone: solicitacao.telefone,
+        cpf: solicitacao.cpf,
+        email: solicitacao.email,
+        nome: solicitacao.nome,
+        excludeSolicitacaoId: solicitacao.id,
+      });
+
+      if (duplicityInTx.isDuplicate && duplicityInTx.membroExistenteId) {
+        if (duplicityInTx.motivoDuplicidade === 'CPF') {
+          throw new ConflictException(
+            `Já existe um cadastro com este CPF ("${duplicityInTx.membroExistenteNome}"). Revise e atualize o cadastro existente.`,
+          );
+        }
+        if (
+          duplicityInTx.motivoDuplicidade === 'TELEFONE' ||
+          duplicityInTx.motivoDuplicidade === 'EMAIL'
+        ) {
+          throw new ConflictException(
+            `Já existe um cadastro com este ${
+              duplicityInTx.motivoDuplicidade === 'TELEFONE'
+                ? 'telefone'
+                : 'e-mail'
+            } ("${duplicityInTx.membroExistenteNome}"). Revise e atualize o cadastro existente.`,
+          );
+        }
+        if (
+          duplicityInTx.motivoDuplicidade === 'NOME_EXATO' &&
+          !options.permitirCriarNovoMesmoDuplicado
+        ) {
+          throw new ConflictException(
+            `Já existe um cadastro com o mesmo nome ("${duplicityInTx.membroExistenteNome}"). Revise o cadastro existente ou confirme se trata de outra pessoa.`,
+          );
+        }
+      }
+
+      // 3. FLUXO NOVO VISITANTE: cria o membro como VISITANTE, sem usuário e sem validar quota
       if (solicitacao.tipo === TipoSolicitacaoCadastro.VISITANTE) {
         const membro = await tx.membro.create({
           data: {
@@ -434,6 +823,7 @@ export class SolicitacoesCadastroService {
             nome: solicitacao.nome,
             whatsapp: solicitacao.telefone,
             email: solicitacao.email ?? null,
+            cpf: solicitacao.cpf ?? null,
             dataNascimento: solicitacao.dataNascimento ?? null,
             sexo: solicitacao.sexo ?? null,
             estadoCivil: solicitacao.estadoCivil ?? null,
@@ -447,8 +837,6 @@ export class SolicitacoesCadastroService {
           data: {
             status: StatusSolicitacaoCadastro.APROVADO,
             membroId: membro.id,
-            processedAt: new Date(),
-            processedByUserId: actorId,
           },
         });
 
@@ -471,109 +859,11 @@ export class SolicitacoesCadastroService {
           membro,
           user: null,
           activationLink: null,
+          userAccessOutcome: 'NONE' as UserAccessOutcome,
         };
       }
 
-      // 2. FLUXO MEMBRO COM VÍNCULO A VISITANTE EXISTENTE
-      if (options.vincularMembroId) {
-        const existingMembro = await tx.membro.findFirst({
-          where: { id: options.vincularMembroId, tenantId, deletedAt: null },
-          include: { user: true },
-        });
-
-        if (!existingMembro) {
-          throw new NotFoundException('Membro para vínculo não encontrado.');
-        }
-
-        if (existingMembro.user) {
-          throw new ConflictException(
-            'Este membro já possui um usuário de acesso vinculado.',
-          );
-        }
-
-        // Se o membro não era ATIVO (ex: era VISITANTE ou INATIVO), valida quota do plano
-        if (existingMembro.status !== StatusMembro.ATIVO) {
-          const totalAtivos = await tx.membro.count({
-            where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
-          });
-          if (!canAddMember(tenant, totalAtivos)) {
-            throw new ForbiddenException(
-              'Limite de membros ativos do plano atingido. Faça upgrade para aprovar mais membros.',
-            );
-          }
-        }
-
-        const combinedNotes = existingMembro.observacoes
-          ? `${existingMembro.observacoes}\n\n${notesBlock}`
-          : notesBlock;
-
-        const updatedMembro = await tx.membro.update({
-          where: { id: existingMembro.id },
-          data: {
-            status: StatusMembro.ATIVO,
-            nome: existingMembro.nome || solicitacao.nome,
-            whatsapp: solicitacao.telefone || existingMembro.whatsapp,
-            email: solicitacao.email || existingMembro.email,
-            cpf: existingMembro.cpf ?? solicitacao.cpf ?? null,
-            dataNascimento:
-              existingMembro.dataNascimento ??
-              solicitacao.dataNascimento ??
-              null,
-            sexo: existingMembro.sexo ?? solicitacao.sexo ?? null,
-            estadoCivil:
-              existingMembro.estadoCivil ?? solicitacao.estadoCivil ?? null,
-            observacoes: combinedNotes,
-          },
-        });
-
-        const userResult = await this.authService.createPendingBasicUserInTx(
-          tx,
-          {
-            tenantId,
-            nome: updatedMembro.nome,
-            email: solicitacao.email!,
-            telefoneLogin: solicitacao.telefone,
-            memberId: updatedMembro.id,
-            actorId,
-            ip,
-          },
-        );
-
-        await tx.solicitacaoCadastroMembro.update({
-          where: { id },
-          data: {
-            status: StatusSolicitacaoCadastro.APROVADO,
-            membroId: updatedMembro.id,
-            userId: userResult.user.id,
-            processedAt: new Date(),
-            processedByUserId: actorId,
-          },
-        });
-
-        await tx.auditLog.create({
-          data: {
-            tenantId,
-            userId: actorId,
-            entidade: 'membros',
-            entidadeId: updatedMembro.id,
-            acao: AcaoAuditoria.ATUALIZAR,
-            payloadAfter: {
-              origem: 'auto_cadastro_membro_vinculado',
-              statusAnterior: existingMembro.status,
-              novoStatus: StatusMembro.ATIVO,
-            },
-            ipAddress: ip,
-          },
-        });
-
-        return {
-          membro: updatedMembro,
-          user: userResult.user,
-          activationLink: userResult.activationLink,
-        };
-      }
-
-      // 3. FLUXO NOVO MEMBRO (sem vínculo prévio)
+      // 4. FLUXO NOVO MEMBRO (sem vínculo prévio)
       const totalAtivos = await tx.membro.count({
         where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
       });
@@ -583,12 +873,19 @@ export class SolicitacoesCadastroService {
         );
       }
 
+      const finalEmail = (solicitacao.email || '').trim().toLowerCase();
+      if (!finalEmail) {
+        throw new BadRequestException(
+          'Informe um e-mail válido no cadastro para criar o usuário de acesso.',
+        );
+      }
+
       const membro = await tx.membro.create({
         data: {
           tenantId,
           nome: solicitacao.nome,
           whatsapp: solicitacao.telefone,
-          email: solicitacao.email,
+          email: finalEmail,
           cpf: solicitacao.cpf ?? null,
           dataNascimento: solicitacao.dataNascimento ?? null,
           sexo: solicitacao.sexo ?? null,
@@ -601,7 +898,7 @@ export class SolicitacoesCadastroService {
       const userResult = await this.authService.createPendingBasicUserInTx(tx, {
         tenantId,
         nome: solicitacao.nome,
-        email: solicitacao.email!,
+        email: finalEmail,
         telefoneLogin: solicitacao.telefone,
         memberId: membro.id,
         actorId,
@@ -614,8 +911,6 @@ export class SolicitacoesCadastroService {
           status: StatusSolicitacaoCadastro.APROVADO,
           membroId: membro.id,
           userId: userResult.user.id,
-          processedAt: new Date(),
-          processedByUserId: actorId,
         },
       });
 
@@ -629,6 +924,7 @@ export class SolicitacoesCadastroService {
           payloadAfter: {
             origem: 'auto_cadastro_novo_membro',
             membroId: membro.id,
+            userAccessOutcome: 'CREATED',
           },
           ipAddress: ip,
         },
@@ -638,6 +934,7 @@ export class SolicitacoesCadastroService {
         membro,
         user: userResult.user,
         activationLink: userResult.activationLink,
+        userAccessOutcome: 'CREATED' as UserAccessOutcome,
       };
     });
   }

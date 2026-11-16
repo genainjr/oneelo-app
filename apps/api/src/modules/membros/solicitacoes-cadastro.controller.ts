@@ -8,17 +8,42 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 import type { Request } from 'express';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role, StatusSolicitacaoCadastro } from '@prisma/client';
-import { SolicitacoesCadastroService } from './solicitacoes-cadastro.service';
+import {
+  SOLICITACAO_MERGE_FIELDS,
+  SolicitacoesCadastroService,
+} from './solicitacoes-cadastro.service';
+import type { SolicitacaoMergeField } from './solicitacoes-cadastro.service';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 
 export class AprovarSolicitacaoDto {
   @IsOptional()
   @IsString()
   vincularMembroId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsIn(SOLICITACAO_MERGE_FIELDS, { each: true })
+  camposAtualizar?: SolicitacaoMergeField[];
+
+  @IsOptional()
+  @IsBoolean()
+  anexarObservacoes?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  criarOuRegenerarAcesso?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  promoverParaAtivo?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  permitirCriarNovoMesmoDuplicado?: boolean;
 }
 
 export class RejeitarSolicitacaoDto {

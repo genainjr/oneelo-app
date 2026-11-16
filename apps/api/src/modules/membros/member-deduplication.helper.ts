@@ -1,5 +1,12 @@
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import { StatusMembro } from '@prisma/client';
+import {
+  EstadoCivil,
+  Prisma,
+  Role,
+  SexoMembro,
+  StatusMembro,
+  UserStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 /**
@@ -126,6 +133,61 @@ export function normalizeCpf(cpf?: string | number | null): {
   return { cpf: digits };
 }
 
+export interface DuplicityExistingMemberSnapshot {
+  id: string;
+  nome: string;
+  whatsapp: string | null;
+  email: string | null;
+  cpf: string | null;
+  dataNascimento: Date | null;
+  sexo: SexoMembro | null;
+  estadoCivil: EstadoCivil | null;
+  observacoes: string | null;
+  status: StatusMembro;
+}
+
+export interface DuplicityExistingUserSnapshot {
+  id: string;
+  role: Role;
+  status: UserStatus;
+  ativo: boolean;
+  email: string;
+  telefoneLogin: string | null;
+}
+
+export interface DuplicityPreloadedMember {
+  id: string;
+  nome: string;
+  whatsapp: string | null;
+  email: string | null;
+  cpf: string | null;
+  dataNascimento?: Date | null;
+  sexo?: SexoMembro | null;
+  estadoCivil?: EstadoCivil | null;
+  observacoes?: string | null;
+  status: StatusMembro;
+  user?: {
+    id: string;
+    role: Role;
+    status: UserStatus;
+    ativo: boolean;
+    email: string;
+    telefoneLogin?: string | null;
+  } | null;
+}
+
+export interface DuplicityPreloadedPendingRequest {
+  id: string;
+  nome: string;
+  telefone: string;
+  cpf: string | null;
+}
+
+export interface DuplicityPreloadedContext {
+  membros: DuplicityPreloadedMember[];
+  pendingRequests: DuplicityPreloadedPendingRequest[];
+}
+
 export interface DuplicityCheckResult {
   isDuplicate: boolean;
   membroExistenteId?: string;
@@ -137,13 +199,110 @@ export interface DuplicityCheckResult {
     | 'EMAIL'
     | 'NOME_EXATO'
     | 'FICHA_PENDENTE';
+  membroExistente?: DuplicityExistingMemberSnapshot;
+  usuarioExistente?: DuplicityExistingUserSnapshot | null;
+}
+
+type PrismaLike = PrismaService | Prisma.TransactionClient;
+
+const DUPLICITY_MEMBER_SELECT = {
+  id: true,
+  nome: true,
+  whatsapp: true,
+  email: true,
+  cpf: true,
+  dataNascimento: true,
+  sexo: true,
+  estadoCivil: true,
+  observacoes: true,
+  status: true,
+  user: {
+    select: {
+      id: true,
+      role: true,
+      status: true,
+      ativo: true,
+      email: true,
+      telefoneLogin: true,
+    },
+  },
+} as const;
+
+function buildMemberMatchResult(
+  match: DuplicityPreloadedMember,
+  motivoDuplicidade: 'TELEFONE' | 'CPF' | 'EMAIL' | 'NOME_EXATO',
+): DuplicityCheckResult {
+  return {
+    isDuplicate: true,
+    membroExistenteId: match.id,
+    membroExistenteNome: match.nome,
+    membroExistenteStatus: match.status,
+    motivoDuplicidade,
+    membroExistente: {
+      id: match.id,
+      nome: match.nome,
+      whatsapp: match.whatsapp ?? null,
+      email: match.email ?? null,
+      cpf: match.cpf ?? null,
+      dataNascimento: match.dataNascimento ?? null,
+      sexo: match.sexo ?? null,
+      estadoCivil: match.estadoCivil ?? null,
+      observacoes: match.observacoes ?? null,
+      status: match.status,
+    },
+    usuarioExistente: match.user
+      ? {
+          id: match.user.id,
+          role: match.user.role,
+          status: match.user.status,
+          ativo: Boolean(match.user.ativo),
+          email: match.user.email,
+          telefoneLogin: match.user.telefoneLogin ?? null,
+        }
+      : null,
+  };
+}
+
+/**
+ * Pré-carrega membros elegíveis e solicitações pendentes do tenant para checagem em lote (evita N+1).
+ */
+export async function loadMemberDuplicityContext(
+  prisma: PrismaLike,
+  tenantId: string,
+  preloadedPendingRequests?: DuplicityPreloadedPendingRequest[],
+): Promise<DuplicityPreloadedContext> {
+  const membros = (await prisma.membro.findMany({
+    where: {
+      tenantId,
+      deletedAt: null,
+      status: { in: [StatusMembro.ATIVO, StatusMembro.VISITANTE] },
+    },
+    select: DUPLICITY_MEMBER_SELECT,
+  })) as DuplicityPreloadedMember[];
+
+  const pendingRequests = preloadedPendingRequests
+    ? preloadedPendingRequests
+    : await prisma.solicitacaoCadastroMembro.findMany({
+        where: {
+          tenantId,
+          status: 'PENDENTE',
+        },
+        select: {
+          id: true,
+          nome: true,
+          telefone: true,
+          cpf: true,
+        },
+      });
+
+  return { membros, pendingRequests };
 }
 
 /**
  * Consulta duplicidade de cadastro no tenant por telefone, CPF, e-mail e nome exato
  */
 export async function checkMemberDuplicity(
-  prisma: PrismaService,
+  prisma: PrismaLike,
   tenantId: string,
   candidate: {
     telefone?: string | null;
@@ -152,6 +311,7 @@ export async function checkMemberDuplicity(
     nome?: string | null;
     excludeSolicitacaoId?: string;
   },
+  preloadedContext?: DuplicityPreloadedContext,
 ): Promise<DuplicityCheckResult> {
   const normCpf = normalizeCpf(candidate.cpf).cpf;
   const normEmail = normalizeEmail(candidate.email);
@@ -160,21 +320,16 @@ export async function checkMemberDuplicity(
   const normName = normalizeName(candidate.nome);
 
   // 1. Buscar apenas membros nao excluidos e nao inativos/transferidos no tenant
-  const membros = await prisma.membro.findMany({
-    where: {
-      tenantId,
-      deletedAt: null,
-      status: { in: [StatusMembro.ATIVO, StatusMembro.VISITANTE] },
-    },
-    select: {
-      id: true,
-      nome: true,
-      whatsapp: true,
-      email: true,
-      cpf: true,
-      status: true,
-    },
-  });
+  const membros: DuplicityPreloadedMember[] = preloadedContext
+    ? preloadedContext.membros
+    : ((await prisma.membro.findMany({
+        where: {
+          tenantId,
+          deletedAt: null,
+          status: { in: [StatusMembro.ATIVO, StatusMembro.VISITANTE] },
+        },
+        select: DUPLICITY_MEMBER_SELECT,
+      })) as DuplicityPreloadedMember[]);
 
   // Checagem por CPF
   if (normCpf) {
@@ -183,13 +338,7 @@ export async function checkMemberDuplicity(
       return mCpf && mCpf === normCpf;
     });
     if (match) {
-      return {
-        isDuplicate: true,
-        membroExistenteId: match.id,
-        membroExistenteNome: match.nome,
-        membroExistenteStatus: match.status,
-        motivoDuplicidade: 'CPF',
-      };
+      return buildMemberMatchResult(match, 'CPF');
     }
   }
 
@@ -200,13 +349,7 @@ export async function checkMemberDuplicity(
       return mDigits && mDigits === phoneDigits;
     });
     if (match) {
-      return {
-        isDuplicate: true,
-        membroExistenteId: match.id,
-        membroExistenteNome: match.nome,
-        membroExistenteStatus: match.status,
-        motivoDuplicidade: 'TELEFONE',
-      };
+      return buildMemberMatchResult(match, 'TELEFONE');
     }
   }
 
@@ -217,13 +360,7 @@ export async function checkMemberDuplicity(
       return mEmail && mEmail === normEmail;
     });
     if (match) {
-      return {
-        isDuplicate: true,
-        membroExistenteId: match.id,
-        membroExistenteNome: match.nome,
-        membroExistenteStatus: match.status,
-        motivoDuplicidade: 'EMAIL',
-      };
+      return buildMemberMatchResult(match, 'EMAIL');
     }
   }
 
@@ -231,32 +368,32 @@ export async function checkMemberDuplicity(
   if (normName) {
     const match = membros.find((m) => normalizeName(m.nome) === normName);
     if (match) {
-      return {
-        isDuplicate: true,
-        membroExistenteId: match.id,
-        membroExistenteNome: match.nome,
-        membroExistenteStatus: match.status,
-        motivoDuplicidade: 'NOME_EXATO',
-      };
+      return buildMemberMatchResult(match, 'NOME_EXATO');
     }
   }
 
   // 2. Verificar se já existe outra ficha PENDENTE com mesmo telefone ou CPF
-  const pendingRequests = await prisma.solicitacaoCadastroMembro.findMany({
-    where: {
-      tenantId,
-      status: 'PENDENTE',
-      ...(candidate.excludeSolicitacaoId
-        ? { id: { not: candidate.excludeSolicitacaoId } }
-        : {}),
-    },
-    select: {
-      id: true,
-      nome: true,
-      telefone: true,
-      cpf: true,
-    },
-  });
+  const pendingRequests = preloadedContext
+    ? preloadedContext.pendingRequests.filter((r) =>
+        candidate.excludeSolicitacaoId
+          ? r.id !== candidate.excludeSolicitacaoId
+          : true,
+      )
+    : await prisma.solicitacaoCadastroMembro.findMany({
+        where: {
+          tenantId,
+          status: 'PENDENTE',
+          ...(candidate.excludeSolicitacaoId
+            ? { id: { not: candidate.excludeSolicitacaoId } }
+            : {}),
+        },
+        select: {
+          id: true,
+          nome: true,
+          telefone: true,
+          cpf: true,
+        },
+      });
 
   if (phoneDigits) {
     const match = pendingRequests.find(

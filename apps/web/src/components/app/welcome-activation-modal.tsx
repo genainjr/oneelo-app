@@ -34,6 +34,8 @@ interface WelcomeActivationModalProps {
   activationLink?: string | null;
   tenantName?: string;
   description?: string;
+  title?: string;
+  badgeTitle?: string;
 }
 
 export function WelcomeActivationModal({
@@ -44,6 +46,8 @@ export function WelcomeActivationModal({
   activationLink,
   tenantName,
   description,
+  title,
+  badgeTitle,
 }: WelcomeActivationModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -71,7 +75,7 @@ export function WelcomeActivationModal({
   return (
     <ModalShell
       isOpen={isOpen}
-      title="Cadastro Aprovado com Sucesso!"
+      title={title || 'Cadastro Aprovado com Sucesso!'}
       onClose={onClose}
       size="md"
     >
@@ -82,11 +86,12 @@ export function WelcomeActivationModal({
           </div>
           <div className="text-xs">
             <p className="font-bold text-emerald-950 text-sm">
-              {membro.nome} agora faz parte do sistema!
+              {badgeTitle || `${membro.nome} agora faz parte do sistema!`}
             </p>
             <p className="text-emerald-800 mt-0.5">
               {activationLink
-                ? 'A conta de acesso foi gerada com token válido por 72 horas. Envie a mensagem de boas-vindas abaixo.'
+                ? description ||
+                  'A conta de acesso foi gerada com token válido por 72 horas. Envie a mensagem de boas-vindas abaixo.'
                 : description || 'O cadastro de visitante foi efetivado com sucesso.'}
             </p>
           </div>
