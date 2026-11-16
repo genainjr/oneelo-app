@@ -353,3 +353,137 @@ describe('AuthService available members', () => {
     });
   });
 });
+
+describe('AuthService regeneratePendingActivationInTx & regenerateActivationLink', () => {
+  it('regenera link via regenerateActivationLink delegando para fluxo transacional', async () => {
+    const prisma = {
+      user: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'user-p1',
+          nome: 'Maria Pendente',
+          email: 'maria@example.com',
+          telefoneLogin: '+5585999991111',
+          role: Role.BASIC,
+          status: UserStatus.PENDING,
+          activationTokenHash: 'old-hash',
+          activationExpiresAt: new Date('2026-11-10T00:00:00.000Z'),
+        }),
+        update: jest.fn().mockImplementation(({ data }) => ({
+          id: 'user-p1',
+          nome: 'Maria Pendente',
+          email: 'maria@example.com',
+          role: Role.BASIC,
+          ativo: false,
+          status: UserStatus.PENDING,
+          activationExpiresAt: data.activationExpiresAt ?? null,
+          activationCreatedAt: data.activationCreatedAt ?? null,
+          activatedAt: null,
+          onboardingCompletedAt: null,
+          createdAt: new Date(),
+        })),
+      },
+      auditLog: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const service = createService(prisma);
+
+    const res = await service.regenerateActivationLink(
+      'user-p1',
+      'tenant-1',
+      'admin-1',
+      '127.0.0.1',
+    );
+
+    expect(res.activationLink).toContain('/activate/');
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user-p1' },
+        data: expect.objectContaining({
+          activationTokenHash: expect.any(String),
+          activationExpiresAt: expect.any(Date),
+        }),
+      }),
+    );
+    expect(prisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it('sincroniza contato de usuário PENDING em transação excluindo o próprio id da checagem de conflito', async () => {
+    const prisma = {};
+    const tx = {
+      user: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'user-p2',
+            nome: 'Nome Antigo',
+            email: 'antigo@example.com',
+            telefoneLogin: '+5585991101771',
+            role: Role.BASIC,
+            status: UserStatus.PENDING,
+            activationTokenHash: 'old-hash',
+            activationExpiresAt: null,
+          })
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+        update: jest.fn().mockImplementation(({ data }) => ({
+          id: 'user-p2',
+          nome: data.nome ?? 'Nome Antigo',
+          email: data.email ?? 'antigo@example.com',
+          role: Role.BASIC,
+          ativo: false,
+          status: UserStatus.PENDING,
+          activationExpiresAt: data.activationExpiresAt ?? null,
+          activationCreatedAt: data.activationCreatedAt ?? null,
+          activatedAt: null,
+          onboardingCompletedAt: null,
+          createdAt: new Date(),
+        })),
+      },
+      auditLog: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const service = createService(prisma);
+
+    const res = await service.regeneratePendingActivationInTx(tx as never, {
+      userId: 'user-p2',
+      tenantId: 'tenant-1',
+      actorId: 'staff-1',
+      nome: 'Nome Novo',
+      email: 'NOVO@EXAMPLE.COM',
+      telefoneLogin: '+55 85 98888-7777',
+      regenerarLink: true,
+    });
+
+    expect(tx.user.findFirst).toHaveBeenNthCalledWith(2, {
+      where: { email: 'novo@example.com', NOT: { id: 'user-p2' } },
+      select: { id: true },
+    });
+    expect(tx.user.findFirst).toHaveBeenNthCalledWith(3, {
+      where: { telefoneLogin: '+5585988887777', NOT: { id: 'user-p2' } },
+      select: { id: true },
+    });
+    expect(res.nome).toBe('Nome Novo');
+    expect(res.email).toBe('novo@example.com');
+    expect(res.activationLink).toContain('/activate/');
+  });
+
+  it('rejeita regeneração se usuário já estiver ACTIVE ou DISABLED', async () => {
+    const tx = {
+      user: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'user-active',
+          status: UserStatus.ACTIVE,
+        }),
+        update: jest.fn(),
+      },
+    };
+    const service = createService({});
+
+    await expect(
+      service.regeneratePendingActivationInTx(tx as never, {
+        userId: 'user-active',
+        tenantId: 'tenant-1',
+        actorId: 'admin-1',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
+});

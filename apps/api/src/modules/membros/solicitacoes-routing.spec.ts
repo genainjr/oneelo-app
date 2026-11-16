@@ -105,6 +105,45 @@ describe('MembrosModule routing priority', () => {
     );
   });
 
+  it('deve validar novos campos de mesclagem e rejeitar campo não permitido no AprovarSolicitacaoDto', async () => {
+    mockSolicitacoesService.aprovarSolicitacao.mockResolvedValue({ ok: true });
+
+    await request(app.getHttpServer())
+      .post('/membros/solicitacoes/sol-99/aprovar')
+      .send({
+        vincularMembroId: 'membro-1',
+        camposAtualizar: ['nome', 'whatsapp', 'email', 'cpf'],
+        anexarObservacoes: true,
+        criarOuRegenerarAcesso: true,
+        promoverParaAtivo: false,
+        permitirCriarNovoMesmoDuplicado: false,
+      })
+      .expect(201);
+
+    expect(mockSolicitacoesService.aprovarSolicitacao).toHaveBeenLastCalledWith(
+      'tenant-1',
+      'sol-99',
+      'user-1',
+      expect.objectContaining({
+        vincularMembroId: 'membro-1',
+        camposAtualizar: ['nome', 'whatsapp', 'email', 'cpf'],
+        anexarObservacoes: true,
+        criarOuRegenerarAcesso: true,
+        promoverParaAtivo: false,
+        permitirCriarNovoMesmoDuplicado: false,
+      }),
+      expect.any(String),
+    );
+
+    await request(app.getHttpServer())
+      .post('/membros/solicitacoes/sol-99/aprovar')
+      .send({
+        vincularMembroId: 'membro-1',
+        camposAtualizar: ['status'],
+      })
+      .expect(400);
+  });
+
   it('deve aceitar POST /membros/solicitacoes/:id/rejeitar com body vazio e com motivo no ValidationPipe', async () => {
     mockSolicitacoesService.rejeitarSolicitacao.mockResolvedValue({ ok: true });
 
