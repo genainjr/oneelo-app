@@ -24,6 +24,7 @@ import {
 } from './member-deduplication.helper';
 import {
   AcaoAuditoria,
+  DnsStatus,
   Prisma,
   Role,
   StatusMembro,
@@ -115,6 +116,12 @@ export class SolicitacoesCadastroService {
         logoUrl: true,
         pwaIconUrl: true,
         ativo: true,
+        websiteConfig: {
+          select: {
+            customDomain: true,
+            dnsStatus: true,
+          },
+        },
       },
     });
 
@@ -129,6 +136,10 @@ export class SolicitacoesCadastroService {
       slug: tenant.slug,
       logoUrl: tenant.logoUrl || tenant.pwaIconUrl || null,
       pwaIconUrl: tenant.pwaIconUrl || null,
+      customDomain:
+        tenant.websiteConfig?.dnsStatus === DnsStatus.ACTIVE
+          ? tenant.websiteConfig.customDomain
+          : null,
     };
   }
 

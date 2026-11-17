@@ -4,7 +4,7 @@ import { SolicitacoesCadastroService } from './solicitacoes-cadastro.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from '../auth/auth.service';
-import { Role, TipoSolicitacaoCadastro } from '@prisma/client';
+import { DnsStatus, Role, TipoSolicitacaoCadastro } from '@prisma/client';
 
 describe('SolicitacoesCadastroService (Public)', () => {
   let service: SolicitacoesCadastroService;
@@ -18,6 +18,7 @@ describe('SolicitacoesCadastroService (Public)', () => {
     logoUrl: 'https://cdn.oneelo.com/logos/tenant-123.png',
     pwaIconUrl: 'https://cdn.oneelo.com/pwa/tenant-123.png',
     ativo: true,
+    websiteConfig: null as { customDomain: string | null; dnsStatus: DnsStatus } | null,
   };
 
   beforeEach(async () => {
@@ -64,6 +65,7 @@ describe('SolicitacoesCadastroService (Public)', () => {
         slug: mockTenant.slug,
         logoUrl: mockTenant.logoUrl,
         pwaIconUrl: mockTenant.pwaIconUrl,
+        customDomain: null,
       });
       expect(prisma.tenant.findUnique).toHaveBeenCalledWith({
         where: { slug: 'igreja-vida-nova' },
@@ -84,7 +86,32 @@ describe('SolicitacoesCadastroService (Public)', () => {
         slug: mockTenant.slug,
         logoUrl: mockTenant.pwaIconUrl,
         pwaIconUrl: mockTenant.pwaIconUrl,
+        customDomain: null,
       });
+    });
+
+    it('deve retornar customDomain apenas quando dnsStatus estiver ACTIVE', async () => {
+      prisma.tenant.findUnique.mockResolvedValueOnce({
+        ...mockTenant,
+        websiteConfig: {
+          customDomain: 'www.igreja.org.br',
+          dnsStatus: DnsStatus.ACTIVE,
+        },
+      });
+
+      const activeResult = await service.getPublicTenantInfo('igreja-vida-nova');
+      expect(activeResult.customDomain).toBe('www.igreja.org.br');
+
+      prisma.tenant.findUnique.mockResolvedValueOnce({
+        ...mockTenant,
+        websiteConfig: {
+          customDomain: 'www.pendente.org.br',
+          dnsStatus: DnsStatus.PENDING,
+        },
+      });
+
+      const pendingResult = await service.getPublicTenantInfo('igreja-vida-nova');
+      expect(pendingResult.customDomain).toBeNull();
     });
 
     it('deve lançar NotFoundException se tenant não existir ou for inativo', async () => {
