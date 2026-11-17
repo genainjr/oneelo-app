@@ -1,6 +1,7 @@
 import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { DnsStatus } from '@prisma/client';
 import {
+  getCompanionRedirectDomain,
   isApexDomain,
   normalizeAndValidateCustomDomain,
   VercelDomainsService,
@@ -153,5 +154,88 @@ describe('VercelDomainsService', () => {
 
     expect(outcome.dnsStatus).toBe(DnsStatus.ERROR);
     expect(outcome.verified).toBe(false);
+  });
+
+  describe('getCompanionRedirectDomain & syncCompanionRedirect', () => {
+    it('resolve domínio irmão apenas entre www e apex, preservando subdomínios específicos', () => {
+      expect(getCompanionRedirectDomain('www.ccrv.org.br')).toBe('ccrv.org.br');
+      expect(getCompanionRedirectDomain('ccrv.org.br')).toBe('www.ccrv.org.br');
+      expect(getCompanionRedirectDomain('www.igreja.org')).toBe('igreja.org');
+      expect(getCompanionRedirectDomain('igreja.org')).toBe('www.igreja.org');
+      expect(getCompanionRedirectDomain('site.ccrv.org.br')).toBeNull();
+    });
+
+    it('registra domínio irmão com redirect 308 e dispara verificação best-effort', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ name: 'ccrv.org.br', verified: true }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ verified: true }),
+        });
+      global.fetch = fetchMock;
+
+      const service = new TestableVercelDomainsService();
+      await service.syncCompanionRedirect('www.ccrv.org.br');
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        'https://api.vercel.com/v10/projects/prj_test_123/domains?teamId=team_test_456',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'ccrv.org.br',
+            redirect: 'www.ccrv.org.br',
+            redirectStatusCode: 308,
+          }),
+        }),
+      );
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        'https://api.vercel.com/v9/projects/prj_test_123/domains/ccrv.org.br/verify?teamId=team_test_456',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('atualiza redirect via PATCH quando o domínio irmão já existe (HTTP 409)', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 409,
+          json: () => Promise.resolve({ error: { code: 'conflict' } }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ name: 'www.ccrv.org.br' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ verified: true }),
+        });
+      global.fetch = fetchMock;
+
+      const service = new TestableVercelDomainsService();
+      await service.syncCompanionRedirect('ccrv.org.br');
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        'https://api.vercel.com/v9/projects/prj_test_123/domains/www.ccrv.org.br?teamId=team_test_456',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({
+            redirect: 'ccrv.org.br',
+            redirectStatusCode: 308,
+          }),
+        }),
+      );
+    });
   });
 });

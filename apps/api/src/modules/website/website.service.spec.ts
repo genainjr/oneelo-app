@@ -59,6 +59,8 @@ describe('WebsiteService', () => {
     registerDomain: jest.fn(),
     verifyDomain: jest.fn(),
     removeDomain: jest.fn(),
+    syncCompanionRedirect: jest.fn(),
+    removeCompanionDomain: jest.fn(),
   };
 
   const tenantFixture = {
@@ -98,6 +100,8 @@ describe('WebsiteService', () => {
     service = module.get<WebsiteService>(WebsiteService);
     mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' });
     mockStorageService.deleteObject.mockResolvedValue(undefined);
+    mockVercelDomainsService.syncCompanionRedirect.mockResolvedValue(undefined);
+    mockVercelDomainsService.removeCompanionDomain.mockResolvedValue(undefined);
   });
 
   describe('getPublicSiteData', () => {
@@ -530,6 +534,28 @@ describe('WebsiteService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
+    it('resolvePublicDomain resolve variante irmã (apex <-> www) quando busca exata não encontra', async () => {
+      mockPrisma.tenantWebsiteConfig.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          tenant: { slug: 'ccrv' },
+        });
+
+      const resolved = await service.resolvePublicDomain('ccrv.org.br');
+
+      expect(resolved).toEqual({ slug: 'ccrv' });
+      expect(mockPrisma.tenantWebsiteConfig.findFirst).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: {
+            customDomain: 'www.ccrv.org.br',
+            dnsStatus: DnsStatus.ACTIVE,
+            tenant: { ativo: true },
+          },
+        }),
+      );
+    });
+
     it('setCustomDomain bloqueia planos inferiores ao PROFISSIONAL', async () => {
       mockPrisma.tenant.findUnique.mockResolvedValue({
         id: 'tenant-1',
@@ -594,6 +620,9 @@ describe('WebsiteService', () => {
       expect(mockVercelDomainsService.registerDomain).toHaveBeenCalledWith(
         'www.igrejaesperanca.org.br',
       );
+      expect(mockVercelDomainsService.syncCompanionRedirect).toHaveBeenCalledWith(
+        'www.igrejaesperanca.org.br',
+      );
       expect(result.dnsStatus).toBe(DnsStatus.PENDING);
       expect(result.verificationChallenges).toHaveLength(1);
       expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
@@ -653,6 +682,9 @@ describe('WebsiteService', () => {
       const result = await service.removeCustomDomain('tenant-1', 'user-1');
 
       expect(mockVercelDomainsService.removeDomain).toHaveBeenCalledWith(
+        'www.igrejaesperanca.org.br',
+      );
+      expect(mockVercelDomainsService.removeCompanionDomain).toHaveBeenCalledWith(
         'www.igrejaesperanca.org.br',
       );
       expect(result).toEqual({

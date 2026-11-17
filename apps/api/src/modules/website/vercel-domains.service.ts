@@ -79,6 +79,29 @@ export function isApexDomain(domain: string): boolean {
   return false;
 }
 
+/**
+ * Returns the companion domain (apex <-> www.) that should redirect (308)
+ * to `domain`. Custom subdomains like `site.igreja.org.br` return `null`
+ * so the church's root domain is left untouched.
+ */
+export function getCompanionRedirectDomain(domain: string): string | null {
+  const normalized = domain.trim().toLowerCase().replace(/\.+$/, '');
+  if (!normalized || !FQDN_REGEX.test(normalized)) {
+    return null;
+  }
+
+  if (normalized.startsWith('www.')) {
+    const apex = normalized.slice(4);
+    return isApexDomain(apex) ? apex : null;
+  }
+
+  if (isApexDomain(normalized)) {
+    return `www.${normalized}`;
+  }
+
+  return null;
+}
+
 export function normalizeAndValidateCustomDomain(
   rawDomain: string,
   extraSystemHostsRaw = process.env.WEBSITE_SYSTEM_HOSTS ?? '',
@@ -254,6 +277,90 @@ export class VercelDomainsService {
       payload?.error?.message ||
         `Erro ao remover domínio da Vercel (HTTP ${response.status}).`,
     );
+  }
+
+  /**
+   * Registers/updates the companion redirect domain (`apex` <-> `www.`) on Vercel
+   * with a permanent 308 redirect to `primaryDomain`. Best-effort so ownership or
+   * propagation issues on the companion never block the primary domain.
+   */
+  async syncCompanionRedirect(primaryDomain: string): Promise<void> {
+    const companion = getCompanionRedirectDomain(primaryDomain);
+    if (!companion || !this.isVercelConfigured()) {
+      return;
+    }
+
+    const { token, projectId, teamQuery } = this.getVercelRequestContext();
+
+    try {
+      const response = await this.vercelFetch(
+        `https://api.vercel.com/v10/projects/${encodeURIComponent(projectId)}/domains${teamQuery}`,
+        {
+          method: 'POST',
+          token,
+          body: JSON.stringify({
+            name: companion,
+            redirect: primaryDomain,
+            redirectStatusCode: 308,
+          }),
+        },
+      );
+
+      if (response.status === 409) {
+        const patchResponse = await this.vercelFetch(
+          `https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(companion)}${teamQuery}`,
+          {
+            method: 'PATCH',
+            token,
+            body: JSON.stringify({
+              redirect: primaryDomain,
+              redirectStatusCode: 308,
+            }),
+          },
+        );
+        if (!patchResponse.ok) {
+          this.logger.warn(
+            `Não foi possível atualizar o redirect do domínio irmão "${companion}" na Vercel (HTTP ${patchResponse.status}).`,
+          );
+          return;
+        }
+      } else if (!response.ok) {
+        this.logger.warn(
+          `Não foi possível registrar o domínio irmão "${companion}" na Vercel (HTTP ${response.status}).`,
+        );
+        return;
+      }
+
+      await this.vercelFetch(
+        `https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(companion)}/verify${teamQuery}`,
+        { method: 'POST', token },
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Falha best-effort ao sincronizar domínio irmão "${companion}" -> "${primaryDomain}": ${message}`,
+      );
+    }
+  }
+
+  /**
+   * Best-effort removal of the companion redirect domain (`www.` <-> `apex`)
+   * when the church replaces or removes its custom domain.
+   */
+  async removeCompanionDomain(primaryDomain: string): Promise<void> {
+    const companion = getCompanionRedirectDomain(primaryDomain);
+    if (!companion || !this.isVercelConfigured()) {
+      return;
+    }
+
+    try {
+      await this.removeDomain(companion);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Falha best-effort ao remover domínio irmão "${companion}": ${message}`,
+      );
+    }
   }
 
   async verifyDomain(domain: string): Promise<DomainVerificationOutcome> {

@@ -419,8 +419,10 @@ export function DomainSetupCard({
         </div>
         <p className="text-xs text-gray-500">
           Informe apenas o domínio ou subdomínio (sem https:// e sem / no final).
-          Subdomínios como <code>www.suaigreja.org.br</code> propagam mais rápido
-          via CNAME.
+          Ao salvar <code>www.suaigreja.org.br</code> ou{' '}
+          <code>suaigreja.org.br</code>, o One Elo também configura o redirect
+          automático entre os dois na Vercel — basta manter os registros{' '}
+          <code>CNAME (www)</code> e <code>A (@)</code> abaixo no seu DNS.
         </p>
       </form>
 
