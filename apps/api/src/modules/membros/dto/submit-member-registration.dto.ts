@@ -71,6 +71,18 @@ export class SubmitMemberRegistrationDto {
   @IsString()
   observacoes?: string;
 
+  @IsOptional()
+  @IsBoolean()
+  isDependente?: boolean;
+
+  @ValidateIf(
+    (o: SubmitMemberRegistrationDto) =>
+      Boolean(o.isDependente) || Boolean(o.responsavelNome),
+  )
+  @IsString({ message: 'Nome do responsável inválido.' })
+  @IsNotEmpty({ message: 'Informe o nome do responsável pelo dependente.' })
+  responsavelNome?: string;
+
   @IsBoolean({ message: 'É obrigatório aceitar os termos de consentimento.' })
   consentimentoLgpd: boolean;
 

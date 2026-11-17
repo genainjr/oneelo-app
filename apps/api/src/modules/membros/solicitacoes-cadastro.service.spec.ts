@@ -217,12 +217,14 @@ describe('SolicitacoesCadastroService (Public)', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('deve atualizar ficha pendente existente se o mesmo telefone submeter novamente (idempotência)', async () => {
+    it('deve atualizar ficha pendente existente quando mesmo telefone e mesmo nome normalizado submeterem novamente (idempotência)', async () => {
       prisma.tenant.findUnique.mockResolvedValue(mockTenant);
       prisma.solicitacaoCadastroMembro.findMany.mockResolvedValue([
         {
           id: 'sol-existente-1',
+          nome: 'Messias Júnior',
           telefone: '+5585991101771',
+          cpf: null,
           status: 'PENDENTE',
         },
       ]);
@@ -233,7 +235,7 @@ describe('SolicitacoesCadastroService (Public)', () => {
 
       const result = await service.submitRegistration(mockTenant.slug, {
         tipo: TipoSolicitacaoCadastro.VISITANTE,
-        nome: 'Messias Jr Atualizado',
+        nome: 'messias junior',
         telefone: '85 99110-1771',
         consentimentoLgpd: true,
         observacoes: 'Cheguei hoje na cidade',
@@ -243,11 +245,63 @@ describe('SolicitacoesCadastroService (Public)', () => {
       expect(prisma.solicitacaoCadastroMembro.update).toHaveBeenCalledWith({
         where: { id: 'sol-existente-1' },
         data: expect.objectContaining({
-          nome: 'Messias Jr Atualizado',
+          nome: 'messias junior',
           observacoes: 'Cheguei hoje na cidade',
         }),
       });
       expect(prisma.solicitacaoCadastroMembro.create).not.toHaveBeenCalled();
+    });
+
+    it('deve criar nova ficha separada quando familiar/dependente enviar mesmo telefone com nome diferente', async () => {
+      prisma.tenant.findUnique.mockResolvedValue(mockTenant);
+      prisma.solicitacaoCadastroMembro.findMany.mockResolvedValue([
+        {
+          id: 'sol-pai-1',
+          nome: 'Messias Júnior',
+          telefone: '+5585991101771',
+          cpf: null,
+          status: 'PENDENTE',
+        },
+      ]);
+      prisma.solicitacaoCadastroMembro.create.mockResolvedValue({
+        id: 'sol-filha-1',
+      });
+      prisma.user.findMany.mockResolvedValue([]);
+
+      const result = await service.submitRegistration(mockTenant.slug, {
+        tipo: TipoSolicitacaoCadastro.VISITANTE,
+        nome: 'Isabella Lis',
+        telefone: '85 99110-1771',
+        isDependente: true,
+        responsavelNome: 'Messias Júnior',
+        observacoes: 'Primeira visita',
+        consentimentoLgpd: true,
+      });
+
+      expect(result.id).toBe('sol-filha-1');
+      expect(prisma.solicitacaoCadastroMembro.update).not.toHaveBeenCalled();
+      expect(prisma.solicitacaoCadastroMembro.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          nome: 'Isabella Lis',
+          telefone: '+5585991101771',
+          observacoes: '[Dependente — Responsável: Messias Júnior]\nPrimeira visita',
+        }),
+      });
+    });
+
+    it('deve exigir nome do responsável quando isDependente for true', async () => {
+      prisma.tenant.findUnique.mockResolvedValue(mockTenant);
+
+      await expect(
+        service.submitRegistration(mockTenant.slug, {
+          tipo: TipoSolicitacaoCadastro.VISITANTE,
+          nome: 'Isabella Lis',
+          telefone: '85 99110-1771',
+          isDependente: true,
+          responsavelNome: '   ',
+          consentimentoLgpd: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

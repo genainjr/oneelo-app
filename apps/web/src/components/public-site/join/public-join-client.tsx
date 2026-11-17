@@ -57,6 +57,13 @@ export function PublicJoinClient({
   const [observacoes, setObservacoes] = useState('');
   const [consentimentoLgpd, setConsentimentoLgpd] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+  const [isDependente, setIsDependente] = useState(false);
+  const [responsavelNome, setResponsavelNome] = useState('');
+  const [familyContext, setFamilyContext] = useState<{
+    telefone: string;
+    quemConvidou: string;
+    adultoNome: string;
+  } | null>(null);
 
   // Carregar dados públicos do tenant no client apenas se não vieram no SSR
   useEffect(() => {
@@ -131,6 +138,11 @@ export function PublicJoinClient({
       return;
     }
 
+    if (isDependente && !responsavelNome.trim()) {
+      setError('Informe o nome do pai, mãe ou responsável pelo dependente.');
+      return;
+    }
+
     const parsedBirthDate = parseDateIso(dataNascimento);
     if (dataNascimento.trim() && !parsedBirthDate) {
       setError('Data de nascimento inválida. Informe no formato DD/MM/AAAA.');
@@ -153,11 +165,18 @@ export function PublicJoinClient({
         igrejaAnterior: igrejaAnterior.trim() ? igrejaAnterior.trim() : undefined,
         quemConvidou: quemConvidou.trim() ? quemConvidou.trim() : undefined,
         observacoes: observacoes.trim() ? observacoes.trim() : undefined,
+        isDependente: isDependente || undefined,
+        responsavelNome: isDependente ? responsavelNome.trim() : undefined,
         consentimentoLgpd,
         website: honeypot || undefined,
       };
 
       await api.post(`/api/public/tenants/${slug}/members/submit`, payload);
+      setFamilyContext({
+        telefone: telefone.trim(),
+        quemConvidou: quemConvidou.trim(),
+        adultoNome: !isDependente ? nome.trim() : responsavelNome.trim(),
+      });
       setSubmitted(true);
     } catch (err: unknown) {
       const message =
@@ -170,10 +189,8 @@ export function PublicJoinClient({
     }
   }
 
-  function handleReset() {
-    setSubmitted(false);
+  function clearPersonFields() {
     setNome('');
-    setTelefone('');
     setEmail('');
     setCpf('');
     setDataNascimento('');
@@ -181,10 +198,30 @@ export function PublicJoinClient({
     setEstadoCivil('');
     setBatizadoAguas('');
     setIgrejaAnterior('');
-    setQuemConvidou('');
     setObservacoes('');
     setConsentimentoLgpd(false);
     setError(null);
+  }
+
+  function handleReset() {
+    setSubmitted(false);
+    clearPersonFields();
+    setTelefone('');
+    setQuemConvidou('');
+    setIsDependente(false);
+    setResponsavelNome('');
+    setFamilyContext(null);
+  }
+
+  function handleResetKeepFamily(asDependent = false) {
+    setSubmitted(false);
+    clearPersonFields();
+    if (familyContext) {
+      setTelefone(familyContext.telefone);
+      setQuemConvidou(familyContext.quemConvidou);
+      setResponsavelNome(asDependent ? familyContext.adultoNome : '');
+    }
+    setIsDependente(asDependent);
   }
 
   if (loadingTenant) {
@@ -290,20 +327,31 @@ export function PublicJoinClient({
               </div>
             )}
 
-            <div className="flex flex-col gap-2.5 sm:flex-row">
-              <button
-                type="button"
-                onClick={handleReset}
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-zinc-800 transition-colors hover:bg-stone-50"
-              >
-                Enviar Outro Cadastro
-              </button>
-              <Link
-                href={siteHomeHref}
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-[var(--site-accent)] px-4 text-sm font-bold text-[var(--site-accent-foreground)] transition-colors hover:bg-[var(--site-accent-hover)]"
-              >
-                Voltar para o site
-              </Link>
+            <div className="space-y-2.5">
+              {familyContext?.telefone && (
+                <button
+                  type="button"
+                  onClick={() => handleResetKeepFamily(false)}
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[var(--site-accent)] px-4 text-sm font-bold text-[var(--site-accent-foreground)] transition-colors hover:bg-[var(--site-accent-hover)]"
+                >
+                  Cadastrar familiar / criança com este WhatsApp
+                </button>
+              )}
+              <div className="flex flex-col gap-2.5 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-zinc-800 transition-colors hover:bg-stone-50"
+                >
+                  {familyContext?.telefone ? 'Novo cadastro em branco' : 'Enviar Outro Cadastro'}
+                </button>
+                <Link
+                  href={siteHomeHref}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-stone-200 bg-stone-50 px-4 text-sm font-semibold text-zinc-800 transition-colors hover:bg-stone-100"
+                >
+                  Voltar para o site
+                </Link>
+              </div>
             </div>
           </div>
         ) : (
@@ -377,23 +425,74 @@ export function PublicJoinClient({
                   autoComplete="name"
                   label="Nome Completo"
                   required
-                  placeholder="Seu nome completo"
+                  placeholder={isDependente ? 'Nome completo da criança ou dependente' : 'Seu nome completo'}
                   value={nome}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNome(e.target.value)}
                   className={SITE_INPUT_CLASS}
                 />
 
+                {/* Opção para criança ou dependente sem celular próprio */}
+                <label
+                  htmlFor="join-dependente"
+                  className="flex cursor-pointer items-start gap-2.5 rounded-2xl border border-stone-200/90 bg-[#faf9f6] p-3 text-xs text-stone-700 transition-colors hover:border-amber-300"
+                >
+                  <input
+                    id="join-dependente"
+                    type="checkbox"
+                    checked={isDependente}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsDependente(checked);
+                      if (checked && !responsavelNome && familyContext?.adultoNome) {
+                        setResponsavelNome(familyContext.adultoNome);
+                      }
+                      if (!checked) {
+                        setResponsavelNome('');
+                      }
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-amber-500 focus:ring-amber-500"
+                  />
+                  <span>
+                    <span className="block font-semibold text-zinc-900">
+                      É criança / dependente sem celular próprio
+                    </span>
+                    <span className="mt-0.5 block text-stone-500">
+                      Informe o nome do responsável e utilize o WhatsApp dele para contato da igreja.
+                    </span>
+                  </span>
+                </label>
+
+                {isDependente && (
+                  <InputField
+                    id="join-responsavel"
+                    name="guardianName"
+                    label="Nome do responsável"
+                    required
+                    placeholder="Nome do pai, mãe ou responsável"
+                    value={responsavelNome}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setResponsavelNome(e.target.value)}
+                    className={SITE_INPUT_CLASS}
+                  />
+                )}
+
                 {/* WhatsApp / Celular */}
-                <InternationalPhoneInput
-                  id="join-telefone"
-                  label="WhatsApp / Celular"
-                  countryLabel="País"
-                  required
-                  value={telefone}
-                  onChange={setTelefone}
-                  placeholder="(00) 00000-0000"
-                  variant="site-light"
-                />
+                <div>
+                  <InternationalPhoneInput
+                    id="join-telefone"
+                    label={isDependente ? 'WhatsApp do responsável' : 'WhatsApp / Celular'}
+                    countryLabel="País"
+                    required
+                    value={telefone}
+                    onChange={setTelefone}
+                    placeholder="(00) 00000-0000"
+                    variant="site-light"
+                  />
+                  {isDependente && (
+                    <p className="mt-1 text-xs text-stone-500">
+                      Usaremos este WhatsApp como contato do responsável pelo dependente.
+                    </p>
+                  )}
+                </div>
 
                 {/* E-mail (Obrigatório para membro, opcional para visitante) */}
                 <div>
