@@ -933,13 +933,13 @@ export default function ConfiguracoesSitePage() {
                       className="flex flex-col justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-4"
                     >
                       <div className="flex gap-4">
-                        <div className="h-20 w-24 shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                        <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
                           {item.imagemUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={item.imagemUrl}
                               alt={item.titulo}
-                              className="h-full w-full object-cover"
+                              className="h-full w-full object-contain"
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-gray-300">

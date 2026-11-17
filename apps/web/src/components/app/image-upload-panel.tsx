@@ -19,6 +19,7 @@ type ImageUploadPanelProps = {
   onRemoveClick: () => void;
   className?: string;
   previewClassName?: string;
+  imageClassName?: string;
 };
 
 function getInitials(name: string) {
@@ -51,6 +52,7 @@ export function ImageUploadPanel({
   onRemoveClick,
   className = '',
   previewClassName = 'h-16 w-16 rounded-2xl',
+  imageClassName = 'object-cover',
 }: ImageUploadPanelProps) {
   const busy = uploading || removing || disabled;
 
@@ -60,7 +62,7 @@ export function ImageUploadPanel({
         <div className="flex min-w-0 items-center gap-4">
           <div className={`flex shrink-0 overflow-hidden border border-gray-200 bg-white ${previewClassName}`}>
             {imageUrl ? (
-              <img src={imageUrl} alt={alt || fallbackName} className="h-full w-full object-cover" />
+              <img src={imageUrl} alt={alt || fallbackName} className={`h-full w-full ${imageClassName}`} />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-accent-soft text-sm font-bold text-accent-ink">
                 {getInitials(fallbackName)}

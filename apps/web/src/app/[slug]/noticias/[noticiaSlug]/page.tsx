@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar, UserPlus } from 'lucide-react';
@@ -170,15 +169,21 @@ export default async function PublicTenantNewsDetailPage({
           </header>
 
           {detail.news.imagemUrl && (
-            <div className="relative mt-8 aspect-[16/9] w-full overflow-hidden rounded-3xl border border-stone-200 bg-stone-100 shadow-sm">
-              <Image
-                src={detail.news.imagemUrl}
-                alt={detail.news.titulo}
-                fill
-                priority
-                sizes="(max-width: 768px) 100vw, 768px"
-                className="object-cover"
+            <div className="relative mt-8 w-full overflow-hidden rounded-3xl border border-stone-200 bg-stone-950/5 shadow-sm">
+              <div
+                className="absolute inset-0 -z-10 bg-cover bg-center opacity-25 blur-2xl filter scale-110"
+                style={{ backgroundImage: `url(${detail.news.imagemUrl})` }}
+                aria-hidden="true"
               />
+              <div className="flex items-center justify-center p-2 sm:p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={detail.news.imagemUrl}
+                  alt={detail.news.titulo}
+                  className="max-h-[720px] w-auto max-w-full rounded-2xl object-contain shadow-md"
+                  loading="eager"
+                />
+              </div>
             </div>
           )}
 
