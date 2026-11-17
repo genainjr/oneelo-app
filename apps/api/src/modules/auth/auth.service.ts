@@ -1137,6 +1137,7 @@ export class AuthService {
       memberId?: string | null;
       actorId?: string;
       ip?: string;
+      ignorarTelefoneSeEmUso?: boolean;
     },
   ) {
     const existing = await tx.user.findFirst({
@@ -1159,9 +1160,13 @@ export class AuthService {
           select: { id: true },
         });
         if (phoneConflict) {
-          throw new ConflictException(
-            'Este telefone já está em uso por outro usuário.',
-          );
+          if (params.ignorarTelefoneSeEmUso) {
+            telefoneLogin = null;
+          } else {
+            throw new ConflictException(
+              'Este telefone já está em uso por outro usuário.',
+            );
+          }
         }
       }
     }

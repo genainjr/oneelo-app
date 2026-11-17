@@ -486,4 +486,44 @@ describe('AuthService regeneratePendingActivationInTx & regenerateActivationLink
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(tx.user.update).not.toHaveBeenCalled();
   });
+
+  it('omite telefoneLogin quando ignorarTelefoneSeEmUso for true e o número pertencer a outro usuário', async () => {
+    const tx = {
+      user: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce({ id: 'user-pai' }),
+        create: jest.fn().mockImplementation(({ data }) => ({
+          id: 'user-esposa',
+          ...data,
+          createdAt: new Date(),
+        })),
+      },
+      auditLog: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const service = createService({});
+
+    const res = await service.createPendingBasicUserInTx(tx as never, {
+      tenantId: 'tenant-1',
+      nome: 'Esposa',
+      email: 'esposa@example.com',
+      telefoneLogin: '+5585991101771',
+      memberId: 'm-esposa',
+      actorId: 'admin-1',
+      ignorarTelefoneSeEmUso: true,
+    });
+
+    expect(tx.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'esposa@example.com',
+          telefoneLogin: null,
+          memberId: 'm-esposa',
+        }),
+      }),
+    );
+    expect(res.user.telefoneLogin).toBeNull();
+    expect(res.activationLink).toContain('/activate/');
+  });
 });

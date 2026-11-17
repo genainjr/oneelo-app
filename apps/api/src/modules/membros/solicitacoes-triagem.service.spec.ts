@@ -989,6 +989,91 @@ describe('SolicitacoesCadastroService (Triagem e Aprovação)', () => {
       expect(resHomonimo.userAccessOutcome).toBe('CREATED');
     });
 
+    it('deve bloquear criação cega por TELEFONE e liberar quando familiar confirmado com permitirCriarNovoMesmoDuplicado', async () => {
+      prisma.tenant.findUnique.mockResolvedValue(mockTenant);
+      prisma.solicitacaoCadastroMembro.findFirst.mockResolvedValue({
+        id: 'sol-filha-vis',
+        tenantId,
+        tipo: TipoSolicitacaoCadastro.VISITANTE,
+        status: StatusSolicitacaoCadastro.PENDENTE,
+        nome: 'Isabella Lis',
+        telefone: '+5585991101771',
+        email: null,
+        cpf: null,
+        createdAt: new Date(),
+      });
+      prisma.membro.findMany.mockResolvedValue([
+        {
+          id: 'm-pai',
+          nome: 'Messias do Nascimento Júnior',
+          whatsapp: '+5585991101771',
+          email: 'messinjr@gmail.com',
+          cpf: '12345678900',
+          status: StatusMembro.ATIVO,
+          user: null,
+        },
+      ]);
+
+      await expect(
+        service.aprovarSolicitacao(tenantId, 'sol-filha-vis', actorId),
+      ).rejects.toThrow(ConflictException);
+
+      prisma.membro.create.mockResolvedValue({
+        id: 'm-filha-vis',
+        nome: 'Isabella Lis',
+        whatsapp: '+5585991101771',
+        status: StatusMembro.VISITANTE,
+      });
+
+      const resVisitante = await service.aprovarSolicitacao(
+        tenantId,
+        'sol-filha-vis',
+        actorId,
+        { permitirCriarNovoMesmoDuplicado: true },
+      );
+
+      expect(resVisitante.membro.id).toBe('m-filha-vis');
+      expect(resVisitante.membro.status).toBe(StatusMembro.VISITANTE);
+      expect(authService.createPendingBasicUserInTx).not.toHaveBeenCalled();
+
+      // Caso MEMBRO familiar compartilhando telefone passa ignorarTelefoneSeEmUso: true
+      prisma.solicitacaoCadastroMembro.findFirst.mockResolvedValue({
+        id: 'sol-esposa-membro',
+        tenantId,
+        tipo: TipoSolicitacaoCadastro.MEMBRO,
+        status: StatusSolicitacaoCadastro.PENDENTE,
+        nome: 'Esposa Messias',
+        telefone: '+5585991101771',
+        email: 'esposa@gmail.com',
+        cpf: null,
+        createdAt: new Date(),
+      });
+      prisma.membro.count.mockResolvedValue(2);
+      prisma.membro.create.mockResolvedValue({
+        id: 'm-esposa',
+        nome: 'Esposa Messias',
+        whatsapp: '+5585991101771',
+        status: StatusMembro.ATIVO,
+      });
+
+      const resMembro = await service.aprovarSolicitacao(
+        tenantId,
+        'sol-esposa-membro',
+        actorId,
+        { permitirCriarNovoMesmoDuplicado: true },
+      );
+
+      expect(resMembro.membro.id).toBe('m-esposa');
+      expect(authService.createPendingBasicUserInTx).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          email: 'esposa@gmail.com',
+          telefoneLogin: '+5585991101771',
+          ignorarTelefoneSeEmUso: true,
+        }),
+      );
+    });
+
     it('deve impedir dupla aprovação concorrente quando claim atômico retornar count 0', async () => {
       prisma.solicitacaoCadastroMembro.findFirst.mockResolvedValue({
         id: 'sol-race',

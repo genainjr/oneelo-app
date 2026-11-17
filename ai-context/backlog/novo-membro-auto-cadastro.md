@@ -16,9 +16,10 @@
   2. **Triagem e Fila de Moderação Pastoral**:
      - Os cadastros enviados entram em uma fila de solicitações com status `PENDENTE_APROVACAO` (não entram diretamente como membros ativos para evitar spam ou duplicidades).
      - Notificação no sininho in-app para administradores/secretaria informando novos cadastros recebidos.
-     - Tela de moderação em `/membros` (aba ou filtro *"Fichas Recebidas"*):
-       - Ações: **Aprovar como Membro Ativo**, **Aprovar como Visitante**, **Revisar e Atualizar Cadastro Existente** (para duplicidades contra `VISITANTE` ou `ATIVO`, com comparação campo a campo e fluxo de acesso contínuo) ou **Descartar/Arquivar**.
-       - Identificação inteligente de duplicidade se CPF, telefone, e-mail ou nome exato já existir no banco (exibindo também o estado do usuário vinculado: sem usuário, `PENDING`, `ACTIVE`, `DISABLED` ou perfil administrativo).
+      - Tela de moderação em `/membros` (aba ou filtro *"Fichas Recebidas"*):
+        - Ações: **Aprovar como Membro Ativo**, **Aprovar como Visitante**, **Revisar e Atualizar Cadastro Existente** (para duplicidades contra `VISITANTE` ou `ATIVO`, com comparação campo a campo e fluxo de acesso contínuo), **Pessoa Diferente / Familiar** (quando telefone, e-mail ou nome coincidem entre familiares/homônimos, mantendo bloqueio absoluto para CPF) ou **Descartar/Arquivar**.
+        - Identificação inteligente de duplicidade se CPF, telefone, e-mail ou nome exato já existir no banco (exibindo também o estado do usuário vinculado: sem usuário, `PENDING`, `ACTIVE`, `DISABLED` ou perfil administrativo).
+        - Suporte no formulário público (`/join/[slug]`) para crianças/dependentes sem celular próprio (usando WhatsApp + nome do responsável) e atalho pós-envio para cadastrar outro familiar reutilizando o mesmo contato.
   3. **Acolhimento Automático**:
      - Ao aprovar o membro, opcionalmente gerar convite de ativação no app do OneElo.
 - **Impacto**: elimina papel e digitação manual após os cultos, moderniza a recepção da igreja e acelera o acolhimento pastoral de novos convertidos e membros recém-chegados.

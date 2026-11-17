@@ -468,9 +468,9 @@ export function SolicitacoesTriagemTab({
               item.duplicidade.membroExistenteStatus === 'VISITANTE';
             const isPendingSheetDuplicate =
               item.duplicidade.isDuplicate && !hasExistingMemberMatch;
-            const isExactNameHomonym =
+            const canApproveAsDifferentPerson =
               hasExistingMemberMatch &&
-              item.duplicidade.motivoDuplicidade === 'NOME_EXATO';
+              item.duplicidade.motivoDuplicidade !== 'CPF';
 
             return (
               <div
@@ -616,14 +616,14 @@ export function SolicitacoesTriagemTab({
 
                     {hasExistingMemberMatch ? (
                       <>
-                        {isExactNameHomonym && (
+                        {canApproveAsDifferentPerson && (
                           <button
                             type="button"
                             onClick={() => setHomonymConfirmItem(item)}
                             disabled={actionLoadingId === item.id}
                             className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
                           >
-                            Criar como Pessoa Diferente
+                            Pessoa Diferente / Familiar
                           </button>
                         )}
                         <button
@@ -748,11 +748,11 @@ export function SolicitacoesTriagemTab({
         onConfirm={handleConfirmMerge}
       />
 
-      {/* Confirmação explícita para homônimo (NOME_EXATO) */}
+      {/* Confirmação explícita para pessoa diferente / familiar (TELEFONE, EMAIL ou NOME_EXATO) */}
       {homonymConfirmItem && (
         <ModalShell
           isOpen
-          title="Confirmar Cadastro como Pessoa Diferente"
+          title="Confirmar Cadastro Separado (Familiar / Pessoa Diferente)"
           onClose={() => {
             if (actionLoadingId !== homonymConfirmItem.id) {
               setHomonymConfirmItem(null);
@@ -779,17 +779,44 @@ export function SolicitacoesTriagemTab({
                 {actionLoadingId === homonymConfirmItem.id && (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
-                Criar Novo Cadastro
+                Criar Cadastro Separado
               </button>
             </>
           }
         >
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Existe outro cadastro chamado{' '}
-            <strong>{homonymConfirmItem.duplicidade.membroExistenteNome}</strong>. Confirma que{' '}
-            <strong>{homonymConfirmItem.nome}</strong> é outra pessoa (homônimo) e deve ser criada
-            como um cadastro separado?
-          </p>
+          <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
+            <p>
+              {homonymConfirmItem.duplicidade.motivoDuplicidade === 'TELEFONE' ? (
+                <>
+                  Esta ficha utiliza o mesmo telefone (<strong>{homonymConfirmItem.telefone}</strong>)
+                  do cadastro de <strong>{homonymConfirmItem.duplicidade.membroExistenteNome}</strong>.
+                  Confirma que <strong>{homonymConfirmItem.nome}</strong> é outra pessoa (ex.: filho(a),
+                  cônjuge ou dependente) e deve ser criada como um cadastro separado?
+                </>
+              ) : homonymConfirmItem.duplicidade.motivoDuplicidade === 'EMAIL' ? (
+                <>
+                  Esta ficha compartilha o mesmo e-mail do cadastro de{' '}
+                  <strong>{homonymConfirmItem.duplicidade.membroExistenteNome}</strong>. Confirma que{' '}
+                  <strong>{homonymConfirmItem.nome}</strong> é outra pessoa e deve ser criada como um
+                  cadastro separado?
+                </>
+              ) : (
+                <>
+                  Existe outro cadastro chamado{' '}
+                  <strong>{homonymConfirmItem.duplicidade.membroExistenteNome}</strong>. Confirma que{' '}
+                  <strong>{homonymConfirmItem.nome}</strong> é outra pessoa (homônimo) e deve ser criada
+                  como um cadastro separado?
+                </>
+              )}
+            </p>
+            {homonymConfirmItem.tipo === 'MEMBRO' &&
+              homonymConfirmItem.duplicidade.motivoDuplicidade === 'TELEFONE' && (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  O WhatsApp de contato será mantido na ficha deste membro; se esse número já estiver
+                  em uso no login de outro usuário, o acesso desta pessoa usará o e-mail informado.
+                </p>
+              )}
+          </div>
         </ModalShell>
       )}
 

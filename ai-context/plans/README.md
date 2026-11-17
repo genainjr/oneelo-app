@@ -17,6 +17,7 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 17/11/2026 | [auto-cadastro-familiar-dependente-plan.md](auto-cadastro-familiar-dependente-plan.md) | Fluxo Familiar e Dependente sem Celular Próprio no Auto-Cadastro (Opção A — Concluído) |
 | 15/11/2026 | [triagem-atualizacao-duplicidade-membro-plan.md](triagem-atualizacao-duplicidade-membro-plan.md) | Triagem de Auto-Cadastro com Revisão, Atualização de Membro Existente e Fluxo de Acesso (Concluído) |
 | 13/11/2026 | [unificacao-tema-tenant-plan.md](unificacao-tema-tenant-plan.md) | Unificação Visual do Tenant (Tema Padrão Obsidiana + Âmbar via Tokens Semânticos — Plano A — Concluído) |
 | 13/11/2026 | [site-institucional-tenant-plan.md](site-institucional-tenant-plan.md) | Site Institucional Público do Tenant e Portal da Igreja (FT-019) |

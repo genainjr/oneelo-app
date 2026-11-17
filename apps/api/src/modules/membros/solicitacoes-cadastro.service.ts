@@ -15,6 +15,7 @@ import { SubmitMemberRegistrationDto } from './dto/submit-member-registration.dt
 import {
   normalizeCpf,
   normalizeEmail,
+  normalizeName,
   normalizePhone,
   extractPhoneDigits,
   checkMemberDuplicity,
@@ -179,6 +180,13 @@ export class SolicitacoesCadastroService {
       );
     }
 
+    // 4.1 Validação de nome do responsável quando dependente sem celular próprio
+    if (dto.isDependente && !dto.responsavelNome?.trim()) {
+      throw new BadRequestException(
+        'Informe o nome do responsável pelo dependente.',
+      );
+    }
+
     // 5. Normalização de dados
     const phoneNorm = normalizePhone(dto.telefone);
     if (!phoneNorm.phone) {
@@ -199,8 +207,22 @@ export class SolicitacoesCadastroService {
       ? new Date(dto.dataNascimento)
       : undefined;
     const phoneDigits = extractPhoneDigits(phoneNorm.phone);
+    const incomingNameNorm = normalizeName(dto.nome);
 
-    // 6. Idempotência por telefone pendente no mesmo tenant
+    const responsavelClean = dto.responsavelNome?.trim();
+    const rawObservacoes = dto.observacoes?.trim();
+    const dependentPrefix = dto.isDependente && responsavelClean
+      ? `[Dependente — Responsável: ${responsavelClean}]`
+      : responsavelClean
+        ? `[Responsável: ${responsavelClean}]`
+        : null;
+    const combinedObservacoes = dependentPrefix
+      ? rawObservacoes && !rawObservacoes.includes(dependentPrefix)
+        ? `${dependentPrefix}\n${rawObservacoes}`
+        : rawObservacoes || dependentPrefix
+      : rawObservacoes;
+
+    // 6. Idempotência por familiar (mesmo telefone + mesmo nome, ou mesmo CPF) pendente no mesmo tenant
     const pendingRequests =
       await this.prisma.solicitacaoCadastroMembro.findMany({
         where: {
@@ -209,9 +231,20 @@ export class SolicitacoesCadastroService {
         },
       });
 
-    const existingPending = pendingRequests.find(
-      (r) => extractPhoneDigits(r.telefone) === phoneDigits,
-    );
+    const existingPending = pendingRequests.find((r) => {
+      if (cpfNorm && r.cpf) {
+        const existingCpfNorm = normalizeCpf(r.cpf).cpf;
+        if (existingCpfNorm && existingCpfNorm === cpfNorm) {
+          return true;
+        }
+      }
+
+      const samePhone = extractPhoneDigits(r.telefone) === phoneDigits;
+      const sameName = Boolean(
+        r.nome && incomingNameNorm && normalizeName(r.nome) === incomingNameNorm,
+      );
+      return samePhone && sameName;
+    });
 
     let recordId: string;
 
@@ -232,7 +265,7 @@ export class SolicitacoesCadastroService {
             dto.igrejaAnterior?.trim() ?? existingPending.igrejaAnterior,
           quemConvidou:
             dto.quemConvidou?.trim() ?? existingPending.quemConvidou,
-          observacoes: dto.observacoes?.trim() ?? existingPending.observacoes,
+          observacoes: combinedObservacoes ?? existingPending.observacoes,
           consentimentoEm: new Date(),
           ipAddress: ip ?? existingPending.ipAddress,
         },
@@ -254,7 +287,7 @@ export class SolicitacoesCadastroService {
           batizadoAguas: dto.batizadoAguas,
           igrejaAnterior: dto.igrejaAnterior?.trim(),
           quemConvidou: dto.quemConvidou?.trim(),
-          observacoes: dto.observacoes?.trim(),
+          observacoes: combinedObservacoes,
           consentimentoEm: new Date(),
           ipAddress: ip,
         },
@@ -794,15 +827,16 @@ export class SolicitacoesCadastroService {
           );
         }
         if (
-          duplicityInTx.motivoDuplicidade === 'TELEFONE' ||
-          duplicityInTx.motivoDuplicidade === 'EMAIL'
+          (duplicityInTx.motivoDuplicidade === 'TELEFONE' ||
+            duplicityInTx.motivoDuplicidade === 'EMAIL') &&
+          !options.permitirCriarNovoMesmoDuplicado
         ) {
           throw new ConflictException(
             `Já existe um cadastro com este ${
               duplicityInTx.motivoDuplicidade === 'TELEFONE'
                 ? 'telefone'
                 : 'e-mail'
-            } ("${duplicityInTx.membroExistenteNome}"). Revise e atualize o cadastro existente.`,
+            } ("${duplicityInTx.membroExistenteNome}"). Revise o cadastro existente ou confirme se é um familiar / pessoa diferente.`,
           );
         }
         if (
@@ -903,6 +937,7 @@ export class SolicitacoesCadastroService {
         memberId: membro.id,
         actorId,
         ip,
+        ignorarTelefoneSeEmUso: Boolean(options.permitirCriarNovoMesmoDuplicado),
       });
 
       await tx.solicitacaoCadastroMembro.update({
