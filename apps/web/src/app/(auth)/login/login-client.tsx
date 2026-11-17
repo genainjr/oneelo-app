@@ -24,6 +24,31 @@ interface LoginClientProps {
   churchSlug?: string | null;
 }
 
+function SiteNavigationLink({
+  href,
+  isExternal,
+  className,
+  children,
+}: {
+  href: string;
+  isExternal: boolean;
+  className: string;
+  children: React.ReactNode;
+}) {
+  if (isExternal) {
+    return (
+      <a href={href} className={className}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps) {
   const t = useTranslations('auth.login');
   const searchParams = useSearchParams();
@@ -95,29 +120,39 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
   }
 
   const resolvedSlug = initialChurch?.slug || churchSlug;
-  const siteHomeHref = resolvedSlug ? `/${resolvedSlug}` : '/';
-  const siteJoinHref = resolvedSlug ? `/${resolvedSlug}/cadastro` : null;
+  const activeCustomOrigin = initialChurch?.customDomain
+    ? `https://${initialChurch.customDomain}`
+    : null;
+  const isCustomDomainTarget = Boolean(activeCustomOrigin);
+  const siteHomeHref = activeCustomOrigin || (resolvedSlug ? `/${resolvedSlug}` : '/');
+  const siteJoinHref = activeCustomOrigin
+    ? `${activeCustomOrigin}/cadastro`
+    : resolvedSlug
+      ? `/${resolvedSlug}/cadastro`
+      : null;
 
   const formContent = (
     <div className="w-full max-w-md px-4 sm:px-0">
       {isChurchBranded && resolvedSlug && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
-          <Link
+          <SiteNavigationLink
             href={siteHomeHref}
+            isExternal={isCustomDomainTarget}
             className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-amber-400/50 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
           >
             <ArrowLeft className="h-3.5 w-3.5 text-[var(--site-accent)]" aria-hidden="true" />
             <span>Voltar para o site</span>
-          </Link>
+          </SiteNavigationLink>
 
           {siteJoinHref && (
-            <Link
+            <SiteNavigationLink
               href={siteJoinHref}
+              isExternal={isCustomDomainTarget}
               className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-amber-400/50 hover:text-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
             >
               <UserPlus className="h-3.5 w-3.5 text-[var(--site-accent)]" aria-hidden="true" />
               <span>Cadastre-se</span>
-            </Link>
+            </SiteNavigationLink>
           )}
         </div>
       )}
@@ -362,12 +397,13 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
         {isChurchBranded && siteJoinHref && (
           <p className="mt-5 text-center text-xs text-zinc-400">
             Ainda não faz parte?{' '}
-            <Link
+            <SiteNavigationLink
               href={siteJoinHref}
+              isExternal={isCustomDomainTarget}
               className="font-semibold text-[var(--site-accent)] underline-offset-4 hover:underline"
             >
               Preencher cadastro
-            </Link>
+            </SiteNavigationLink>
           </p>
         )}
       </div>

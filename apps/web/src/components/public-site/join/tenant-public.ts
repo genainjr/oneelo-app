@@ -5,6 +5,7 @@ export interface PublicTenantInfo {
   slug: string;
   logoUrl?: string | null;
   pwaIconUrl?: string | null;
+  customDomain?: string | null;
 }
 
 export const getPublicTenantInfoServer = cache(
