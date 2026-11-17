@@ -520,4 +520,305 @@ describe('MembrosService - limites por plano', () => {
     });
   });
 
+  describe('update com ciclo de usuário e cota', () => {
+    it('deve desativar usuário BASIC quando status mudar para INATIVO e desativarUsuario for true', async () => {
+      const txMock = {
+        user: {
+          update: jest.fn().mockResolvedValue({ id: 'u1', status: UserStatus.DISABLED }),
+        },
+        auditLog: { create: jest.fn().mockResolvedValue({ id: 'aud-1' }) },
+        membro: {
+          update: jest.fn().mockResolvedValue({
+            id: 'm1',
+            nome: 'João',
+            status: StatusMembro.INATIVO,
+            user: { id: 'u1', role: Role.BASIC, status: UserStatus.DISABLED, ativo: false },
+          }),
+        },
+      };
+      const prisma = {
+        client: {
+          membro: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'm1',
+              tenantId,
+              nome: 'João',
+              email: 'joao@igreja.com',
+              whatsapp: '+5585991101771',
+              status: StatusMembro.ATIVO,
+              user: {
+                id: 'u1',
+                nome: 'João',
+                email: 'joao@igreja.com',
+                role: Role.BASIC,
+                status: UserStatus.ACTIVE,
+                ativo: true,
+              },
+            }),
+          },
+        },
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+
+      const service = new MembrosService(prisma as any, {} as any);
+      const res = await service.update(
+        tenantId,
+        'm1',
+        { status: StatusMembro.INATIVO, desativarUsuario: true },
+        'admin-1',
+        '127.0.0.1',
+      );
+
+      expect(txMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: expect.objectContaining({
+          ativo: false,
+          status: UserStatus.DISABLED,
+          activationTokenHash: null,
+        }),
+      });
+      expect(txMock.membro.update).toHaveBeenCalledWith({
+        where: { id: 'm1' },
+        data: { status: StatusMembro.INATIVO },
+        include: expect.any(Object),
+      });
+      expect(res.status).toBe(StatusMembro.INATIVO);
+    });
+
+    it('deve bloquear desativação de conta ADMIN/STAFF ao inativar membro', async () => {
+      const prisma = {
+        client: {
+          membro: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'm-admin',
+              tenantId,
+              status: StatusMembro.ATIVO,
+              user: { id: 'u-admin', role: Role.ADMIN, status: UserStatus.ACTIVE, ativo: true },
+            }),
+          },
+        },
+      };
+
+      const service = new MembrosService(prisma as any, {} as any);
+      await expect(
+        service.update(tenantId, 'm-admin', {
+          status: StatusMembro.INATIVO,
+          desativarUsuario: true,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('deve validar cota e reativar conta BASIC DISABLED quando reativarUsuario for true', async () => {
+      const txMock = {
+        membro: {
+          update: jest.fn().mockResolvedValue({
+            id: 'm-ret',
+            nome: 'João Retorno',
+            email: 'joao@igreja.com',
+            status: StatusMembro.ATIVO,
+            user: { id: 'u-dis', role: Role.BASIC, status: UserStatus.PENDING, ativo: false },
+          }),
+        },
+      };
+      const prisma = {
+        tenant: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: tenantId,
+            plano: Plano.GRATUITO,
+            limiteMembros: 50,
+          }),
+        },
+        client: {
+          membro: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'm-ret',
+              tenantId,
+              nome: 'João Antigo',
+              email: 'joao@igreja.com',
+              whatsapp: '+5585991101771',
+              status: StatusMembro.INATIVO,
+              user: {
+                id: 'u-dis',
+                nome: 'João Antigo',
+                email: 'joao@igreja.com',
+                role: Role.BASIC,
+                status: UserStatus.DISABLED,
+                ativo: false,
+              },
+            }),
+            count: jest.fn().mockResolvedValue(12),
+          },
+        },
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+      const authService = {
+        reactivateDisabledUserInTx: jest.fn().mockResolvedValue({
+          id: 'u-dis',
+          status: UserStatus.PENDING,
+          activationLink: 'https://app.oneelo.com/activate/ret-tok',
+        }),
+      } as any;
+
+      const service = new MembrosService(prisma as any, {} as any, authService);
+      const res: any = await service.update(
+        tenantId,
+        'm-ret',
+        { status: StatusMembro.ATIVO, reativarUsuario: true },
+        'admin-1',
+        '10.0.0.1',
+      );
+
+      expect(authService.reactivateDisabledUserInTx).toHaveBeenCalledWith(
+        txMock,
+        expect.objectContaining({
+          userId: 'u-dis',
+          tenantId,
+          origemAuditoria: 'reativacao_membro_edicao',
+        }),
+      );
+      expect(res.activationLink).toBe('https://app.oneelo.com/activate/ret-tok');
+    });
+
+    it('deve bloquear reativação de membro INATIVO para ATIVO quando cota do plano estiver cheia', async () => {
+      const prisma = {
+        tenant: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: tenantId,
+            plano: Plano.GRATUITO,
+            limiteMembros: 50,
+          }),
+        },
+        client: {
+          membro: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'm-inativo',
+              tenantId,
+              status: StatusMembro.INATIVO,
+              user: null,
+            }),
+            count: jest.fn().mockResolvedValue(50),
+          },
+        },
+      };
+
+      const service = new MembrosService(prisma as any, {} as any);
+      await expect(
+        service.update(tenantId, 'm-inativo', { status: StatusMembro.ATIVO }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('remove com usuários vinculados', () => {
+    it('deve excluir usuário PENDING sem histórico ao excluir membro', async () => {
+      const txMock = {
+        ministerioMembroFuncao: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        ministerioMembro: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        membroTag: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        auditLog: {
+          count: jest.fn().mockResolvedValue(0),
+          create: jest.fn().mockResolvedValue({ id: 'aud' }),
+        },
+        escalaItem: { count: jest.fn().mockResolvedValue(0) },
+        financialTransaction: { count: jest.fn().mockResolvedValue(0) },
+        financePermission: { count: jest.fn().mockResolvedValue(0) },
+        user: {
+          delete: jest.fn().mockResolvedValue({ id: 'u-pend' }),
+          update: jest.fn(),
+        },
+        membro: { update: jest.fn().mockResolvedValue({ id: 'm-pend' }) },
+      };
+      const prisma = {
+        client: {
+          membro: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'm-pend',
+              nome: 'Teste Pendente',
+              fotoKey: null,
+              user: {
+                id: 'u-pend',
+                role: Role.BASIC,
+                status: UserStatus.PENDING,
+                ativo: false,
+                email: 'teste@igreja.com',
+              },
+            }),
+          },
+        },
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+
+      const service = new MembrosService(prisma as any, {} as any);
+      const res = await service.remove(tenantId, 'm-pend', { actorUserId: 'admin-1' });
+
+      expect(res.message).toContain('soft delete');
+      expect(txMock.user.delete).toHaveBeenCalledWith({ where: { id: 'u-pend' } });
+      expect(txMock.user.update).not.toHaveBeenCalled();
+    });
+
+    it('deve desativar, desvincular memberId e liberar telefoneLogin de usuário BASIC com histórico, protegendo ADMIN/STAFF', async () => {
+      const txMock = {
+        ministerioMembroFuncao: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        ministerioMembro: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        membroTag: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        user: {
+          delete: jest.fn(),
+          update: jest.fn().mockResolvedValue({}),
+        },
+        membro: { updateMany: jest.fn().mockResolvedValue({ count: 2 }) },
+        auditLog: { create: jest.fn().mockResolvedValue({ id: 'aud' }) },
+      };
+      const prisma = {
+        client: {
+          membro: {
+            findMany: jest.fn().mockResolvedValue([
+              {
+                id: 'm-act',
+                nome: 'Ativo',
+                fotoKey: null,
+                user: {
+                  id: 'u-act',
+                  role: Role.BASIC,
+                  status: UserStatus.ACTIVE,
+                  ativo: true,
+                  email: 'ativo@igreja.com',
+                },
+              },
+              {
+                id: 'm-adm',
+                nome: 'Pastor',
+                fotoKey: null,
+                user: {
+                  id: 'u-adm',
+                  role: Role.ADMIN,
+                  status: UserStatus.ACTIVE,
+                  ativo: true,
+                  email: 'pastor@igreja.com',
+                },
+              },
+            ]),
+          },
+        },
+        $transaction: jest.fn(async (cb) => cb(txMock)),
+      };
+
+      const service = new MembrosService(prisma as any, {} as any);
+      await service.bulkRemove(tenantId, ['m-act', 'm-adm'], 'admin-1');
+
+      expect(txMock.user.delete).not.toHaveBeenCalled();
+      expect(txMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'u-act' },
+        data: expect.objectContaining({
+          ativo: false,
+          status: UserStatus.DISABLED,
+          memberId: null,
+          telefoneLogin: null,
+        }),
+      });
+      expect(txMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'u-adm' },
+        data: { memberId: null },
+      });
+    });
+  });
+
 });

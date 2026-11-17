@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, HttpError } from '@/lib/api';
 import { buildImageFormData } from '@/lib/image-upload';
 import { includesNormalizedText } from '@/lib/utils';
-import { Membro } from '@/types';
+import { Membro, MembroSavePayload, MembroUpdateResult } from '@/types';
 
 export interface PromoteVisitanteResponse {
   membro: Membro;
@@ -86,14 +86,20 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     return created;
   }
 
-  async function updateMembro(id: string, data: Partial<Membro>) {
-    const updated = await api.patch<Membro>(`/api/membros/${id}`, data);
-    setRawMembros((prev) => prev.map((m) => (m.id === id ? updated : m)));
-    return updated;
+  async function updateMembro(
+    id: string,
+    data: MembroSavePayload,
+  ): Promise<MembroUpdateResult> {
+    const res = await api.patch<MembroUpdateResult>(`/api/membros/${id}`, data);
+    const { activationLink: _ignoredLink, ...memberOnly } = res;
+    setRawMembros((prev) => prev.map((m) => (m.id === id ? (memberOnly as Membro) : m)));
+    return res;
   }
 
-  async function deleteMembro(id: string) {
-    await api.delete(`/api/membros/${id}`);
+  async function deleteMembro(id: string, desativarUsuario = true) {
+    await api.delete(
+      `/api/membros/${id}?desativarUsuario=${desativarUsuario ? 'true' : 'false'}`,
+    );
     setRawMembros((prev) => prev.filter((m) => m.id !== id));
   }
 
@@ -109,8 +115,8 @@ export function useMembros(initialFilter: FilterMembros = {}) {
     return updated;
   }
 
-  async function bulkDeleteMembros(ids: string[]) {
-    await api.post('/api/membros/bulk-delete', { ids });
+  async function bulkDeleteMembros(ids: string[], desativarUsuarios = true) {
+    await api.post('/api/membros/bulk-delete', { ids, desativarUsuarios });
     await fetchMembros();
   }
 

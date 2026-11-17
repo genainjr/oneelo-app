@@ -33,6 +33,7 @@ export type SolicitacaoMergeField =
 export type UserAccessOutcome =
   | 'CREATED'
   | 'REGENERATED'
+  | 'REACTIVATED'
   | 'ALREADY_ACTIVE'
   | 'DISABLED'
   | 'PROTECTED_ROLE'
@@ -100,6 +101,7 @@ export interface SolicitacaoMergeSubmitPayload {
   camposAtualizar: SolicitacaoMergeField[];
   anexarObservacoes: boolean;
   criarOuRegenerarAcesso: boolean;
+  reativarUsuarioDesativado: boolean;
   promoverParaAtivo: boolean;
 }
 
@@ -343,6 +345,7 @@ export function SolicitacaoDuplicidadeModal({
   const [anexarObservacoes, setAnexarObservacoes] = useState(true);
   const [promoverParaAtivo, setPromoverParaAtivo] = useState(true);
   const [criarOuRegenerarAcesso, setCriarOuRegenerarAcesso] = useState(true);
+  const [reativarUsuarioDesativado, setReativarUsuarioDesativado] = useState(false);
   const [showUnchanged, setShowUnchanged] = useState(false);
 
   useEffect(() => {
@@ -359,6 +362,7 @@ export function SolicitacaoDuplicidadeModal({
     const shouldPromoteDefault =
       membro.status === 'ATIVO' ? true : item.tipo === 'MEMBRO';
     setPromoverParaAtivo(shouldPromoteDefault);
+    setReativarUsuarioDesativado(false);
 
     const hasValidEmailCandidate = Boolean(
       (
@@ -383,6 +387,8 @@ export function SolicitacaoDuplicidadeModal({
   if (!isOpen || !item || !membro) return null;
 
   const isExistingActive = membro.status === 'ATIVO';
+  const isFormerMember =
+    membro.status === 'INATIVO' || membro.status === 'TRANSFERIDO';
   const willBeActiveMember = isExistingActive || promoverParaAtivo;
 
   const finalEmailCandidate = (
@@ -399,6 +405,14 @@ export function SolicitacaoDuplicidadeModal({
   const motivoText = item.duplicidade.motivoDuplicidade
     ? MOTIVO_LABEL[item.duplicidade.motivoDuplicidade]
     : 'Cadastro similar';
+
+  const canCreateNewUser = !usuario && willBeActiveMember && hasFinalValidEmail;
+  const canRegeneratePending =
+    Boolean(usuario && usuario.role === 'BASIC' && usuario.status === 'PENDING') &&
+    willBeActiveMember;
+  const canReactivateDisabled =
+    Boolean(usuario && usuario.role === 'BASIC' && usuario.status === 'DISABLED') &&
+    willBeActiveMember;
 
   function toggleField(field: SolicitacaoMergeField) {
     setSelectedFields((prev) => {
@@ -423,14 +437,12 @@ export function SolicitacaoDuplicidadeModal({
       camposAtualizar: Array.from(selectedFields),
       anexarObservacoes,
       promoverParaAtivo: isExistingActive ? false : promoverParaAtivo,
-      criarOuRegenerarAcesso: willBeActiveMember ? criarOuRegenerarAcesso : false,
+      criarOuRegenerarAcesso:
+        canCreateNewUser || canRegeneratePending ? criarOuRegenerarAcesso : false,
+      reativarUsuarioDesativado:
+        canReactivateDisabled && reativarUsuarioDesativado,
     });
   }
-
-  const canCreateNewUser = !usuario && willBeActiveMember && hasFinalValidEmail;
-  const canRegeneratePending =
-    Boolean(usuario && usuario.role === 'BASIC' && usuario.status === 'PENDING') &&
-    willBeActiveMember;
 
   return (
     <ModalShell
@@ -479,7 +491,7 @@ export function SolicitacaoDuplicidadeModal({
         )}
       </div>
 
-      {/* Opção de promoção quando for Visitante */}
+      {/* Opção de promoção ou reativação quando for Visitante ou Ex-membro */}
       {!isExistingActive && (
         <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 cursor-pointer">
           <input
@@ -490,18 +502,25 @@ export function SolicitacaoDuplicidadeModal({
               setPromoverParaAtivo(checked);
               if (!checked) {
                 setCriarOuRegenerarAcesso(false);
+                setReativarUsuarioDesativado(false);
               }
             }}
             className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
           />
           <div className="text-sm">
             <span className="font-semibold text-amber-950 block">
-              Promover este Visitante para Membro Ativo
+              {isFormerMember
+                ? `Reativar este ex-membro (${STATUS_MEMBRO_LABEL[membro.status] ?? membro.status}) para Membro Ativo`
+                : 'Promover este Visitante para Membro Ativo'}
             </span>
             <span className="text-xs text-amber-800 block mt-0.5">
-              {item.tipo === 'VISITANTE'
-                ? 'A ficha foi enviada na aba Visitante; marque apenas se desejar efetivá-lo como membro ativo agora.'
-                : 'Atualiza o status para Ativo validando a cota de membros do plano e libera criação de acesso.'}
+              {isFormerMember
+                ? item.tipo === 'VISITANTE'
+                  ? 'A ficha foi enviada na aba Visitante; marque apenas se desejar reativá-lo diretamente como Membro Ativo.'
+                  : 'Reativa o cadastro anterior para Ativo validando a cota de membros do plano e libera a reativação de acesso.'
+                : item.tipo === 'VISITANTE'
+                  ? 'A ficha foi enviada na aba Visitante; marque apenas se desejar efetivá-lo como membro ativo agora.'
+                  : 'Atualiza o status para Ativo validando a cota de membros do plano e libera criação de acesso.'}
             </span>
           </div>
         </label>
@@ -733,13 +752,35 @@ export function SolicitacaoDuplicidadeModal({
             </span>
           </div>
         ) : usuario.status === 'DISABLED' ? (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 flex items-start gap-2">
-            <Info className="h-4 w-4 shrink-0 mt-0.5 text-gray-500" />
-            <span>
-              O usuário vinculado ({usuario.email}) está <strong>desativado</strong>. Somente os
-              dados cadastrais do membro serão atualizados — a conta permanecerá desativada.
-            </span>
-          </div>
+          !willBeActiveMember ? (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 flex items-start gap-2">
+              <Info className="h-4 w-4 shrink-0 mt-0.5 text-gray-500" />
+              <span>
+                O usuário vinculado ({usuario.email}) está <strong>desativado</strong>. Enquanto o
+                membro permanecer sem status Ativo, somente os dados cadastrais serão atualizados.
+              </span>
+            </div>
+          ) : (
+            <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+              <input
+                type="checkbox"
+                checked={canReactivateDisabled && reativarUsuarioDesativado}
+                onChange={(e) => setReativarUsuarioDesativado(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
+              />
+              <div className="text-sm">
+                <span className="font-semibold text-amber-950 block">
+                  Reativar conta de acesso anterior (perfil Membro) e gerar link de ativação (72h)
+                </span>
+                <span className="text-xs text-amber-800 block mt-0.5">
+                  Desbloqueia a conta anterior ({finalEmailCandidate || usuario.email}) com os
+                  contatos selecionados acima — sem conflito de duplicidade — e gera um novo link
+                  para a pessoa definir nova senha. Deixe desmarcado se a conta deve continuar
+                  bloqueada.
+                </span>
+              </div>
+            </label>
+          )
         ) : usuario.status === 'ACTIVE' ? (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-900 flex items-start gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />

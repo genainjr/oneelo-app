@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsUUID } from 'class-validator';
+import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsOptional, IsUUID } from 'class-validator';
 
 export class BulkDeleteMembrosDto {
   @ApiProperty({
@@ -12,4 +12,8 @@ export class BulkDeleteMembrosDto {
   @ArrayMaxSize(500, { message: 'Não é possível excluir mais de 500 membros de uma vez.' })
   @IsUUID('4', { each: true, message: 'Cada ID fornecido deve ser um UUID válido.' })
   ids: string[];
+
+  @IsBoolean({ message: 'O campo desativarUsuarios deve ser booleano.' })
+  @IsOptional()
+  desativarUsuarios?: boolean;
 }

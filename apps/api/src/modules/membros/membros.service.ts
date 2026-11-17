@@ -17,7 +17,7 @@ import { FilterMembrosVisualizacaoDto } from './dto/filter-membros-visualizacao.
 import { BulkTagMembrosDto } from './dto/bulk-tag-membros.dto';
 import { PromoteVisitanteDto } from './dto/promote-visitante.dto';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
-import { AcaoAuditoria, MinistryRole, Role, StatusMembro, UserStatus } from '@prisma/client';
+import { AcaoAuditoria, MinistryRole, Prisma, Role, StatusMembro, UserStatus } from '@prisma/client';
 import { AuthService } from '../auth/auth.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import type { Multer } from 'multer';
@@ -35,6 +35,7 @@ const memberListInclude = {
       nome: true,
       email: true,
       role: true,
+      ativo: true,
       status: true,
       activationExpiresAt: true,
     },
@@ -381,14 +382,174 @@ export class MembrosService {
     );
   }
 
-  async update(tenantId: string, id: string, dto: UpdateMembroDto) {
-    // Garante existência e pertencimento ao tenant (não deletado)
-    await this.findOne(tenantId, id);
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateMembroDto,
+    actorUserId?: string,
+    ip?: string,
+  ) {
+    const { desativarUsuario, reativarUsuario, ...memberData } = dto;
 
-    return this.prisma.client.membro.update({
-      where: { id },
-      data: dto,
-      include: memberListInclude,
+    // Garante existência e pertencimento ao tenant (não deletado) incluindo usuário vinculado
+    const existing = await this.prisma.client.membro.findFirst({
+      where: { id, tenantId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            telefoneLogin: true,
+            role: true,
+            status: true,
+            ativo: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Membro não encontrado.');
+    }
+
+    const targetStatus = memberData.status ?? existing.status;
+
+    // Valida cota do plano apenas quando um membro não-ativo passa ou retorna para ATIVO
+    if (
+      existing.status !== StatusMembro.ATIVO &&
+      targetStatus === StatusMembro.ATIVO
+    ) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
+      if (!tenant) {
+        throw new NotFoundException('Tenant não encontrado.');
+      }
+      const totalAtivos = await this.prisma.client.membro.count({
+        where: { tenantId, deletedAt: null, status: StatusMembro.ATIVO },
+      });
+      if (!canAddMember(tenant, totalAtivos)) {
+        const effectiveLimit = getEffectiveMemberLimit(tenant);
+        throw new ForbiddenException(
+          `Limite de membros (${effectiveLimit}) atingido para o plano ${tenant.plano}. Faça um upgrade.`,
+        );
+      }
+    }
+
+    const isLeavingStatus =
+      targetStatus === StatusMembro.INATIVO ||
+      targetStatus === StatusMembro.TRANSFERIDO;
+    const shouldDisableUser =
+      Boolean(desativarUsuario) && isLeavingStatus && Boolean(existing.user);
+    const shouldReactivateUser =
+      Boolean(reativarUsuario) &&
+      targetStatus === StatusMembro.ATIVO &&
+      Boolean(existing.user);
+
+    if (shouldDisableUser && existing.user!.role !== Role.BASIC) {
+      throw new ForbiddenException(
+        'Contas administrativas (ADMIN/STAFF) não podem ser desativadas pelo cadastro de membros. Gerencie em Configurações > Usuários.',
+      );
+    }
+
+    if (shouldReactivateUser && existing.user!.role !== Role.BASIC) {
+      throw new ForbiddenException(
+        'Contas administrativas (ADMIN/STAFF) não podem ser reativadas pelo cadastro de membros.',
+      );
+    }
+
+    const canDisableBasic =
+      shouldDisableUser &&
+      (existing.user!.ativo || existing.user!.status !== UserStatus.DISABLED);
+    const canReactivateBasic =
+      shouldReactivateUser &&
+      (existing.user!.status === UserStatus.DISABLED || !existing.user!.ativo);
+
+    if (!canDisableBasic && !canReactivateBasic) {
+      return this.prisma.client.membro.update({
+        where: { id },
+        data: memberData,
+        include: memberListInclude,
+      });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      let activationLink: string | null = null;
+
+      if (canDisableBasic) {
+        await tx.user.update({
+          where: { id: existing.user!.id },
+          data: {
+            ativo: false,
+            status: UserStatus.DISABLED,
+            activationTokenHash: null,
+            activationExpiresAt: null,
+            activationCreatedAt: null,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            tenantId,
+            userId: actorUserId ?? null,
+            entidade: 'usuarios',
+            entidadeId: existing.user!.id,
+            acao: AcaoAuditoria.DELETAR,
+            payloadBefore: {
+              status: existing.user!.status,
+              ativo: existing.user!.ativo,
+            },
+            payloadAfter: {
+              status: UserStatus.DISABLED,
+              ativo: false,
+              origem: 'inativacao_membro',
+              membroId: existing.id,
+            },
+            ipAddress: ip,
+          },
+        });
+      } else if (canReactivateBasic) {
+        if (!this.authService) {
+          throw new InternalServerErrorException(
+            'Serviço de autenticação indisponível para reativar acesso do membro.',
+          );
+        }
+
+        const resolvedEmail = (
+          memberData.email !== undefined
+            ? memberData.email
+            : existing.email ?? existing.user!.email
+        ) || existing.user!.email;
+        const resolvedPhone =
+          memberData.whatsapp !== undefined
+            ? memberData.whatsapp
+            : existing.whatsapp;
+
+        const reactivated = await this.authService.reactivateDisabledUserInTx(
+          tx,
+          {
+            userId: existing.user!.id,
+            tenantId,
+            actorId: actorUserId || null,
+            ip,
+            nome: (memberData.nome ?? existing.nome).trim(),
+            email: resolvedEmail,
+            telefoneLogin: resolvedPhone,
+            ignorarTelefoneSeEmUso: true,
+            origemAuditoria: 'reativacao_membro_edicao',
+          },
+        );
+        activationLink = reactivated.activationLink;
+      }
+
+      const updated = await tx.membro.update({
+        where: { id },
+        data: memberData,
+        include: memberListInclude,
+      });
+
+      return activationLink ? { ...updated, activationLink } : updated;
     });
   }
 
@@ -680,44 +841,242 @@ export class MembrosService {
     return updated;
   }
 
-  async remove(tenantId: string, id: string) {
+  private async handleLinkedUsersOnMemberDeletionInTx(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    members: Array<{
+      id: string;
+      nome: string;
+      user?: {
+        id: string;
+        role: Role;
+        status: UserStatus;
+        ativo: boolean;
+        email: string;
+      } | null;
+    }>,
+    options: {
+      desativarUsuario: boolean;
+      actorUserId?: string;
+      ip?: string;
+      origem: string;
+    },
+  ) {
+    const membersWithUsers = members.filter((m) => Boolean(m.user));
+    if (membersWithUsers.length === 0) return;
+
+    for (const member of membersWithUsers) {
+      const linkedUser = member.user!;
+
+      // Contas administrativas nunca têm login desativado ao excluir registro de membro; apenas desvincula memberId
+      if (linkedUser.role !== Role.BASIC) {
+        await tx.user.update({
+          where: { id: linkedUser.id },
+          data: { memberId: null },
+        });
+        continue;
+      }
+
+      if (!options.desativarUsuario) {
+        await tx.user.update({
+          where: { id: linkedUser.id },
+          data: { memberId: null },
+        });
+        continue;
+      }
+
+      let canHardDeletePendingUser = false;
+      if (linkedUser.status === UserStatus.PENDING) {
+        const [auditCount, escalaCount, txCount, permCount] =
+          await Promise.all([
+            tx.auditLog.count({ where: { userId: linkedUser.id } }),
+            tx.escalaItem.count({ where: { userId: linkedUser.id } }),
+            tx.financialTransaction.count({
+              where: {
+                OR: [
+                  { createdByUserId: linkedUser.id },
+                  { cancelledByUserId: linkedUser.id },
+                ],
+              },
+            }),
+            tx.financePermission.count({
+              where: {
+                OR: [
+                  { createdByUserId: linkedUser.id },
+                  { updatedByUserId: linkedUser.id },
+                ],
+              },
+            }),
+          ]);
+        canHardDeletePendingUser =
+          auditCount === 0 &&
+          escalaCount === 0 &&
+          txCount === 0 &&
+          permCount === 0;
+      }
+
+      if (canHardDeletePendingUser) {
+        await tx.user.delete({
+          where: { id: linkedUser.id },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            tenantId,
+            userId: options.actorUserId ?? null,
+            entidade: 'usuarios',
+            entidadeId: linkedUser.id,
+            acao: AcaoAuditoria.DELETAR,
+            payloadBefore: {
+              email: linkedUser.email,
+              status: linkedUser.status,
+              membroId: member.id,
+            },
+            payloadAfter: {
+              removidoFisicamente: true,
+              origem: options.origem,
+            },
+            ipAddress: options.ip,
+          },
+        });
+        continue;
+      }
+
+      await tx.user.update({
+        where: { id: linkedUser.id },
+        data: {
+          ativo: false,
+          status: UserStatus.DISABLED,
+          memberId: null,
+          telefoneLogin: null,
+          activationTokenHash: null,
+          activationExpiresAt: null,
+          activationCreatedAt: null,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          userId: options.actorUserId ?? null,
+          entidade: 'usuarios',
+          entidadeId: linkedUser.id,
+          acao: AcaoAuditoria.DELETAR,
+          payloadBefore: {
+            status: linkedUser.status,
+            ativo: linkedUser.ativo,
+            membroId: member.id,
+          },
+          payloadAfter: {
+            status: UserStatus.DISABLED,
+            ativo: false,
+            memberId: null,
+            telefoneLoginLiberado: true,
+            origem: options.origem,
+          },
+          ipAddress: options.ip,
+        },
+      });
+    }
+  }
+
+  async remove(
+    tenantId: string,
+    id: string,
+    options: {
+      desativarUsuario?: boolean;
+      actorUserId?: string;
+      ip?: string;
+    } = {},
+  ) {
     const member = await this.prisma.client.membro.findFirst({
       where: { id, tenantId },
-      select: { id: true, fotoKey: true },
+      select: {
+        id: true,
+        nome: true,
+        fotoKey: true,
+        user: {
+          select: {
+            id: true,
+            role: true,
+            status: true,
+            ativo: true,
+            email: true,
+          },
+        },
+      },
     });
 
     if (!member) {
       throw new NotFoundException('Membro nao encontrado.');
     }
 
-    await this.storageService.deleteObject(
-      this.memberPhotoBucket,
-      member.fotoKey,
-    );
+    if (member.fotoKey) {
+      await this.storageService
+        .deleteObject(this.memberPhotoBucket, member.fotoKey)
+        .catch(() => undefined);
+    }
 
     const deletedAt = new Date();
+    const desativarUsuario = options.desativarUsuario !== false;
 
-    await this.prisma.$transaction([
-      this.prisma.ministerioMembroFuncao.deleteMany({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.ministerioMembroFuncao.deleteMany({
         where: { membroId: id },
-      }),
-      this.prisma.ministerioMembro.deleteMany({
+      });
+      await tx.ministerioMembro.deleteMany({
         where: { membroId: id },
-      }),
-      this.prisma.membro.update({
+      });
+      if ((tx as any).membroTag) {
+        await tx.membroTag.deleteMany({
+          where: { membroId: id },
+        });
+      }
+
+      await this.handleLinkedUsersOnMemberDeletionInTx(tx, tenantId, [member], {
+        desativarUsuario,
+        actorUserId: options.actorUserId,
+        ip: options.ip,
+        origem: 'exclusao_membro',
+      });
+
+      await tx.membro.update({
         where: { id },
         data: {
           deletedAt,
           fotoUrl: null,
           fotoKey: null,
         },
-      }),
-    ]);
+      });
+
+      if (options.actorUserId && (tx as any).auditLog) {
+        await tx.auditLog.create({
+          data: {
+            tenantId,
+            userId: options.actorUserId,
+            entidade: 'membros',
+            entidadeId: id,
+            acao: AcaoAuditoria.DELETAR,
+            payloadBefore: { nome: member.nome },
+            payloadAfter: {
+              deletedAt: deletedAt.toISOString(),
+              desativarUsuario,
+            },
+            ipAddress: options.ip,
+          },
+        });
+      }
+    });
 
     return { message: 'Membro removido com sucesso (soft delete).' };
   }
 
-  async bulkRemove(tenantId: string, ids: string[], actorUserId?: string) {
+  async bulkRemove(
+    tenantId: string,
+    ids: string[],
+    actorUserId?: string,
+    options: { desativarUsuarios?: boolean; ip?: string } = {},
+  ) {
     if (!ids || ids.length === 0) {
       return { count: 0, message: 'Nenhum membro selecionado.' };
     }
@@ -735,6 +1094,15 @@ export class MembrosService {
         id: true,
         nome: true,
         fotoKey: true,
+        user: {
+          select: {
+            id: true,
+            role: true,
+            status: true,
+            ativo: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -754,8 +1122,9 @@ export class MembrosService {
     }
 
     const deletedAt = new Date();
+    const desativarUsuarios = options.desativarUsuarios !== false;
 
-    // 3. Transação atômica de desvinculação, soft delete e auditoria
+    // 3. Transação atômica de desvinculação, tratamento de usuários, soft delete e auditoria
     await this.prisma.$transaction(async (tx) => {
       // Remover vínculos com funções ministeriais
       await tx.ministerioMembroFuncao.deleteMany({
@@ -770,6 +1139,14 @@ export class MembrosService {
       // Remover vínculos com tags
       await tx.membroTag.deleteMany({
         where: { membroId: { in: targetIds } },
+      });
+
+      // Tratar usuários vinculados aos membros excluídos
+      await this.handleLinkedUsersOnMemberDeletionInTx(tx, tenantId, members, {
+        desativarUsuario: desativarUsuarios,
+        actorUserId,
+        ip: options.ip,
+        origem: 'exclusao_membros_lote',
       });
 
       // Soft delete dos membros
@@ -797,7 +1174,9 @@ export class MembrosService {
           },
           payloadAfter: {
             deletados: targetIds.length,
+            desativarUsuarios,
           },
+          ipAddress: options.ip,
         },
       });
     });

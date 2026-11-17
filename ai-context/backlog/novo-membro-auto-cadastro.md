@@ -17,8 +17,8 @@
      - Os cadastros enviados entram em uma fila de solicitações com status `PENDENTE_APROVACAO` (não entram diretamente como membros ativos para evitar spam ou duplicidades).
      - Notificação no sininho in-app para administradores/secretaria informando novos cadastros recebidos.
       - Tela de moderação em `/membros` (aba ou filtro *"Fichas Recebidas"*):
-        - Ações: **Aprovar como Membro Ativo**, **Aprovar como Visitante**, **Revisar e Atualizar Cadastro Existente** (para duplicidades contra `VISITANTE` ou `ATIVO`, com comparação campo a campo e fluxo de acesso contínuo), **Pessoa Diferente / Familiar** (quando telefone, e-mail ou nome coincidem entre familiares/homônimos, mantendo bloqueio absoluto para CPF) ou **Descartar/Arquivar**.
-        - Identificação inteligente de duplicidade se CPF, telefone, e-mail ou nome exato já existir no banco (exibindo também o estado do usuário vinculado: sem usuário, `PENDING`, `ACTIVE`, `DISABLED` ou perfil administrativo).
+        - Ações: **Aprovar como Membro Ativo**, **Aprovar como Visitante**, **Revisar e Atualizar/Reativar Cadastro Existente** (para duplicidades contra `VISITANTE`, `ATIVO` ou ex-membros `INATIVO`/`TRANSFERIDO`, com comparação campo a campo, validação de cota ao reativar e fluxo explícito para reativação de conta `DISABLED` sem colisão de e-mail/telefone), **Pessoa Diferente / Familiar** (quando telefone, e-mail ou nome coincidem entre familiares/homônimos, mantendo bloqueio absoluto para CPF) ou **Descartar/Arquivar**.
+        - Identificação inteligente de duplicidade se CPF, telefone, e-mail ou nome exato já existir no banco (incluindo ex-membros `INATIVO`/`TRANSFERIDO` com desempate por nome exato e exibindo o estado do usuário vinculado: sem usuário, `PENDING`, `ACTIVE`, `DISABLED` ou perfil administrativo).
         - Suporte no formulário público (`/join/[slug]`) para crianças/dependentes sem celular próprio (usando WhatsApp + nome do responsável) e atalho pós-envio para cadastrar outro familiar reutilizando o mesmo contato.
   3. **Acolhimento Automático**:
      - Ao aprovar o membro, opcionalmente gerar convite de ativação no app do OneElo.

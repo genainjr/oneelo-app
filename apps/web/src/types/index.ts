@@ -208,6 +208,7 @@ export interface Membro {
     nome: string;
     email: string;
     role: Role;
+    ativo?: boolean;
     status?: UserStatus;
     activationExpiresAt?: string | null;
   } | null;
@@ -216,6 +217,15 @@ export interface Membro {
   })[];
   tags: { tag: Tag }[];
 }
+
+export type MembroSavePayload = Partial<Membro> & {
+  desativarUsuario?: boolean;
+  reativarUsuario?: boolean;
+};
+
+export type MembroUpdateResult = Membro & {
+  activationLink?: string | null;
+};
 
 export interface MembroVisualizacao extends Membro {
   ministerios?: (MinisterioMembro & {

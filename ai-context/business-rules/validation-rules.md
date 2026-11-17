@@ -84,11 +84,20 @@ A quota bloqueia apenas a criacao de novos membros, nunca bloqueando atualizacao
 
 ---
 
-## 3. Soft Delete e Inatividade de Membros
+## 3. Soft Delete, Inatividade e Reativacao Coordenada de Membros e Usuarios
 
 Membros nao devem ser removidos fisicamente quando ha historico operacional associado.
 
-- Exclusao logica: preencher `deletedAt`.
+- Exclusao logica: preencher `deletedAt`, remover foto do storage e desvincular ministerios, funcoes e tags.
+- Exclusao coordenada de usuario (`remove` / `bulkRemove`):
+  - Contas `ADMIN`/`STAFF` nunca tem acesso desativado nem excluido na remocao do membro (apenas desvinculam `memberId: null`).
+  - Contas `BASIC` (quando marcada a opcao na confirmacao, habilitada por padrao): se ainda `PENDING` e sem referencias restritas (`AuditLog`, `EscalaItem`, `FinancialTransaction`, `FinancePermission`), sao removidas liberando e-mail e telefone para novos cadastros; se ja tiveram uso/historico, sao desativadas (`DISABLED`), desvinculadas (`memberId: null`) e liberam `telefoneLogin: null`.
+- Inativacao coordenada na edicao (`PATCH /api/membros/:id`):
+  - Ao alterar status para `INATIVO` ou `TRANSFERIDO` com `desativarUsuario: true`, contas `BASIC` sao marcadas como `DISABLED` mantendo `email`, `telefoneLogin` e `memberId` preservados para eventual retorno (contas `ADMIN`/`STAFF` permanecem protegidas com `403 Forbidden` se solicitada desativacao).
+  - Ao retornar um membro nao-ativo (`INATIVO`, `TRANSFERIDO`, `VISITANTE`) para `ATIVO`, valida-se novamente a cota de membros ativos do plano e, com `reativarUsuario: true`, reativa-se a conta `BASIC` `DISABLED` para `PENDING` gerando link de 72h.
+- Retorno de ex-membros na triagem (`/join/[slug]` e `/membros?tab=fichas`):
+  - A checagem de duplicidade considera registros `ATIVO`, `VISITANTE`, `INATIVO` e `TRANSFERIDO` (`deletedAt: null`), priorizando correspondencia de nome exato e depois cadastros ativos em multiplos matches.
+  - A reativacao de uma conta `DISABLED` na triagem exige confirmacao explicita (`reativarUsuarioDesativado: true`), redefine a conta para `PENDING` com limpeza de `senhaHash`, novo link 72h e revogacao de vínculo social anterior se o e-mail mudar.
 - Leitura: o Prisma estendido filtra `deletedAt: null`.
 - Atualizacao/visualizacao de membro excluido deve retornar `404 Not Found`.
 
