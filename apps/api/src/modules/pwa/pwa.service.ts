@@ -18,7 +18,7 @@ const ONEELO_MANIFEST = {
   ],
 };
 
-const TENANT_MANIFEST_REVISION = '4';
+const TENANT_MANIFEST_REVISION = '5';
 
 @Injectable()
 export class PwaService {
@@ -30,6 +30,7 @@ export class PwaService {
       select: {
         id: true,
         nome: true,
+        slug: true,
         pwaShortName: true,
         pwaIconUrl: true,
         pwaIconKey: true,
@@ -46,6 +47,7 @@ export class PwaService {
       return { manifest: ONEELO_MANIFEST, version: 'oneelo' };
     }
 
+    const tenantSlug = tenant.slug || slug;
     const iconBaseUrl = tenant.pwaIconUrl.slice(0, -'icon-512.png'.length);
     const version = `${tenant.pwaUpdatedAt.getTime()}-${TENANT_MANIFEST_REVISION}`;
     const versionedIcon = (url: string) => `${url}?v=${encodeURIComponent(version)}`;
@@ -57,6 +59,7 @@ export class PwaService {
         name: tenant.pwaShortName,
         short_name: tenant.pwaShortName,
         id: `/pwa/tenant/${tenant.id}`,
+        start_url: `/dashboard?source=pwa&igreja=${encodeURIComponent(tenantSlug)}`,
         icons: [
           { src: versionedIcon(`${iconBaseUrl}icon-192.png`), sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: versionedIcon(tenant.pwaIconUrl), sizes: '512x512', type: 'image/png', purpose: 'any' },

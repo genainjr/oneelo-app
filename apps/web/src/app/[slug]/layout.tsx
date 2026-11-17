@@ -54,6 +54,9 @@ export async function generateMetadata({
     : ogFallbackUrl;
   const iconUrl =
     site.tenant.pwaIconUrl || site.tenant.logoUrl || ogFallbackUrl;
+  const appleIconUrl = site.tenant.pwaIconUrl
+    ? site.tenant.pwaIconUrl.replace(/icon-512\.png$/, 'icon-180.png')
+    : iconUrl;
 
   const title = site.tenant.nome;
   const description =
@@ -64,6 +67,7 @@ export async function generateMetadata({
   return {
     metadataBase: new URL(origin),
     applicationName: site.tenant.nome,
+    manifest: `/api/pwa/${encodedSlug}/manifest.webmanifest`,
     appleWebApp: {
       capable: true,
       title: site.tenant.nome,
@@ -77,7 +81,7 @@ export async function generateMetadata({
     icons: {
       shortcut: iconUrl,
       icon: [{ url: iconUrl, type: 'image/png' }],
-      apple: [{ url: iconUrl, type: 'image/png' }],
+      apple: [{ url: appleIconUrl, sizes: '180x180', type: 'image/png' }],
     },
     openGraph: {
       type: 'website',

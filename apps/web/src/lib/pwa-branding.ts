@@ -1,9 +1,18 @@
 import type { AuthUser } from '@/types';
 
-export const TENANT_MANIFEST_REVISION = '4';
+export const TENANT_MANIFEST_REVISION = '5';
 const TENANT_PWA_CACHE_KEY = 'oneelo:tenant-pwa-meta';
 
-export type TenantPwaBranding = NonNullable<AuthUser['tenant']>;
+export type TenantPwaBranding = Pick<
+  NonNullable<AuthUser['tenant']>,
+  | 'nome'
+  | 'slug'
+  | 'logoUrl'
+  | 'pwaShortName'
+  | 'pwaIconUrl'
+  | 'pwaIconKey'
+  | 'pwaUpdatedAt'
+>;
 
 export function hasCustomTenantPwa(tenant?: TenantPwaBranding | null): boolean {
   return Boolean(
@@ -16,21 +25,20 @@ export function hasCustomTenantPwa(tenant?: TenantPwaBranding | null): boolean {
 }
 
 export function saveCachedTenantPwa(tenant?: TenantPwaBranding | null): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !tenant?.slug) return;
   try {
-    if (!tenant) {
-      localStorage.removeItem(TENANT_PWA_CACHE_KEY);
-      return;
-    }
+    const existing = readCachedTenantPwa();
+    const sameSlug = existing?.slug === tenant.slug;
     localStorage.setItem(
       TENANT_PWA_CACHE_KEY,
       JSON.stringify({
         nome: tenant.nome,
         slug: tenant.slug,
-        pwaShortName: tenant.pwaShortName ?? null,
-        pwaIconUrl: tenant.pwaIconUrl ?? null,
-        pwaIconKey: tenant.pwaIconKey ?? null,
-        pwaUpdatedAt: tenant.pwaUpdatedAt ?? null,
+        logoUrl: tenant.logoUrl ?? (sameSlug ? existing?.logoUrl ?? null : null),
+        pwaShortName: tenant.pwaShortName ?? (sameSlug ? existing?.pwaShortName ?? null : null),
+        pwaIconUrl: tenant.pwaIconUrl ?? (sameSlug ? existing?.pwaIconUrl ?? null : null),
+        pwaIconKey: tenant.pwaIconKey ?? (sameSlug ? existing?.pwaIconKey ?? null : null),
+        pwaUpdatedAt: tenant.pwaUpdatedAt ?? (sameSlug ? existing?.pwaUpdatedAt ?? null : null),
       }),
     );
   } catch {
