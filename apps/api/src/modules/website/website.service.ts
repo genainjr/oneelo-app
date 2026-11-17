@@ -28,6 +28,7 @@ import { CreateTenantNewsDto } from './dto/create-tenant-news.dto';
 import { UpdateTenantNewsDto } from './dto/update-tenant-news.dto';
 import { hasRawHtmlTags, isSafeHttpUrl } from './dto/website-validation';
 import {
+  getCompanionRedirectDomain,
   normalizeAndValidateCustomDomain,
   VercelDomainsService,
 } from './vercel-domains.service';
@@ -175,6 +176,11 @@ export class WebsiteService {
     };
   }
 
+  private resolveDomainVariants(domain: string): string[] {
+    const companion = getCompanionRedirectDomain(domain);
+    return companion ? [domain, companion] : [domain];
+  }
+
   async resolvePublicDomain(rawDomain: string): Promise<{ slug: string }> {
     const domain = rawDomain
       ?.trim()
@@ -186,7 +192,7 @@ export class WebsiteService {
       throw new NotFoundException('Domínio não encontrado.');
     }
 
-    const config = await this.prisma.tenantWebsiteConfig.findFirst({
+    let config = await this.prisma.tenantWebsiteConfig.findFirst({
       where: {
         customDomain: domain,
         dnsStatus: DnsStatus.ACTIVE,
@@ -198,6 +204,24 @@ export class WebsiteService {
         },
       },
     });
+
+    if (!config?.tenant?.slug) {
+      const companion = getCompanionRedirectDomain(domain);
+      if (companion) {
+        config = await this.prisma.tenantWebsiteConfig.findFirst({
+          where: {
+            customDomain: companion,
+            dnsStatus: DnsStatus.ACTIVE,
+            tenant: { ativo: true },
+          },
+          select: {
+            tenant: {
+              select: { slug: true },
+            },
+          },
+        });
+      }
+    }
 
     if (!config?.tenant?.slug) {
       throw new NotFoundException('Domínio customizado não encontrado ou inativo.');
@@ -228,10 +252,12 @@ export class WebsiteService {
     }
 
     const domain = normalizeAndValidateCustomDomain(rawDomain);
+    const domainVariants = this.resolveDomainVariants(domain);
 
     const conflict = await this.prisma.tenantWebsiteConfig.findFirst({
       where: {
-        customDomain: domain,
+        customDomain:
+          domainVariants.length > 1 ? { in: domainVariants } : domain,
         NOT: { tenantId },
       },
       select: { id: true },
@@ -251,6 +277,7 @@ export class WebsiteService {
       existing?.customDomain === domain &&
       existing.dnsStatus === DnsStatus.ACTIVE
     ) {
+      await this.vercelDomains.syncCompanionRedirect(domain);
       return {
         customDomain: existing.customDomain,
         dnsStatus: existing.dnsStatus,
@@ -264,9 +291,11 @@ export class WebsiteService {
 
     if (existing?.customDomain && existing.customDomain !== domain) {
       await this.vercelDomains.removeDomain(existing.customDomain);
+      await this.vercelDomains.removeCompanionDomain(existing.customDomain);
     }
 
     const registration = await this.vercelDomains.registerDomain(domain);
+    await this.vercelDomains.syncCompanionRedirect(domain);
     const now = new Date();
     const nextStatus = registration.verified
       ? DnsStatus.ACTIVE
@@ -345,6 +374,7 @@ export class WebsiteService {
     }
 
     const outcome = await this.vercelDomains.verifyDomain(existing.customDomain);
+    await this.vercelDomains.syncCompanionRedirect(existing.customDomain);
     const now = new Date();
     const verifiedAt =
       outcome.dnsStatus === DnsStatus.ACTIVE
@@ -401,6 +431,7 @@ export class WebsiteService {
 
     const removedDomain = existing.customDomain;
     await this.vercelDomains.removeDomain(removedDomain);
+    await this.vercelDomains.removeCompanionDomain(removedDomain);
 
     await this.prisma.tenantWebsiteConfig.update({
       where: { id: existing.id },
