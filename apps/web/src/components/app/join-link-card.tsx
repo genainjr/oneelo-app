@@ -4,20 +4,62 @@ import { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { ModalShell } from '@/components/app/modal-shell';
 import { Copy, Check, QrCode, Download, ExternalLink, Sparkles, Smartphone } from 'lucide-react';
+import { api } from '@/lib/api';
+import type { AdminWebsiteConfigResponse } from '@/lib/api-website';
 
 interface JoinLinkCardProps {
   slug?: string;
   tenantName?: string;
+  customDomain?: string | null;
 }
 
-export function JoinLinkCard({ slug, tenantName }: JoinLinkCardProps) {
+export function JoinLinkCard({ slug, tenantName, customDomain }: JoinLinkCardProps) {
   const [copied, setCopied] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [resolvedDomain, setResolvedDomain] = useState<string | null>(customDomain ?? null);
+
+  useEffect(() => {
+    if (customDomain !== undefined) {
+      setResolvedDomain(customDomain);
+      return;
+    }
+
+    let active = true;
+    api
+      .get<AdminWebsiteConfigResponse>('/api/site/config')
+      .then((res) => {
+        if (!active) return;
+        const domain = res?.config?.customDomain;
+        if (domain) {
+          setResolvedDomain(domain);
+        }
+      })
+      .catch(() => {
+        // Fallback silencioso para URL padrão
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [customDomain]);
 
   const churchName = tenantName || 'sua igreja';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://oneelo.vercel.app';
-  const joinUrl = slug ? `${origin}/${slug}/cadastro` : '';
+
+  const joinUrl = (() => {
+    if (!slug) return '';
+    if (resolvedDomain) {
+      const cleanDomain = resolvedDomain
+        .trim()
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/+$/, '');
+      if (cleanDomain) {
+        return `https://${cleanDomain}/cadastro`;
+      }
+    }
+    return `${origin}/${slug}/cadastro`;
+  })();
 
   useEffect(() => {
     if (joinUrl && qrModalOpen) {

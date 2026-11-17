@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import Image from 'next/image';
+import { Loader2, Trash2, Upload } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { api } from '@/lib/api';
 import type { AuthUser } from '@/types';
@@ -122,8 +123,34 @@ export function TenantPwaSettings({ tenant, onUpdated }: { tenant: TenantPwaPayl
             <p className="mt-1 text-xs text-gray-500">{t('iconHint')}</p>
             <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => uploadIcon(event.target.files?.[0])} />
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="rounded-xl border border-accent-soft-border px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-soft disabled:opacity-50">{uploading ? t('processing') : previewUrl ? t('changeIcon') : t('uploadIcon')}</button>
-              {previewUrl && <button type="button" onClick={removeIcon} disabled={removing} className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">{removing ? t('removing') : t('remove')}</button>}
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={uploading}
+                className="inline-flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-brand-foreground transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                {uploading ? t('processing') : previewUrl ? t('changeIcon') : t('uploadIcon')}
+              </button>
+              {previewUrl && (
+                <button
+                  type="button"
+                  onClick={removeIcon}
+                  disabled={removing}
+                  className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {removing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  {removing ? t('removing') : t('remove')}
+                </button>
+              )}
             </div>
           </div>
 
