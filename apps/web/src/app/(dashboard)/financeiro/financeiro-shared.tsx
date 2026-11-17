@@ -17,8 +17,21 @@ export type FinancePermissionSummary = {
 export type FinancialAccountType = "CASH" | "BANK" | "PIX" | "OTHER";
 export type FinancialCategoryType = "INCOME" | "EXPENSE";
 export type FinancialTransactionType = "INCOME" | "EXPENSE";
-export type FinancialTransactionStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
+export type FinancialTransactionStatus = "DRAFT" | "PENDING" | "CONFIRMED" | "CANCELLED";
 export type FinancialPaymentMethod = "PIX" | "CASH" | "CREDIT_CARD" | "DEBIT_CARD" | "BANK_TRANSFER" | "BOLETO" | "CHECK" | "OTHER";
+
+export type FinanceiroQueryFilters = {
+  startDate?: string;
+  endDate?: string;
+  status?: "all" | FinancialTransactionStatus;
+  type?: "all" | FinancialTransactionType;
+  accountId?: string;
+  categoryId?: string;
+  eventoId?: string;
+  memberId?: string;
+  recurringGroupId?: string;
+  limit?: number;
+};
 
 export type FinancialAccount = {
   id: string;
@@ -40,12 +53,16 @@ export type FinancialTransaction = {
   type: FinancialTransactionType;
   status: FinancialTransactionStatus;
   date: string;
+  paidAt?: string | null;
   amount: number;
   description?: string | null;
   paymentMethod?: FinancialPaymentMethod | null;
   eventoId?: string | null;
   evento?: { id: string; titulo: string; dataInicio: string; dataFim?: string | null; local?: string | null; status: StatusEvento } | null;
   counterpartyName?: string | null;
+  recurringGroupId?: string | null;
+  installmentNumber?: number | null;
+  totalInstallments?: number | null;
   receiptUrl?: string | null;
   receiptFileName?: string | null;
   receiptMimeType?: string | null;
@@ -61,6 +78,9 @@ export type FinancialSummary = {
   expense: number;
   balance: number;
   transactions: number;
+  pendingIncome: number;
+  pendingExpense: number;
+  pendingCount: number;
 };
 
 export const ROLE_LABELS: Record<FinanceRole, string> = {
@@ -89,6 +109,7 @@ export const TRANSACTION_TYPE_LABELS: Record<FinancialTransactionType, string> =
 
 export const TRANSACTION_STATUS_LABELS: Record<FinancialTransactionStatus, string> = {
   DRAFT: "Rascunho",
+  PENDING: "Pendente",
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
 };
@@ -118,13 +139,22 @@ export function getTransactionTypeClass(type: FinancialTransactionType) {
 }
 
 export function getTransactionStatusClass(status: FinancialTransactionStatus) {
-  if (status === "CANCELLED") return "border-rose-150 bg-rose-50 text-rose-700";
-  if (status === "DRAFT") return "border-amber-150 bg-amber-50 text-amber-700";
-  return "border-emerald-150 bg-emerald-50 text-emerald-700";
+  if (status === "CANCELLED") return "border-rose-200 bg-rose-50 text-rose-700";
+  if (status === "PENDING") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (status === "DRAFT") return "border-gray-200 bg-gray-100 text-gray-600";
+  return "border-emerald-200 bg-emerald-50 text-emerald-700";
 }
 
 export function getCategoryTypeClass(type: FinancialCategoryType) {
   return "border-gray-200 bg-gray-50 text-gray-600";
+}
+
+export function formatInstallmentLabel(
+  installmentNumber?: number | null,
+  totalInstallments?: number | null,
+) {
+  if (!installmentNumber || !totalInstallments) return null;
+  return `Parcela ${installmentNumber}/${totalInstallments}`;
 }
 
 export function FinanceTypeBadge({ type }: { type: FinancialTransactionType | FinancialCategoryType }) {
@@ -139,6 +169,22 @@ export function FinanceStatusBadge({ status }: { status: FinancialTransactionSta
   return (
     <span className={`inline-flex shrink-0 rounded-lg border px-2.5 py-0.5 text-xs font-bold ${getTransactionStatusClass(status)}`}>
       {TRANSACTION_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export function FinanceInstallmentBadge({
+  installmentNumber,
+  totalInstallments,
+}: {
+  installmentNumber?: number | null;
+  totalInstallments?: number | null;
+}) {
+  const label = formatInstallmentLabel(installmentNumber, totalInstallments);
+  if (!label) return null;
+  return (
+    <span className="inline-flex shrink-0 rounded-lg border border-accent-soft-border bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent-ink">
+      {label}
     </span>
   );
 }
@@ -198,8 +244,15 @@ export function matchTransactionSearch(
 }
 
 
+export function toLocalDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function todayInputValue() {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateInputValue(new Date());
 }
 
 export function financeiroEventoLookupPeriod(referenceDate = new Date()) {
@@ -225,9 +278,36 @@ const emptySummary: FinancialSummary = {
   expense: 0,
   balance: 0,
   transactions: 0,
+  pendingIncome: 0,
+  pendingExpense: 0,
+  pendingCount: 0,
 };
 
-export function useFinanceiroData() {
+function buildTransactionsUrl(filters?: FinanceiroQueryFilters) {
+  const params = new URLSearchParams();
+  if (filters?.startDate) params.set("startDate", filters.startDate);
+  if (filters?.endDate) params.set("endDate", filters.endDate);
+  if (filters?.status && filters.status !== "all") params.set("status", filters.status);
+  if (filters?.type && filters.type !== "all") params.set("type", filters.type);
+  if (filters?.accountId) params.set("accountId", filters.accountId);
+  if (filters?.categoryId) params.set("categoryId", filters.categoryId);
+  if (filters?.eventoId) params.set("eventoId", filters.eventoId);
+  if (filters?.memberId) params.set("memberId", filters.memberId);
+  if (filters?.recurringGroupId) params.set("recurringGroupId", filters.recurringGroupId);
+  params.set("limit", String(filters?.limit ?? 500));
+  return `/api/financeiro/transactions?${params.toString()}`;
+}
+
+function buildSummaryUrl(filters?: FinanceiroQueryFilters) {
+  const params = new URLSearchParams();
+  if (filters?.startDate) params.set("startDate", filters.startDate);
+  if (filters?.endDate) params.set("endDate", filters.endDate);
+  if (filters?.accountId) params.set("accountId", filters.accountId);
+  const query = params.toString();
+  return query ? `/api/financeiro/summary?${query}` : "/api/financeiro/summary";
+}
+
+export function useFinanceiroData(filters?: FinanceiroQueryFilters) {
   const [summary, setSummary] = useState<FinancePermissionSummary | null>(null);
   const [loadingPermission, setLoadingPermission] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -237,6 +317,36 @@ export function useFinanceiroData() {
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [financialSummary, setFinancialSummary] = useState<FinancialSummary>(emptySummary);
+
+  const stableFilters = useMemo<FinanceiroQueryFilters | undefined>(
+    () =>
+      filters
+        ? {
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            status: filters.status,
+            type: filters.type,
+            accountId: filters.accountId,
+            categoryId: filters.categoryId,
+            eventoId: filters.eventoId,
+            memberId: filters.memberId,
+            recurringGroupId: filters.recurringGroupId,
+            limit: filters.limit,
+          }
+        : undefined,
+    [
+      filters?.accountId,
+      filters?.categoryId,
+      filters?.endDate,
+      filters?.eventoId,
+      filters?.limit,
+      filters?.memberId,
+      filters?.recurringGroupId,
+      filters?.startDate,
+      filters?.status,
+      filters?.type,
+    ],
+  );
 
   const loadPermission = useCallback(async () => {
     setLoadingPermission(true);
@@ -250,15 +360,16 @@ export function useFinanceiroData() {
     }
   }, []);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (overrideFilters?: FinanceiroQueryFilters) => {
+    const activeFilters = overrideFilters ?? stableFilters;
     setLoadingData(true);
     setDataError("");
     try {
       const [accountsData, categoriesData, transactionsData, summaryData] = await Promise.all([
         api.get<FinancialAccount[]>("/api/financeiro/accounts"),
         api.get<FinancialCategory[]>("/api/financeiro/categories"),
-        api.get<FinancialTransaction[]>("/api/financeiro/transactions"),
-        api.get<FinancialSummary>("/api/financeiro/summary"),
+        api.get<FinancialTransaction[]>(buildTransactionsUrl(activeFilters)),
+        api.get<FinancialSummary>(buildSummaryUrl(activeFilters)),
       ]);
       setAccounts(Array.isArray(accountsData) ? accountsData : []);
       setCategories(Array.isArray(categoriesData) ? categoriesData : []);
@@ -269,7 +380,7 @@ export function useFinanceiroData() {
     } finally {
       setLoadingData(false);
     }
-  }, []);
+  }, [stableFilters]);
 
   useEffect(() => {
     void loadPermission();

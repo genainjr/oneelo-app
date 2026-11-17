@@ -197,6 +197,7 @@ enum FinancialTransactionType {
 
 enum FinancialTransactionStatus {
   DRAFT
+  PENDING
   CONFIRMED
   CANCELLED
 
@@ -425,10 +426,14 @@ model FinancialTransaction {
   type              FinancialTransactionType
   status            FinancialTransactionStatus @default(CONFIRMED)
   date              DateTime
+  paidAt            DateTime?                  @map("paid_at")
   amount            Decimal                    @db.Decimal(12, 2)
   description       String?
   paymentMethod     FinancialPaymentMethod?    @map("payment_method")
   counterpartyName  String?                    @map("counterparty_name")
+  recurringGroupId  String?                    @map("recurring_group_id")
+  installmentNumber Int?                       @map("installment_number")
+  totalInstallments Int?                       @map("total_installments")
   receiptUrl        String?                    @map("receipt_url")
   receiptKey        String?                    @map("receipt_key")
   receiptFileName   String?                    @map("receipt_file_name")
@@ -449,6 +454,8 @@ model FinancialTransaction {
   @@index([tenantId, date])
   @@index([tenantId, type])
   @@index([tenantId, status])
+  @@index([tenantId, status, date])
+  @@index([tenantId, recurringGroupId])
   @@index([tenantId, accountId])
   @@index([tenantId, categoryId])
   @@index([tenantId, eventoId])

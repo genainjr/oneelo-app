@@ -19,7 +19,7 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 |---|---|---|
 | 17/11/2026 | [dashboard-sidebar-dominio-pwa-ajustes-plan.md](dashboard-sidebar-dominio-pwa-ajustes-plan.md) | Ajustes de Empilhamento da Sidebar, Padronização PWA e Domínio Próprio no Link de Cadastro (Concluído) |
 | 17/11/2026 | [site-noticias-proporcao-imagem-plan.md](site-noticias-proporcao-imagem-plan.md) | Suporte a Múltiplos Formatos e Proporções de Imagens nos Informativos do Site (Planejado) |
-| 17/11/2026 | [financeiro-contas-recorrentes-em-lote-plan.md](financeiro-contas-recorrentes-em-lote-plan.md) | Contas Recorrentes e Parceladas no Módulo Financeiro (Geração em Lote — Planejado) |
+| 17/11/2026 | [financeiro-contas-recorrentes-em-lote-plan.md](financeiro-contas-recorrentes-em-lote-plan.md) | Contas Recorrentes e Parceladas no Módulo Financeiro (Geração em Lote — Concluído) |
 | 17/11/2026 | [ciclo-inativacao-reativacao-membro-plan.md](ciclo-inativacao-reativacao-membro-plan.md) | Ciclo Completo de Inativação, Exclusão Coordenada e Reativação de Membros e Usuários (Concluído) |
 | 17/11/2026 | [auto-cadastro-familiar-dependente-plan.md](auto-cadastro-familiar-dependente-plan.md) | Fluxo Familiar e Dependente sem Celular Próprio no Auto-Cadastro (Opção A — Concluído) |
 | 15/11/2026 | [triagem-atualizacao-duplicidade-membro-plan.md](triagem-atualizacao-duplicidade-membro-plan.md) | Triagem de Auto-Cadastro com Revisão, Atualização de Membro Existente e Fluxo de Acesso (Concluído) |

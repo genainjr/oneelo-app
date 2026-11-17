@@ -18,6 +18,7 @@ import { useAuthUser } from "@/contexts/auth-user-context";
 import { api } from "@/lib/api";
 import type { AuthUser } from "@/types";
 import {
+  FinanceInstallmentBadge,
   FinanceStatusBadge,
   FinanceTypeBadge,
   FinancialTransactionStatus,
@@ -28,22 +29,20 @@ import {
   currencyFormatter,
   dateFormatter,
   financeiroEventosPath,
+  formatInstallmentLabel,
   getTransactionDisplayTitle,
   matchTransactionSearch,
+  toLocalDateInputValue,
   useFinanceiroData,
 } from "../financeiro-shared";
-
-function toDateInputValue(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
 
 function currentMonthPeriod() {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return {
-    startDate: toDateInputValue(start),
-    endDate: toDateInputValue(end),
+    startDate: toLocalDateInputValue(start),
+    endDate: toLocalDateInputValue(end),
   };
 }
 
@@ -68,6 +67,7 @@ export default function FinanceiroVisualizacaoPage() {
     startDate: initialPeriod.startDate,
     endDate: initialPeriod.endDate,
   }), [initialPeriod.endDate, initialPeriod.startDate]);
+  const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
   const {
     summary,
     loadingPermission,
@@ -77,9 +77,7 @@ export default function FinanceiroVisualizacaoPage() {
     transactions,
     financialSummary,
     reloadData,
-  } = useFinanceiroData();
-
-  const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
+  } = useFinanceiroData(appliedTransactionFilters);
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(false);
   const [eventos, setEventos] = useState<EventoOption[]>([]);
@@ -260,10 +258,12 @@ export default function FinanceiroVisualizacaoPage() {
         )}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" />
-        <StatCard title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} lançamentos no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" />
-        <StatCard title="Despesas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" loading={loadingData} />
+        <StatCard title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} confirmado(s) no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" loading={loadingData} />
+        <StatCard title="Despesas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
+        <StatCard title="A Receber" value={currencyFormatter.format(financialSummary.pendingIncome)} description="Contas pendentes de entrada" icon={<CircleDollarSign className="h-5 w-5" />} color="amber" loading={loadingData} />
+        <StatCard title="A Pagar" value={currencyFormatter.format(financialSummary.pendingExpense)} description={`${financialSummary.pendingCount} pendência(s) no período`} icon={<Banknote className="h-5 w-5" />} color="amber" loading={loadingData} />
       </div>
 
       {dataError && (
@@ -385,6 +385,7 @@ export default function FinanceiroVisualizacaoPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <FinanceStatusBadge status={item.status} />
                       <FinanceTypeBadge type={item.type} />
+                      <FinanceInstallmentBadge installmentNumber={item.installmentNumber} totalInstallments={item.totalInstallments} />
                     </div>
                   </div>
                   <div className="grid gap-2 text-xs font-medium text-gray-500 sm:grid-cols-2 xl:grid-cols-5">
@@ -392,6 +393,12 @@ export default function FinanceiroVisualizacaoPage() {
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">Data: {dateFormatter.format(new Date(item.date))}</span>
                     </span>
+                    {item.status === "CONFIRMED" && item.paidAt && (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <span className="truncate">Liquidado em: {dateFormatter.format(new Date(item.paidAt))}</span>
+                      </span>
+                    )}
                     <span className="flex min-w-0 items-center gap-1.5">
                       <WalletCards className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">Conta: {item.account.name}</span>
@@ -445,6 +452,7 @@ export default function FinanceiroVisualizacaoPage() {
                 <tr>
                   <th>Data</th>
                   <th>Descrição</th>
+                  <th>Parcela</th>
                   <th>Tipo</th>
                   <th>Status</th>
                   <th>Conta</th>
@@ -455,12 +463,13 @@ export default function FinanceiroVisualizacaoPage() {
               <tbody>
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="print-empty">Nenhum lançamento encontrado.</td>
+                    <td colSpan={8} className="print-empty">Nenhum lançamento encontrado.</td>
                   </tr>
                 ) : filteredTransactions.map((item) => (
                   <tr key={item.id}>
                     <td>{dateFormatter.format(new Date(item.date))}</td>
                     <td>{getTransactionDisplayTitle(item)}</td>
+                    <td>{formatInstallmentLabel(item.installmentNumber, item.totalInstallments) ?? "-"}</td>
                     <td>{item.type === "INCOME" ? "Entrada" : "Despesa"}</td>
                     <td>{TRANSACTION_STATUS_LABELS[item.status]}</td>
                     <td>{item.account.name}</td>

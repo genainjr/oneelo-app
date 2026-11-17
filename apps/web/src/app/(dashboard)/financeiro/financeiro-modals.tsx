@@ -1,13 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Upload, X } from "lucide-react";
+import { FileText, Layers, Upload, X } from "lucide-react";
+import { CreationModeSelector } from "@/components/app/creation-mode-selector";
 import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
-import { InputField, SelectField } from "@/components/app/form-field";
+import { CheckboxField, InputField, SelectField } from "@/components/app/form-field";
 import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
 import { ModalError, ModalFooter, ModalShell } from "@/components/app/modal-shell";
 import { StatusActionModal } from "@/components/app/status-action-modal";
 import { api } from "@/lib/api";
+import {
+  AMOUNT_DISTRIBUTION_LABELS,
+  FINANCIAL_BATCH_MAX_OCCURRENCES,
+  RECURRENCE_FREQUENCY_LABELS,
+  generateFinancialBatchOccurrences,
+  type FinancialAmountDistributionMode,
+  type FinancialBatchEndCondition,
+  type FinancialRecurrenceFrequency,
+} from "@/lib/financial-batch";
 import {
   ACCOUNT_TYPE_LABELS,
   CATEGORY_TYPE_LABELS,
@@ -21,6 +31,8 @@ import {
   FinancialTransactionType,
   PAYMENT_METHOD_LABELS,
   TRANSACTION_STATUS_LABELS,
+  currencyFormatter,
+  dateFormatter,
   financeiroEventosPath,
   getTransactionDisplayTitle,
   todayInputValue,
@@ -53,6 +65,25 @@ export type TransactionFormData = {
   memberId: string;
   receiptFile?: File | null;
   removeReceipt?: boolean;
+};
+
+export type TransactionBatchFormData = {
+  type: FinancialTransactionType;
+  defaultStatus: "PENDING" | "DRAFT";
+  accountId: string;
+  categoryId: string;
+  eventoId: string;
+  description: string;
+  paymentMethod: "" | FinancialPaymentMethod;
+  counterpartyName: string;
+  memberId: string;
+  occurrences: Array<{
+    date: string;
+    amount: number;
+    status: FinancialTransactionStatus;
+    installmentNumber: number;
+    totalInstallments: number;
+  }>;
 };
 
 export const emptyTransactionForm = (): TransactionFormData => ({
@@ -213,8 +244,10 @@ export function TransactionModal({
   categories,
   loading,
   error,
+  canApproveStatus = true,
   onClose,
   onSubmit,
+  onSubmitBatch,
 }: {
   isOpen: boolean;
   transaction?: FinancialTransaction | null;
@@ -222,10 +255,21 @@ export function TransactionModal({
   categories: FinancialCategory[];
   loading: boolean;
   error?: string;
+  canApproveStatus?: boolean;
   onClose: () => void;
   onSubmit: (data: TransactionFormData) => void | Promise<void>;
+  onSubmitBatch?: (data: TransactionBatchFormData) => void | Promise<void>;
 }) {
   const [form, setForm] = useState<TransactionFormData>(emptyTransactionForm);
+  const [createMode, setCreateMode] = useState<"single" | "batch">("single");
+  const [frequency, setFrequency] = useState<FinancialRecurrenceFrequency>("MONTHLY");
+  const [endCondition, setEndCondition] = useState<FinancialBatchEndCondition>("COUNT");
+  const [occurrenceCount, setOccurrenceCount] = useState("12");
+  const [untilDate, setUntilDate] = useState("");
+  const [amountMode, setAmountMode] = useState<FinancialAmountDistributionMode>("REPEAT");
+  const [batchDefaultStatus, setBatchDefaultStatus] = useState<"PENDING" | "DRAFT">("PENDING");
+  const [confirmFirstInstallment, setConfirmFirstInstallment] = useState(false);
+  const [excludedDateKeys, setExcludedDateKeys] = useState<Set<string>>(new Set());
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(false);
   const [eventos, setEventos] = useState<EventoOption[]>([]);
@@ -235,10 +279,50 @@ export function TransactionModal({
   const [selectedMembro, setSelectedMembro] = useState<MembroOption | null>(null);
   const [selectedEvento, setSelectedEvento] = useState<EventoOption | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
+  const isBatchMode = !transaction && createMode === "batch" && Boolean(onSubmitBatch);
+
   const categoryOptions = useMemo(
     () => categories.filter((category) => category.active && category.type === form.type),
     [categories, form.type],
   );
+
+  const parsedOccurrenceCount = useMemo(() => {
+    const trimmed = occurrenceCount.trim();
+    if (!trimmed) return 0;
+    const parsed = Number(trimmed);
+    return Number.isInteger(parsed) ? parsed : 0;
+  }, [occurrenceCount]);
+
+  const batchPreview = useMemo(() => {
+    if (!isBatchMode) {
+      return { occurrences: [], rawCount: 0, totalAmount: 0, error: null };
+    }
+    return generateFinancialBatchOccurrences({
+      startDate: form.date,
+      frequency,
+      endCondition,
+      count: parsedOccurrenceCount,
+      untilDate,
+      amountMode,
+      amount: Number(form.amount || 0),
+      excludedDateKeys,
+      baseStatus: batchDefaultStatus,
+      confirmFirst: Boolean(canApproveStatus && confirmFirstInstallment),
+    });
+  }, [
+    amountMode,
+    batchDefaultStatus,
+    canApproveStatus,
+    confirmFirstInstallment,
+    endCondition,
+    excludedDateKeys,
+    form.amount,
+    form.date,
+    frequency,
+    isBatchMode,
+    parsedOccurrenceCount,
+    untilDate,
+  ]);
 
   useEffect(() => {
     if (!isOpen || form.type !== "INCOME") return;
@@ -304,25 +388,94 @@ export function TransactionModal({
       receiptFile: null,
       removeReceipt: false,
     } : emptyTransactionForm());
+    setCreateMode("single");
+    setFrequency("MONTHLY");
+    setEndCondition("COUNT");
+    setOccurrenceCount("12");
+    setUntilDate("");
+    setAmountMode("REPEAT");
+    setBatchDefaultStatus("PENDING");
+    setConfirmFirstInstallment(false);
+    setExcludedDateKeys(new Set());
     setSelectedMembro(member);
     setMembroSearch(counterpartyName);
     setSelectedEvento(evento);
     setEventoSearch(evento ? getEventoDisplayName(evento) : "");
   }, [isOpen, transaction]);
 
+  function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isBatchMode && onSubmitBatch) {
+      void onSubmitBatch({
+        type: form.type,
+        defaultStatus: batchDefaultStatus,
+        accountId: form.accountId,
+        categoryId: form.categoryId,
+        eventoId: form.eventoId,
+        description: form.description,
+        paymentMethod: form.paymentMethod,
+        counterpartyName: form.counterpartyName,
+        memberId: form.memberId,
+        occurrences: batchPreview.occurrences.map((occurrence) => ({
+          date: occurrence.dateIso,
+          amount: occurrence.amount,
+          status: occurrence.status,
+          installmentNumber: occurrence.installmentNumber,
+          totalInstallments: occurrence.totalInstallments,
+        })),
+      });
+      return;
+    }
+    void onSubmit(form);
+  }
+
+  const batchScheduleInvalid =
+    isBatchMode && (Boolean(batchPreview.error) || batchPreview.occurrences.length === 0);
+
   return (
     <ModalShell
       isOpen={isOpen}
       title={transaction ? "Editar Lançamento" : "Novo Lançamento"}
       onClose={onClose}
-      size="md"
+      size={isBatchMode ? "lg" : "md"}
       height={!transaction ? "viewport" : "auto"}
       bodyClassName="[overflow-anchor:none]"
-      footer={<ModalFooter onCancel={onClose} loading={loading} primaryLabel="Salvar" form="finance-transaction-form" />}
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          loading={loading}
+          disabled={batchScheduleInvalid}
+          primaryLabel={isBatchMode ? "Gerar Lote" : "Salvar"}
+          form="finance-transaction-form"
+        />
+      }
     >
-      <form id="finance-transaction-form" onSubmit={(event) => { event.preventDefault(); void onSubmit(form); }}>
+      <form id="finance-transaction-form" onSubmit={handleFormSubmit}>
         <ModalError message={error} />
         <div className="space-y-4 p-6">
+          {!transaction && onSubmitBatch && (
+            <CreationModeSelector
+              legend="Forma de lançamento"
+              options={[
+                {
+                  id: "single",
+                  title: "Lançamento único",
+                  description: "Registra uma única entrada ou despesa.",
+                },
+                {
+                  id: "batch",
+                  title: "Recorrente / Parcelado",
+                  description: "Gera várias ocorrências ou parcelas em lote.",
+                },
+              ]}
+              selected={createMode}
+              onChange={(mode) => {
+                setCreateMode(mode);
+                setExcludedDateKeys(new Set());
+              }}
+            />
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectField
               id="finance-type"
@@ -345,14 +498,67 @@ export function TransactionModal({
               <option value="INCOME">Entrada</option>
               <option value="EXPENSE">Despesa</option>
             </SelectField>
-            <SelectField id="finance-status" label="Status" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as FinancialTransactionStatus }))}>
-              <option value="CONFIRMED">Confirmado</option>
-              <option value="DRAFT">Rascunho</option>
-            </SelectField>
+            {isBatchMode ? (
+              <SelectField
+                id="finance-batch-default-status"
+                label="Status inicial das parcelas"
+                value={batchDefaultStatus}
+                onChange={(event) =>
+                  setBatchDefaultStatus(event.target.value as "PENDING" | "DRAFT")
+                }
+              >
+                <option value="PENDING">{TRANSACTION_STATUS_LABELS.PENDING}</option>
+                <option value="DRAFT">{TRANSACTION_STATUS_LABELS.DRAFT}</option>
+              </SelectField>
+            ) : (
+              <SelectField
+                id="finance-status"
+                label="Status"
+                value={form.status}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    status: event.target.value as FinancialTransactionStatus,
+                  }))
+                }
+              >
+                <option value="CONFIRMED">{TRANSACTION_STATUS_LABELS.CONFIRMED}</option>
+                <option value="PENDING">{TRANSACTION_STATUS_LABELS.PENDING}</option>
+                <option value="DRAFT">{TRANSACTION_STATUS_LABELS.DRAFT}</option>
+              </SelectField>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InputField id="finance-date" label="Data" required type="date" value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} />
-            <InputField id="finance-amount" label="Valor" required type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))} />
+            <InputField
+              id="finance-date"
+              label={isBatchMode ? "1º vencimento" : "Data"}
+              required
+              type="date"
+              value={form.date}
+              onChange={(event) => {
+                const date = event.target.value;
+                setForm((current) => ({ ...current, date }));
+                if (isBatchMode) setExcludedDateKeys(new Set());
+              }}
+            />
+            <InputField
+              id="finance-amount"
+              label={
+                isBatchMode
+                  ? amountMode === "SPLIT"
+                    ? "Valor total"
+                    : "Valor por parcela"
+                  : "Valor"
+              }
+              required
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.amount}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, amount: event.target.value }))
+              }
+            />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectField id="finance-account" label="Conta" required value={form.accountId} onChange={(event) => setForm((current) => ({ ...current, accountId: event.target.value }))}>
@@ -432,51 +638,221 @@ export function TransactionModal({
               <InputField id="finance-counterparty" label="Fornecedor" value={form.counterpartyName} onChange={(event) => setForm((current) => ({ ...current, counterpartyName: event.target.value, memberId: "" }))} />
             )}
           </div>
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-            <input
-              ref={receiptInputRef}
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                setForm((current) => ({ ...current, receiptFile: file, removeReceipt: false }));
-              }}
-            />
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 space-y-1">
-                <p className="text-sm font-bold text-gray-900">Comprovante</p>
-                <p className="truncate text-xs text-gray-500">
-                  {form.receiptFile?.name || (form.removeReceipt ? "Comprovante será removido" : transaction?.receiptFileName || "PDF, JPG, PNG ou WEBP até 10 MB.")}
+          {isBatchMode ? (
+            <section className="space-y-4 rounded-2xl border border-accent-soft-border bg-accent-soft/40 p-4">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-accent-ink">
+                <Layers className="h-4 w-4 shrink-0" />
+                <span>Recorrência e parcelamento</span>
+              </div>
+
+              <CreationModeSelector
+                legend="Regra de valor"
+                options={[
+                  {
+                    id: "REPEAT",
+                    title: "Repetir valor",
+                    description: AMOUNT_DISTRIBUTION_LABELS.REPEAT,
+                  },
+                  {
+                    id: "SPLIT",
+                    title: "Parcelar valor",
+                    description: AMOUNT_DISTRIBUTION_LABELS.SPLIT,
+                  },
+                ]}
+                selected={amountMode}
+                onChange={(mode) => setAmountMode(mode)}
+              />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <SelectField
+                  id="finance-batch-frequency"
+                  label="Periodicidade"
+                  value={frequency}
+                  onChange={(event) => {
+                    setFrequency(event.target.value as FinancialRecurrenceFrequency);
+                    setExcludedDateKeys(new Set());
+                  }}
+                >
+                  {Object.entries(RECURRENCE_FREQUENCY_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </SelectField>
+
+                <SelectField
+                  id="finance-batch-end-condition"
+                  label="Término"
+                  value={endCondition}
+                  onChange={(event) => {
+                    setEndCondition(event.target.value as FinancialBatchEndCondition);
+                    setExcludedDateKeys(new Set());
+                  }}
+                >
+                  <option value="COUNT">Por quantidade</option>
+                  <option value="UNTIL_DATE">Até data limite</option>
+                </SelectField>
+
+                {endCondition === "COUNT" ? (
+                  <InputField
+                    id="finance-batch-count"
+                    label="Nº de parcelas"
+                    required
+                    type="number"
+                    min="1"
+                    max={FINANCIAL_BATCH_MAX_OCCURRENCES}
+                    step="1"
+                    value={occurrenceCount}
+                    onChange={(event) => {
+                      setOccurrenceCount(event.target.value);
+                      setExcludedDateKeys(new Set());
+                    }}
+                  />
+                ) : (
+                  <InputField
+                    id="finance-batch-until"
+                    label="Data limite"
+                    required
+                    type="date"
+                    min={form.date || undefined}
+                    value={untilDate}
+                    onChange={(event) => {
+                      setUntilDate(event.target.value);
+                      setExcludedDateKeys(new Set());
+                    }}
+                  />
+                )}
+              </div>
+
+              {canApproveStatus && (
+                <CheckboxField
+                  id="finance-batch-confirm-first"
+                  label="Marcar 1ª parcela como confirmada no ato"
+                  helperText="Contabiliza apenas a 1ª ocorrência no saldo realizado; as demais ficam no status inicial escolhido."
+                  checked={confirmFirstInstallment}
+                  onChange={(event) => setConfirmFirstInstallment(event.target.checked)}
+                />
+              )}
+
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">Prévia das parcelas</p>
+                    <p className="text-xs text-gray-500">
+                      {batchPreview.occurrences.length} de {FINANCIAL_BATCH_MAX_OCCURRENCES} máx.
+                      {batchPreview.occurrences.length > 0 && ` • Total ${currencyFormatter.format(batchPreview.totalAmount)}`}
+                    </p>
+                  </div>
+                  {excludedDateKeys.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setExcludedDateKeys(new Set())}
+                      className="text-xs font-semibold text-accent-ink hover:text-accent-ink-hover"
+                    >
+                      Restaurar removidas ({excludedDateKeys.size})
+                    </button>
+                  )}
+                </div>
+
+                {batchPreview.error ? (
+                  <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{batchPreview.error}</p>
+                ) : batchPreview.occurrences.length === 0 ? (
+                  <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">
+                    Informe valor e período válidos para visualizar as ocorrências geradas.
+                  </p>
+                ) : (
+                  <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1">
+                    {batchPreview.occurrences.map((occurrence) => (
+                      <div
+                        key={occurrence.dateKey}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2 text-sm"
+                      >
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="inline-flex shrink-0 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                            {occurrence.installmentNumber}/{occurrence.totalInstallments}
+                          </span>
+                          <span className="font-medium text-gray-700">
+                            {dateFormatter.format(new Date(`${occurrence.dateKey}T12:00:00Z`))}
+                          </span>
+                          {occurrence.status === "CONFIRMED" && (
+                            <span className="inline-flex shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                              Confirmada
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-gray-900">
+                            {currencyFormatter.format(occurrence.amount)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExcludedDateKeys((current) => {
+                                const next = new Set(current);
+                                next.add(occurrence.dateKey);
+                                return next;
+                              })
+                            }
+                            className="shrink-0 text-xs font-semibold text-rose-600 hover:text-rose-700"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                  Os anexos de comprovante poderão ser inseridos individualmente após a criação de cada parcela.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {transaction?.receiptUrl && !form.removeReceipt && !form.receiptFile && (
-                  <a href={transaction.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-                    <FileText className="h-4 w-4" />
-                    Abrir
-                  </a>
-                )}
-                <button type="button" onClick={() => receiptInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover">
-                  <Upload className="h-4 w-4" />
-                  {form.receiptFile || transaction?.receiptUrl ? "Trocar" : "Inserir"}
-                </button>
-                {(form.receiptFile || transaction?.receiptUrl) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (receiptInputRef.current) receiptInputRef.current.value = "";
-                      setForm((current) => ({ ...current, receiptFile: null, removeReceipt: !!transaction?.receiptUrl }));
-                    }}
-                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
-                  >
-                    <X className="h-4 w-4" />
-                    Remover
+            </section>
+          ) : (
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <input
+                ref={receiptInputRef}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  setForm((current) => ({ ...current, receiptFile: file, removeReceipt: false }));
+                }}
+              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-bold text-gray-900">Comprovante</p>
+                  <p className="truncate text-xs text-gray-500">
+                    {form.receiptFile?.name || (form.removeReceipt ? "Comprovante será removido" : transaction?.receiptFileName || "PDF, JPG, PNG ou WEBP até 10 MB.")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {transaction?.receiptUrl && !form.removeReceipt && !form.receiptFile && (
+                    <a href={transaction.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                      <FileText className="h-4 w-4" />
+                      Abrir
+                    </a>
+                  )}
+                  <button type="button" onClick={() => receiptInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover">
+                    <Upload className="h-4 w-4" />
+                    {form.receiptFile || transaction?.receiptUrl ? "Trocar" : "Inserir"}
                   </button>
-                )}
+                  {(form.receiptFile || transaction?.receiptUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (receiptInputRef.current) receiptInputRef.current.value = "";
+                        setForm((current) => ({ ...current, receiptFile: null, removeReceipt: !!transaction?.receiptUrl }));
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                    >
+                      <X className="h-4 w-4" />
+                      Remover
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </form>
     </ModalShell>
@@ -498,7 +874,7 @@ export function TransactionStatusModal({
   onClose: () => void;
   onSubmit: (status: FinancialTransactionStatus) => void | Promise<void>;
 }) {
-  const statusOptions = (["DRAFT", "CONFIRMED", "CANCELLED"] as const)
+  const statusOptions = (["DRAFT", "PENDING", "CONFIRMED", "CANCELLED"] as const)
     .filter((option) => option !== transaction?.status)
     .map((option) => ({
       value: option,
@@ -507,7 +883,9 @@ export function TransactionStatusModal({
         ? "border-red-600 bg-red-600 text-white hover:bg-red-700"
         : option === "CONFIRMED"
           ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
-          : "border-gray-500 bg-gray-500 text-white hover:bg-gray-600",
+          : option === "PENDING"
+            ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600"
+            : "border-gray-500 bg-gray-500 text-white hover:bg-gray-600",
     }));
 
   return (
@@ -521,5 +899,117 @@ export function TransactionStatusModal({
       onSelect={onSubmit}
       description={transaction ? `Escolha o novo status do lançamento "${getTransactionDisplayTitle(transaction)}".` : ""}
     />
+  );
+}
+
+export type TransactionConfirmFormData = {
+  paidAt: string;
+  paymentMethod: "" | FinancialPaymentMethod;
+  amount: string;
+};
+
+export function TransactionConfirmModal({
+  isOpen,
+  transaction,
+  loading,
+  error,
+  onClose,
+  onSubmit,
+}: {
+  isOpen: boolean;
+  transaction: FinancialTransaction | null;
+  loading: boolean;
+  error?: string;
+  onClose: () => void;
+  onSubmit: (data: TransactionConfirmFormData) => void | Promise<void>;
+}) {
+  const [form, setForm] = useState<TransactionConfirmFormData>({
+    paidAt: todayInputValue(),
+    paymentMethod: "",
+    amount: "",
+  });
+
+  useEffect(() => {
+    if (!isOpen || !transaction) return;
+    setForm({
+      paidAt: todayInputValue(),
+      paymentMethod: transaction.paymentMethod ?? "",
+      amount: String(transaction.amount),
+    });
+  }, [isOpen, transaction]);
+
+  const titleLabel = transaction ? getTransactionDisplayTitle(transaction) : "";
+  const installmentLabel =
+    transaction?.installmentNumber && transaction?.totalInstallments
+      ? ` (${transaction.installmentNumber}/${transaction.totalInstallments})`
+      : "";
+
+  return (
+    <ModalShell
+      isOpen={isOpen}
+      title="Confirmar pagamento / Dar baixa"
+      description={transaction ? `${titleLabel}${installmentLabel}` : undefined}
+      onClose={onClose}
+      size="sm"
+      bodyClassName="[overflow-anchor:none]"
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          loading={loading}
+          primaryLabel="Confirmar baixa"
+          form="finance-transaction-confirm-form"
+        />
+      }
+    >
+      <form
+        id="finance-transaction-confirm-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void onSubmit(form);
+        }}
+      >
+        <ModalError message={error} />
+        <div className="space-y-4 p-6">
+          <InputField
+            id="finance-confirm-paid-at"
+            label="Data de liquidação"
+            required
+            type="date"
+            value={form.paidAt}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, paidAt: event.target.value }))
+            }
+          />
+          <SelectField
+            id="finance-confirm-payment-method"
+            label="Forma de pagamento"
+            value={form.paymentMethod}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                paymentMethod: event.target.value as TransactionConfirmFormData["paymentMethod"],
+              }))
+            }
+          >
+            <option value="">Selecione</option>
+            {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </SelectField>
+          <InputField
+            id="finance-confirm-amount"
+            label="Valor liquidado"
+            required
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={form.amount}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, amount: event.target.value }))
+            }
+          />
+        </div>
+      </form>
+    </ModalShell>
   );
 }

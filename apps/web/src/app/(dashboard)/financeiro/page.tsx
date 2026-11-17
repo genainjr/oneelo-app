@@ -15,13 +15,15 @@ import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/c
 import { PageHeader } from "@/components/app/page-header";
 import { PrimaryActionButton } from "@/components/app/primary-action-button";
 import { Skeleton } from "@/components/app/skeleton";
+import { StatCard } from "@/components/app/stat-card";
 import { useFilterState } from "@/hooks/use-filter-state";
 import { api } from "@/lib/api";
-import { AccountModal, CategoryModal, TransactionModal, TransactionStatusModal, type TransactionFormData } from "./financeiro-modals";
+import { AccountModal, CategoryModal, TransactionConfirmModal, TransactionModal, TransactionStatusModal, type TransactionBatchFormData, type TransactionConfirmFormData, type TransactionFormData } from "./financeiro-modals";
 import {
   ACCOUNT_TYPE_LABELS,
   ActiveBadge,
   CATEGORY_TYPE_LABELS,
+  FinanceInstallmentBadge,
   FinanceStatusBadge,
   FinanceTypeBadge,
   FinancialAccount,
@@ -39,6 +41,7 @@ import {
   financeiroEventosPath,
   getTransactionDisplayTitle,
   matchTransactionSearch,
+  toLocalDateInputValue,
   useFinanceiroData,
 } from "./financeiro-shared";
 
@@ -47,6 +50,7 @@ type ModalState =
   | { type: "category"; item: FinancialCategory | null }
   | { type: "transaction"; item: FinancialTransaction | null }
   | { type: "transaction-status"; item: FinancialTransaction }
+  | { type: "transaction-confirm"; item: FinancialTransaction }
   | null;
 
 type ConfirmState =
@@ -70,17 +74,13 @@ type TransactionFilterState = {
   endDate: string;
 };
 
-function toDateInputValue(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
 function currentMonthPeriod() {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return {
-    startDate: toDateInputValue(start),
-    endDate: toDateInputValue(end),
+    startDate: toLocalDateInputValue(start),
+    endDate: toLocalDateInputValue(end),
   };
 }
 
@@ -97,6 +97,7 @@ const initialTransactionFilters: TransactionFilterState = {
 };
 
 export default function FinanceiroPage() {
+  const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
   const {
     summary,
     loadingPermission,
@@ -106,10 +107,11 @@ export default function FinanceiroPage() {
     accounts,
     categories,
     transactions,
+    financialSummary,
     canManage,
     reloadData,
     setDataError,
-  } = useFinanceiroData();
+  } = useFinanceiroData(appliedTransactionFilters);
 
   const [modal, setModal] = useState<ModalState>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
@@ -117,7 +119,6 @@ export default function FinanceiroPage() {
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
   const [auxiliaryCollapsed, setAuxiliaryCollapsed] = useState(true);
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(false);
@@ -388,18 +389,92 @@ export default function FinanceiroPage() {
     }
   }
 
+  async function saveTransactionBatch(data: TransactionBatchFormData) {
+    if (!data.accountId) {
+      setFormError("Selecione a conta do lançamento.");
+      return;
+    }
+    if (!data.categoryId) {
+      setFormError("Selecione a categoria do lançamento.");
+      return;
+    }
+    if (!data.occurrences.length) {
+      setFormError("Gere pelo menos uma parcela válida antes de salvar.");
+      return;
+    }
+    setSaving(true);
+    setFormError("");
+    try {
+      const payload = {
+        type: data.type,
+        defaultStatus: data.defaultStatus,
+        accountId: data.accountId,
+        categoryId: data.categoryId,
+        ...(data.eventoId ? { eventoId: data.eventoId } : {}),
+        ...(data.memberId && data.type === "INCOME" ? { memberId: data.memberId } : {}),
+        ...(data.description.trim() ? { description: data.description.trim() } : {}),
+        paymentMethod: data.paymentMethod || null,
+        ...(data.counterpartyName.trim() ? { counterpartyName: data.counterpartyName.trim() } : {}),
+        occurrences: data.occurrences.map((occurrence) => ({
+          date: occurrence.date,
+          amount: occurrence.amount,
+          status: occurrence.status,
+          installmentNumber: occurrence.installmentNumber,
+          totalInstallments: occurrence.totalInstallments,
+        })),
+      };
+      const response = await api.post<{ recurringGroupId: string; count: number }>("/api/financeiro/transactions/batch", payload);
+      setModal(null);
+      setFeedback({ type: "success", message: `${response.count} lançamento(s) gerado(s) em lote com sucesso.` });
+      await reloadData();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Erro ao gerar lançamentos em lote.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveTransactionStatus(status: FinancialTransactionStatus) {
     if (modal?.type !== "transaction-status") return;
     setSaving(true);
     setFormError("");
     try {
       if (status === "CANCELLED") await api.patch(`/api/financeiro/transactions/${modal.item.id}/cancel`, {});
+      else if (status === "CONFIRMED" && modal.item.status !== "CONFIRMED") await api.patch(`/api/financeiro/transactions/${modal.item.id}/confirm`, {});
       else await api.patch(`/api/financeiro/transactions/${modal.item.id}`, { status });
       setModal(null);
       setFeedback({ type: "success", message: "Status do lançamento atualizado com sucesso." });
       await reloadData();
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Não foi possível alterar o status do lançamento.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmTransactionSettlement(data: TransactionConfirmFormData) {
+    if (modal?.type !== "transaction-confirm") return;
+    if (!data.paidAt) {
+      setFormError("Informe a data de liquidação.");
+      return;
+    }
+    if (!data.amount || Number(data.amount) <= 0) {
+      setFormError("Informe um valor liquidado maior que zero.");
+      return;
+    }
+    setSaving(true);
+    setFormError("");
+    try {
+      await api.patch(`/api/financeiro/transactions/${modal.item.id}/confirm`, {
+        paidAt: new Date(`${data.paidAt}T12:00:00`).toISOString(),
+        paymentMethod: data.paymentMethod || null,
+        amount: Number(data.amount),
+      });
+      setModal(null);
+      setFeedback({ type: "success", message: "Pagamento confirmado e saldo atualizado com sucesso." });
+      await reloadData();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Não foi possível confirmar o pagamento.");
     } finally {
       setSaving(false);
     }
@@ -499,6 +574,33 @@ export default function FinanceiroPage() {
           </button>
         </div>
       )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatCard
+          title="Saldo realizado"
+          value={currencyFormatter.format(financialSummary.balance)}
+          description={`${financialSummary.transactions} confirmado(s) • Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`}
+          icon={<WalletCards className="h-5 w-5" />}
+          color="brand"
+          loading={loadingData}
+        />
+        <StatCard
+          title="A receber (Pendente)"
+          value={currencyFormatter.format(financialSummary.pendingIncome)}
+          description="Entradas aguardando recebimento no período"
+          icon={<CircleDollarSign className="h-5 w-5" />}
+          color="emerald"
+          loading={loadingData}
+        />
+        <StatCard
+          title="A pagar (Pendente)"
+          value={currencyFormatter.format(financialSummary.pendingExpense)}
+          description={`${financialSummary.pendingCount} pendência(s) no período`}
+          icon={<Clock3 className="h-5 w-5" />}
+          color="amber"
+          loading={loadingData}
+        />
+      </div>
 
       <section className="space-y-4">
         <FilterShell
@@ -609,6 +711,7 @@ export default function FinanceiroPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <FinanceStatusBadge status={item.status} />
                       <FinanceTypeBadge type={item.type} />
+                      <FinanceInstallmentBadge installmentNumber={item.installmentNumber} totalInstallments={item.totalInstallments} />
                     </div>
                   </div>
                   <div className="grid gap-2 text-xs font-medium text-gray-500 sm:grid-cols-2 xl:grid-cols-5">
@@ -616,6 +719,12 @@ export default function FinanceiroPage() {
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">Data: {dateFormatter.format(new Date(item.date))}</span>
                     </span>
+                    {item.status === "CONFIRMED" && item.paidAt && (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <span className="truncate">Liquidado em: {dateFormatter.format(new Date(item.paidAt))}</span>
+                      </span>
+                    )}
                     <span className="flex min-w-0 items-center gap-1.5">
                       <WalletCards className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">Conta: {item.account.name}</span>
@@ -649,7 +758,18 @@ export default function FinanceiroPage() {
                   </div>
                 </div>
                 <div className="flex w-full justify-end sm:w-auto md:self-start">
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {canCancelTransaction && (item.status === "PENDING" || item.status === "DRAFT") && (
+                      <button
+                        type="button"
+                        onClick={() => { setFormError(""); setModal({ type: "transaction-confirm", item }); }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100"
+                        title="Dar Baixa / Confirmar Pagamento"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Dar Baixa
+                      </button>
+                    )}
                     {canCancelTransaction && item.status !== "CANCELLED" && (
                       <button
                         type="button"
@@ -658,7 +778,7 @@ export default function FinanceiroPage() {
                         title="Mudar status"
                         aria-label="Mudar status"
                       >
-                        {item.status === "DRAFT" ? (
+                        {item.status === "DRAFT" || item.status === "PENDING" ? (
                           <Clock3 className="h-4 w-4 text-amber-600" />
                         ) : (
                           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -762,8 +882,27 @@ export default function FinanceiroPage() {
 
       <AccountModal isOpen={modal?.type === "account"} account={modal?.type === "account" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveAccount} />
       <CategoryModal isOpen={modal?.type === "category"} category={modal?.type === "category" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveCategory} />
-      <TransactionModal isOpen={modal?.type === "transaction"} transaction={modal?.type === "transaction" ? modal.item : null} accounts={accounts} categories={categories} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveTransaction} />
+      <TransactionModal
+        isOpen={modal?.type === "transaction"}
+        transaction={modal?.type === "transaction" ? modal.item : null}
+        accounts={accounts}
+        categories={categories}
+        loading={saving}
+        error={formError}
+        canApproveStatus={canCancelTransaction}
+        onClose={() => setModal(null)}
+        onSubmit={saveTransaction}
+        onSubmitBatch={saveTransactionBatch}
+      />
       <TransactionStatusModal isOpen={modal?.type === "transaction-status"} transaction={modal?.type === "transaction-status" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveTransactionStatus} />
+      <TransactionConfirmModal
+        isOpen={modal?.type === "transaction-confirm"}
+        transaction={modal?.type === "transaction-confirm" ? modal.item : null}
+        loading={saving}
+        error={formError}
+        onClose={() => setModal(null)}
+        onSubmit={confirmTransactionSettlement}
+      />
       <ConfirmDialog
         isOpen={!!confirm}
         title={confirm?.type === "transaction" ? "Excluir lançamento" : "Inativar registro"}

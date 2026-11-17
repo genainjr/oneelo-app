@@ -8,13 +8,16 @@ import {
   TRANSACTION_STATUS_LABELS,
   currencyFormatter,
   dateFormatter,
+  formatInstallmentLabel,
   useFinanceiroData,
 } from '../financeiro-shared';
 
 const ALL_FIELDS = [
   { key: 'date', label: 'Data' },
+  { key: 'paidAt', label: 'Liquidação' },
   { key: 'type', label: 'Tipo' },
   { key: 'status', label: 'Status' },
+  { key: 'installment', label: 'Parcela' },
   { key: 'description', label: 'Descrição' },
   { key: 'account', label: 'Conta' },
   { key: 'category', label: 'Categoria' },
@@ -37,7 +40,7 @@ export default function FinanceiroExportacaoPage() {
     permissionError,
     dataError,
     transactions,
-  } = useFinanceiroData();
+  } = useFinanceiroData({ limit: 500 });
 
   const exportHook = useExport(
     ALL_FIELDS,
@@ -45,8 +48,10 @@ export default function FinanceiroExportacaoPage() {
     'financeiro',
     (transaction, field) => {
       if (field.key === 'date') return dateFormatter.format(new Date(transaction.date));
+      if (field.key === 'paidAt') return transaction.paidAt ? dateFormatter.format(new Date(transaction.paidAt)) : '';
       if (field.key === 'type') return TRANSACTION_TYPE_LABEL[transaction.type];
       if (field.key === 'status') return TRANSACTION_STATUS_LABELS[transaction.status] ?? transaction.status;
+      if (field.key === 'installment') return formatInstallmentLabel(transaction.installmentNumber, transaction.totalInstallments) ?? '';
       if (field.key === 'account') return transaction.account.name;
       if (field.key === 'category') return transaction.category.name;
       if (field.key === 'evento') return transaction.evento?.titulo ?? '';
