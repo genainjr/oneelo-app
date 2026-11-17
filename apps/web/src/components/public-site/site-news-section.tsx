@@ -54,14 +54,21 @@ export function SiteNewsSection({
                   className="relative block aspect-[16/10] w-full overflow-hidden bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset"
                 >
                   {item.imagemUrl ? (
-                    <Image
-                      src={item.imagemUrl}
-                      alt={item.titulo}
-                      fill
-                      loading="lazy"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover transition duration-300 group-hover:scale-[1.03]"
-                    />
+                    <>
+                      <div
+                        className="absolute inset-0 bg-cover bg-center opacity-30 blur-md filter scale-110"
+                        style={{ backgroundImage: `url(${item.imagemUrl})` }}
+                        aria-hidden="true"
+                      />
+                      <Image
+                        src={item.imagemUrl}
+                        alt={item.titulo}
+                        fill
+                        loading="lazy"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-contain transition duration-300 group-hover:scale-[1.03]"
+                      />
+                    </>
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 to-zinc-800 text-amber-400/70">
                       <Newspaper className="h-10 w-10" aria-hidden="true" />

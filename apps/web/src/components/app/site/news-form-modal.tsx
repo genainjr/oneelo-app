@@ -210,11 +210,12 @@ function NewsFormModalContent({
             />
             <ImageUploadPanel
               title="Imagem de capa"
-              description="Opcional. Use JPG, PNG ou WEBP até 5 MB."
+              description="Opcional. Formatos: 4:5 (Post), 1:1 (Quadrado), 16:9 (Horizontal) ou 9:16 (Story). JPG, PNG ou WEBP até 5 MB."
               imageUrl={imagePreview}
               fallbackName={titulo || 'Info'}
               alt={titulo || 'Capa do informativo'}
-              previewClassName="h-16 w-24 rounded-xl"
+              previewClassName="h-20 w-20 rounded-xl bg-stone-900/5"
+              imageClassName="object-contain"
               uploading={loading && Boolean(selectedFile)}
               disabled={loading}
               removeDisabled={!imagePreview}
