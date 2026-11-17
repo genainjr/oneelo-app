@@ -17,6 +17,7 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 17/11/2026 | [dashboard-sidebar-dominio-pwa-ajustes-plan.md](dashboard-sidebar-dominio-pwa-ajustes-plan.md) | Ajustes de Empilhamento da Sidebar, Padronização PWA e Domínio Próprio no Link de Cadastro (Concluído) |
 | 17/11/2026 | [site-noticias-proporcao-imagem-plan.md](site-noticias-proporcao-imagem-plan.md) | Suporte a Múltiplos Formatos e Proporções de Imagens nos Informativos do Site (Concluído) |
 | 13/11/2026 | [unificacao-tema-tenant-plan.md](unificacao-tema-tenant-plan.md) | Unificação Visual do Tenant (Tema Padrão Obsidiana + Âmbar via Tokens Semânticos — Plano A — Concluído) |
 | 13/11/2026 | [site-institucional-tenant-plan.md](site-institucional-tenant-plan.md) | Site Institucional Público do Tenant e Portal da Igreja (FT-019) |
