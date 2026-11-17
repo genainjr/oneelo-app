@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsBoolean } from 'class-validator';
 import { StatusMembro, SexoMembro, EstadoCivil } from '@prisma/client';
 
 export class UpdateMembroDto {
@@ -57,4 +57,12 @@ export class UpdateMembroDto {
   @IsString()
   @IsOptional()
   observacoes?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  desativarUsuario?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  reativarUsuario?: boolean;
 }

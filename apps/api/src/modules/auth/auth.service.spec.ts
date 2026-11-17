@@ -526,4 +526,160 @@ describe('AuthService regeneratePendingActivationInTx & regenerateActivationLink
     expect(res.user.telefoneLogin).toBeNull();
     expect(res.activationLink).toContain('/activate/');
   });
+
+  it('orienta sobre conta desativada sem vinculo quando createPendingBasicUserInTx colide no mesmo tenant', async () => {
+    const tx = {
+      user: {
+        findFirst: jest.fn().mockResolvedValueOnce({
+          id: 'user-disabled-orphan',
+          tenantId: 'tenant-1',
+          status: UserStatus.DISABLED,
+          memberId: null,
+        }),
+      },
+    };
+    const service = createService({});
+
+    await expect(
+      service.createPendingBasicUserInTx(tx as never, {
+        tenantId: 'tenant-1',
+        nome: 'Ex-Membro Teste',
+        email: 'exmembro@example.com',
+        actorId: 'admin-1',
+      }),
+    ).rejects.toThrow(
+      'Já existe uma conta desativada com este e-mail sem membro vinculado. Você pode reativá-la ou ajustar seu vínculo em Configurações > Usuários.',
+    );
+  });
+});
+
+describe('AuthService reactivateDisabledUserInTx', () => {
+  it('reativa usuário BASIC DISABLED para PENDING com novo link, limpa senhaHash e revoga OAuth antigo se e-mail mudar', async () => {
+    const tx = {
+      user: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'user-dis-1',
+            nome: 'João Ex-Membro',
+            email: 'antigo@example.com',
+            telefoneLogin: '+5585991101771',
+            role: Role.BASIC,
+            status: UserStatus.DISABLED,
+            ativo: false,
+            activationTokenHash: null,
+            activationExpiresAt: null,
+          })
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+        update: jest.fn().mockImplementation(({ data }) => ({
+          id: 'user-dis-1',
+          nome: data.nome ?? 'João Ex-Membro',
+          email: data.email ?? 'antigo@example.com',
+          role: Role.BASIC,
+          ativo: false,
+          status: UserStatus.PENDING,
+          activationExpiresAt: data.activationExpiresAt,
+          activationCreatedAt: data.activationCreatedAt,
+          activatedAt: null,
+          onboardingCompletedAt: null,
+          createdAt: new Date(),
+        })),
+      },
+      userAuthProvider: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const service = createService({});
+
+    const res = await service.reactivateDisabledUserInTx(tx as never, {
+      userId: 'user-dis-1',
+      tenantId: 'tenant-1',
+      actorId: 'admin-1',
+      nome: 'João Retorno',
+      email: 'novo@example.com',
+      telefoneLogin: '+55 85 98888-0000',
+      origemAuditoria: 'auto_cadastro_retorno',
+    });
+
+    expect(tx.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user-dis-1' },
+        data: expect.objectContaining({
+          status: UserStatus.PENDING,
+          ativo: false,
+          senhaHash: null,
+          nome: 'João Retorno',
+          email: 'novo@example.com',
+          telefoneLogin: '+5585988880000',
+          activationTokenHash: expect.any(String),
+        }),
+      }),
+    );
+    expect(tx.userAuthProvider.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user-dis-1', ativo: true },
+      data: { ativo: false, revokedAt: expect.any(Date) },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalled();
+    expect(res.status).toBe(UserStatus.PENDING);
+    expect(res.activationLink).toContain('/activate/');
+  });
+
+  it('bloqueia reativação de conta administrativa ADMIN/STAFF via reactivateDisabledUserInTx', async () => {
+    const tx = {
+      user: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'user-staff',
+          role: Role.STAFF,
+          status: UserStatus.DISABLED,
+          ativo: false,
+        }),
+        update: jest.fn(),
+      },
+    };
+    const service = createService({});
+
+    await expect(
+      service.reactivateDisabledUserInTx(tx as never, {
+        userId: 'user-staff',
+        tenantId: 'tenant-1',
+        actorId: 'admin-1',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
+
+  it('propaga ConflictException quando novo e-mail da reativação pertence a outro usuário', async () => {
+    const tx = {
+      user: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'user-dis-2',
+            nome: 'Pedro',
+            email: 'pedro@example.com',
+            telefoneLogin: null,
+            role: Role.BASIC,
+            status: UserStatus.DISABLED,
+            ativo: false,
+          })
+          .mockResolvedValueOnce({ id: 'outro-user' }),
+        update: jest.fn(),
+      },
+    };
+    const service = createService({});
+
+    await expect(
+      service.reactivateDisabledUserInTx(tx as never, {
+        userId: 'user-dis-2',
+        tenantId: 'tenant-1',
+        actorId: 'admin-1',
+        email: 'ocupado@example.com',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
 });

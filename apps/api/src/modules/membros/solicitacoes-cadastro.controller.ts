@@ -39,6 +39,10 @@ export class AprovarSolicitacaoDto {
 
   @IsOptional()
   @IsBoolean()
+  reativarUsuarioDesativado?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   promoverParaAtivo?: boolean;
 
   @IsOptional()

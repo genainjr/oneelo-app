@@ -1142,8 +1142,18 @@ export class AuthService {
   ) {
     const existing = await tx.user.findFirst({
       where: { email: params.email.trim().toLowerCase() },
+      select: { id: true, tenantId: true, status: true, memberId: true },
     });
     if (existing) {
+      if (
+        existing.tenantId === params.tenantId &&
+        existing.status === UserStatus.DISABLED &&
+        !existing.memberId
+      ) {
+        throw new ConflictException(
+          'Já existe uma conta desativada com este e-mail sem membro vinculado. Você pode reativá-la ou ajustar seu vínculo em Configurações > Usuários.',
+        );
+      }
       throw new ConflictException('Já existe um usuário com este e-mail.');
     }
 
@@ -1230,17 +1240,19 @@ export class AuthService {
     };
   }
 
-  async regeneratePendingActivationInTx(
+  private async updatePendingOrReactivateUserInTx(
     prismaLike: PrismaService | Prisma.TransactionClient,
     params: {
+      mode: 'REGENERATE_PENDING' | 'REACTIVATE_DISABLED';
       userId: string;
       tenantId: string;
-      actorId: string;
+      actorId?: string | null;
       ip?: string;
       nome?: string;
       email?: string;
       telefoneLogin?: string | null;
       regenerarLink?: boolean;
+      ignorarTelefoneSeEmUso?: boolean;
       origemAuditoria?: string;
     },
   ) {
@@ -1253,6 +1265,7 @@ export class AuthService {
         telefoneLogin: true,
         role: true,
         status: true,
+        ativo: true,
         activationTokenHash: true,
         activationExpiresAt: true,
       },
@@ -1262,13 +1275,32 @@ export class AuthService {
       throw new NotFoundException('Usuario nao encontrado.');
     }
 
-    if (user.status !== UserStatus.PENDING) {
+    const isReactivation = params.mode === 'REACTIVATE_DISABLED';
+
+    if (isReactivation) {
+      if (user.role !== Role.BASIC) {
+        throw new ForbiddenException(
+          'Contas administrativas (ADMIN/STAFF) não podem ser reativadas por este fluxo.',
+        );
+      }
+      if (user.status !== UserStatus.DISABLED && user.ativo) {
+        throw new BadRequestException(
+          'Apenas usuarios desativados podem ser reativados por este fluxo.',
+        );
+      }
+    } else if (user.status !== UserStatus.PENDING) {
       throw new BadRequestException(
         'Apenas usuarios pendentes podem receber novo link de ativacao.',
       );
     }
 
-    const updateData: Prisma.UserUpdateInput = {};
+    const updateData: Prisma.UserUpdateInput = isReactivation
+      ? {
+          status: UserStatus.PENDING,
+          ativo: false,
+          senhaHash: null,
+        }
+      : {};
 
     if (params.nome !== undefined && params.nome.trim()) {
       const cleanNome = params.nome.trim();
@@ -1277,6 +1309,7 @@ export class AuthService {
       }
     }
 
+    let emailChanged = false;
     if (params.email !== undefined) {
       const normalizedEmail = params.email.trim().toLowerCase();
       if (!normalizedEmail) {
@@ -1291,6 +1324,7 @@ export class AuthService {
           throw new ConflictException('Já existe um usuário com este e-mail.');
         }
         updateData.email = normalizedEmail;
+        emailChanged = true;
       }
     }
 
@@ -1311,16 +1345,22 @@ export class AuthService {
             select: { id: true },
           });
           if (phoneConflict) {
-            throw new ConflictException(
-              'Este telefone já está em uso por outro usuário.',
-            );
+            if (params.ignorarTelefoneSeEmUso) {
+              normalizedPhone = null;
+            } else {
+              throw new ConflictException(
+                'Este telefone já está em uso por outro usuário.',
+              );
+            }
           }
         }
         updateData.telefoneLogin = normalizedPhone;
       }
     }
 
-    const shouldRegenerateLink = params.regenerarLink !== false;
+    const shouldRegenerateLink = isReactivation
+      ? true
+      : params.regenerarLink !== false;
     const activation = shouldRegenerateLink ? this.createActivationToken() : null;
 
     if (activation) {
@@ -1365,19 +1405,29 @@ export class AuthService {
       this.rethrowPhoneUniqueConflict(error);
     }
 
+    // Ao reativar com novo e-mail, revoga vinculos OAuth antigos para nao bloquear novo vinculo Google na ativacao
+    if (isReactivation && emailChanged && (prismaLike as any).userAuthProvider) {
+      await prismaLike.userAuthProvider.updateMany({
+        where: { userId: user.id, ativo: true },
+        data: { ativo: false, revokedAt: new Date() },
+      });
+    }
+
     await prismaLike.auditLog.create({
       data: {
         tenantId: params.tenantId,
-        userId: params.actorId,
+        userId: params.actorId || null,
         entidade: 'usuarios',
         entidadeId: user.id,
         acao: AcaoAuditoria.ATUALIZAR,
         payloadBefore: {
           status: user.status,
+          ...(isReactivation ? { ativo: Boolean(user.ativo) } : {}),
           activationExpiresAt: user.activationExpiresAt?.toISOString() ?? null,
         },
         payloadAfter: {
           status: updated.status,
+          ...(isReactivation ? { ativo: Boolean(updated.ativo) } : {}),
           activationExpiresAt:
             updated.activationExpiresAt?.toISOString() ?? null,
           ...(params.origemAuditoria ? { origem: params.origemAuditoria } : {}),
@@ -1392,6 +1442,47 @@ export class AuthService {
         ? this.buildActivationLink(activation.token)
         : null,
     };
+  }
+
+  async regeneratePendingActivationInTx(
+    prismaLike: PrismaService | Prisma.TransactionClient,
+    params: {
+      userId: string;
+      tenantId: string;
+      actorId: string;
+      ip?: string;
+      nome?: string;
+      email?: string;
+      telefoneLogin?: string | null;
+      regenerarLink?: boolean;
+      origemAuditoria?: string;
+    },
+  ) {
+    return this.updatePendingOrReactivateUserInTx(prismaLike, {
+      ...params,
+      mode: 'REGENERATE_PENDING',
+    });
+  }
+
+  async reactivateDisabledUserInTx(
+    prismaLike: PrismaService | Prisma.TransactionClient,
+    params: {
+      userId: string;
+      tenantId: string;
+      actorId?: string | null;
+      ip?: string;
+      nome?: string;
+      email?: string;
+      telefoneLogin?: string | null;
+      ignorarTelefoneSeEmUso?: boolean;
+      origemAuditoria?: string;
+    },
+  ) {
+    return this.updatePendingOrReactivateUserInTx(prismaLike, {
+      ...params,
+      mode: 'REACTIVATE_DISABLED',
+      regenerarLink: true,
+    });
   }
 
   async regenerateActivationLink(

@@ -146,9 +146,16 @@ export class MembrosController {
   async bulkDeletePost(
     @Body() dto: BulkDeleteMembrosDto,
     @Req() req: Request,
+    @Ip() ip?: string,
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
+    if (dto.desativarUsuarios !== undefined || ip !== undefined) {
+      return this.membrosService.bulkRemove(tenantId, dto.ids, user?.sub, {
+        desativarUsuarios: dto.desativarUsuarios,
+        ip,
+      });
+    }
     return this.membrosService.bulkRemove(tenantId, dto.ids, user?.sub);
   }
 
@@ -157,9 +164,16 @@ export class MembrosController {
   async bulkDelete(
     @Body() dto: BulkDeleteMembrosDto,
     @Req() req: Request,
+    @Ip() ip?: string,
   ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
+    if (dto.desativarUsuarios !== undefined || ip !== undefined) {
+      return this.membrosService.bulkRemove(tenantId, dto.ids, user?.sub, {
+        desativarUsuarios: dto.desativarUsuarios,
+        ip,
+      });
+    }
     return this.membrosService.bulkRemove(tenantId, dto.ids, user?.sub);
   }
 
@@ -176,9 +190,17 @@ export class MembrosController {
     @Param('id') id: string,
     @Body() updateMembroDto: UpdateMembroDto,
     @Req() req: Request,
+    @Ip() ip?: string,
   ) {
     const tenantId = req['tenantId'] as string;
-    return this.membrosService.update(tenantId, id, updateMembroDto);
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.update(
+      tenantId,
+      id,
+      updateMembroDto,
+      user?.sub,
+      ip,
+    );
   }
 
   @Post(':id/promover')
@@ -219,9 +241,19 @@ export class MembrosController {
 
   @Delete(':id')
   @Roles(Role.ADMIN, Role.STAFF)
-  remove(@Param('id') id: string, @Req() req: Request) {
+  remove(
+    @Param('id') id: string,
+    @Query('desativarUsuario') desativarUsuario: string | undefined,
+    @Req() req: Request,
+    @Ip() ip?: string,
+  ) {
     const tenantId = req['tenantId'] as string;
-    return this.membrosService.remove(tenantId, id);
+    const user = req['user'] as JwtPayload;
+    return this.membrosService.remove(tenantId, id, {
+      desativarUsuario: desativarUsuario === 'false' ? false : true,
+      actorUserId: user?.sub,
+      ip,
+    });
   }
 
   @Post(':id/foto')

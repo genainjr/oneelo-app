@@ -83,6 +83,14 @@ describe('SolicitacoesCadastroService (Triagem e Aprovação)', () => {
         status: UserStatus.PENDING,
         activationLink: 'https://app.oneelo.com/activate/regen-789',
       }),
+      reactivateDisabledUserInTx: jest.fn().mockResolvedValue({
+        id: 'u-disabled-return',
+        nome: 'Ex-Membro Retornando',
+        email: 'retorno@test.com',
+        role: Role.BASIC,
+        status: UserStatus.PENDING,
+        activationLink: 'https://app.oneelo.com/activate/reactivated-456',
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -142,7 +150,6 @@ describe('SolicitacoesCadastroService (Triagem e Aprovação)', () => {
         where: {
           tenantId,
           deletedAt: null,
-          status: { in: [StatusMembro.ATIVO, StatusMembro.VISITANTE] },
         },
       }));
     });
@@ -1094,6 +1101,132 @@ describe('SolicitacoesCadastroService (Triagem e Aprovação)', () => {
         service.aprovarSolicitacao(tenantId, 'sol-race', actorId),
       ).rejects.toThrow(BadRequestException);
       expect(prisma.membro.create).not.toHaveBeenCalled();
+    });
+
+    it('deve reativar ex-membro INATIVO e conta BASIC DISABLED com novo link quando reativarUsuarioDesativado for true', async () => {
+      prisma.solicitacaoCadastroMembro.findFirst.mockResolvedValue({
+        id: 'sol-retorno-1',
+        tenantId,
+        tipo: TipoSolicitacaoCadastro.MEMBRO,
+        status: StatusSolicitacaoCadastro.PENDENTE,
+        nome: 'Carlos Retorno',
+        telefone: '+5585991109999',
+        email: 'carlos.novo@test.com',
+        cpf: null,
+        createdAt: new Date(),
+      });
+      prisma.tenant.findUnique.mockResolvedValue(mockTenant);
+      prisma.membro.findFirst.mockResolvedValue({
+        id: 'm-inativo-1',
+        tenantId,
+        nome: 'Carlos Antigo',
+        whatsapp: '+5585991101111',
+        email: 'carlos.antigo@test.com',
+        status: StatusMembro.INATIVO,
+        user: {
+          id: 'u-disabled-return',
+          nome: 'Carlos Antigo',
+          email: 'carlos.antigo@test.com',
+          telefoneLogin: '+5585991101111',
+          role: Role.BASIC,
+          status: UserStatus.DISABLED,
+          ativo: false,
+        },
+      });
+      prisma.membro.count.mockResolvedValue(10);
+      prisma.membro.update.mockResolvedValue({
+        id: 'm-inativo-1',
+        nome: 'Carlos Retorno',
+        whatsapp: '+5585991109999',
+        email: 'carlos.novo@test.com',
+        status: StatusMembro.ATIVO,
+      });
+
+      const res = await service.aprovarSolicitacao(
+        tenantId,
+        'sol-retorno-1',
+        actorId,
+        {
+          vincularMembroId: 'm-inativo-1',
+          camposAtualizar: ['nome', 'whatsapp', 'email'],
+          promoverParaAtivo: true,
+          reativarUsuarioDesativado: true,
+        },
+      );
+
+      expect(prisma.membro.update).toHaveBeenCalledWith({
+        where: { id: 'm-inativo-1' },
+        data: expect.objectContaining({
+          status: StatusMembro.ATIVO,
+          nome: 'Carlos Retorno',
+          whatsapp: '+5585991109999',
+          email: 'carlos.novo@test.com',
+        }),
+      });
+      expect(authService.reactivateDisabledUserInTx).toHaveBeenCalledWith(
+        prisma,
+        expect.objectContaining({
+          userId: 'u-disabled-return',
+          tenantId,
+          nome: 'Carlos Retorno',
+          email: 'carlos.novo@test.com',
+          telefoneLogin: '+5585991109999',
+          ignorarTelefoneSeEmUso: true,
+          origemAuditoria: 'auto_cadastro_ex_membro_reativado',
+        }),
+      );
+      expect(res.userAccessOutcome).toBe('REACTIVATED');
+      expect(res.activationLink).toBe('https://app.oneelo.com/activate/reactivated-456');
+    });
+
+    it('não deve reativar conta DISABLED automaticamente ao reativar ex-membro se reativarUsuarioDesativado for false', async () => {
+      prisma.solicitacaoCadastroMembro.findFirst.mockResolvedValue({
+        id: 'sol-retorno-2',
+        tenantId,
+        tipo: TipoSolicitacaoCadastro.MEMBRO,
+        status: StatusSolicitacaoCadastro.PENDENTE,
+        nome: 'Carlos Retorno',
+        telefone: '+5585991109999',
+        email: 'carlos.antigo@test.com',
+        createdAt: new Date(),
+      });
+      prisma.tenant.findUnique.mockResolvedValue(mockTenant);
+      prisma.membro.findFirst.mockResolvedValue({
+        id: 'm-transf-1',
+        tenantId,
+        nome: 'Carlos Antigo',
+        status: StatusMembro.TRANSFERIDO,
+        user: {
+          id: 'u-disabled-2',
+          nome: 'Carlos Antigo',
+          email: 'carlos.antigo@test.com',
+          role: Role.BASIC,
+          status: UserStatus.DISABLED,
+          ativo: false,
+        },
+      });
+      prisma.membro.count.mockResolvedValue(10);
+      prisma.membro.update.mockResolvedValue({
+        id: 'm-transf-1',
+        nome: 'Carlos Retorno',
+        status: StatusMembro.ATIVO,
+      });
+
+      const res = await service.aprovarSolicitacao(
+        tenantId,
+        'sol-retorno-2',
+        actorId,
+        {
+          vincularMembroId: 'm-transf-1',
+          camposAtualizar: ['nome'],
+          promoverParaAtivo: true,
+          reativarUsuarioDesativado: false,
+        },
+      );
+
+      expect(authService.reactivateDisabledUserInTx).not.toHaveBeenCalled();
+      expect(res.userAccessOutcome).toBe('DISABLED');
+      expect(res.activationLink).toBeNull();
     });
   });
 });

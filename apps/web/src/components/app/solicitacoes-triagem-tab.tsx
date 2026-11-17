@@ -66,9 +66,15 @@ function getDuplicityAccessHint(
   duplicidade: SolicitacaoItem['duplicidade'],
 ): string {
   const user = duplicidade.usuarioExistente;
-  const isVisitor = duplicidade.membroExistenteStatus === 'VISITANTE';
+  const status = duplicidade.membroExistenteStatus;
+  const isVisitor = status === 'VISITANTE';
+  const isFormerMember = status === 'INATIVO' || status === 'TRANSFERIDO';
+  const formerLabel = status === 'TRANSFERIDO' ? 'Transferido' : 'Inativo';
 
   if (!user) {
+    if (isFormerMember) {
+      return `Ex-membro (${formerLabel}) ainda sem acesso. Você pode revisar os dados para reativar o cadastro histórico e, se aplicável, gerar convite de usuário.`;
+    }
     return isVisitor
       ? 'Visitante ainda sem acesso. Você pode revisar os dados, promover a Membro Ativo e gerar convite de usuário.'
       : 'Membro ativo sem usuário de acesso. Revise os dados para atualizar o cadastro e criar o convite de ativação.';
@@ -79,10 +85,16 @@ function getDuplicityAccessHint(
   }
 
   if (user.status === 'DISABLED') {
-    return `Usuário desativado (${user.email}). Apenas os dados cadastrais serão atualizados (a conta não será reativada).`;
+    if (isFormerMember) {
+      return `Ex-membro (${formerLabel}) com usuário desativado (${user.email}). Revise os dados para reativar o membro e decidir se deseja reativar o acesso ao aplicativo.`;
+    }
+    return `Usuário desativado (${user.email}). Revise para atualizar dados ou reativar a conta explicitamente, caso deseje.`;
   }
 
   if (user.status === 'ACTIVE') {
+    if (isFormerMember) {
+      return `Ex-membro (${formerLabel}) com usuário ativo (${user.email}). Revise para reativar o cadastro preservando o login atual.`;
+    }
     return `Usuário já ativo (${user.email}). Revise para atualizar apenas os dados cadastrais sem duplicar cadastro.`;
   }
 
@@ -209,25 +221,32 @@ export function SolicitacoesTriagemTab({
 
     if (res.activationLink) {
       const isRegenerated = res.userAccessOutcome === 'REGENERATED';
+      const isReactivated = res.userAccessOutcome === 'REACTIVATED';
       setSuccessBanner(null);
       setWelcomeModal({
         isOpen: true,
         membro: res.membro,
         user: res.user,
         activationLink: res.activationLink,
-        title: isRegenerated
-          ? 'Cadastro Atualizado e Novo Link Gerado!'
-          : isLinkFlow
-            ? 'Cadastro Atualizado e Acesso Criado!'
+        title: isReactivated
+          ? 'Cadastro e Acesso Reativados!'
+          : isRegenerated
+            ? 'Cadastro Atualizado e Novo Link Gerado!'
+            : isLinkFlow
+              ? 'Cadastro Atualizado e Acesso Criado!'
+              : undefined,
+        badgeTitle: isReactivated
+          ? `${res.membro.nome} reativado(a) com novo link de ativação!`
+          : isRegenerated
+            ? `${res.membro.nome} atualizado com novo link de ativação!`
+            : isLinkFlow
+              ? `${res.membro.nome} atualizado e vinculado ao acesso!`
+              : undefined,
+        description: isReactivated
+          ? 'O cadastro e a conta anterior foram reativados com um novo token válido por 72 horas. Envie o link de definição de senha no WhatsApp abaixo.'
+          : isRegenerated
+            ? 'Dados atualizados no cadastro existente e novo token válido por 72 horas gerado. Envie no WhatsApp abaixo.'
             : undefined,
-        badgeTitle: isRegenerated
-          ? `${res.membro.nome} atualizado com novo link de ativação!`
-          : isLinkFlow
-            ? `${res.membro.nome} atualizado e vinculado ao acesso!`
-            : undefined,
-        description: isRegenerated
-          ? 'Dados atualizados no cadastro existente e novo token válido por 72 horas gerado. Envie no WhatsApp abaixo.'
-          : undefined,
       });
       return;
     }
@@ -466,6 +485,10 @@ export function SolicitacoesTriagemTab({
             const isVisitorDuplicate =
               hasExistingMemberMatch &&
               item.duplicidade.membroExistenteStatus === 'VISITANTE';
+            const isFormerMemberDuplicate =
+              hasExistingMemberMatch &&
+              (item.duplicidade.membroExistenteStatus === 'INATIVO' ||
+                item.duplicidade.membroExistenteStatus === 'TRANSFERIDO');
             const isPendingSheetDuplicate =
               item.duplicidade.isDuplicate && !hasExistingMemberMatch;
             const canApproveAsDifferentPerson =
@@ -563,7 +586,9 @@ export function SolicitacoesTriagemTab({
                 {item.duplicidade.isDuplicate && isPending && (
                   <div
                     className={`rounded-xl p-3.5 text-sm border ${
-                      isVisitorDuplicate || isPendingSheetDuplicate
+                      isVisitorDuplicate ||
+                      isPendingSheetDuplicate ||
+                      isFormerMemberDuplicate
                         ? 'bg-amber-50/80 border-amber-200 text-amber-950'
                         : 'bg-rose-50/80 border-rose-200 text-rose-950'
                     }`}
@@ -571,7 +596,9 @@ export function SolicitacoesTriagemTab({
                     <div className="flex items-start gap-2.5">
                       <AlertTriangle
                         className={`h-4 w-4 shrink-0 mt-1 ${
-                          isVisitorDuplicate || isPendingSheetDuplicate
+                          isVisitorDuplicate ||
+                          isPendingSheetDuplicate ||
+                          isFormerMemberDuplicate
                             ? 'text-amber-600'
                             : 'text-rose-600'
                         }`}
@@ -582,7 +609,9 @@ export function SolicitacoesTriagemTab({
                             ? `Outra ficha pendente similar: "${item.duplicidade.membroExistenteNome}"`
                             : isVisitorDuplicate
                               ? `Já cadastrado como Visitante: "${item.duplicidade.membroExistenteNome}" (${getMotivoDuplicidadeLabel(item.duplicidade.motivoDuplicidade)})`
-                              : `Cadastro ativo existente: "${item.duplicidade.membroExistenteNome}" (${getMotivoDuplicidadeLabel(item.duplicidade.motivoDuplicidade)})`}
+                              : isFormerMemberDuplicate
+                                ? `Ex-membro encontrado (${item.duplicidade.membroExistenteStatus === 'TRANSFERIDO' ? 'Transferido' : 'Inativo'}): "${item.duplicidade.membroExistenteNome}" (${getMotivoDuplicidadeLabel(item.duplicidade.motivoDuplicidade)})`
+                                : `Cadastro ativo existente: "${item.duplicidade.membroExistenteNome}" (${getMotivoDuplicidadeLabel(item.duplicidade.motivoDuplicidade)})`}
                         </p>
                         <p className="opacity-90 text-xs sm:text-sm mt-0.5 leading-relaxed">
                           {isPendingSheetDuplicate
@@ -636,7 +665,9 @@ export function SolicitacoesTriagemTab({
                           <span>
                             {isVisitorDuplicate && item.tipo === 'MEMBRO'
                               ? 'Revisar e Promover Visitante'
-                              : 'Revisar e Atualizar Cadastro'}
+                              : isFormerMemberDuplicate
+                                ? 'Revisar e Reativar Cadastro'
+                                : 'Revisar e Atualizar Cadastro'}
                           </span>
                         </button>
                       </>

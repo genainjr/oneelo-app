@@ -1,16 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Membro, StatusMembro } from '@/types';
+import { Membro, MembroSavePayload, MembroUpdateResult, StatusMembro } from '@/types';
 import { InputField, SelectField, TextareaField } from './form-field';
 import { ModalError, ModalShell } from './modal-shell';
 import { ImageUploadPanel } from './image-upload-panel';
 import { IMAGE_UPLOAD_ACCEPT, validateImageFile } from '@/lib/image-upload';
+import { ShieldCheck, UserCheck, UserX } from 'lucide-react';
 
 interface MembroModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Partial<Membro>) => Promise<Membro | void>;
+  onSave: (data: MembroSavePayload) => Promise<MembroUpdateResult | Membro | void>;
   onUploadPhoto?: (id: string, file: File) => Promise<Membro>;
   onRemovePhoto?: (id: string) => Promise<Membro>;
   onPromote?: (membro: Membro) => void;
@@ -48,6 +49,8 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
   const [sexo, setSexo] = useState(membro?.sexo || '');
   const [estadoCivil, setEstadoCivil] = useState(membro?.estadoCivil || '');
   const [observacoes, setObservacoes] = useState(membro?.observacoes || '');
+  const [desativarUsuario, setDesativarUsuario] = useState(true);
+  const [reativarUsuario, setReativarUsuario] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +69,23 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
     };
   }, [selectedPhotoPreview]);
 
+  const isLeavingStatus = status === 'INATIVO' || status === 'TRANSFERIDO';
+  const showDisableBasicUserToggle = Boolean(
+    membro?.user &&
+      membro.user.role === 'BASIC' &&
+      membro.user.status !== 'DISABLED' &&
+      isLeavingStatus,
+  );
+  const showAdminProtectionNotice = Boolean(
+    membro?.user && membro.user.role !== 'BASIC' && isLeavingStatus,
+  );
+  const showReactivateBasicUserToggle = Boolean(
+    membro?.user &&
+      membro.user.role === 'BASIC' &&
+      membro.user.status === 'DISABLED' &&
+      status === 'ATIVO',
+  );
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim()) {
@@ -77,7 +97,7 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
     setError(null);
 
     try {
-      const payload: Partial<Membro> = {
+      const payload: MembroSavePayload = {
         nome: nome.trim(),
         nomeExibicao: nomeExibicao.trim() || undefined,
         email: email.trim() || undefined,
@@ -92,6 +112,8 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
         sexo: (sexo || undefined) as any,
         estadoCivil: (estadoCivil || undefined) as any,
         observacoes: observacoes.trim() || undefined,
+        ...(showDisableBasicUserToggle ? { desativarUsuario } : {}),
+        ...(showReactivateBasicUserToggle ? { reativarUsuario } : {}),
       };
 
       const saved = await onSave(payload);
@@ -301,6 +323,65 @@ function MembroModalContent({ isOpen, onClose, onSave, onUploadPhoto, onRemovePh
             <option value="TRANSFERIDO">Transferido</option>
           </SelectField>
         </div>
+
+        {showDisableBasicUserToggle && membro?.user && (
+          <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-950 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={desativarUsuario}
+              onChange={(e) => setDesativarUsuario(e.target.checked)}
+              disabled={loading}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
+            />
+            <div>
+              <span className="font-semibold flex items-center gap-1.5">
+                <UserX className="h-3.5 w-3.5 text-amber-700" />
+                Desativar também a conta de acesso vinculada ({membro.user.email})
+              </span>
+              <span className="text-amber-800 block mt-0.5 leading-relaxed">
+                Bloqueia o login no aplicativo mantendo todo o histórico financeiro e auditoria,
+                permitindo reativar este mesmo cadastro se a pessoa retornar.
+              </span>
+            </div>
+          </label>
+        )}
+
+        {showAdminProtectionNotice && membro?.user && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs text-blue-950">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600 mt-0.5" />
+            <div>
+              <p className="font-semibold">
+                Conta administrativa vinculada ({membro.user.role} · {membro.user.email})
+              </p>
+              <p className="text-blue-800 mt-0.5 leading-relaxed">
+                Alterar o status deste membro não desativa seu acesso administrativo. Se precisar
+                bloquear o login, gerencie em Configurações &gt; Usuários.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {showReactivateBasicUserToggle && membro?.user && (
+          <label className="flex items-start gap-3 rounded-xl border border-accent-soft-border bg-accent-soft/50 p-3.5 text-xs text-gray-900 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={reativarUsuario}
+              onChange={(e) => setReativarUsuario(e.target.checked)}
+              disabled={loading}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
+            />
+            <div>
+              <span className="font-semibold flex items-center gap-1.5">
+                <UserCheck className="h-3.5 w-3.5 text-accent-ink" />
+                Reativar conta de acesso anterior ({membro.user.email}) e gerar link (72h)
+              </span>
+              <span className="text-gray-600 block mt-0.5 leading-relaxed">
+                Desbloqueia o usuário como pendente para a pessoa definir uma nova senha ou entrar
+                com Google ao retornar à igreja.
+              </span>
+            </div>
+          </label>
+        )}
 
         <div className="pt-2 border-t border-gray-100">
           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">

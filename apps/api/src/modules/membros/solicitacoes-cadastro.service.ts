@@ -49,6 +49,7 @@ export type SolicitacaoMergeField = (typeof SOLICITACAO_MERGE_FIELDS)[number];
 export type UserAccessOutcome =
   | 'CREATED'
   | 'REGENERATED'
+  | 'REACTIVATED'
   | 'ALREADY_ACTIVE'
   | 'DISABLED'
   | 'PROTECTED_ROLE'
@@ -59,6 +60,7 @@ export interface AprovarSolicitacaoOptions {
   camposAtualizar?: SolicitacaoMergeField[];
   anexarObservacoes?: boolean;
   criarOuRegenerarAcesso?: boolean;
+  reativarUsuarioDesativado?: boolean;
   promoverParaAtivo?: boolean;
   permitirCriarNovoMesmoDuplicado?: boolean;
 }
@@ -731,29 +733,47 @@ export class SolicitacoesCadastroService {
             activationExpiresAt: existingUser.activationExpiresAt ?? null,
           };
 
+          const syncNome =
+            selectedFields?.has('nome') && updatedMembro.nome
+              ? updatedMembro.nome
+              : undefined;
+          const syncEmail =
+            selectedFields?.has('email') && updatedMembro.email
+              ? updatedMembro.email
+              : undefined;
+          const syncTelefone =
+            selectedFields?.has('whatsapp')
+              ? (updatedMembro.whatsapp ?? null)
+              : undefined;
+
           if (existingUser.role !== Role.BASIC) {
             finalUser = sanitizedExistingUser;
             userAccessOutcome = 'PROTECTED_ROLE';
           } else if (existingUser.status === UserStatus.DISABLED) {
-            finalUser = sanitizedExistingUser;
-            userAccessOutcome = 'DISABLED';
+            if (options.reativarUsuarioDesativado === true && canReceiveBasicUser) {
+              const reactivated =
+                await this.authService.reactivateDisabledUserInTx(tx, {
+                  userId: existingUser.id,
+                  tenantId,
+                  actorId,
+                  ip,
+                  nome: syncNome,
+                  email: syncEmail,
+                  telefoneLogin: syncTelefone,
+                  ignorarTelefoneSeEmUso: true,
+                  origemAuditoria: 'auto_cadastro_ex_membro_reativado',
+                });
+              finalUser = reactivated;
+              activationLink = reactivated.activationLink;
+              userAccessOutcome = 'REACTIVATED';
+            } else {
+              finalUser = sanitizedExistingUser;
+              userAccessOutcome = 'DISABLED';
+            }
           } else if (existingUser.status !== UserStatus.PENDING) {
             finalUser = sanitizedExistingUser;
             userAccessOutcome = 'ALREADY_ACTIVE';
           } else {
-            const syncNome =
-              selectedFields?.has('nome') && updatedMembro.nome
-                ? updatedMembro.nome
-                : undefined;
-            const syncEmail =
-              selectedFields?.has('email') && updatedMembro.email
-                ? updatedMembro.email
-                : undefined;
-            const syncTelefone =
-              selectedFields?.has('whatsapp')
-                ? (updatedMembro.whatsapp ?? null)
-                : undefined;
-
             const shouldTouchPendingUser =
               wantsAccess ||
               syncNome !== undefined ||

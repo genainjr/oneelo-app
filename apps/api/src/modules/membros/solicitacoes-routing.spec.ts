@@ -115,6 +115,7 @@ describe('MembrosModule routing priority', () => {
         camposAtualizar: ['nome', 'whatsapp', 'email', 'cpf'],
         anexarObservacoes: true,
         criarOuRegenerarAcesso: true,
+        reativarUsuarioDesativado: true,
         promoverParaAtivo: false,
         permitirCriarNovoMesmoDuplicado: false,
       })
@@ -129,6 +130,7 @@ describe('MembrosModule routing priority', () => {
         camposAtualizar: ['nome', 'whatsapp', 'email', 'cpf'],
         anexarObservacoes: true,
         criarOuRegenerarAcesso: true,
+        reativarUsuarioDesativado: true,
         promoverParaAtivo: false,
         permitirCriarNovoMesmoDuplicado: false,
       }),
