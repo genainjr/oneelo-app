@@ -7,7 +7,12 @@ import { useTranslations } from 'next-intl';
 import { ArrowLeft, Eye, EyeOff, Loader2, LogIn, UserPlus } from 'lucide-react';
 import { api, HttpError } from '@/lib/api';
 import { getPostLoginTarget, isSafeAppRedirect } from '@/lib/auth-redirect';
-import { saveCachedTenantPwa, syncThemeColorMeta } from '@/lib/pwa-branding';
+import {
+  readCachedTenantPwa,
+  saveCachedTenantPwa,
+  syncTenantPwaHead,
+  syncThemeColorMeta,
+} from '@/lib/pwa-branding';
 import { AuthUser } from '@/types';
 import { InternationalPhoneInput } from '@/components/app/international-phone-input';
 import { ChurchBrandMark } from '@/components/public-site/church-brand-mark';
@@ -53,7 +58,67 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
   const t = useTranslations('auth.login');
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
-  const isChurchBranded = Boolean(initialChurch);
+  const querySlug = searchParams.get('igreja') || searchParams.get('church') || churchSlug;
+  const [church, setChurch] = useState<PublicTenantInfo | null>(initialChurch);
+
+  useEffect(() => {
+    if (initialChurch) {
+      setChurch(initialChurch);
+      saveCachedTenantPwa({
+        nome: initialChurch.nome,
+        slug: initialChurch.slug,
+        logoUrl: initialChurch.logoUrl ?? null,
+        pwaIconUrl: initialChurch.pwaIconUrl ?? null,
+      });
+      syncTenantPwaHead(readCachedTenantPwa() ?? {
+        nome: initialChurch.nome,
+        slug: initialChurch.slug,
+        logoUrl: initialChurch.logoUrl ?? null,
+        pwaIconUrl: initialChurch.pwaIconUrl ?? null,
+      });
+      return;
+    }
+
+    const cached = readCachedTenantPwa();
+    const targetSlug = querySlug || cached?.slug || null;
+
+    if (cached && (!querySlug || cached.slug === querySlug)) {
+      setChurch({
+        nome: cached.nome,
+        slug: cached.slug,
+        logoUrl: cached.logoUrl || cached.pwaIconUrl || null,
+        pwaIconUrl: cached.pwaIconUrl || null,
+      });
+      syncTenantPwaHead(cached);
+    }
+
+    if (!targetSlug) return;
+
+    let active = true;
+    api
+      .get<PublicTenantInfo>(`/api/public/tenants/${encodeURIComponent(targetSlug)}`)
+      .then((info) => {
+        if (!active || !info) return;
+        setChurch(info);
+        saveCachedTenantPwa({
+          nome: info.nome,
+          slug: info.slug,
+          logoUrl: info.logoUrl ?? null,
+          pwaIconUrl: info.pwaIconUrl ?? null,
+        });
+        syncTenantPwaHead(readCachedTenantPwa());
+      })
+      .catch(() => {
+        // Mantém fallback em cache se disponível
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [initialChurch, querySlug]);
+
+  const resolvedSlug = church?.slug || querySlug;
+  const isChurchBranded = Boolean(church || resolvedSlug);
 
   useEffect(() => {
     syncThemeColorMeta(isChurchBranded ? '#09090b' : '#0f2f73');
@@ -76,7 +141,16 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
         identificador,
         senha,
       });
-      saveCachedTenantPwa(response.user?.tenant);
+      if (response.user?.tenant) {
+        saveCachedTenantPwa(response.user.tenant);
+      } else if (church) {
+        saveCachedTenantPwa({
+          nome: church.nome,
+          slug: church.slug,
+          logoUrl: church.logoUrl ?? null,
+          pwaIconUrl: church.pwaIconUrl ?? null,
+        });
+      }
       const target = getPostLoginTarget(response.user, redirect);
       window.location.href = target;
     } catch (err) {
@@ -119,9 +193,8 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
     setError('');
   }
 
-  const resolvedSlug = initialChurch?.slug || churchSlug;
-  const activeCustomOrigin = initialChurch?.customDomain
-    ? `https://${initialChurch.customDomain}`
+  const activeCustomOrigin = church?.customDomain
+    ? `https://${church.customDomain}`
     : null;
   const isCustomDomainTarget = Boolean(activeCustomOrigin);
   const siteHomeHref = activeCustomOrigin || (resolvedSlug ? `/${resolvedSlug}` : '/');
@@ -159,12 +232,12 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
 
       {/* Logo e título */}
       <div className="mb-8 text-center">
-        {isChurchBranded && initialChurch ? (
+        {isChurchBranded ? (
           <>
             <div className="mb-4 flex justify-center">
               <ChurchBrandMark
-                logoUrl={initialChurch.logoUrl}
-                churchName={initialChurch.nome}
+                logoUrl={church?.logoUrl}
+                churchName={church?.nome || resolvedSlug || 'Igreja'}
                 size="lg"
               />
             </div>
@@ -172,7 +245,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
               Área de Membros
             </p>
             <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl [text-wrap:balance]">
-              {initialChurch.nome}
+              {church?.nome || resolvedSlug}
             </h1>
           </>
         ) : (

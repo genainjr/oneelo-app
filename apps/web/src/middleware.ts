@@ -158,9 +158,23 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/admin') ||
       pathname.startsWith('/configuracoes')
     ) {
-      return NextResponse.redirect(
-        new URL(`${pathname}${request.nextUrl.search}`, getCanonicalAppOrigin()),
+      const targetUrl = new URL(
+        `${pathname}${request.nextUrl.search}`,
+        getCanonicalAppOrigin(),
       );
+      if (
+        (pathname === '/login' ||
+          pathname.startsWith('/dashboard') ||
+          pathname.startsWith('/configuracoes')) &&
+        !targetUrl.searchParams.has('igreja') &&
+        !targetUrl.searchParams.has('church')
+      ) {
+        const slug = await resolveSlugForCustomDomain(host);
+        if (slug) {
+          targetUrl.searchParams.set('igreja', slug);
+        }
+      }
+      return NextResponse.redirect(targetUrl);
     }
 
     return new NextResponse('Página não encontrada neste domínio.', { status: 404 });
@@ -178,6 +192,12 @@ export async function middleware(request: NextRequest) {
   if (!token) {
     const isAdminRoute = pathname.startsWith('/admin');
     const loginUrl = new URL(isAdminRoute ? '/admin/login' : '/login', request.url);
+    const requestedChurch =
+      request.nextUrl.searchParams.get('igreja') ||
+      request.nextUrl.searchParams.get('church');
+    if (!isAdminRoute && requestedChurch) {
+      loginUrl.searchParams.set('igreja', requestedChurch);
+    }
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }

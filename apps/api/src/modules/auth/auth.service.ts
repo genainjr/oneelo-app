@@ -147,7 +147,16 @@ export class AuthService {
       memberId: string | null;
       onboardingCompletedAt: Date | null;
       tenantId: string | null;
-      tenant: { nome: string } | null;
+      tenant: {
+        nome: string;
+        slug?: string | null;
+        logoUrl?: string | null;
+        logoKey?: string | null;
+        pwaShortName?: string | null;
+        pwaIconUrl?: string | null;
+        pwaIconKey?: string | null;
+        pwaUpdatedAt?: Date | string | null;
+      } | null;
     },
     ip?: string,
   ) {
@@ -193,6 +202,21 @@ export class AuthService {
         onboardingCompletedAt: user.onboardingCompletedAt,
         tenantId: user.tenantId,
         tenantNome: user.tenant!.nome,
+        tenant: user.tenant?.slug
+          ? {
+              nome: user.tenant.nome,
+              slug: user.tenant.slug,
+              logoUrl: user.tenant.logoUrl ?? null,
+              logoKey: user.tenant.logoKey ?? null,
+              pwaShortName: user.tenant.pwaShortName ?? null,
+              pwaIconUrl: user.tenant.pwaIconUrl ?? null,
+              pwaIconKey: user.tenant.pwaIconKey ?? null,
+              pwaUpdatedAt:
+                user.tenant.pwaUpdatedAt instanceof Date
+                  ? user.tenant.pwaUpdatedAt.toISOString()
+                  : (user.tenant.pwaUpdatedAt ?? null),
+            }
+          : undefined,
       },
     };
   }

@@ -30,11 +30,27 @@ export async function generateMetadata({ searchParams }: LoginPageProps): Promis
     return {};
   }
 
+  const iconUrl = church.pwaIconUrl || church.logoUrl || '/apple-touch-icon.png';
+  const appleIconUrl = church.pwaIconUrl
+    ? church.pwaIconUrl.replace(/icon-512\.png$/, 'icon-180.png')
+    : iconUrl;
+
   return {
     title: {
       absolute: `Área de Membros · ${church.nome}`,
     },
     description: `Acesse o portal de membros de ${church.nome}.`,
+    manifest: `/api/pwa/${encodeURIComponent(church.slug)}/manifest.webmanifest`,
+    appleWebApp: {
+      capable: true,
+      title: church.nome,
+      statusBarStyle: 'default',
+    },
+    icons: {
+      shortcut: iconUrl,
+      icon: [{ url: iconUrl, type: 'image/png' }],
+      apple: [{ url: appleIconUrl, sizes: '180x180', type: 'image/png' }],
+    },
   };
 }
 

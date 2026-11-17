@@ -21,6 +21,7 @@ describe('PwaService', () => {
     findFirst.mockResolvedValue({
       id: 'tenant-1',
       nome: 'Comunidade da Graca',
+      slug: 'comunidade',
       pwaShortName: 'Comunidade',
       pwaIconUrl: 'https://storage.test/tenants/tenant-1/pwa/v1/icon-512.png',
       pwaIconKey: 'tenants/tenant-1/pwa/v1/icon-512.png',
@@ -32,10 +33,10 @@ describe('PwaService', () => {
       name: 'Comunidade',
       short_name: 'Comunidade',
       id: '/pwa/tenant/tenant-1',
-      start_url: '/dashboard?source=pwa',
+      start_url: '/dashboard?source=pwa&igreja=comunidade',
       theme_color: '#09090b',
     });
-    expect(result.version).toBe(`${new Date('2026-07-18T12:00:00Z').getTime()}-4`);
+    expect(result.version).toBe(`${new Date('2026-07-18T12:00:00Z').getTime()}-5`);
     expect(result.manifest.icons).toEqual(expect.arrayContaining([
       expect.objectContaining({ src: expect.stringContaining('icon-192.png?v='), purpose: 'any' }),
       expect.objectContaining({ src: expect.stringContaining('icon-512.png?v='), purpose: 'any' }),

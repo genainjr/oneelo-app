@@ -89,6 +89,16 @@ interface AuthSessionResult {
     tenantId: string | null;
     onboardingCompletedAt: Date | null;
     tenantNome: string;
+    tenant?: {
+      nome: string;
+      slug: string;
+      logoUrl?: string | null;
+      logoKey?: string | null;
+      pwaShortName?: string | null;
+      pwaIconUrl?: string | null;
+      pwaIconKey?: string | null;
+      pwaUpdatedAt?: string | null;
+    };
   };
 }
 
@@ -1041,6 +1051,18 @@ export class SocialAuthService {
         tenantId: user.tenantId,
         onboardingCompletedAt: user.onboardingCompletedAt,
         tenantNome: user.tenant!.nome,
+        tenant: user.tenant?.slug
+          ? {
+              nome: user.tenant.nome,
+              slug: user.tenant.slug,
+              logoUrl: user.tenant.logoUrl ?? null,
+              logoKey: user.tenant.logoKey ?? null,
+              pwaShortName: user.tenant.pwaShortName ?? null,
+              pwaIconUrl: user.tenant.pwaIconUrl ?? null,
+              pwaIconKey: user.tenant.pwaIconKey ?? null,
+              pwaUpdatedAt: user.tenant.pwaUpdatedAt?.toISOString() ?? null,
+            }
+          : undefined,
       },
     };
   }

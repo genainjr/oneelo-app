@@ -15,6 +15,7 @@ import { getTenantLoginPath } from '@/lib/auth-redirect';
 import {
   clearCachedTenantPwa,
   readCachedTenantPwa,
+  saveCachedTenantPwa,
 } from '@/lib/pwa-branding';
 
 const ICONS = {
@@ -433,9 +434,10 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
   async function handleLogout() {
     setLoggingOut(true);
+    const cachedTenant = readCachedTenantPwa();
     const tenantSlug =
       user?.role !== 'SUPER_ADMIN'
-        ? user?.tenant?.slug || readCachedTenantPwa()?.slug || null
+        ? user?.tenant?.slug || cachedTenant?.slug || null
         : null;
     const loginTarget = getTenantLoginPath(tenantSlug);
     try {
@@ -443,7 +445,11 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     } catch (e) {
       if (!(e instanceof HttpError)) throw e;
     } finally {
-      clearCachedTenantPwa();
+      if (user?.role === 'SUPER_ADMIN') {
+        clearCachedTenantPwa();
+      } else if (user?.tenant) {
+        saveCachedTenantPwa(user.tenant);
+      }
       window.location.href = loginTarget;
     }
   }
