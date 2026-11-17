@@ -59,11 +59,6 @@ export function PublicJoinClient({
   const [honeypot, setHoneypot] = useState('');
   const [isDependente, setIsDependente] = useState(false);
   const [responsavelNome, setResponsavelNome] = useState('');
-  const [familyContext, setFamilyContext] = useState<{
-    telefone: string;
-    quemConvidou: string;
-    adultoNome: string;
-  } | null>(null);
 
   // Carregar dados públicos do tenant no client apenas se não vieram no SSR
   useEffect(() => {
@@ -172,11 +167,6 @@ export function PublicJoinClient({
       };
 
       await api.post(`/api/public/tenants/${slug}/members/submit`, payload);
-      setFamilyContext({
-        telefone: telefone.trim(),
-        quemConvidou: quemConvidou.trim(),
-        adultoNome: !isDependente ? nome.trim() : responsavelNome.trim(),
-      });
       setSubmitted(true);
     } catch (err: unknown) {
       const message =
@@ -189,8 +179,10 @@ export function PublicJoinClient({
     }
   }
 
-  function clearPersonFields() {
+  function handleReset() {
+    setSubmitted(false);
     setNome('');
+    setTelefone('');
     setEmail('');
     setCpf('');
     setDataNascimento('');
@@ -198,30 +190,12 @@ export function PublicJoinClient({
     setEstadoCivil('');
     setBatizadoAguas('');
     setIgrejaAnterior('');
-    setObservacoes('');
-    setConsentimentoLgpd(false);
-    setError(null);
-  }
-
-  function handleReset() {
-    setSubmitted(false);
-    clearPersonFields();
-    setTelefone('');
     setQuemConvidou('');
+    setObservacoes('');
     setIsDependente(false);
     setResponsavelNome('');
-    setFamilyContext(null);
-  }
-
-  function handleResetKeepFamily(asDependent = false) {
-    setSubmitted(false);
-    clearPersonFields();
-    if (familyContext) {
-      setTelefone(familyContext.telefone);
-      setQuemConvidou(familyContext.quemConvidou);
-      setResponsavelNome(asDependent ? familyContext.adultoNome : '');
-    }
-    setIsDependente(asDependent);
+    setConsentimentoLgpd(false);
+    setError(null);
   }
 
   if (loadingTenant) {
@@ -327,31 +301,20 @@ export function PublicJoinClient({
               </div>
             )}
 
-            <div className="space-y-2.5">
-              {familyContext?.telefone && (
-                <button
-                  type="button"
-                  onClick={() => handleResetKeepFamily(false)}
-                  className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[var(--site-accent)] px-4 text-sm font-bold text-[var(--site-accent-foreground)] transition-colors hover:bg-[var(--site-accent-hover)]"
-                >
-                  Cadastrar familiar / criança com este WhatsApp
-                </button>
-              )}
-              <div className="flex flex-col gap-2.5 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-zinc-800 transition-colors hover:bg-stone-50"
-                >
-                  {familyContext?.telefone ? 'Novo cadastro em branco' : 'Enviar Outro Cadastro'}
-                </button>
-                <Link
-                  href={siteHomeHref}
-                  className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-stone-200 bg-stone-50 px-4 text-sm font-semibold text-zinc-800 transition-colors hover:bg-stone-100"
-                >
-                  Voltar para o site
-                </Link>
-              </div>
+            <div className="flex flex-col gap-2.5 sm:flex-row">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold text-zinc-800 transition-colors hover:bg-stone-50"
+              >
+                Enviar Outro Cadastro
+              </button>
+              <Link
+                href={siteHomeHref}
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-[var(--site-accent)] px-4 text-sm font-bold text-[var(--site-accent-foreground)] transition-colors hover:bg-[var(--site-accent-hover)]"
+              >
+                Voltar para o site
+              </Link>
             </div>
           </div>
         ) : (
@@ -443,9 +406,6 @@ export function PublicJoinClient({
                     onChange={(e) => {
                       const checked = e.target.checked;
                       setIsDependente(checked);
-                      if (checked && !responsavelNome && familyContext?.adultoNome) {
-                        setResponsavelNome(familyContext.adultoNome);
-                      }
                       if (!checked) {
                         setResponsavelNome('');
                       }

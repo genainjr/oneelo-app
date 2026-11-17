@@ -21,8 +21,8 @@ Viabilizar o envio em sequência de fichas de familiares e crianças/dependentes
 
 A entrega contempla:
 1. **Idempotência segura para família no envio (`submitRegistration`):** impedir que uma segunda ficha enviada com o mesmo WhatsApp sobrescreva a ficha pendente de outro familiar (ex.: pai → esposa → filha), passando a considerar reenvio apenas quando `telefone` **e** `nome` normalizado (ou `cpf` informado) coincidirem.
-2. **Suporte explícito a Criança / Dependente no `/join/[slug]` (`PublicJoinClient` e DTO):** permitir marcar *"Criança / dependente sem celular próprio"*, solicitando `"Nome do responsável"` e mudando o campo para `"WhatsApp do responsável"`, registrando o vínculo de responsável nas observações sem migração Prisma.
-3. **Atalho pós-envio para múltiplos familiares:** na tela de confirmação (`"Ficha Enviada com Sucesso!"`), adicionar **"Cadastrar familiar / criança com este WhatsApp"** para pré-preencher o telefone de contato (e sugerir o responsável caso o cadastro anterior seja de um adulto) sem obrigar redigitação no celular.
+2. **Suporte explícito a Criança / Dependente no `/join/[slug]` (`PublicJoinClient` e DTO):** permitir marcar *"É criança / dependente sem celular próprio"*, solicitando `"Nome do responsável"` e mudando o campo para `"WhatsApp do responsável"`, registrando o vínculo de responsável nas observações sem migração Prisma.
+3. **Tela pós-envio enxuta (`"Ficha Enviada com Sucesso!"`):** manter a tela de confirmação limpa apenas com os dois botões originais (`"Enviar Outro Cadastro"` e `"Voltar para o site"`), sem adicionar botões extras de atalho familiar que poluam a interface.
 4. **Aprovação como Pessoa Diferente / Familiar na triagem:** liberar no card de triagem (`SolicitacoesTriagemTab`) e no backend (`aprovarSolicitacao`) a opção explícita de criar cadastro separado quando a coincidência for por **`TELEFONE`**, **`EMAIL`** ou **`NOME_EXATO`** — mantendo o bloqueio absoluto exclusivamente para **`CPF`** — além de evitar falso bloqueio de `User.telefoneLogin` caso um familiar com e-mail próprio se torne membro ativo compartilhando o WhatsApp de contato.
 
 ---
@@ -62,8 +62,8 @@ A entrega contempla:
 
 ### 3.3. Experiência no Formulário (`/join/[slug]`) e na Triagem (`/membros?tab=fichas`)
 - **`public-join-client.tsx`:**
-  - Toggle/checkbox `"É criança ou dependente sem celular próprio"` (visível em `Sou Visitante` e opcionalmente acessível ao enviar ficha de dependente): exibe input obrigatório `"Nome do responsável"` e adapta label/helper do telefone para `"WhatsApp do responsável"`.
-  - Na tela pós-envio (`submitted === true`): ação destacada **"Cadastrar familiar com este WhatsApp"** (mantém `telefone`, `quemConvidou`, e se o cadastro enviado agora foi de um adulto não-dependente, guarda `lastAdultName` para facilitar preenchimento caso o próximo seja filho/dependente) + botões secundários `"Novo cadastro em branco"` e `"Voltar para o site"`.
+  - Toggle/checkbox `"É criança / dependente sem celular próprio"`: exibe input obrigatório `"Nome do responsável"` e adapta label/helper do telefone para `"WhatsApp do responsável"`.
+  - Na tela pós-envio (`submitted === true`): manter o layout limpo original com apenas **`Enviar Outro Cadastro`** (que reinicia todos os campos do formulário, incluindo o estado de dependente) e **`Voltar para o site`**.
 - **`solicitacoes-triagem-tab.tsx`:**
   - Habilitar o botão secundário **"Pessoa Diferente / Familiar"** sempre que `hasExistingMemberMatch && item.duplicidade.motivoDuplicidade !== 'CPF'` (ou seja, para `TELEFONE`, `EMAIL` e `NOME_EXATO`).
   - No modal de confirmação (`ModalShell size="sm"`), adaptar a explicação para cada critério (`TELEFONE` compartilhado entre familiares, `EMAIL` compartilhado ou `NOME_EXATO` homônimo), explicando claramente que será criado um novo registro separado sem alterar o cadastro existente.
@@ -110,8 +110,8 @@ Status: concluido
 Status: concluido
 
 - [x] Atualizar `apps/web/src/components/public-site/join/public-join-client.tsx`:
-  - [x] Adicionar toggle `"É criança ou dependente sem celular próprio"` com input `"Nome do responsável"` e adaptação automática do rótulo/helper de telefone para `"WhatsApp do responsável"` (mantendo telefone obrigatório — Opção A)
-  - [x] Incluir na tela pós-envio botão `"Cadastrar familiar com este WhatsApp"` preservando o telefone e `quemConvidou` (com atalho para cadastrar cônjuge ou dependente) além de `"Novo cadastro em branco"` e `"Voltar para o site"`
+  - [x] Adicionar toggle `"É criança / dependente sem celular próprio"` com input `"Nome do responsável"` e adaptação automática do rótulo/helper de telefone para `"WhatsApp do responsável"` (mantendo telefone obrigatório — Opção A)
+  - [x] Manter a tela pós-envio limpa com apenas os dois botões originais (`"Enviar Outro Cadastro"` e `"Voltar para o site"`), garantindo reset completo no `"Enviar Outro Cadastro"`
 - [x] Atualizar `apps/web/src/components/app/solicitacoes-triagem-tab.tsx`:
   - [x] Habilitar botão secundário **"Pessoa Diferente / Familiar"** para matches de `TELEFONE`, `EMAIL` e `NOME_EXATO` (mantendo oculto para `CPF`)
   - [x] Adaptar texto do modal de confirmação explicando compartilhamento de telefone/e-mail entre familiares ou homônimo
@@ -123,7 +123,7 @@ Status: concluido
 - [x] Atualizar `ai-context/backlog/novo-membro-auto-cadastro.md` e todos os checkboxes deste plano (`Status geral: concluido`)
 - [x] Executar bateria de testes backend (`npx jest src/modules/membros src/modules/auth`) e `npm.cmd run build -w apps/api`
 - [x] Executar `npx -w apps/web tsc --noEmit` e `npm.cmd run build -w apps/web`
-- [x] Validar via Playwright em mobile (`390x844`) e desktop (`1280x800`): fluxo de dependente sem celular em `/join/[slug]` + botão `"Cadastrar familiar com este WhatsApp"` + aprovação em `/membros?tab=fichas` como **"Pessoa Diferente / Familiar"**
+- [x] Validar via Playwright em mobile (`390x844`) e desktop (`1280x800`): fluxo de dependente sem celular em `/join/[slug]` + tela de sucesso enxuta com 2 botões + aprovação em `/membros?tab=fichas` como **"Pessoa Diferente / Familiar"**
 - [x] Critério de validação da etapa: Todos os builds, testes automatizados e checks visuais mobile/desktop verdes sem erros ou overflow.
 
 ---
@@ -132,6 +132,6 @@ Status: concluido
 
 - [x] Enviar fichas de adulto e dependente sem celular usando o mesmo WhatsApp cria solicitações pendentes distintas (sem uma sobrescrever a outra).
 - [x] No formulário público `/join/[slug]`, ao marcar *"É criança ou dependente sem celular próprio"*, o campo exige o nome do responsável e orienta claramente o preenchimento com o WhatsApp do responsável.
-- [x] Após enviar uma ficha, o botão `"Cadastrar familiar com este WhatsApp"` agiliza o envio de outro membro da família mantendo o telefone e quem convidou.
+- [x] A tela pós-envio (`"Ficha Enviada com Sucesso!"`) permanece limpa apenas com os botões **"Enviar Outro Cadastro"** e **"Voltar para o site"**.
 - [x] Na triagem (`/membros?tab=fichas`), fichas com match por `TELEFONE`, `EMAIL` ou `NOME_EXATO` oferecem tanto **"Revisar e Atualizar Cadastro"** quanto **"Pessoa Diferente / Familiar"** (enquanto `CPF` permanece estritamente protegido contra duplicação).
 - [x] Aprovar `Isabella Lis` como nova `Visitante` (ou `MEMBRO` com e-mail próprio compartilhando telefone de contato) conclui sem erro `409` e sem alterar o cadastro do responsável.
