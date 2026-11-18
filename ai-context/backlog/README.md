@@ -10,6 +10,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
+| 18/11/2026 | [painel-pessoal-administrador.md](painel-pessoal-administrador.md) | **FT-020: Painel Pessoal para Administradores e Gestores** | ⚪ **Pendente** (Acesso à visão pessoal de escalas, carteirinha e pendências para perfis ADMIN/STAFF) |
 | 13/11/2026 | [site-institucional-tenant.md](site-institucional-tenant.md) | **FT-019: Site Institucional Público do Tenant (Igreja Online)** | 🟡 **Implementado (Código)** (Portal `/[slug]`, CMS `/configuracoes/site`, `/[slug]/cadastro`, domínio próprio + Vercel Domains API; pendente validação E2E/staging) |
 | 11/11/2026 | [novo-membro-auto-cadastro.md](novo-membro-auto-cadastro.md) | **FT-018: Auto-Cadastro Público de Novos Membros (com Triagem)** | ✅ **Implementado** (Link/QR Code público `/join/[slug]`, triagem pastoral com visitante e expansão para `/[slug]/cadastro`) |
 | 10/11/2026 | [importacao-membros-planilha.md](importacao-membros-planilha.md) | **FT-016: Importação de Membros em Lote (Excel/CSV)** | ✅ **Implementado** (Parser ExcelJS, preview dry-run, template oficial, detecção de duplicidades e exclusão em lote) |
