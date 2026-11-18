@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Banknote, CircleDollarSign, Landmark } from "lucide-react";
+import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
+import { FilterInput, FilterSelect } from "@/components/app/filter-field";
+import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
 import { api } from "@/lib/api";
 import { includesNormalizedText } from "@/lib/utils";
 import { FinanceRole, type StatusEvento } from "@/types";
@@ -413,4 +416,151 @@ export function useFinanceiroData(filters?: FinanceiroQueryFilters) {
     reloadData: loadData,
     setDataError,
   };
+}
+
+export type FinancialTransactionFilterState = {
+  description: string;
+  type: "all" | FinancialTransactionType;
+  status: "all" | FinancialTransactionStatus;
+  eventoId: string;
+  memberId: string;
+  startDate: string;
+  endDate: string;
+};
+
+export function FinanceiroTransactionFilterFields({
+  filters,
+  onFieldChange,
+  onStartDateChange,
+  eventos,
+  eventosLoading,
+  selectedEvento,
+  eventoSearch,
+  onEventoSearchChange,
+  onEventoSelect,
+  onEventoClear,
+  membros,
+  membrosLoading,
+  selectedMembro,
+  membroSearch,
+  onMembroSearchChange,
+  onMembroSelect,
+  onMembroClear,
+}: {
+  filters: FinancialTransactionFilterState;
+  onFieldChange: <K extends keyof FinancialTransactionFilterState>(
+    key: K,
+    value: FinancialTransactionFilterState[K],
+  ) => void;
+  onStartDateChange: (startDate: string) => void;
+  eventos: EventoOption[];
+  eventosLoading: boolean;
+  selectedEvento: EventoOption | null;
+  eventoSearch: string;
+  onEventoSearchChange: (value: string) => void;
+  onEventoSelect: (evento: EventoOption) => void;
+  onEventoClear: () => void;
+  membros: MembroOption[];
+  membrosLoading: boolean;
+  selectedMembro: MembroOption | null;
+  membroSearch: string;
+  onMembroSearchChange: (value: string) => void;
+  onMembroSelect: (membro: MembroOption) => void;
+  onMembroClear: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
+      <div className="xl:col-span-3">
+        <FilterSelect
+          label="Status"
+          value={filters.status}
+          onChange={(event) =>
+            onFieldChange("status", event.target.value as FinancialTransactionFilterState["status"])
+          }
+        >
+          <option value="all">Todos</option>
+          {Object.entries(TRANSACTION_STATUS_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </FilterSelect>
+      </div>
+      <div className="xl:col-span-3">
+        <FilterSelect
+          label="Tipo"
+          value={filters.type}
+          onChange={(event) =>
+            onFieldChange("type", event.target.value as FinancialTransactionFilterState["type"])
+          }
+        >
+          <option value="all">Todos</option>
+          <option value="INCOME">Entradas</option>
+          <option value="EXPENSE">Saídas</option>
+        </FilterSelect>
+      </div>
+      <div className="xl:col-span-3">
+        <FilterInput
+          label="A partir de (Data)"
+          type="date"
+          value={filters.startDate}
+          onChange={(event) => onStartDateChange(event.target.value)}
+        />
+      </div>
+      <div className="xl:col-span-3">
+        <FilterInput
+          label="Até (Data)"
+          type="date"
+          min={filters.startDate || undefined}
+          value={filters.endDate}
+          onChange={(event) => onFieldChange("endDate", event.target.value)}
+        />
+      </div>
+      <div className="md:col-span-2 xl:col-span-4">
+        <FilterInput
+          type="search"
+          label="Descrição"
+          value={filters.description}
+          onChange={(event) => onFieldChange("description", event.target.value)}
+          placeholder="Buscar por descrição..."
+        />
+      </div>
+      <div className="xl:col-span-4">
+        <EventoSearchCombobox
+          label="Evento"
+          optionalLabel="opcional"
+          placeholder="Todos"
+          loading={eventosLoading}
+          options={eventos}
+          selected={selectedEvento}
+          search={eventoSearch}
+          emptyMessage="Nenhum evento encontrado."
+          selectedPrefix="Evento"
+          onSearchChange={onEventoSearchChange}
+          onSelect={(evento) => {
+            onEventoSelect(evento);
+            onEventoSearchChange(getEventoDisplayName(evento));
+          }}
+          onClear={onEventoClear}
+        />
+      </div>
+      <div className="xl:col-span-4">
+        <MembroSearchCombobox
+          label="Membro"
+          optionalLabel="opcional"
+          placeholder="Todos"
+          loading={membrosLoading}
+          options={membros}
+          selected={selectedMembro}
+          search={membroSearch}
+          emptyMessage="Nenhum membro encontrado."
+          selectedPrefix="Selecionado"
+          onSearchChange={onMembroSearchChange}
+          onSelect={(membro) => {
+            onMembroSelect(membro);
+            onMembroSearchChange(getMembroPrintName(membro));
+          }}
+          onClear={onMembroClear}
+        />
+      </div>
+    </div>
+  );
 }

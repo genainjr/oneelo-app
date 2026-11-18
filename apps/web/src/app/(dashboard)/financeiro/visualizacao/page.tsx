@@ -5,10 +5,9 @@ import Link from "next/link";
 import { Banknote, CalendarDays, CircleDollarSign, CreditCard, FileText, ShieldCheck, Tags, WalletCards } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
-import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
-import { FilterInput, FilterSelect } from "@/components/app/filter-field";
+import type { EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
-import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
+import type { MembroOption } from "@/components/app/membro-search-combobox";
 import { PageHeader } from "@/components/app/page-header";
 import { PrintDocumentHeader, PrintScheduleFooter } from "@/components/app/print-layout";
 import { Skeleton } from "@/components/app/skeleton";
@@ -16,13 +15,12 @@ import { StatCard } from "@/components/app/stat-card";
 import { useFilterState } from "@/hooks/use-filter-state";
 import { useAuthUser } from "@/contexts/auth-user-context";
 import { api } from "@/lib/api";
-import type { AuthUser } from "@/types";
 import {
   FinanceInstallmentBadge,
   FinanceStatusBadge,
   FinanceTypeBadge,
-  FinancialTransactionStatus,
-  FinancialTransactionType,
+  FinanceiroTransactionFilterFields,
+  FinancialTransactionFilterState,
   PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
   TRANSACTION_STATUS_LABELS,
@@ -47,15 +45,7 @@ function currentMonthPeriod() {
   };
 }
 
-type TransactionFilterState = {
-  description: string;
-  type: "all" | FinancialTransactionType;
-  status: "all" | FinancialTransactionStatus;
-  eventoId: string;
-  memberId: string;
-  startDate: string;
-  endDate: string;
-};
+type TransactionFilterState = FinancialTransactionFilterState;
 
 export default function FinanceiroVisualizacaoPage() {
   const initialPeriod = useMemo(() => currentMonthPeriod(), []);
@@ -290,84 +280,53 @@ export default function FinanceiroVisualizacaoPage() {
             />
           }
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <FilterSelect label="Status" value={transactionFilterState.status} onChange={(event) => setTransactionFilterField("status", event.target.value as TransactionFilterState["status"])}>
-              <option value="all">Todos</option>
-              {Object.entries(TRANSACTION_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </FilterSelect>
-            <FilterSelect label="Tipo" value={transactionFilterState.type} onChange={(event) => setTransactionFilterField("type", event.target.value as TransactionFilterState["type"])}>
-              <option value="all">Todos</option>
-              <option value="INCOME">Entradas</option>
-              <option value="EXPENSE">Saídas</option>
-            </FilterSelect>
-            <FilterInput type="search" label="Descrição" value={transactionFilterState.description} onChange={(event) => setTransactionFilterField("description", event.target.value)} placeholder="Buscar por descrição..." />
-            <EventoSearchCombobox
-              label="Evento"
-              optionalLabel="opcional"
-              placeholder="Todos"
-              loading={eventosLoading}
-              options={eventos}
-              selected={selectedEventoFilter}
-              search={eventoFilterSearch}
-              emptyMessage="Nenhum evento encontrado."
-              selectedPrefix="Evento"
-              onSearchChange={(value) => {
-                setEventoFilterSearch(value);
-                setSelectedEventoFilter(null);
-                setTransactionFilterField("eventoId", "");
-              }}
-              onSelect={(evento) => {
-                setSelectedEventoFilter(evento);
-                setEventoFilterSearch(getEventoDisplayName(evento));
-                setTransactionFilterField("eventoId", evento.id);
-              }}
-              onClear={() => {
-                setSelectedEventoFilter(null);
-                setEventoFilterSearch("");
-                setTransactionFilterField("eventoId", "");
-              }}
-            />
-            <MembroSearchCombobox
-              label="Membro"
-              optionalLabel="opcional"
-              placeholder="Todos"
-              loading={membrosLoading}
-              options={membros}
-              selected={selectedMembroFilter}
-              search={membroFilterSearch}
-              emptyMessage="Nenhum membro encontrado."
-              selectedPrefix="Selecionado"
-              onSearchChange={(value) => {
-                setMembroFilterSearch(value);
-                setSelectedMembroFilter(null);
-                setTransactionFilterField("memberId", "");
-              }}
-              onSelect={(membro) => {
-                setSelectedMembroFilter(membro);
-                setMembroFilterSearch(getMembroPrintName(membro));
-                setTransactionFilterField("memberId", membro.id);
-              }}
-              onClear={() => {
-                setSelectedMembroFilter(null);
-                setMembroFilterSearch("");
-                setTransactionFilterField("memberId", "");
-              }}
-            />
-            <FilterInput
-              label="De"
-              type="date"
-              value={transactionFilterState.startDate}
-              onChange={(event) => {
-                const startDate = event.target.value;
-                setTransactionFilterState((current) => ({
-                  ...current,
-                  startDate,
-                  endDate: startDate && current.endDate && current.endDate < startDate ? startDate : current.endDate,
-                }));
-              }}
-            />
-            <FilterInput label="Até" type="date" min={transactionFilterState.startDate || undefined} value={transactionFilterState.endDate} onChange={(event) => setTransactionFilterField("endDate", event.target.value)} />
-          </div>
+          <FinanceiroTransactionFilterFields
+            filters={transactionFilterState}
+            onFieldChange={(key, value) => setTransactionFilterField(key, value)}
+            onStartDateChange={(startDate) =>
+              setTransactionFilterState((current) => ({
+                ...current,
+                startDate,
+                endDate: startDate && current.endDate && current.endDate < startDate ? startDate : current.endDate,
+              }))
+            }
+            eventos={eventos}
+            eventosLoading={eventosLoading}
+            selectedEvento={selectedEventoFilter}
+            eventoSearch={eventoFilterSearch}
+            onEventoSearchChange={(value) => {
+              setEventoFilterSearch(value);
+              setSelectedEventoFilter(null);
+              setTransactionFilterField("eventoId", "");
+            }}
+            onEventoSelect={(evento) => {
+              setSelectedEventoFilter(evento);
+              setTransactionFilterField("eventoId", evento.id);
+            }}
+            onEventoClear={() => {
+              setSelectedEventoFilter(null);
+              setEventoFilterSearch("");
+              setTransactionFilterField("eventoId", "");
+            }}
+            membros={membros}
+            membrosLoading={membrosLoading}
+            selectedMembro={selectedMembroFilter}
+            membroSearch={membroFilterSearch}
+            onMembroSearchChange={(value) => {
+              setMembroFilterSearch(value);
+              setSelectedMembroFilter(null);
+              setTransactionFilterField("memberId", "");
+            }}
+            onMembroSelect={(membro) => {
+              setSelectedMembroFilter(membro);
+              setTransactionFilterField("memberId", membro.id);
+            }}
+            onMembroClear={() => {
+              setSelectedMembroFilter(null);
+              setMembroFilterSearch("");
+              setTransactionFilterField("memberId", "");
+            }}
+          />
         </FilterShell>
 
         {loadingData ? (
