@@ -460,7 +460,7 @@ export function TransactionModal({
                 {
                   id: "single",
                   title: "Lançamento único",
-                  description: "Registra uma única entrada ou despesa.",
+                  description: "Registra uma única entrada ou saída.",
                 },
                 {
                   id: "batch",
@@ -496,7 +496,7 @@ export function TransactionModal({
               }}
             >
               <option value="INCOME">Entrada</option>
-              <option value="EXPENSE">Despesa</option>
+              <option value="EXPENSE">Saída</option>
             </SelectField>
             {isBatchMode ? (
               <SelectField

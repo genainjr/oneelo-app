@@ -26,6 +26,7 @@ import {
   PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
   TRANSACTION_STATUS_LABELS,
+  TRANSACTION_TYPE_LABELS,
   currencyFormatter,
   dateFormatter,
   financeiroEventosPath,
@@ -245,7 +246,7 @@ export default function FinanceiroVisualizacaoPage() {
       <div className="no-print space-y-6">
       <PageHeader
         title="Visualização Financeira"
-        description={`Acesso atual: ${summary.role ? ROLE_LABELS[summary.role] : "Sem acesso"}. Consulte saldo, entradas, despesas e extrato.`}
+        description={`Acesso atual: ${summary.role ? ROLE_LABELS[summary.role] : "Sem acesso"}. Consulte saldo, entradas, saídas e extrato.`}
         action={(
           <button
             type="button"
@@ -261,7 +262,7 @@ export default function FinanceiroVisualizacaoPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" loading={loadingData} />
         <StatCard title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} confirmado(s) no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" loading={loadingData} />
-        <StatCard title="Despesas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
+        <StatCard title="Saídas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
         <StatCard title="A Receber" value={currencyFormatter.format(financialSummary.pendingIncome)} description="Contas pendentes de entrada" icon={<CircleDollarSign className="h-5 w-5" />} color="amber" loading={loadingData} />
         <StatCard title="A Pagar" value={currencyFormatter.format(financialSummary.pendingExpense)} description={`${financialSummary.pendingCount} pendência(s) no período`} icon={<Banknote className="h-5 w-5" />} color="amber" loading={loadingData} />
       </div>
@@ -297,7 +298,7 @@ export default function FinanceiroVisualizacaoPage() {
             <FilterSelect label="Tipo" value={transactionFilterState.type} onChange={(event) => setTransactionFilterField("type", event.target.value as TransactionFilterState["type"])}>
               <option value="all">Todos</option>
               <option value="INCOME">Entradas</option>
-              <option value="EXPENSE">Despesas</option>
+              <option value="EXPENSE">Saídas</option>
             </FilterSelect>
             <FilterInput type="search" label="Descrição" value={transactionFilterState.description} onChange={(event) => setTransactionFilterField("description", event.target.value)} placeholder="Buscar por descrição..." />
             <EventoSearchCombobox
@@ -470,7 +471,7 @@ export default function FinanceiroVisualizacaoPage() {
                     <td>{dateFormatter.format(new Date(item.date))}</td>
                     <td>{getTransactionDisplayTitle(item)}</td>
                     <td>{formatInstallmentLabel(item.installmentNumber, item.totalInstallments) ?? "-"}</td>
-                    <td>{item.type === "INCOME" ? "Entrada" : "Despesa"}</td>
+                    <td>{TRANSACTION_TYPE_LABELS[item.type]}</td>
                     <td>{TRANSACTION_STATUS_LABELS[item.status]}</td>
                     <td>{item.account.name}</td>
                     <td>{item.category.name}</td>

@@ -3,9 +3,9 @@
 import { ExportShell } from '@/components/app/export-shell';
 import { useExport } from '@/hooks/use-export';
 import {
-  FinancialTransaction,
   PAYMENT_METHOD_LABELS,
   TRANSACTION_STATUS_LABELS,
+  TRANSACTION_TYPE_LABELS,
   currencyFormatter,
   dateFormatter,
   formatInstallmentLabel,
@@ -28,11 +28,6 @@ const ALL_FIELDS = [
   { key: 'receiptUrl', label: 'Comprovante' },
 ];
 
-const TRANSACTION_TYPE_LABEL: Record<FinancialTransaction['type'], string> = {
-  INCOME: 'Entrada',
-  EXPENSE: 'Despesa',
-};
-
 export default function FinanceiroExportacaoPage() {
   const {
     loadingPermission,
@@ -49,7 +44,7 @@ export default function FinanceiroExportacaoPage() {
     (transaction, field) => {
       if (field.key === 'date') return dateFormatter.format(new Date(transaction.date));
       if (field.key === 'paidAt') return transaction.paidAt ? dateFormatter.format(new Date(transaction.paidAt)) : '';
-      if (field.key === 'type') return TRANSACTION_TYPE_LABEL[transaction.type];
+      if (field.key === 'type') return TRANSACTION_TYPE_LABELS[transaction.type] ?? transaction.type;
       if (field.key === 'status') return TRANSACTION_STATUS_LABELS[transaction.status] ?? transaction.status;
       if (field.key === 'installment') return formatInstallmentLabel(transaction.installmentNumber, transaction.totalInstallments) ?? '';
       if (field.key === 'account') return transaction.account.name;

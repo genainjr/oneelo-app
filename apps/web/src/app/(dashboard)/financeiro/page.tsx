@@ -624,7 +624,7 @@ export default function FinanceiroPage() {
             <FilterSelect label="Tipo" value={transactionFilterState.type} onChange={(event) => setTransactionFilterField("type", event.target.value as TransactionFilterState["type"])}>
               <option value="all">Todos</option>
               <option value="INCOME">Entradas</option>
-              <option value="EXPENSE">Despesas</option>
+              <option value="EXPENSE">Saídas</option>
             </FilterSelect>
             <FilterInput type="search" label="Descrição" value={transactionFilterState.description} onChange={(event) => setTransactionFilterField("description", event.target.value)} placeholder="Buscar por descrição..." />
             <EventoSearchCombobox
@@ -858,7 +858,7 @@ export default function FinanceiroPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-base font-bold text-gray-900">Categorias</h3>
-                <p className="mt-1 text-sm text-gray-500">Organização das entradas e despesas.</p>
+                <p className="mt-1 text-sm text-gray-500">Organização das entradas e saídas.</p>
               </div>
               {canManage && (
                 <PrimaryActionButton

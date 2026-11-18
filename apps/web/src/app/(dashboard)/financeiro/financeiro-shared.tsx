@@ -99,12 +99,12 @@ export const ACCOUNT_TYPE_LABELS: Record<FinancialAccountType, string> = {
 
 export const CATEGORY_TYPE_LABELS: Record<FinancialCategoryType, string> = {
   INCOME: "Entrada",
-  EXPENSE: "Despesa",
+  EXPENSE: "Saída",
 };
 
 export const TRANSACTION_TYPE_LABELS: Record<FinancialTransactionType, string> = {
   INCOME: "Entrada",
-  EXPENSE: "Despesa",
+  EXPENSE: "Saída",
 };
 
 export const TRANSACTION_STATUS_LABELS: Record<FinancialTransactionStatus, string> = {
@@ -134,8 +134,10 @@ export const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "UTC",
 });
 
-export function getTransactionTypeClass(type: FinancialTransactionType) {
-  return type === "INCOME" ? "border-emerald-150 bg-emerald-50 text-emerald-700" : "border-rose-150 bg-rose-50 text-rose-700";
+export function getTransactionTypeClass(type: FinancialTransactionType | FinancialCategoryType) {
+  return type === "INCOME"
+    ? "border-teal-200/80 bg-teal-50/70 text-teal-700"
+    : "border-rose-200/80 bg-rose-50/70 text-rose-700";
 }
 
 export function getTransactionStatusClass(status: FinancialTransactionStatus) {
@@ -146,7 +148,7 @@ export function getTransactionStatusClass(status: FinancialTransactionStatus) {
 }
 
 export function getCategoryTypeClass(type: FinancialCategoryType) {
-  return "border-gray-200 bg-gray-50 text-gray-600";
+  return getTransactionTypeClass(type);
 }
 
 export function formatInstallmentLabel(
@@ -159,8 +161,8 @@ export function formatInstallmentLabel(
 
 export function FinanceTypeBadge({ type }: { type: FinancialTransactionType | FinancialCategoryType }) {
   return (
-    <span className={`inline-flex shrink-0 rounded-lg border px-2.5 py-0.5 text-xs font-semibold ${getCategoryTypeClass(type)}`}>
-      {type === "INCOME" ? "Entrada" : "Despesa"}
+    <span className={`inline-flex shrink-0 rounded-lg border px-2.5 py-0.5 text-xs font-semibold ${getTransactionTypeClass(type)}`}>
+      {TRANSACTION_TYPE_LABELS[type]}
     </span>
   );
 }
