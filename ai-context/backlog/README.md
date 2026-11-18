@@ -10,6 +10,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
+| 18/11/2026 | [tema-personalizado-tenant.md](tema-personalizado-tenant.md) | **FT-022: Personalização de Cores e Identidade Visual da Igreja** | ⚪ **Pendente / Prioridade Alta** (Seletor de cor primária da igreja em /configuracoes com injeção dinâmica de tokens CSS semânticos) |
 | 18/11/2026 | [dizimos-ofertas-pix-comprovantes.md](dizimos-ofertas-pix-comprovantes.md) | **FT-021: Dízimos e Ofertas Digitais (PIX, Comprovantes e Conciliação)** | ⚪ **Pendente** (QR Code PIX para telão/site/app, upload de comprovante pelo membro e conciliação na tesouraria) |
 | 18/11/2026 | [notificacao-cancelamento-evento-ministerios.md](notificacao-cancelamento-evento-ministerios.md) | **IMP-010: Notificação de Cancelamento de Eventos por Ministério** | ⚪ **Pendente** (Disparo automático de alerta in-app/push aos voluntários do ministério quando evento é cancelado) |
 | 18/11/2026 | [painel-pessoal-administrador.md](painel-pessoal-administrador.md) | **FT-020: Painel Pessoal para Administradores e Gestores** | ⚪ **Pendente** (Acesso à visão pessoal de escalas, carteirinha e pendências para perfis ADMIN/STAFF) |
