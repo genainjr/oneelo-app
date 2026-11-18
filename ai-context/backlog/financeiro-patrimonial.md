@@ -290,7 +290,7 @@ Escopo:
 - agrupamento por categoria;
 - comparativo mensal simples;
 - visão por conta/caixa;
-- exportação para PDF pela futura Central de Documentos.
+- exportação para PDF pela futura Central de Documentos (e migração do botão legado `Imprimir` de `/financeiro/visualizacao` para o padrão unificado `ExportShareDialog` + `useDocumentShare` com Playwright/Chromium de Escalas e Agenda, registrado em `IMP-010`).
 
 Critérios de aceite:
 

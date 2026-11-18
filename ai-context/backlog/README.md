@@ -47,7 +47,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 | 05/06/2026 | [features-roadmap.md](features-roadmap.md) | Features de produto pós-MVP & Super Admin | 🟡 **FT-000 Super Admin e FT-002 Calendários Implementados**; demais pós-MVP despriorizados |
 | 03/06/2026 | [security.md](security.md) | Correções de segurança pendentes | ✅ **Implementado** (IP real em auditoria `SEC-001` e cookies seguros `SEC-002`) |
 | 03/06/2026 | [permissions-matrix.md](permissions-matrix.md) | Matriz de permissões por role e recurso | 📖 **Documentado** (Referência ativa de RBAC) |
-| 03/06/2026 | [improvements.md](improvements.md) | Melhorias gerais e débito técnico | 🟢 **8 de 8 implementados** (IMP-001 até IMP-009 todos concluídos) |
+| 03/06/2026 | [improvements.md](improvements.md) | Melhorias gerais e débito técnico | 🟡 **9 de 10 implementados** (`IMP-001` a `IMP-009` concluídos; **`IMP-010` pendente**: impressão unificada PDF/PNG em `/financeiro/visualizacao`) |
 
 ---
 
