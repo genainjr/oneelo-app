@@ -74,16 +74,16 @@ export function ExportShell({
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {fields.map((f) => (
-              <label key={f.key} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+              <label key={f.key} className="flex min-w-0 items-center gap-2.5 p-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
                 <input
                   type="checkbox"
                   checked={selectedFields.includes(f.key)}
                   onChange={() => onToggleField(f.key)}
-                  className="accent-accent-ring w-4 h-4"
+                  className="accent-accent-ring w-4 h-4 shrink-0"
                 />
-                <span className="text-sm text-gray-700">{f.label}</span>
+                <span className="min-w-0 break-words text-sm text-gray-700">{f.label}</span>
               </label>
             ))}
           </div>

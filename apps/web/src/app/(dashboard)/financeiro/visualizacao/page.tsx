@@ -5,10 +5,9 @@ import Link from "next/link";
 import { Banknote, CalendarDays, CircleDollarSign, CreditCard, FileText, ShieldCheck, Tags, WalletCards } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
-import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
-import { FilterInput, FilterSelect } from "@/components/app/filter-field";
+import type { EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
-import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
+import type { MembroOption } from "@/components/app/membro-search-combobox";
 import { PageHeader } from "@/components/app/page-header";
 import { PrintDocumentHeader, PrintScheduleFooter } from "@/components/app/print-layout";
 import { Skeleton } from "@/components/app/skeleton";
@@ -16,46 +15,37 @@ import { StatCard } from "@/components/app/stat-card";
 import { useFilterState } from "@/hooks/use-filter-state";
 import { useAuthUser } from "@/contexts/auth-user-context";
 import { api } from "@/lib/api";
-import type { AuthUser } from "@/types";
 import {
+  FinanceInstallmentBadge,
   FinanceStatusBadge,
   FinanceTypeBadge,
-  FinancialTransactionStatus,
-  FinancialTransactionType,
+  FinanceiroTransactionFilterFields,
+  FinancialTransactionFilterState,
   PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
   TRANSACTION_STATUS_LABELS,
+  TRANSACTION_TYPE_LABELS,
   currencyFormatter,
   dateFormatter,
   financeiroEventosPath,
+  formatInstallmentLabel,
   getTransactionDisplayTitle,
   matchTransactionSearch,
+  toLocalDateInputValue,
   useFinanceiroData,
 } from "../financeiro-shared";
-
-function toDateInputValue(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
 
 function currentMonthPeriod() {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return {
-    startDate: toDateInputValue(start),
-    endDate: toDateInputValue(end),
+    startDate: toLocalDateInputValue(start),
+    endDate: toLocalDateInputValue(end),
   };
 }
 
-type TransactionFilterState = {
-  description: string;
-  type: "all" | FinancialTransactionType;
-  status: "all" | FinancialTransactionStatus;
-  eventoId: string;
-  memberId: string;
-  startDate: string;
-  endDate: string;
-};
+type TransactionFilterState = FinancialTransactionFilterState;
 
 export default function FinanceiroVisualizacaoPage() {
   const initialPeriod = useMemo(() => currentMonthPeriod(), []);
@@ -68,6 +58,7 @@ export default function FinanceiroVisualizacaoPage() {
     startDate: initialPeriod.startDate,
     endDate: initialPeriod.endDate,
   }), [initialPeriod.endDate, initialPeriod.startDate]);
+  const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
   const {
     summary,
     loadingPermission,
@@ -77,9 +68,7 @@ export default function FinanceiroVisualizacaoPage() {
     transactions,
     financialSummary,
     reloadData,
-  } = useFinanceiroData();
-
-  const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
+  } = useFinanceiroData(appliedTransactionFilters);
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(false);
   const [eventos, setEventos] = useState<EventoOption[]>([]);
@@ -247,7 +236,7 @@ export default function FinanceiroVisualizacaoPage() {
       <div className="no-print space-y-6">
       <PageHeader
         title="Visualização Financeira"
-        description={`Acesso atual: ${summary.role ? ROLE_LABELS[summary.role] : "Sem acesso"}. Consulte saldo, entradas, despesas e extrato.`}
+        description={`Acesso atual: ${summary.role ? ROLE_LABELS[summary.role] : "Sem acesso"}. Consulte saldo, entradas, saídas e extrato.`}
         action={(
           <button
             type="button"
@@ -260,10 +249,12 @@ export default function FinanceiroVisualizacaoPage() {
         )}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" />
-        <StatCard title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} lançamentos no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" />
-        <StatCard title="Despesas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" loading={loadingData} />
+        <StatCard title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} confirmado(s) no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" loading={loadingData} />
+        <StatCard title="Saídas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
+        <StatCard title="A Receber" value={currencyFormatter.format(financialSummary.pendingIncome)} description="Contas pendentes de entrada" icon={<CircleDollarSign className="h-5 w-5" />} color="amber" loading={loadingData} />
+        <StatCard title="A Pagar" value={currencyFormatter.format(financialSummary.pendingExpense)} description={`${financialSummary.pendingCount} pendência(s) no período`} icon={<Banknote className="h-5 w-5" />} color="amber" loading={loadingData} />
       </div>
 
       {dataError && (
@@ -289,84 +280,53 @@ export default function FinanceiroVisualizacaoPage() {
             />
           }
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <FilterSelect label="Status" value={transactionFilterState.status} onChange={(event) => setTransactionFilterField("status", event.target.value as TransactionFilterState["status"])}>
-              <option value="all">Todos</option>
-              {Object.entries(TRANSACTION_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </FilterSelect>
-            <FilterSelect label="Tipo" value={transactionFilterState.type} onChange={(event) => setTransactionFilterField("type", event.target.value as TransactionFilterState["type"])}>
-              <option value="all">Todos</option>
-              <option value="INCOME">Entradas</option>
-              <option value="EXPENSE">Despesas</option>
-            </FilterSelect>
-            <FilterInput type="search" label="Descrição" value={transactionFilterState.description} onChange={(event) => setTransactionFilterField("description", event.target.value)} placeholder="Buscar por descrição..." />
-            <EventoSearchCombobox
-              label="Evento"
-              optionalLabel="opcional"
-              placeholder="Todos"
-              loading={eventosLoading}
-              options={eventos}
-              selected={selectedEventoFilter}
-              search={eventoFilterSearch}
-              emptyMessage="Nenhum evento encontrado."
-              selectedPrefix="Evento"
-              onSearchChange={(value) => {
-                setEventoFilterSearch(value);
-                setSelectedEventoFilter(null);
-                setTransactionFilterField("eventoId", "");
-              }}
-              onSelect={(evento) => {
-                setSelectedEventoFilter(evento);
-                setEventoFilterSearch(getEventoDisplayName(evento));
-                setTransactionFilterField("eventoId", evento.id);
-              }}
-              onClear={() => {
-                setSelectedEventoFilter(null);
-                setEventoFilterSearch("");
-                setTransactionFilterField("eventoId", "");
-              }}
-            />
-            <MembroSearchCombobox
-              label="Membro"
-              optionalLabel="opcional"
-              placeholder="Todos"
-              loading={membrosLoading}
-              options={membros}
-              selected={selectedMembroFilter}
-              search={membroFilterSearch}
-              emptyMessage="Nenhum membro encontrado."
-              selectedPrefix="Selecionado"
-              onSearchChange={(value) => {
-                setMembroFilterSearch(value);
-                setSelectedMembroFilter(null);
-                setTransactionFilterField("memberId", "");
-              }}
-              onSelect={(membro) => {
-                setSelectedMembroFilter(membro);
-                setMembroFilterSearch(getMembroPrintName(membro));
-                setTransactionFilterField("memberId", membro.id);
-              }}
-              onClear={() => {
-                setSelectedMembroFilter(null);
-                setMembroFilterSearch("");
-                setTransactionFilterField("memberId", "");
-              }}
-            />
-            <FilterInput
-              label="De"
-              type="date"
-              value={transactionFilterState.startDate}
-              onChange={(event) => {
-                const startDate = event.target.value;
-                setTransactionFilterState((current) => ({
-                  ...current,
-                  startDate,
-                  endDate: startDate && current.endDate && current.endDate < startDate ? startDate : current.endDate,
-                }));
-              }}
-            />
-            <FilterInput label="Até" type="date" min={transactionFilterState.startDate || undefined} value={transactionFilterState.endDate} onChange={(event) => setTransactionFilterField("endDate", event.target.value)} />
-          </div>
+          <FinanceiroTransactionFilterFields
+            filters={transactionFilterState}
+            onFieldChange={(key, value) => setTransactionFilterField(key, value)}
+            onStartDateChange={(startDate) =>
+              setTransactionFilterState((current) => ({
+                ...current,
+                startDate,
+                endDate: startDate && current.endDate && current.endDate < startDate ? startDate : current.endDate,
+              }))
+            }
+            eventos={eventos}
+            eventosLoading={eventosLoading}
+            selectedEvento={selectedEventoFilter}
+            eventoSearch={eventoFilterSearch}
+            onEventoSearchChange={(value) => {
+              setEventoFilterSearch(value);
+              setSelectedEventoFilter(null);
+              setTransactionFilterField("eventoId", "");
+            }}
+            onEventoSelect={(evento) => {
+              setSelectedEventoFilter(evento);
+              setTransactionFilterField("eventoId", evento.id);
+            }}
+            onEventoClear={() => {
+              setSelectedEventoFilter(null);
+              setEventoFilterSearch("");
+              setTransactionFilterField("eventoId", "");
+            }}
+            membros={membros}
+            membrosLoading={membrosLoading}
+            selectedMembro={selectedMembroFilter}
+            membroSearch={membroFilterSearch}
+            onMembroSearchChange={(value) => {
+              setMembroFilterSearch(value);
+              setSelectedMembroFilter(null);
+              setTransactionFilterField("memberId", "");
+            }}
+            onMembroSelect={(membro) => {
+              setSelectedMembroFilter(membro);
+              setTransactionFilterField("memberId", membro.id);
+            }}
+            onMembroClear={() => {
+              setSelectedMembroFilter(null);
+              setMembroFilterSearch("");
+              setTransactionFilterField("memberId", "");
+            }}
+          />
         </FilterShell>
 
         {loadingData ? (
@@ -385,6 +345,7 @@ export default function FinanceiroVisualizacaoPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <FinanceStatusBadge status={item.status} />
                       <FinanceTypeBadge type={item.type} />
+                      <FinanceInstallmentBadge installmentNumber={item.installmentNumber} totalInstallments={item.totalInstallments} />
                     </div>
                   </div>
                   <div className="grid gap-2 text-xs font-medium text-gray-500 sm:grid-cols-2 xl:grid-cols-5">
@@ -392,6 +353,12 @@ export default function FinanceiroVisualizacaoPage() {
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">Data: {dateFormatter.format(new Date(item.date))}</span>
                     </span>
+                    {item.status === "CONFIRMED" && item.paidAt && (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <span className="truncate">Liquidado em: {dateFormatter.format(new Date(item.paidAt))}</span>
+                      </span>
+                    )}
                     <span className="flex min-w-0 items-center gap-1.5">
                       <WalletCards className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">Conta: {item.account.name}</span>
@@ -445,6 +412,7 @@ export default function FinanceiroVisualizacaoPage() {
                 <tr>
                   <th>Data</th>
                   <th>Descrição</th>
+                  <th>Parcela</th>
                   <th>Tipo</th>
                   <th>Status</th>
                   <th>Conta</th>
@@ -455,13 +423,14 @@ export default function FinanceiroVisualizacaoPage() {
               <tbody>
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="print-empty">Nenhum lançamento encontrado.</td>
+                    <td colSpan={8} className="print-empty">Nenhum lançamento encontrado.</td>
                   </tr>
                 ) : filteredTransactions.map((item) => (
                   <tr key={item.id}>
                     <td>{dateFormatter.format(new Date(item.date))}</td>
                     <td>{getTransactionDisplayTitle(item)}</td>
-                    <td>{item.type === "INCOME" ? "Entrada" : "Despesa"}</td>
+                    <td>{formatInstallmentLabel(item.installmentNumber, item.totalInstallments) ?? "-"}</td>
+                    <td>{TRANSACTION_TYPE_LABELS[item.type]}</td>
                     <td>{TRANSACTION_STATUS_LABELS[item.status]}</td>
                     <td>{item.account.name}</td>
                     <td>{item.category.name}</td>

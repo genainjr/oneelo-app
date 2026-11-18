@@ -267,6 +267,19 @@ Valor entregue:
 
 - melhora governança financeira.
 
+### Entrega 6.1 - Contas recorrentes, parceladas em lote e baixa de pendências (Concluída em 17/11/2026)
+
+Objetivo: permitir o lançamento de séries recorrentes (valor fixo por período) e parcelamentos (valor total dividido entre parcelas com ajuste de centavos na última) em lote atômico, separando compromissos pendentes (`PENDING`) do saldo realizado (`CONFIRMED`).
+
+Escopo entregue:
+
+- status `PENDING` no enum `FinancialTransactionStatus` e campos `paidAt`, `recurringGroupId`, `installmentNumber` e `totalInstallments` em `FinancialTransaction`;
+- endpoint `POST /api/financeiro/transactions/batch` com geração de `recurringGroupId` no servidor, até 120 ocorrências por requisição dentro de `prisma.$transaction` e auditoria consolidada;
+- endpoint `PATCH /api/financeiro/transactions/:id/confirm` restrito a `FINANCE_APPROVER` e `FINANCE_MANAGER` para dar baixa em lançamentos `PENDING`/`DRAFT` preenchendo `paidAt`;
+- evolução de `GET /api/financeiro/summary` com `pendingIncome`, `pendingExpense` e `pendingCount` separados de `balance`/`income`/`expense`;
+- modal ODS com alternância `Lançamento único` × `Recorrente / Parcelado`, periodicidades `Semanal`, `Quinzenal`, `Mensal` e `Anual`, ajuste automático de fim de mês (dias 29/30/31) e preview interativo com remoção individual;
+- indicadores de contas a receber/pagar, badge `Parcela X/Y`, ação rápida **"Dar Baixa"** e suporte em `/financeiro`, `/financeiro/visualizacao` e `/financeiro/exportacao`.
+
 ### Entrega 7 - Relatórios financeiros iniciais
 
 Objetivo: evoluir de extrato para prestação de contas.
@@ -277,7 +290,7 @@ Escopo:
 - agrupamento por categoria;
 - comparativo mensal simples;
 - visão por conta/caixa;
-- exportação para PDF pela futura Central de Documentos.
+- exportação para PDF pela futura Central de Documentos (e migração do botão legado `Imprimir` de `/financeiro/visualizacao` para o padrão unificado `ExportShareDialog` + `useDocumentShare` com Playwright/Chromium de Escalas e Agenda, registrado em `IMP-010`).
 
 Critérios de aceite:
 
@@ -393,15 +406,19 @@ Campos esperados:
 - `id`;
 - `tenantId`;
 - `type`: income ou expense;
-- `status`;
+- `status`: `DRAFT`, `PENDING`, `CONFIRMED` ou `CANCELLED`;
 - `date`;
+- `paidAt` opcional;
 - `amount`;
 - `accountId`;
 - `categoryId`;
 - `description`;
 - `memberId` opcional para contribuinte;
-- `supplierName` opcional;
+- `supplierName` / `counterpartyName` opcional;
 - `paymentMethod`;
+- `recurringGroupId` opcional;
+- `installmentNumber` opcional;
+- `totalInstallments` opcional;
 - `createdByUserId`;
 - `approvedByUserId` opcional;
 - `approvedAt` opcional;

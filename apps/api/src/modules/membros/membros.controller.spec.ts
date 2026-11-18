@@ -192,4 +192,46 @@ describe('MembrosController - Import Endpoints', () => {
     });
   });
 
+  describe('bulkDeletePost opções, DELETE :id e PATCH :id', () => {
+    it('deve repassar desativarUsuarios e ip no POST bulk-delete quando informados', async () => {
+      const req = { tenantId: 't1', user: { sub: 'u1' } };
+      const dto = { ids: ['m1'], desativarUsuarios: false };
+      membrosService.bulkRemove = jest.fn().mockResolvedValue({ count: 1, message: '1 removido' });
+
+      const res = await controller.bulkDeletePost(dto as any, req as any, '10.0.0.5');
+      expect(membrosService.bulkRemove).toHaveBeenCalledWith('t1', ['m1'], 'u1', {
+        desativarUsuarios: false,
+        ip: '10.0.0.5',
+      });
+      expect(res.count).toBe(1);
+    });
+
+    it('deve repassar desativarUsuario=false quando query informar false no remove', async () => {
+      const req = { tenantId: 't1', user: { sub: 'admin-1' } };
+      membrosService.remove = jest.fn().mockResolvedValue({ message: 'ok' });
+
+      await controller.remove('m1', 'false', req as any, '10.0.0.9');
+      expect(membrosService.remove).toHaveBeenCalledWith('t1', 'm1', {
+        desativarUsuario: false,
+        actorUserId: 'admin-1',
+        ip: '10.0.0.9',
+      });
+    });
+
+    it('deve repassar actorUserId e ip no update', async () => {
+      const req = { tenantId: 't1', user: { sub: 'admin-1' } };
+      const dto = { status: 'INATIVO', desativarUsuario: true };
+      membrosService.update = jest.fn().mockResolvedValue({ id: 'm1' });
+
+      await controller.update('m1', dto as any, req as any, '10.0.0.9');
+      expect(membrosService.update).toHaveBeenCalledWith(
+        't1',
+        'm1',
+        dto,
+        'admin-1',
+        '10.0.0.9',
+      );
+    });
+  });
+
 });

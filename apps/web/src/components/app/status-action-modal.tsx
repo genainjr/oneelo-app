@@ -44,7 +44,7 @@ export function StatusActionModal<TStatus extends string>({
       size="sm"
       bodyClassName="p-6"
       footer={
-        <div className="ml-auto flex w-full flex-row flex-nowrap justify-end gap-1.5 sm:gap-2">
+        <div className="ml-auto flex w-full flex-row flex-wrap justify-end gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={onClose}

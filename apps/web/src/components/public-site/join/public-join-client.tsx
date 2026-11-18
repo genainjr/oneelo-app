@@ -57,6 +57,8 @@ export function PublicJoinClient({
   const [observacoes, setObservacoes] = useState('');
   const [consentimentoLgpd, setConsentimentoLgpd] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+  const [isDependente, setIsDependente] = useState(false);
+  const [responsavelNome, setResponsavelNome] = useState('');
 
   // Carregar dados públicos do tenant no client apenas se não vieram no SSR
   useEffect(() => {
@@ -131,6 +133,11 @@ export function PublicJoinClient({
       return;
     }
 
+    if (isDependente && !responsavelNome.trim()) {
+      setError('Informe o nome do pai, mãe ou responsável pelo dependente.');
+      return;
+    }
+
     const parsedBirthDate = parseDateIso(dataNascimento);
     if (dataNascimento.trim() && !parsedBirthDate) {
       setError('Data de nascimento inválida. Informe no formato DD/MM/AAAA.');
@@ -153,6 +160,8 @@ export function PublicJoinClient({
         igrejaAnterior: igrejaAnterior.trim() ? igrejaAnterior.trim() : undefined,
         quemConvidou: quemConvidou.trim() ? quemConvidou.trim() : undefined,
         observacoes: observacoes.trim() ? observacoes.trim() : undefined,
+        isDependente: isDependente || undefined,
+        responsavelNome: isDependente ? responsavelNome.trim() : undefined,
         consentimentoLgpd,
         website: honeypot || undefined,
       };
@@ -183,6 +192,8 @@ export function PublicJoinClient({
     setIgrejaAnterior('');
     setQuemConvidou('');
     setObservacoes('');
+    setIsDependente(false);
+    setResponsavelNome('');
     setConsentimentoLgpd(false);
     setError(null);
   }
@@ -377,23 +388,71 @@ export function PublicJoinClient({
                   autoComplete="name"
                   label="Nome Completo"
                   required
-                  placeholder="Seu nome completo"
+                  placeholder={isDependente ? 'Nome completo da criança ou dependente' : 'Seu nome completo'}
                   value={nome}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNome(e.target.value)}
                   className={SITE_INPUT_CLASS}
                 />
 
+                {/* Opção para criança ou dependente sem celular próprio */}
+                <label
+                  htmlFor="join-dependente"
+                  className="flex cursor-pointer items-start gap-2.5 rounded-2xl border border-stone-200/90 bg-[#faf9f6] p-3 text-xs text-stone-700 transition-colors hover:border-amber-300"
+                >
+                  <input
+                    id="join-dependente"
+                    type="checkbox"
+                    checked={isDependente}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsDependente(checked);
+                      if (!checked) {
+                        setResponsavelNome('');
+                      }
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-amber-500 focus:ring-amber-500"
+                  />
+                  <span>
+                    <span className="block font-semibold text-zinc-900">
+                      É criança / dependente sem celular próprio
+                    </span>
+                    <span className="mt-0.5 block text-stone-500">
+                      Informe o nome do responsável e utilize o WhatsApp dele para contato da igreja.
+                    </span>
+                  </span>
+                </label>
+
+                {isDependente && (
+                  <InputField
+                    id="join-responsavel"
+                    name="guardianName"
+                    label="Nome do responsável"
+                    required
+                    placeholder="Nome do pai, mãe ou responsável"
+                    value={responsavelNome}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setResponsavelNome(e.target.value)}
+                    className={SITE_INPUT_CLASS}
+                  />
+                )}
+
                 {/* WhatsApp / Celular */}
-                <InternationalPhoneInput
-                  id="join-telefone"
-                  label="WhatsApp / Celular"
-                  countryLabel="País"
-                  required
-                  value={telefone}
-                  onChange={setTelefone}
-                  placeholder="(00) 00000-0000"
-                  variant="site-light"
-                />
+                <div>
+                  <InternationalPhoneInput
+                    id="join-telefone"
+                    label={isDependente ? 'WhatsApp do responsável' : 'WhatsApp / Celular'}
+                    countryLabel="País"
+                    required
+                    value={telefone}
+                    onChange={setTelefone}
+                    placeholder="(00) 00000-0000"
+                    variant="site-light"
+                  />
+                  {isDependente && (
+                    <p className="mt-1 text-xs text-stone-500">
+                      Usaremos este WhatsApp como contato do responsável pelo dependente.
+                    </p>
+                  )}
+                </div>
 
                 {/* E-mail (Obrigatório para membro, opcional para visitante) */}
                 <div>

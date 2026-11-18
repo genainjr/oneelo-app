@@ -4,7 +4,13 @@ import { SolicitacoesCadastroService } from './solicitacoes-cadastro.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuthService } from '../auth/auth.service';
-import { DnsStatus, Role, TipoSolicitacaoCadastro } from '@prisma/client';
+import {
+  DnsStatus,
+  Role,
+  StatusMembro,
+  TipoSolicitacaoCadastro,
+} from '@prisma/client';
+import { checkMemberDuplicity } from './member-deduplication.helper';
 
 describe('SolicitacoesCadastroService (Public)', () => {
   let service: SolicitacoesCadastroService;
@@ -244,12 +250,14 @@ describe('SolicitacoesCadastroService (Public)', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('deve atualizar ficha pendente existente se o mesmo telefone submeter novamente (idempotência)', async () => {
+    it('deve atualizar ficha pendente existente quando mesmo telefone e mesmo nome normalizado submeterem novamente (idempotência)', async () => {
       prisma.tenant.findUnique.mockResolvedValue(mockTenant);
       prisma.solicitacaoCadastroMembro.findMany.mockResolvedValue([
         {
           id: 'sol-existente-1',
+          nome: 'Messias Júnior',
           telefone: '+5585991101771',
+          cpf: null,
           status: 'PENDENTE',
         },
       ]);
@@ -260,7 +268,7 @@ describe('SolicitacoesCadastroService (Public)', () => {
 
       const result = await service.submitRegistration(mockTenant.slug, {
         tipo: TipoSolicitacaoCadastro.VISITANTE,
-        nome: 'Messias Jr Atualizado',
+        nome: 'messias junior',
         telefone: '85 99110-1771',
         consentimentoLgpd: true,
         observacoes: 'Cheguei hoje na cidade',
@@ -270,11 +278,144 @@ describe('SolicitacoesCadastroService (Public)', () => {
       expect(prisma.solicitacaoCadastroMembro.update).toHaveBeenCalledWith({
         where: { id: 'sol-existente-1' },
         data: expect.objectContaining({
-          nome: 'Messias Jr Atualizado',
+          nome: 'messias junior',
           observacoes: 'Cheguei hoje na cidade',
         }),
       });
       expect(prisma.solicitacaoCadastroMembro.create).not.toHaveBeenCalled();
+    });
+
+    it('deve criar nova ficha separada quando familiar/dependente enviar mesmo telefone com nome diferente', async () => {
+      prisma.tenant.findUnique.mockResolvedValue(mockTenant);
+      prisma.solicitacaoCadastroMembro.findMany.mockResolvedValue([
+        {
+          id: 'sol-pai-1',
+          nome: 'Messias Júnior',
+          telefone: '+5585991101771',
+          cpf: null,
+          status: 'PENDENTE',
+        },
+      ]);
+      prisma.solicitacaoCadastroMembro.create.mockResolvedValue({
+        id: 'sol-filha-1',
+      });
+      prisma.user.findMany.mockResolvedValue([]);
+
+      const result = await service.submitRegistration(mockTenant.slug, {
+        tipo: TipoSolicitacaoCadastro.VISITANTE,
+        nome: 'Isabella Lis',
+        telefone: '85 99110-1771',
+        isDependente: true,
+        responsavelNome: 'Messias Júnior',
+        observacoes: 'Primeira visita',
+        consentimentoLgpd: true,
+      });
+
+      expect(result.id).toBe('sol-filha-1');
+      expect(prisma.solicitacaoCadastroMembro.update).not.toHaveBeenCalled();
+      expect(prisma.solicitacaoCadastroMembro.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          nome: 'Isabella Lis',
+          telefone: '+5585991101771',
+          observacoes: '[Dependente — Responsável: Messias Júnior]\nPrimeira visita',
+        }),
+      });
+    });
+
+    it('deve exigir nome do responsável quando isDependente for true', async () => {
+      prisma.tenant.findUnique.mockResolvedValue(mockTenant);
+
+      await expect(
+        service.submitRegistration(mockTenant.slug, {
+          tipo: TipoSolicitacaoCadastro.VISITANTE,
+          nome: 'Isabella Lis',
+          telefone: '85 99110-1771',
+          isDependente: true,
+          responsavelNome: '   ',
+          consentimentoLgpd: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('checkMemberDuplicity com ex-membros e desempate familiar', () => {
+    it('detecta ex-membro INATIVO ou TRANSFERIDO para revisão e reativação na triagem', async () => {
+      const mockPrisma = {
+        membro: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'm-inativo-1',
+              nome: 'Carlos Antigo Membro',
+              whatsapp: '+5585991109999',
+              email: 'carlos@antigo.com',
+              cpf: null,
+              status: StatusMembro.INATIVO,
+              user: null,
+            },
+          ]),
+        },
+        solicitacaoCadastroMembro: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      };
+
+      const res = await checkMemberDuplicity(mockPrisma as never, 'tenant-1', {
+        telefone: '85991109999',
+        nome: 'Carlos Antigo Membro',
+      });
+
+      expect(mockPrisma.membro.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId: 'tenant-1', deletedAt: null },
+        }),
+      );
+      expect(res.isDuplicate).toBe(true);
+      expect(res.membroExistenteId).toBe('m-inativo-1');
+      expect(res.membroExistenteStatus).toBe(StatusMembro.INATIVO);
+    });
+
+    it('prioriza ex-membro INATIVO pelo nome exato mesmo quando esposa ATIVO compartilha o mesmo WhatsApp', async () => {
+      const preloadedContext = {
+        membros: [
+          {
+            id: 'm-esposa-ativa',
+            nome: 'Maria Souza',
+            whatsapp: '+5585991101771',
+            email: 'maria@familia.com',
+            cpf: null,
+            status: StatusMembro.ATIVO,
+            user: null,
+          },
+          {
+            id: 'm-marido-inativo',
+            nome: 'João Souza',
+            whatsapp: '+5585991101771',
+            email: 'joao@familia.com',
+            cpf: null,
+            status: StatusMembro.INATIVO,
+            user: null,
+          },
+        ],
+        pendingRequests: [],
+      };
+
+      const returnHusband = await checkMemberDuplicity(
+        prisma,
+        'tenant-1',
+        { telefone: '85991101771', nome: 'Joao Souza' },
+        preloadedContext,
+      );
+      expect(returnHusband.membroExistenteId).toBe('m-marido-inativo');
+      expect(returnHusband.membroExistenteStatus).toBe(StatusMembro.INATIVO);
+
+      const newChild = await checkMemberDuplicity(
+        prisma,
+        'tenant-1',
+        { telefone: '85991101771', nome: 'Lucas Souza' },
+        preloadedContext,
+      );
+      expect(newChild.membroExistenteId).toBe('m-esposa-ativa');
+      expect(newChild.membroExistenteStatus).toBe(StatusMembro.ATIVO);
     });
   });
 });

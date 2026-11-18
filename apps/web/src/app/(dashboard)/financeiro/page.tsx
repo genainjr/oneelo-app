@@ -8,37 +8,38 @@ import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { DataTable, type Column } from "@/components/app/data-table";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
-import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
-import { FilterInput, FilterSelect } from "@/components/app/filter-field";
+import type { EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
-import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
+import type { MembroOption } from "@/components/app/membro-search-combobox";
 import { PageHeader } from "@/components/app/page-header";
 import { PrimaryActionButton } from "@/components/app/primary-action-button";
 import { Skeleton } from "@/components/app/skeleton";
+import { StatCard } from "@/components/app/stat-card";
 import { useFilterState } from "@/hooks/use-filter-state";
 import { api } from "@/lib/api";
-import { AccountModal, CategoryModal, TransactionModal, TransactionStatusModal, type TransactionFormData } from "./financeiro-modals";
+import { AccountModal, CategoryModal, TransactionConfirmModal, TransactionModal, TransactionStatusModal, type TransactionBatchFormData, type TransactionConfirmFormData, type TransactionFormData } from "./financeiro-modals";
 import {
   ACCOUNT_TYPE_LABELS,
   ActiveBadge,
-  CATEGORY_TYPE_LABELS,
+  FinanceInstallmentBadge,
   FinanceStatusBadge,
   FinanceTypeBadge,
+  FinanceiroTransactionFilterFields,
   FinancialAccount,
   FinancialAccountType,
   FinancialCategory,
   FinancialCategoryType,
   FinancialTransaction,
+  FinancialTransactionFilterState,
   FinancialTransactionStatus,
-  FinancialTransactionType,
   PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
-  TRANSACTION_STATUS_LABELS,
   currencyFormatter,
   dateFormatter,
   financeiroEventosPath,
   getTransactionDisplayTitle,
   matchTransactionSearch,
+  toLocalDateInputValue,
   useFinanceiroData,
 } from "./financeiro-shared";
 
@@ -47,6 +48,7 @@ type ModalState =
   | { type: "category"; item: FinancialCategory | null }
   | { type: "transaction"; item: FinancialTransaction | null }
   | { type: "transaction-status"; item: FinancialTransaction }
+  | { type: "transaction-confirm"; item: FinancialTransaction }
   | null;
 
 type ConfirmState =
@@ -60,27 +62,15 @@ type FeedbackMessage = {
   message: string;
 } | null;
 
-type TransactionFilterState = {
-  description: string;
-  type: "all" | FinancialTransactionType;
-  status: "all" | FinancialTransactionStatus;
-  eventoId: string;
-  memberId: string;
-  startDate: string;
-  endDate: string;
-};
-
-function toDateInputValue(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
+type TransactionFilterState = FinancialTransactionFilterState;
 
 function currentMonthPeriod() {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return {
-    startDate: toDateInputValue(start),
-    endDate: toDateInputValue(end),
+    startDate: toLocalDateInputValue(start),
+    endDate: toLocalDateInputValue(end),
   };
 }
 
@@ -97,6 +87,7 @@ const initialTransactionFilters: TransactionFilterState = {
 };
 
 export default function FinanceiroPage() {
+  const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
   const {
     summary,
     loadingPermission,
@@ -106,10 +97,11 @@ export default function FinanceiroPage() {
     accounts,
     categories,
     transactions,
+    financialSummary,
     canManage,
     reloadData,
     setDataError,
-  } = useFinanceiroData();
+  } = useFinanceiroData(appliedTransactionFilters);
 
   const [modal, setModal] = useState<ModalState>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
@@ -117,7 +109,6 @@ export default function FinanceiroPage() {
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
   const [auxiliaryCollapsed, setAuxiliaryCollapsed] = useState(true);
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(false);
@@ -388,18 +379,92 @@ export default function FinanceiroPage() {
     }
   }
 
+  async function saveTransactionBatch(data: TransactionBatchFormData) {
+    if (!data.accountId) {
+      setFormError("Selecione a conta do lançamento.");
+      return;
+    }
+    if (!data.categoryId) {
+      setFormError("Selecione a categoria do lançamento.");
+      return;
+    }
+    if (!data.occurrences.length) {
+      setFormError("Gere pelo menos uma parcela válida antes de salvar.");
+      return;
+    }
+    setSaving(true);
+    setFormError("");
+    try {
+      const payload = {
+        type: data.type,
+        defaultStatus: data.defaultStatus,
+        accountId: data.accountId,
+        categoryId: data.categoryId,
+        ...(data.eventoId ? { eventoId: data.eventoId } : {}),
+        ...(data.memberId && data.type === "INCOME" ? { memberId: data.memberId } : {}),
+        ...(data.description.trim() ? { description: data.description.trim() } : {}),
+        paymentMethod: data.paymentMethod || null,
+        ...(data.counterpartyName.trim() ? { counterpartyName: data.counterpartyName.trim() } : {}),
+        occurrences: data.occurrences.map((occurrence) => ({
+          date: occurrence.date,
+          amount: occurrence.amount,
+          status: occurrence.status,
+          installmentNumber: occurrence.installmentNumber,
+          totalInstallments: occurrence.totalInstallments,
+        })),
+      };
+      const response = await api.post<{ recurringGroupId: string; count: number }>("/api/financeiro/transactions/batch", payload);
+      setModal(null);
+      setFeedback({ type: "success", message: `${response.count} lançamento(s) gerado(s) em lote com sucesso.` });
+      await reloadData();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Erro ao gerar lançamentos em lote.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveTransactionStatus(status: FinancialTransactionStatus) {
     if (modal?.type !== "transaction-status") return;
     setSaving(true);
     setFormError("");
     try {
       if (status === "CANCELLED") await api.patch(`/api/financeiro/transactions/${modal.item.id}/cancel`, {});
+      else if (status === "CONFIRMED" && modal.item.status !== "CONFIRMED") await api.patch(`/api/financeiro/transactions/${modal.item.id}/confirm`, {});
       else await api.patch(`/api/financeiro/transactions/${modal.item.id}`, { status });
       setModal(null);
       setFeedback({ type: "success", message: "Status do lançamento atualizado com sucesso." });
       await reloadData();
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Não foi possível alterar o status do lançamento.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmTransactionSettlement(data: TransactionConfirmFormData) {
+    if (modal?.type !== "transaction-confirm") return;
+    if (!data.paidAt) {
+      setFormError("Informe a data de liquidação.");
+      return;
+    }
+    if (!data.amount || Number(data.amount) <= 0) {
+      setFormError("Informe um valor liquidado maior que zero.");
+      return;
+    }
+    setSaving(true);
+    setFormError("");
+    try {
+      await api.patch(`/api/financeiro/transactions/${modal.item.id}/confirm`, {
+        paidAt: new Date(`${data.paidAt}T12:00:00`).toISOString(),
+        paymentMethod: data.paymentMethod || null,
+        amount: Number(data.amount),
+      });
+      setModal(null);
+      setFeedback({ type: "success", message: "Pagamento confirmado e saldo atualizado com sucesso." });
+      await reloadData();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Não foi possível confirmar o pagamento.");
     } finally {
       setSaving(false);
     }
@@ -500,6 +565,33 @@ export default function FinanceiroPage() {
         </div>
       )}
 
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatCard
+          title="Saldo realizado"
+          value={currencyFormatter.format(financialSummary.balance)}
+          description={`${financialSummary.transactions} confirmado(s) • Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`}
+          icon={<WalletCards className="h-5 w-5" />}
+          color="brand"
+          loading={loadingData}
+        />
+        <StatCard
+          title="A receber (Pendente)"
+          value={currencyFormatter.format(financialSummary.pendingIncome)}
+          description="Entradas aguardando recebimento no período"
+          icon={<CircleDollarSign className="h-5 w-5" />}
+          color="emerald"
+          loading={loadingData}
+        />
+        <StatCard
+          title="A pagar (Pendente)"
+          value={currencyFormatter.format(financialSummary.pendingExpense)}
+          description={`${financialSummary.pendingCount} pendência(s) no período`}
+          icon={<Clock3 className="h-5 w-5" />}
+          color="amber"
+          loading={loadingData}
+        />
+      </div>
+
       <section className="space-y-4">
         <FilterShell
           onSubmit={handleTransactionFilterSubmit}
@@ -514,84 +606,53 @@ export default function FinanceiroPage() {
             />
           }
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <FilterSelect label="Status" value={transactionFilterState.status} onChange={(event) => setTransactionFilterField("status", event.target.value as TransactionFilterState["status"])}>
-              <option value="all">Todos</option>
-              {Object.entries(TRANSACTION_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </FilterSelect>
-            <FilterSelect label="Tipo" value={transactionFilterState.type} onChange={(event) => setTransactionFilterField("type", event.target.value as TransactionFilterState["type"])}>
-              <option value="all">Todos</option>
-              <option value="INCOME">Entradas</option>
-              <option value="EXPENSE">Despesas</option>
-            </FilterSelect>
-            <FilterInput type="search" label="Descrição" value={transactionFilterState.description} onChange={(event) => setTransactionFilterField("description", event.target.value)} placeholder="Buscar por descrição..." />
-            <EventoSearchCombobox
-              label="Evento"
-              optionalLabel="opcional"
-              placeholder="Todos"
-              loading={eventosLoading}
-              options={eventos}
-              selected={selectedEventoFilter}
-              search={eventoFilterSearch}
-              emptyMessage="Nenhum evento encontrado."
-              selectedPrefix="Evento"
-              onSearchChange={(value) => {
-                setEventoFilterSearch(value);
-                setSelectedEventoFilter(null);
-                setTransactionFilterField("eventoId", "");
-              }}
-              onSelect={(evento) => {
-                setSelectedEventoFilter(evento);
-                setEventoFilterSearch(getEventoDisplayName(evento));
-                setTransactionFilterField("eventoId", evento.id);
-              }}
-              onClear={() => {
-                setSelectedEventoFilter(null);
-                setEventoFilterSearch("");
-                setTransactionFilterField("eventoId", "");
-              }}
-            />
-            <MembroSearchCombobox
-              label="Membro"
-              optionalLabel="opcional"
-              placeholder="Todos"
-              loading={membrosLoading}
-              options={membros}
-              selected={selectedMembroFilter}
-              search={membroFilterSearch}
-              emptyMessage="Nenhum membro encontrado."
-              selectedPrefix="Selecionado"
-              onSearchChange={(value) => {
-                setMembroFilterSearch(value);
-                setSelectedMembroFilter(null);
-                setTransactionFilterField("memberId", "");
-              }}
-              onSelect={(membro) => {
-                setSelectedMembroFilter(membro);
-                setMembroFilterSearch(getMembroPrintName(membro));
-                setTransactionFilterField("memberId", membro.id);
-              }}
-              onClear={() => {
-                setSelectedMembroFilter(null);
-                setMembroFilterSearch("");
-                setTransactionFilterField("memberId", "");
-              }}
-            />
-            <FilterInput
-              label="A partir de (Data)"
-              type="date"
-              value={transactionFilterState.startDate}
-              onChange={(event) => {
-                const startDate = event.target.value;
-                setTransactionFilterState((current) => ({
-                  ...current,
-                  startDate,
-                  endDate: startDate && current.endDate && current.endDate < startDate ? startDate : current.endDate,
-                }));
-              }}
-            />
-            <FilterInput label="Até (Data)" type="date" min={transactionFilterState.startDate || undefined} value={transactionFilterState.endDate} onChange={(event) => setTransactionFilterField("endDate", event.target.value)} />
-          </div>
+          <FinanceiroTransactionFilterFields
+            filters={transactionFilterState}
+            onFieldChange={(key, value) => setTransactionFilterField(key, value)}
+            onStartDateChange={(startDate) =>
+              setTransactionFilterState((current) => ({
+                ...current,
+                startDate,
+                endDate: startDate && current.endDate && current.endDate < startDate ? startDate : current.endDate,
+              }))
+            }
+            eventos={eventos}
+            eventosLoading={eventosLoading}
+            selectedEvento={selectedEventoFilter}
+            eventoSearch={eventoFilterSearch}
+            onEventoSearchChange={(value) => {
+              setEventoFilterSearch(value);
+              setSelectedEventoFilter(null);
+              setTransactionFilterField("eventoId", "");
+            }}
+            onEventoSelect={(evento) => {
+              setSelectedEventoFilter(evento);
+              setTransactionFilterField("eventoId", evento.id);
+            }}
+            onEventoClear={() => {
+              setSelectedEventoFilter(null);
+              setEventoFilterSearch("");
+              setTransactionFilterField("eventoId", "");
+            }}
+            membros={membros}
+            membrosLoading={membrosLoading}
+            selectedMembro={selectedMembroFilter}
+            membroSearch={membroFilterSearch}
+            onMembroSearchChange={(value) => {
+              setMembroFilterSearch(value);
+              setSelectedMembroFilter(null);
+              setTransactionFilterField("memberId", "");
+            }}
+            onMembroSelect={(membro) => {
+              setSelectedMembroFilter(membro);
+              setTransactionFilterField("memberId", membro.id);
+            }}
+            onMembroClear={() => {
+              setSelectedMembroFilter(null);
+              setMembroFilterSearch("");
+              setTransactionFilterField("memberId", "");
+            }}
+          />
         </FilterShell>
         {loadingData ? (
           <div className="space-y-4">{Array.from({ length: 2 }).map((_, index) => <EntityCard key={index} loading />)}</div>
@@ -609,6 +670,7 @@ export default function FinanceiroPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <FinanceStatusBadge status={item.status} />
                       <FinanceTypeBadge type={item.type} />
+                      <FinanceInstallmentBadge installmentNumber={item.installmentNumber} totalInstallments={item.totalInstallments} />
                     </div>
                   </div>
                   <div className="grid gap-2 text-xs font-medium text-gray-500 sm:grid-cols-2 xl:grid-cols-5">
@@ -616,6 +678,12 @@ export default function FinanceiroPage() {
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">Data: {dateFormatter.format(new Date(item.date))}</span>
                     </span>
+                    {item.status === "CONFIRMED" && item.paidAt && (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <span className="truncate">Liquidado em: {dateFormatter.format(new Date(item.paidAt))}</span>
+                      </span>
+                    )}
                     <span className="flex min-w-0 items-center gap-1.5">
                       <WalletCards className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                       <span className="truncate">Conta: {item.account.name}</span>
@@ -649,7 +717,18 @@ export default function FinanceiroPage() {
                   </div>
                 </div>
                 <div className="flex w-full justify-end sm:w-auto md:self-start">
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {canCancelTransaction && (item.status === "PENDING" || item.status === "DRAFT") && (
+                      <button
+                        type="button"
+                        onClick={() => { setFormError(""); setModal({ type: "transaction-confirm", item }); }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-100"
+                        title="Dar Baixa / Confirmar Pagamento"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Dar Baixa
+                      </button>
+                    )}
                     {canCancelTransaction && item.status !== "CANCELLED" && (
                       <button
                         type="button"
@@ -658,7 +737,7 @@ export default function FinanceiroPage() {
                         title="Mudar status"
                         aria-label="Mudar status"
                       >
-                        {item.status === "DRAFT" ? (
+                        {item.status === "DRAFT" || item.status === "PENDING" ? (
                           <Clock3 className="h-4 w-4 text-amber-600" />
                         ) : (
                           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -738,7 +817,7 @@ export default function FinanceiroPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-base font-bold text-gray-900">Categorias</h3>
-                <p className="mt-1 text-sm text-gray-500">Organização das entradas e despesas.</p>
+                <p className="mt-1 text-sm text-gray-500">Organização das entradas e saídas.</p>
               </div>
               {canManage && (
                 <PrimaryActionButton
@@ -762,8 +841,27 @@ export default function FinanceiroPage() {
 
       <AccountModal isOpen={modal?.type === "account"} account={modal?.type === "account" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveAccount} />
       <CategoryModal isOpen={modal?.type === "category"} category={modal?.type === "category" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveCategory} />
-      <TransactionModal isOpen={modal?.type === "transaction"} transaction={modal?.type === "transaction" ? modal.item : null} accounts={accounts} categories={categories} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveTransaction} />
+      <TransactionModal
+        isOpen={modal?.type === "transaction"}
+        transaction={modal?.type === "transaction" ? modal.item : null}
+        accounts={accounts}
+        categories={categories}
+        loading={saving}
+        error={formError}
+        canApproveStatus={canCancelTransaction}
+        onClose={() => setModal(null)}
+        onSubmit={saveTransaction}
+        onSubmitBatch={saveTransactionBatch}
+      />
       <TransactionStatusModal isOpen={modal?.type === "transaction-status"} transaction={modal?.type === "transaction-status" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveTransactionStatus} />
+      <TransactionConfirmModal
+        isOpen={modal?.type === "transaction-confirm"}
+        transaction={modal?.type === "transaction-confirm" ? modal.item : null}
+        loading={saving}
+        error={formError}
+        onClose={() => setModal(null)}
+        onSubmit={confirmTransactionSettlement}
+      />
       <ConfirmDialog
         isOpen={!!confirm}
         title={confirm?.type === "transaction" ? "Excluir lançamento" : "Inativar registro"}

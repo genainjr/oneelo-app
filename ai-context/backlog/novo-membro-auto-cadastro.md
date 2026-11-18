@@ -16,9 +16,10 @@
   2. **Triagem e Fila de Moderação Pastoral**:
      - Os cadastros enviados entram em uma fila de solicitações com status `PENDENTE_APROVACAO` (não entram diretamente como membros ativos para evitar spam ou duplicidades).
      - Notificação no sininho in-app para administradores/secretaria informando novos cadastros recebidos.
-     - Tela de moderação em `/membros` (aba ou filtro *"Fichas Recebidas"*):
-       - Ações: **Aprovar como Membro Ativo**, **Aprovar como Visitante** ou **Descartar/Arquivar**.
-       - Identificação inteligente de duplicidade se o telefone ou e-mail já existir no banco.
+      - Tela de moderação em `/membros` (aba ou filtro *"Fichas Recebidas"*):
+        - Ações: **Aprovar como Membro Ativo**, **Aprovar como Visitante**, **Revisar e Atualizar/Reativar Cadastro Existente** (para duplicidades contra `VISITANTE`, `ATIVO` ou ex-membros `INATIVO`/`TRANSFERIDO`, com comparação campo a campo, validação de cota ao reativar e fluxo explícito para reativação de conta `DISABLED` sem colisão de e-mail/telefone), **Pessoa Diferente / Familiar** (quando telefone, e-mail ou nome coincidem entre familiares/homônimos, mantendo bloqueio absoluto para CPF) ou **Descartar/Arquivar**.
+        - Identificação inteligente de duplicidade se CPF, telefone, e-mail ou nome exato já existir no banco (incluindo ex-membros `INATIVO`/`TRANSFERIDO` com desempate por nome exato e exibindo o estado do usuário vinculado: sem usuário, `PENDING`, `ACTIVE`, `DISABLED` ou perfil administrativo).
+        - Suporte no formulário público (`/join/[slug]`) para crianças/dependentes sem celular próprio (informando nome e WhatsApp do responsável).
   3. **Acolhimento Automático**:
      - Ao aprovar o membro, opcionalmente gerar convite de ativação no app do OneElo.
 - **Impacto**: elimina papel e digitação manual após os cultos, moderniza a recepção da igreja e acelera o acolhimento pastoral de novos convertidos e membros recém-chegados.

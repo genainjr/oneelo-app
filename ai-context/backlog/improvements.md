@@ -135,3 +135,20 @@
   - `apps/web/src/app/(dashboard)/agenda/visualizacao/page.tsx`
   - `apps/web/src/app/(dashboard)/ministerios/visualizacao/page.tsx`
 
+---
+
+### IMP-010 Migrar impressão de `/financeiro/visualizacao` para exportação unificada (PDF/PNG)
+
+- **Status**: pendente
+- **Prioridade**: media
+- **Categoria**: produto / UX / ODS / exportacao
+- **Contexto**: Enquanto `/escalas/visualizacao` e `/agenda/visualizacao` já migraram do botão legado `Imprimir` (`window.print()`) para o fluxo unificado de exportação e compartilhamento (`ExportShareDialog` + `useDocumentShare` + geração Playwright/Chromium no backend, conforme `FT-015`), `/financeiro/visualizacao` ainda utiliza `window.print()` com tabela HTML estática (`print-schedule-table`).
+- **Acao**: Criar endpoint de renderização de extrato financeiro em PDF/PNG no backend (`apps/api/src/modules/financeiro/`) respeitando RBAC (`FINANCE_VIEWER`+) e período/filtros ativos, e substituir o botão legado `Imprimir` em `/financeiro/visualizacao` pelo padrão `ExportShareDialog` + `useDocumentShare` + banners ODS.
+- **Impacto**: Padroniza o layout oficial OneElo na prestação de contas financeira, elimina variação entre drivers de impressão do navegador e habilita download/compartilhamento direto em PDF e imagem no mobile e desktop.
+- **Arquivos afetados previstos**:
+  - `apps/api/src/modules/financeiro/financeiro.controller.ts`
+  - `apps/api/src/modules/financeiro/financial-transactions.service.ts`
+  - `apps/web/src/app/(dashboard)/financeiro/visualizacao/page.tsx`
+  - `apps/web/src/components/app/export-share-dialog.tsx`
+  - `apps/web/src/hooks/use-document-share.ts`
+

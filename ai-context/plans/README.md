@@ -19,7 +19,11 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 |---|---|---|
 | 17/11/2026 | [pwa-tenant-identificacao-login-logoff-plan.md](pwa-tenant-identificacao-login-logoff-plan.md) | Correção de Identificação do Tenant no PWA, Manifesto, Login e Logoff (Concluído) |
 | 17/11/2026 | [dashboard-sidebar-dominio-pwa-ajustes-plan.md](dashboard-sidebar-dominio-pwa-ajustes-plan.md) | Ajustes de Empilhamento da Sidebar, Padronização PWA e Domínio Próprio no Link de Cadastro (Concluído) |
-| 17/11/2026 | [site-noticias-proporcao-imagem-plan.md](site-noticias-proporcao-imagem-plan.md) | Suporte a Múltiplos Formatos e Proporções de Imagens nos Informativos do Site (Concluído) |
+| 17/11/2026 | [site-noticias-proporcao-imagem-plan.md](site-noticias-proporcao-imagem-plan.md) | Suporte a Múltiplos Formatos e Proporções de Imagens nos Informativos do Site (Planejado) |
+| 17/11/2026 | [financeiro-contas-recorrentes-em-lote-plan.md](financeiro-contas-recorrentes-em-lote-plan.md) | Contas Recorrentes e Parceladas no Módulo Financeiro (Geração em Lote — Concluído) |
+| 17/11/2026 | [ciclo-inativacao-reativacao-membro-plan.md](ciclo-inativacao-reativacao-membro-plan.md) | Ciclo Completo de Inativação, Exclusão Coordenada e Reativação de Membros e Usuários (Concluído) |
+| 17/11/2026 | [auto-cadastro-familiar-dependente-plan.md](auto-cadastro-familiar-dependente-plan.md) | Fluxo Familiar e Dependente sem Celular Próprio no Auto-Cadastro (Opção A — Concluído) |
+| 15/11/2026 | [triagem-atualizacao-duplicidade-membro-plan.md](triagem-atualizacao-duplicidade-membro-plan.md) | Triagem de Auto-Cadastro com Revisão, Atualização de Membro Existente e Fluxo de Acesso (Concluído) |
 | 13/11/2026 | [unificacao-tema-tenant-plan.md](unificacao-tema-tenant-plan.md) | Unificação Visual do Tenant (Tema Padrão Obsidiana + Âmbar via Tokens Semânticos — Plano A — Concluído) |
 | 13/11/2026 | [site-institucional-tenant-plan.md](site-institucional-tenant-plan.md) | Site Institucional Público do Tenant e Portal da Igreja (FT-019) |
 | 12/11/2026 | [novo-membro-auto-cadastro-plan.md](novo-membro-auto-cadastro-plan.md) | Auto-Cadastro Público de Novos Membros e Visitantes com Triagem Pastoral (FT-018) |

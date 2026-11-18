@@ -24,7 +24,7 @@ import { ContactCell } from '@/components/app/contact-cell';
 import { EntityCard } from '@/components/app/entity-card';
 import { InitialsAvatar } from '@/components/app/initials-avatar';
 import { getMemberDisplayName } from '@/components/app/escala-shared';
-import { Membro, Tag, AuthUser, DocumentJob } from '@/types';
+import { Membro, MembroSavePayload, MembroUpdateResult, Tag, AuthUser, DocumentJob } from '@/types';
 import { api } from '@/lib/api';
 import { formatDate, formatPhone, MINISTRY_ROLE_LABEL, STATUS_MEMBRO_COLOR, STATUS_MEMBRO_LABEL } from '@/lib/utils';
 import { useAuthUser } from '@/contexts/auth-user-context';
@@ -133,6 +133,8 @@ export default function MembrosPage() {
   const [newTagColor, setNewTagColor] = useState('#52525b');
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [pendingDeleteMembro, setPendingDeleteMembro] = useState<Membro | null>(null);
+  const [deleteDisableUser, setDeleteDisableUser] = useState(true);
+  const [bulkDeleteDisableUsers, setBulkDeleteDisableUsers] = useState(true);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [promotingMembro, setPromotingMembro] = useState<Membro | null>(null);
   const [activationLoadingId, setActivationLoadingId] = useState<string | null>(null);
@@ -141,6 +143,9 @@ export default function MembrosPage() {
     membro: Membro | null;
     user: { id: string; nome: string; email: string; activationExpiresAt?: string | null } | null;
     activationLink: string | null;
+    title?: string;
+    badgeTitle?: string;
+    description?: string;
   }>({
     isOpen: false,
     membro: null,
@@ -254,14 +259,30 @@ export default function MembrosPage() {
     scrollMembersListToTop();
   }
 
-  async function handleSaveMembro(data: Partial<Membro>) {
-    let saved: Membro;
+  async function handleSaveMembro(data: MembroSavePayload) {
+    let saved: MembroUpdateResult;
     if (editingMembro) {
       saved = await updateMembro(editingMembro.id, data);
     } else {
       saved = await createMembro(data);
     }
     fetchTags();
+    if (saved.activationLink) {
+      setFeedback({
+        type: 'success',
+        message: `${saved.nome} reativado(a) com novo link de ativação gerado.`,
+      });
+      setWelcomeModal({
+        isOpen: true,
+        membro: saved,
+        user: saved.user ?? null,
+        activationLink: saved.activationLink,
+        title: 'Cadastro e Acesso Reativados!',
+        badgeTitle: `${saved.nome} reativado(a) com novo link de ativação!`,
+        description:
+          'Membro reativado e nova senha pendente liberada por 72 horas. Envie o link de ativação abaixo pelo WhatsApp.',
+      });
+    }
     return saved;
   }
 
@@ -306,6 +327,7 @@ export default function MembrosPage() {
   }
 
   function handleDelete(membro: Membro) {
+    setDeleteDisableUser(true);
     setPendingDeleteMembro(membro);
   }
 
@@ -314,7 +336,7 @@ export default function MembrosPage() {
     setConfirmLoading(true);
     setFeedback(null);
     try {
-      await deleteMembro(pendingDeleteMembro.id);
+      await deleteMembro(pendingDeleteMembro.id, deleteDisableUser);
       setSelectedIds(prev => prev.filter(id => id !== pendingDeleteMembro.id));
       setPendingDeleteMembro(null);
     } catch (err: unknown) {
@@ -352,12 +374,17 @@ export default function MembrosPage() {
     }
   }
 
+  function openBulkDeleteConfirm() {
+    setBulkDeleteDisableUsers(true);
+    setIsBulkDeleteConfirmOpen(true);
+  }
+
   async function handleBulkDeleteConfirm() {
     if (selectedIds.length === 0) return;
     setBulkDeleteLoading(true);
     setFeedback(null);
     try {
-      await bulkDeleteMembros(selectedIds);
+      await bulkDeleteMembros(selectedIds, bulkDeleteDisableUsers);
       const count = selectedIds.length;
       setSelectedIds([]);
       setIsBulkDeleteConfirmOpen(false);
@@ -944,7 +971,7 @@ export default function MembrosPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsBulkDeleteConfirmOpen(true)}
+                  onClick={openBulkDeleteConfirm}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition-all shadow-2xs"
                   title="Excluir membros selecionados"
                 >
@@ -1038,7 +1065,7 @@ export default function MembrosPage() {
 
               <button
                 type="button"
-                onClick={() => setIsBulkDeleteConfirmOpen(true)}
+                onClick={openBulkDeleteConfirm}
                 className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition-all hover:bg-rose-100 sm:w-auto flex items-center justify-center gap-1.5 shrink-0"
               >
                 <svg className="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1100,14 +1127,60 @@ export default function MembrosPage() {
           user={welcomeModal.user}
           activationLink={welcomeModal.activationLink}
           tenantName={user?.tenant?.nome}
-          description="Visitante promovido a Membro Ativo com sucesso."
+          title={welcomeModal.title}
+          badgeTitle={welcomeModal.badgeTitle}
+          description={
+            welcomeModal.description ?? 'Visitante promovido a Membro Ativo com sucesso.'
+          }
         />
       )}
 
       <ConfirmDialog
         isOpen={!!pendingDeleteMembro}
         title={t('deleteTooltip')}
-        description={pendingDeleteMembro ? t('deleteConfirm', { name: pendingDeleteMembro.nome }) : ''}
+        description={
+          pendingDeleteMembro ? (
+            <div className="space-y-3">
+              <p>{t('deleteConfirm', { name: pendingDeleteMembro.nome })}</p>
+              {pendingDeleteMembro.user &&
+                (pendingDeleteMembro.user.role === 'BASIC' ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-950 space-y-2">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={deleteDisableUser}
+                        onChange={(e) => setDeleteDisableUser(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
+                      />
+                      <span>
+                        <strong className="block">
+                          Desativar / limpar usuário de acesso vinculado ({pendingDeleteMembro.user.email})
+                        </strong>
+                        <span className="text-amber-800 block mt-0.5 leading-relaxed">
+                          {pendingDeleteMembro.user.status === 'PENDING'
+                            ? 'Como este acesso nunca foi ativado, o convite pendente será removido liberando e-mail e telefone para novo uso.'
+                            : 'O usuário será desativado e desvinculado mantendo o histórico de auditoria.'}
+                        </span>
+                      </span>
+                    </label>
+                    <p className="text-[11px] text-amber-800 border-t border-amber-200/70 pt-1.5">
+                      Dica: se a pessoa apenas saiu da igreja, prefira editar o status para{' '}
+                      <strong>Inativo</strong> ou <strong>Transferido</strong> em vez de excluir.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 text-xs text-blue-950">
+                    Este cadastro está ligado à conta administrativa (
+                    <strong>{pendingDeleteMembro.user.role}</strong> · {pendingDeleteMembro.user.email}
+                    ). Somente o cadastro de membro será removido; a conta administrativa
+                    permanecerá ativa.
+                  </div>
+                ))}
+            </div>
+          ) : (
+            ''
+          )
+        }
         confirmLabel={t('deleteTooltip')}
         loading={confirmLoading}
         onConfirm={confirmDeleteMembro}
@@ -1117,7 +1190,49 @@ export default function MembrosPage() {
       <ConfirmDialog
         isOpen={isBulkDeleteConfirmOpen}
         title="Excluir Membros Selecionados"
-        description={`Tem certeza que deseja excluir os ${selectedIds.length} membros selecionados? Esta ação desvinculará esses membros de escalas e ministérios.`}
+        description={(() => {
+          const selectedWithUsers = membros.filter(
+            (m) => selectedIds.includes(m.id) && Boolean(m.user),
+          );
+          const basicUsersCount = selectedWithUsers.filter(
+            (m) => m.user?.role === 'BASIC',
+          ).length;
+          const adminUsersCount = selectedWithUsers.length - basicUsersCount;
+
+          return (
+            <div className="space-y-3">
+              <p>
+                {`Tem certeza que deseja excluir os ${selectedIds.length} membros selecionados? Esta ação desvinculará esses membros de escalas e ministérios.`}
+              </p>
+              {basicUsersCount > 0 && (
+                <label className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-950 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkDeleteDisableUsers}
+                    onChange={(e) => setBulkDeleteDisableUsers(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent-ring text-accent-ink focus:ring-accent-ring"
+                  />
+                  <span>
+                    <strong className="block">
+                      Desativar / limpar usuários de acesso vinculados ({basicUsersCount} membro(s)
+                      com acesso)
+                    </strong>
+                    <span className="text-amber-800 block mt-0.5 leading-relaxed">
+                      Contas pendentes sem histórico serão removidas e contas já ativadas serão
+                      desativadas e desvinculadas com segurança.
+                    </span>
+                  </span>
+                </label>
+              )}
+              {adminUsersCount > 0 && (
+                <p className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 text-xs text-blue-950">
+                  {adminUsersCount} membro(s) selecionado(s) possui(em) conta administrativa
+                  (ADMIN/STAFF) e permanecerá(ão) com acesso ativo ao sistema.
+                </p>
+              )}
+            </div>
+          );
+        })()}
         confirmLabel={`Excluir (${selectedIds.length}) Membros`}
         loading={bulkDeleteLoading}
         onConfirm={handleBulkDeleteConfirm}

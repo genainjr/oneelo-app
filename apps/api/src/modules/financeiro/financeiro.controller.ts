@@ -6,9 +6,11 @@ import type { Multer } from 'multer';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { MAX_FINANCIAL_RECEIPT_SIZE } from '../../common/storage/image-upload';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
+import { ConfirmFinancialTransactionDto } from './dto/confirm-financial-transaction.dto';
 import { CreateFinancialAccountDto } from './dto/create-financial-account.dto';
 import { CreateFinancialCategoryDto } from './dto/create-financial-category.dto';
 import { CreateFinancialTransactionDto } from './dto/create-financial-transaction.dto';
+import { CreateFinancialTransactionsBatchDto } from './dto/create-financial-transactions-batch.dto';
 import { UpdateFinancialAccountDto } from './dto/update-financial-account.dto';
 import { UpdateFinancialCategoryDto } from './dto/update-financial-category.dto';
 import { UpdateFinancialTransactionDto } from './dto/update-financial-transaction.dto';
@@ -130,6 +132,10 @@ export class FinanceiroController {
     @Query('status') status?: any,
     @Query('accountId') accountId?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('eventoId') eventoId?: string,
+    @Query('memberId') memberId?: string,
+    @Query('recurringGroupId') recurringGroupId?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.transactionsService.findAll(user.tenantId!, user, {
       startDate,
@@ -138,6 +144,10 @@ export class FinanceiroController {
       status,
       accountId,
       categoryId,
+      eventoId,
+      memberId,
+      recurringGroupId,
+      limit: limit !== undefined ? Number(limit) : undefined,
     });
   }
 
@@ -153,6 +163,20 @@ export class FinanceiroController {
       endDate,
       accountId,
     });
+  }
+
+  @Post('transactions/batch')
+  async createTransactionsBatch(
+    @Body() dto: CreateFinancialTransactionsBatchDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.transactionsService.createBatch(
+      user.tenantId!,
+      user,
+      dto,
+      getClientIp(req),
+    );
   }
 
   @Post('transactions')
@@ -177,6 +201,22 @@ export class FinanceiroController {
     @Req() req: Request,
   ) {
     return this.transactionsService.update(
+      user.tenantId!,
+      user,
+      id,
+      dto,
+      getClientIp(req),
+    );
+  }
+
+  @Patch('transactions/:id/confirm')
+  async confirmTransaction(
+    @Param('id') id: string,
+    @Body() dto: ConfirmFinancialTransactionDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.transactionsService.confirm(
       user.tenantId!,
       user,
       id,
