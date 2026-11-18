@@ -10,6 +10,8 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
+| 18/11/2026 | [dizimos-ofertas-pix-comprovantes.md](dizimos-ofertas-pix-comprovantes.md) | **FT-021: Dízimos e Ofertas Digitais (PIX, Comprovantes e Conciliação)** | ⚪ **Pendente** (QR Code PIX para telão/site/app, upload de comprovante pelo membro e conciliação na tesouraria) |
+| 18/11/2026 | [notificacao-cancelamento-evento-ministerios.md](notificacao-cancelamento-evento-ministerios.md) | **IMP-010: Notificação de Cancelamento de Eventos por Ministério** | ⚪ **Pendente** (Disparo automático de alerta in-app/push aos voluntários do ministério quando evento é cancelado) |
 | 18/11/2026 | [painel-pessoal-administrador.md](painel-pessoal-administrador.md) | **FT-020: Painel Pessoal para Administradores e Gestores** | ⚪ **Pendente** (Acesso à visão pessoal de escalas, carteirinha e pendências para perfis ADMIN/STAFF) |
 | 13/11/2026 | [site-institucional-tenant.md](site-institucional-tenant.md) | **FT-019: Site Institucional Público do Tenant (Igreja Online)** | 🟡 **Implementado (Código)** (Portal `/[slug]`, CMS `/configuracoes/site`, `/[slug]/cadastro`, domínio próprio + Vercel Domains API; pendente validação E2E/staging) |
 | 11/11/2026 | [novo-membro-auto-cadastro.md](novo-membro-auto-cadastro.md) | **FT-018: Auto-Cadastro Público de Novos Membros (com Triagem)** | ✅ **Implementado** (Link/QR Code público `/join/[slug]`, triagem pastoral com visitante e expansão para `/[slug]/cadastro`) |
@@ -32,7 +34,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 |---|---|---|---|
 | 22/07/2026 | [central-documentos.md](central-documentos.md) | Central de documentos, Carteirinhas de Membros e Exportações | ✅ **Implementado** (Fila assíncrona, Supabase Storage, Carteirinha Digital estilo CNH, lote A4 duplex e QR Code) |
 | 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | Módulo financeiro, permissões e patrimônio | 🟡 **MVP Implementado** (Contas, categorias, lançamentos, relatórios, permissões); Patrimônio e conciliação despriorizados |
-| 18/07/2026 | [tenant-branded-experience.md](tenant-branded-experience.md) | Experiência personalizada da igreja por tenant | 🟡 **Parcial** (PWA dinâmico por tenant ativo; co-branding despriorizado) |
+| 18/07/2026 | [tenant-branded-experience.md](tenant-branded-experience.md) | **FT-012: Experiência personalizada da igreja por tenant** | ✅ **Concluído** (Entregue via PWA dinâmico, FT-018, FT-019 e Tema Unificado) |
 | 17/07/2026 | [phone-password-login.md](phone-password-login.md) | Login com telefone e senha | ✅ **Implementado** (E.164, login unificado por email/telefone, Meu Perfil) |
 | 17/07/2026 | [notification-center.md](notification-center.md) | Central e infraestrutura robusta de notificações | ✅ **Implementado** (Persistência, retentativas, inbox in-app, regras e preferências via PRs #212/#213) |
 | 15/07/2026 | [escala-evento-vinculo.md](escala-evento-vinculo.md) | Vínculo entre escalas e eventos | ✅ **Implementado** (`requerEscala`, modo EVENTOS em escalas, vínculo `EscalaDia -> Evento`) |
