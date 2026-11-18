@@ -57,7 +57,7 @@ export function SiteWhatsappFloat({
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`Iniciar conversa no WhatsApp com ${churchName}`}
-        className={`fixed bottom-5 right-5 z-30 inline-flex min-h-12 items-center gap-2.5 rounded-full border border-zinc-700/90 bg-zinc-950/92 py-1.5 pl-1.5 pr-4 text-xs font-bold text-white shadow-2xl shadow-black/50 backdrop-blur-md transition duration-200 hover:border-amber-400/60 hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+        className={`fixed bottom-5 right-5 z-30 inline-flex min-h-12 items-center gap-2.5 rounded-full border border-zinc-700/90 bg-zinc-950/92 py-1.5 pl-1.5 pr-4 text-xs font-bold text-white shadow-2xl shadow-black/50 backdrop-blur-md transition duration-200 hover:border-[var(--site-accent-border-strong)] hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)] ${
           visible
             ? 'pointer-events-auto translate-y-0 opacity-100'
             : 'pointer-events-none translate-y-3 opacity-0'

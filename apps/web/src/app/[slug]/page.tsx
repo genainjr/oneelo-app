@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getPublicSiteData } from '@/lib/api-website';
+import { buildTenantBrandThemeStyle } from '@/lib/brand-theme';
 import { isReservedSlug, normalizeSlug } from '@/lib/reserved-slugs';
 import { getCanonicalAppOrigin } from '@/lib/site-host';
 import { SiteHeader } from '@/components/public-site/site-header';
@@ -60,7 +61,10 @@ export default async function PublicTenantHomePage({
   );
 
   return (
-    <div className="public-site-root flex min-h-screen flex-col overflow-x-clip bg-zinc-950">
+    <div
+      style={buildTenantBrandThemeStyle(site.tenant)}
+      className="public-site-root flex min-h-screen flex-col overflow-x-clip bg-zinc-950"
+    >
       <SiteHeader
         tenant={site.tenant}
         hasSchedules={hasSchedules}

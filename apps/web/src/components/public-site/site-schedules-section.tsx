@@ -38,7 +38,7 @@ export function SiteSchedulesSection({
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mb-9 flex flex-col gap-3 sm:mb-11 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl space-y-2.5">
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-400">
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--site-accent-text)]">
               <CalendarClock className="h-4 w-4" aria-hidden="true" />
               <span>Programação Semanal</span>
             </div>
@@ -57,10 +57,10 @@ export function SiteSchedulesSection({
             return (
               <li
                 key={schedule.id}
-                className="flex items-start gap-4 p-4 transition hover:bg-zinc-900/90 md:flex-col md:justify-between md:gap-6 md:rounded-2xl md:border md:border-zinc-800 md:bg-zinc-900/75 md:p-6 md:hover:border-amber-400/50 md:hover:bg-zinc-900"
+                className="flex items-start gap-4 p-4 transition hover:bg-zinc-900/90 md:flex-col md:justify-between md:gap-6 md:rounded-2xl md:border md:border-zinc-800 md:bg-zinc-900/75 md:p-6 md:hover:border-[var(--site-accent-border-strong)] md:hover:bg-zinc-900"
               >
                 <div className="flex shrink-0 flex-col items-center justify-center rounded-xl border border-zinc-700/80 bg-zinc-950/90 px-3 py-2 text-center md:flex md:w-full md:flex-row md:items-center md:justify-between md:border-0 md:bg-transparent md:p-0 md:text-left">
-                  <span className="hidden text-xs font-bold uppercase tracking-[0.14em] text-amber-400 md:inline">
+                  <span className="hidden text-xs font-bold uppercase tracking-[0.14em] text-[var(--site-accent-text)] md:inline">
                     {formatWeekdayLabel(schedule.diaSemana)}
                   </span>
                   <span className="text-lg font-extrabold tabular-nums tracking-tight text-white md:hidden">
@@ -79,7 +79,7 @@ export function SiteSchedulesSection({
 
                 <div className="min-w-0 flex-1 space-y-1.5 md:w-full md:space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2 md:hidden">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-400">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--site-accent-text)]">
                       {formatWeekdayLabel(schedule.diaSemana)}
                     </span>
                     <span

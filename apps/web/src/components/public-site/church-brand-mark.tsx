@@ -128,7 +128,7 @@ export function ChurchBrandMark({
   return (
     <span
       className={cn(
-        'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--site-accent,#fbbf24)_50%,transparent)] bg-zinc-900 ring-2 ring-[color-mix(in_srgb,var(--site-accent,#fbbf24)_15%,transparent)]',
+        'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--site-accent-border,rgba(251,191,36,0.5))] bg-zinc-900 ring-2 ring-[var(--site-accent-tint,rgba(251,191,36,0.15))]',
         dimensions.box,
         className,
       )}
@@ -143,7 +143,7 @@ export function ChurchBrandMark({
         />
       ) : (
         <ChurchEmblemIcon
-          className={cn('text-[var(--site-accent,#fbbf24)]', dimensions.icon)}
+          className={cn('text-[var(--site-accent-text,#fcd34d)]', dimensions.icon)}
         />
       )}
     </span>

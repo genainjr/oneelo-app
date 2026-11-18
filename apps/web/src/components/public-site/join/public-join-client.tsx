@@ -17,6 +17,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import type { PublicTenantInfo } from './tenant-public';
+import { buildTenantBrandThemeStyle } from '@/lib/brand-theme';
 
 interface PublicJoinClientProps {
   slug: string;
@@ -25,7 +26,7 @@ interface PublicJoinClientProps {
 }
 
 const SITE_INPUT_CLASS =
-  'border-stone-200 bg-stone-50 text-zinc-950 focus:border-amber-500 focus:bg-white';
+  'border-stone-200 bg-stone-50 text-zinc-950 focus:border-[var(--theme-accent-ring)] focus:bg-white';
 
 export function PublicJoinClient({
   slug,
@@ -225,7 +226,11 @@ export function PublicJoinClient({
   }
 
   return (
-    <div className="public-site-root relative min-h-screen overflow-x-clip bg-zinc-950 px-4 py-8 text-zinc-100 sm:px-6 sm:py-12">
+    <div
+      data-brand-theme="church"
+      style={buildTenantBrandThemeStyle(tenant)}
+      className="public-site-root relative min-h-screen overflow-x-clip bg-zinc-950 px-4 py-8 text-zinc-100 sm:px-6 sm:py-12"
+    >
       {/* Textura e brilho sutil no mesmo padrão visual do portal */}
       <div
         aria-hidden="true"
@@ -233,22 +238,22 @@ export function PublicJoinClient({
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-amber-500/10 blur-3xl"
+        className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-[var(--site-accent-glow)] blur-3xl"
       />
 
       <div className="relative z-10 mx-auto w-full max-w-lg space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
           <Link
             href={siteHomeHref}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-amber-400/50 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-[var(--site-accent-border-strong)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
           >
-            <ArrowLeft className="h-3.5 w-3.5 text-[var(--site-accent)]" aria-hidden="true" />
+            <ArrowLeft className="h-3.5 w-3.5 text-[var(--site-accent-text)]" aria-hidden="true" />
             <span>Voltar para o site</span>
           </Link>
 
           <Link
             href={memberLoginHref}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-amber-400/50 hover:text-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-[var(--site-accent-border-strong)] hover:text-[var(--site-accent-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
           >
             <span>Área de Membros</span>
           </Link>
@@ -264,7 +269,7 @@ export function PublicJoinClient({
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--site-accent)]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--site-accent-text)]">
               Conexão & Boas-vindas
             </p>
             <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-[1.75rem] [text-wrap:balance]">
@@ -331,7 +336,7 @@ export function PublicJoinClient({
                     : 'text-stone-600 hover:text-zinc-950'
                 }`}
               >
-                <Heart className={`h-4 w-4 ${tab === 'VISITANTE' ? 'fill-amber-400 text-amber-400' : 'text-stone-400'}`} />
+                <Heart className={`h-4 w-4 ${tab === 'VISITANTE' ? 'fill-current text-[var(--site-accent-text)]' : 'text-stone-400'}`} />
                 Sou Visitante
               </button>
               <button
@@ -343,7 +348,7 @@ export function PublicJoinClient({
                     : 'text-stone-600 hover:text-zinc-950'
                 }`}
               >
-                <UserPlus className={`h-4 w-4 ${tab === 'MEMBRO' ? 'text-amber-400' : 'text-stone-400'}`} />
+                <UserPlus className={`h-4 w-4 ${tab === 'MEMBRO' ? 'text-[var(--site-accent-text)]' : 'text-stone-400'}`} />
                 Quero ser Membro
               </button>
             </div>
@@ -397,7 +402,7 @@ export function PublicJoinClient({
                 {/* Opção para criança ou dependente sem celular próprio */}
                 <label
                   htmlFor="join-dependente"
-                  className="flex cursor-pointer items-start gap-2.5 rounded-2xl border border-stone-200/90 bg-[#faf9f6] p-3 text-xs text-stone-700 transition-colors hover:border-amber-300"
+                  className="flex cursor-pointer items-start gap-2.5 rounded-2xl border border-stone-200/90 bg-[#faf9f6] p-3 text-xs text-stone-700 transition-colors hover:border-[var(--theme-accent-soft-border)]"
                 >
                   <input
                     id="join-dependente"
@@ -410,7 +415,7 @@ export function PublicJoinClient({
                         setResponsavelNome('');
                       }
                     }}
-                    className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-amber-500 focus:ring-amber-500"
+                    className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-[var(--theme-accent-ink)] focus:ring-[var(--theme-accent-ring)]"
                   />
                   <span>
                     <span className="block font-semibold text-zinc-900">
@@ -602,7 +607,7 @@ export function PublicJoinClient({
                       type="checkbox"
                       checked={consentimentoLgpd}
                       onChange={(e) => setConsentimentoLgpd(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-amber-500 focus:ring-amber-500"
+                      className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-[var(--theme-accent-ink)] focus:ring-[var(--theme-accent-ring)]"
                     />
                     <span className="text-xs leading-snug text-stone-600 transition-colors group-hover:text-zinc-950">
                       Concordo com o armazenamento dos meus dados para acolhimento e comunicação da igreja nos termos da LGPD.
@@ -614,7 +619,7 @@ export function PublicJoinClient({
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--site-accent)] px-5 py-3 text-base font-bold text-[var(--site-accent-foreground)] shadow-lg shadow-amber-500/15 transition-all hover:bg-[var(--site-accent-hover)] active:scale-[0.99] disabled:opacity-50"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--site-accent)] px-5 py-3 text-base font-bold text-[var(--site-accent-foreground)] shadow-[0_10px_25px_-5px_var(--theme-brand-shadow)] transition-all hover:bg-[var(--site-accent-hover)] active:scale-[0.99] disabled:opacity-50"
                 >
                   {submitting ? (
                     <>

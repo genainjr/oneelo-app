@@ -33,6 +33,8 @@ export interface Tenant {
   pwaIconUrl?: string | null;
   pwaIconKey?: string | null;
   pwaUpdatedAt?: string | null;
+  themePalette?: string | null;
+  primaryColor?: string | null;
   createdAt: string;
   _count?: { users: number };
 }
@@ -72,6 +74,8 @@ export interface AuthUser {
     pwaIconUrl?: string | null;
     pwaIconKey?: string | null;
     pwaUpdatedAt?: string | null;
+    themePalette?: string | null;
+    primaryColor?: string | null;
   };
   membro?: {
     id: string;

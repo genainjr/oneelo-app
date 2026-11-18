@@ -94,7 +94,7 @@ export function SiteHero({
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-amber-500/12 blur-3xl"
+        className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-[var(--site-accent-glow)] blur-3xl"
       />
 
       {/* Banner full-bleed expandido: no mobile em 16:9 no topo; no desktop 100% expandido em largura com degradê esquerdo para leitura */}
@@ -120,8 +120,8 @@ export function SiteHero({
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-3 sm:px-6 sm:pb-10 sm:pt-10 lg:px-8 lg:pb-12 lg:pt-12">
         <div className="max-w-lg space-y-3.5 sm:space-y-4 lg:max-w-[460px]">
-          <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />
+          <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--site-accent-text)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--site-accent-text)]" aria-hidden="true" />
             <span>Portal Oficial</span>
           </p>
 
@@ -135,7 +135,7 @@ export function SiteHero({
 
           {topSchedules.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-medium text-zinc-300 sm:text-sm">
-              <span className="font-bold uppercase tracking-[0.14em] text-amber-400">
+              <span className="font-bold uppercase tracking-[0.14em] text-[var(--site-accent-text)]">
                 Cultos
               </span>
               <span aria-hidden="true" className="text-zinc-600">
@@ -162,7 +162,7 @@ export function SiteHero({
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <Link
               href={cadastroHref}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-zinc-950 shadow-lg shadow-amber-500/15 transition hover:bg-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--site-accent)] px-6 py-2.5 text-sm font-bold text-[var(--site-accent-foreground)] shadow-[0_10px_25px_-5px_var(--theme-brand-shadow)] transition hover:bg-[var(--site-accent-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
               <span>Sou Novo Aqui</span>
@@ -172,21 +172,21 @@ export function SiteHero({
             {hasSchedules && (
               <a
                 href={`${anchorBase}#cultos`}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/8 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:border-white/35 hover:bg-white/14 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/8 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:border-white/35 hover:bg-white/14 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
               >
-                <CalendarClock className="h-4 w-4 text-amber-400" aria-hidden="true" />
+                <CalendarClock className="h-4 w-4 text-[var(--site-accent-text)]" aria-hidden="true" />
                 <span>Ver Horários</span>
               </a>
             )}
           </div>
 
           {config?.versiculoTema && (
-            <blockquote className="mt-2 border-l-2 border-amber-400/80 pl-4 pt-0.5">
+            <blockquote className="mt-2 border-l-2 border-[var(--site-accent-border-strong)] pl-4 pt-0.5">
               <p className="max-w-[44ch] text-sm italic leading-relaxed text-zinc-200 [text-wrap:pretty]">
                 “{config.versiculoTema}”
               </p>
               {config.versiculoReferencia && (
-                <footer className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-400">
+                <footer className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--site-accent-text)]">
                   {config.versiculoReferencia}
                 </footer>
               )}
@@ -204,7 +204,7 @@ export function SiteHero({
               {highlights.map((item) => {
                 const Icon = item.icon;
                 const circleClasses =
-                  'border-amber-400/55 bg-zinc-900/95 text-amber-400 ring-2 ring-amber-400/10 group-hover:border-amber-300 group-hover:bg-amber-400 group-hover:text-zinc-950';
+                  'border-[var(--site-accent-border-strong)] bg-zinc-900/95 text-[var(--site-accent-text)] ring-2 ring-[var(--site-accent-tint)] group-hover:border-[var(--site-accent)] group-hover:bg-[var(--site-accent)] group-hover:text-[var(--site-accent-foreground)]';
 
                 const inner = (
                   <>
@@ -224,14 +224,14 @@ export function SiteHero({
                     {item.href.startsWith('/') ? (
                       <Link
                         href={item.href}
-                        className="group flex min-w-[64px] flex-col items-center gap-2 rounded-xl px-1 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+                        className="group flex min-w-[64px] flex-col items-center gap-2 rounded-xl px-1 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
                       >
                         {inner}
                       </Link>
                     ) : (
                       <a
                         href={item.href}
-                        className="group flex min-w-[64px] flex-col items-center gap-2 rounded-xl px-1 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+                        className="group flex min-w-[64px] flex-col items-center gap-2 rounded-xl px-1 py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
                       >
                         {inner}
                       </a>

@@ -28,6 +28,8 @@ const tenantLogoSelect = {
   pwaIconUrl: true,
   pwaIconKey: true,
   pwaUpdatedAt: true,
+  themePalette: true,
+  primaryColor: true,
   createdAt: true,
 };
 

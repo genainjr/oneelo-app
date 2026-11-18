@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getPublicTenantInfoServer } from '@/components/public-site/join/tenant-public';
 import { isReservedSlug, normalizeSlug } from '@/lib/reserved-slugs';
+import { resolveTenantBrandTheme } from '@/lib/brand-theme';
 
 const IMAGE_SIZE = {
   width: 512,
@@ -100,6 +101,7 @@ export async function GET(
   }
 
   const initials = getChurchInitials(tenant?.nome);
+  const resolvedTheme = resolveTenantBrandTheme(tenant);
 
   return new ImageResponse(
     (
@@ -124,9 +126,9 @@ export async function GET(
             width: '180px',
             height: '180px',
             borderRadius: '44px',
-            backgroundColor: 'rgba(251, 191, 36, 0.14)',
-            border: '3px solid rgba(251, 191, 36, 0.45)',
-            color: '#fbbf24',
+            backgroundColor: resolvedTheme.siteAccentTint,
+            border: `3px solid ${resolvedTheme.siteAccentBorder}`,
+            color: resolvedTheme.siteAccentTextColor,
             fontSize: '72px',
             fontWeight: 700,
             letterSpacing: '-2px',

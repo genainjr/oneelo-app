@@ -9,6 +9,7 @@ describe('AuthController tenant PWA routes', () => {
     updateTenantPwaSettings: jest.fn(),
     updateTenantPwaIcon: jest.fn(),
     removeTenantPwaIcon: jest.fn(),
+    updateTenantTheme: jest.fn(),
   };
   const controller = new AuthController(authService as never, {} as never);
   const user: JwtPayload = {
@@ -25,8 +26,29 @@ describe('AuthController tenant PWA routes', () => {
     'updateTenantPwaSettings',
     'updateTenantPwaIcon',
     'removeTenantPwaIcon',
+    'updateTenantTheme',
   ] as const)('exige role ADMIN em %s', (method) => {
     expect(Reflect.getMetadata(ROLES_KEY, controller[method])).toEqual([Role.ADMIN]);
+  });
+
+  it('usa o tenant da sessao ao salvar tema personalizado', async () => {
+    authService.updateTenantTheme.mockResolvedValue({
+      themePalette: 'royal-blue',
+      primaryColor: '#1d4ed8',
+    });
+
+    await controller.updateTenantTheme(
+      user,
+      { themePalette: 'royal-blue', primaryColor: '#1d4ed8' },
+      request,
+    );
+
+    expect(authService.updateTenantTheme).toHaveBeenCalledWith(
+      'tenant-a',
+      { themePalette: 'royal-blue', primaryColor: '#1d4ed8' },
+      'admin-a',
+      '127.0.0.1',
+    );
   });
 
   it('usa o tenant da sessao ao salvar o nome curto', async () => {

@@ -58,7 +58,14 @@ describe('AuthService user access invariants', () => {
     expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       select: expect.objectContaining({
         tenant: {
-          select: { nome: true, slug: true, logoUrl: true, pwaIconUrl: true },
+          select: {
+            nome: true,
+            slug: true,
+            logoUrl: true,
+            pwaIconUrl: true,
+            themePalette: true,
+            primaryColor: true,
+          },
         },
       }),
     }));
@@ -681,5 +688,123 @@ describe('AuthService reactivateDisabledUserInTx', () => {
       }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(tx.user.update).not.toHaveBeenCalled();
+  });
+
+  it('salva paleta curada forcando a cor oficial e registrando AuditLog como Tenant', async () => {
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tenant-a',
+          themePalette: null,
+          primaryColor: null,
+        }),
+        update: jest.fn().mockResolvedValue({
+          nome: 'Igreja A',
+          slug: 'igreja-a',
+          themePalette: 'royal-blue',
+          primaryColor: '#1d4ed8',
+        }),
+      },
+      auditLog: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const service = createService(prisma);
+
+    const result = await service.updateTenantTheme(
+      'tenant-a',
+      { themePalette: 'royal-blue', primaryColor: '#ff00ff' },
+      'admin-a',
+      '10.0.0.1',
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        themePalette: 'royal-blue',
+        primaryColor: '#1d4ed8',
+      }),
+    );
+    expect(prisma.tenant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'tenant-a' },
+        data: { themePalette: 'royal-blue', primaryColor: '#1d4ed8' },
+      }),
+    );
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId: 'tenant-a',
+          userId: 'admin-a',
+          entidade: 'Tenant',
+          entidadeId: 'tenant-a',
+          payloadBefore: { themePalette: null, primaryColor: null },
+          payloadAfter: { themePalette: 'royal-blue', primaryColor: '#1d4ed8' },
+        }),
+      }),
+    );
+  });
+
+  it('normaliza HEX customizado para lowercase e restaura amber-gold para null no banco', async () => {
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tenant-a',
+          themePalette: 'royal-blue',
+          primaryColor: '#1d4ed8',
+        }),
+        update: jest.fn().mockResolvedValue({
+          nome: 'Igreja A',
+          slug: 'igreja-a',
+          themePalette: 'custom',
+          primaryColor: '#0f766e',
+        }),
+      },
+      auditLog: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const service = createService(prisma);
+
+    await service.updateTenantTheme(
+      'tenant-a',
+      { themePalette: 'custom', primaryColor: '#0F766E' },
+      'admin-a',
+    );
+    expect(prisma.tenant.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: { themePalette: 'custom', primaryColor: '#0f766e' },
+      }),
+    );
+
+    await service.updateTenantTheme(
+      'tenant-a',
+      { themePalette: 'amber-gold', primaryColor: '#fbbf24' },
+      'admin-a',
+    );
+    expect(prisma.tenant.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: { themePalette: null, primaryColor: null },
+      }),
+    );
+  });
+
+  it('rejeita HEX invalido no modo custom', async () => {
+    const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tenant-a',
+          themePalette: null,
+          primaryColor: null,
+        }),
+        update: jest.fn(),
+      },
+      auditLog: { create: jest.fn() },
+    };
+    const service = createService(prisma);
+
+    await expect(
+      service.updateTenantTheme(
+        'tenant-a',
+        { themePalette: 'custom', primaryColor: 'azul' },
+        'admin-a',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
   });
 });

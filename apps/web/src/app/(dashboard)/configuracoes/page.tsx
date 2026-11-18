@@ -14,7 +14,9 @@ import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { UsuarioModal } from "@/components/app/usuario-modal";
 import { ImageUploadPanel } from "@/components/app/image-upload-panel";
 import { TenantPwaSettings } from "@/components/app/tenant-pwa-settings";
+import { TenantThemeSettings } from "@/components/app/tenant-theme-settings";
 import { JoinLinkCard } from "@/components/app/join-link-card";
+import { saveCachedTenantPwa } from "@/lib/pwa-branding";
 import { formatActivationExpiration, buildActivationWelcomeMessage } from "@/lib/activation-message";
 import { LiturgiaEscalasSettings } from "@/components/app/liturgia-escalas-settings";
 import { useAuthUser } from "@/contexts/auth-user-context";
@@ -335,7 +337,12 @@ export default function ConfiguracoesPage() {
   }
 
   function updateTenantLogoState(tenant: TenantLogoPayload) {
-    setShellUser((current) => current ? { ...current, tenant: { ...current.tenant!, ...tenant } } : current);
+    setShellUser((current) => {
+      if (!current) return current;
+      const nextTenant = { ...current.tenant!, ...tenant };
+      saveCachedTenantPwa(nextTenant);
+      return { ...current, tenant: nextTenant };
+    });
     router.refresh();
   }
 
@@ -893,6 +900,13 @@ export default function ConfiguracoesPage() {
       </section>
 
       <TenantPwaSettings tenant={currentUser.tenant!} onUpdated={updateTenantLogoState} />
+
+      {currentUser.tenant && (
+        <TenantThemeSettings
+          tenant={currentUser.tenant}
+          onUpdated={updateTenantLogoState}
+        />
+      )}
 
       <JoinLinkCard slug={currentUser?.tenant?.slug} tenantName={currentUser?.tenant?.nome} />
 

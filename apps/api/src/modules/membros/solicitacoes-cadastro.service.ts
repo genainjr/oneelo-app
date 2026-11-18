@@ -117,6 +117,8 @@ export class SolicitacoesCadastroService {
         slug: true,
         logoUrl: true,
         pwaIconUrl: true,
+        themePalette: true,
+        primaryColor: true,
         ativo: true,
         websiteConfig: {
           select: {
@@ -138,6 +140,8 @@ export class SolicitacoesCadastroService {
       slug: tenant.slug,
       logoUrl: tenant.logoUrl || tenant.pwaIconUrl || null,
       pwaIconUrl: tenant.pwaIconUrl || null,
+      themePalette: tenant.themePalette ?? null,
+      primaryColor: tenant.primaryColor ?? null,
       customDomain:
         tenant.websiteConfig?.dnsStatus === DnsStatus.ACTIVE
           ? tenant.websiteConfig.customDomain

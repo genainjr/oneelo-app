@@ -70,6 +70,8 @@ describe('WebsiteService', () => {
     plano: Plano.PROFISSIONAL,
     logoUrl: 'https://cdn.example.com/logo.png',
     pwaIconUrl: 'https://cdn.example.com/pwa.png',
+    themePalette: 'royal-blue',
+    primaryColor: '#1d4ed8',
     email: 'contato@igrejaesperanca.org',
     telefone: '11999998888',
     ativo: true,
@@ -161,6 +163,8 @@ describe('WebsiteService', () => {
         slug: 'igreja-esperanca',
         logoUrl: 'https://cdn.example.com/logo.png',
         pwaIconUrl: 'https://cdn.example.com/pwa.png',
+        themePalette: 'royal-blue',
+        primaryColor: '#1d4ed8',
         email: 'contato@igrejaesperanca.org',
         telefone: '11999998888',
       });
@@ -217,6 +221,12 @@ describe('WebsiteService', () => {
         where: { tenantId: 'tenant-1', slug: 'vigilia', ativo: true },
       });
       expect(result.news.slug).toBe('vigilia');
+      expect(result.tenant).toEqual(
+        expect.objectContaining({
+          themePalette: 'royal-blue',
+          primaryColor: '#1d4ed8',
+        }),
+      );
     });
 
     it('lança NotFoundException quando informativo não existe', async () => {
