@@ -661,6 +661,10 @@
     "statusModal": {
       "description": "Choose the new status for \"{title}\"."
     },
+    "cancelNotification": {
+      "label": "Notify members and volunteers about cancellation",
+      "hint": "Sends an in-app and Push alert to linked ministries and scheduled volunteers. Uncheck if removing an event created by mistake."
+    },
     "status": {
       "AGENDADO": "Scheduled",
       "REALIZADO": "Completed",

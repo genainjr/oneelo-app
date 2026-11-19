@@ -56,6 +56,13 @@ describe('EventosService', () => {
         create: createEvento,
         findFirst: jest.fn().mockResolvedValue(null),
         findMany: jest.fn().mockResolvedValue([]),
+        delete: jest.fn().mockResolvedValue({ id: 'evento-1' }),
+      },
+      escalaDia: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      user: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
       notification: {
         findUnique: jest.fn().mockResolvedValue(null),
@@ -645,6 +652,398 @@ describe('EventosService', () => {
           memberId: 'membro-qualquer',
         }),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('Notificação automática de cancelamento e exclusão de eventos (IMP-011)', () => {
+    it('notifica voluntários escalados (ignorePreferences=true) e demais membros do ministério sem duplicidade e excluindo o autor no update para CANCELADO', async () => {
+      const { service, notificationDispatch, prisma, transactionClient } = createService();
+      const eventId = 'ev-canc-min-1';
+      const futureStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      prisma.evento.findFirst.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        titulo: 'Ensaio Louvor',
+        tipo: EventoTipo.MINISTERIO,
+        dataInicio: futureStart,
+        local: 'Templo',
+        status: 'AGENDADO',
+        ministerios: [{ ministerioId }],
+      });
+      transactionClient.evento.findFirst.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        titulo: 'Ensaio Louvor',
+        tipo: EventoTipo.MINISTERIO,
+        dataInicio: futureStart,
+        local: 'Templo',
+        status: 'CANCELADO',
+        ministerios: [{ ministerioId }],
+      });
+      prisma.escalaDia.findMany.mockResolvedValue([
+        {
+          itens: [
+            { membro: { user: { id: 'user-escalado-1' } } },
+            { membro: { user: { id: user.sub } } }, // autor escalado não deve receber
+          ],
+        },
+      ]);
+      prisma.ministerioMembro.findMany.mockResolvedValue([
+        { membro: { user: { id: 'user-escalado-1' } } }, // já está escalado -> não duplicar
+        { membro: { user: { id: 'user-membro-2' } } },
+        { membro: { user: { id: user.sub } } }, // autor -> não receber
+      ]);
+
+      await service.update(
+        tenantId,
+        eventId,
+        { status: 'CANCELADO' as any },
+        user,
+      );
+
+      expect(prisma.escalaDia.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            eventoId: eventId,
+            escala: { tenantId, status: 'PUBLICADA' },
+          },
+          select: expect.objectContaining({
+            itens: expect.objectContaining({
+              where: expect.objectContaining({
+                statusConfirmacao: { not: 'RECUSADO' },
+              }),
+            }),
+          }),
+        }),
+      );
+      expect(notificationDispatch.createNotification).toHaveBeenCalledTimes(2);
+      expect(notificationDispatch.createNotification).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          tenantId,
+          titulo: 'Evento cancelado (sua escala): Ensaio Louvor',
+          urlDestino: '/minhas-escalas',
+          tipoPublico: 'SPECIFIC_USERS',
+          ministerioId: null,
+          userIds: ['user-escalado-1'],
+          ignorePreferences: true,
+          criadoPorId: user.sub,
+        }),
+      );
+      expect(notificationDispatch.createNotification).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          tenantId,
+          titulo: 'Evento cancelado: Ensaio Louvor',
+          urlDestino: '/agenda/visualizacao',
+          tipoPublico: 'MINISTRY',
+          ministerioId,
+          userIds: ['user-membro-2'],
+          criadoPorId: user.sub,
+        }),
+      );
+    });
+
+    it('não notifica no update quando notificarMembros=false, evento já estava CANCELADO ou já encerrou', async () => {
+      const { service, notificationDispatch, prisma, transactionClient } = createService();
+      const futureStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const pastStart = new Date(Date.now() - 2 * 60 * 60 * 1000);
+
+      // Caso 1: notificarMembros = false
+      prisma.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-optout',
+        tenantId,
+        titulo: 'Evento Teste',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureStart,
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+      transactionClient.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-optout',
+        tenantId,
+        titulo: 'Evento Teste',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureStart,
+        status: 'CANCELADO',
+        ministerios: [],
+      });
+      await service.update(
+        tenantId,
+        'ev-optout',
+        { status: 'CANCELADO' as any, notificarMembros: false },
+        user,
+      );
+
+      // Caso 2: já estava CANCELADO
+      prisma.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-ja-canc',
+        tenantId,
+        titulo: 'Evento Já Cancelado',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureStart,
+        status: 'CANCELADO',
+        ministerios: [],
+      });
+      transactionClient.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-ja-canc',
+        tenantId,
+        titulo: 'Evento Já Cancelado',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureStart,
+        status: 'CANCELADO',
+        ministerios: [],
+      });
+      await service.update(
+        tenantId,
+        'ev-ja-canc',
+        { status: 'CANCELADO' as any },
+        user,
+      );
+
+      // Caso 3: evento já encerrado
+      prisma.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-passado',
+        tenantId,
+        titulo: 'Culto Manhã',
+        tipo: EventoTipo.GERAL,
+        dataInicio: pastStart,
+        dataFim: new Date(Date.now() - 60 * 60 * 1000),
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+      transactionClient.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-passado',
+        tenantId,
+        titulo: 'Culto Manhã',
+        tipo: EventoTipo.GERAL,
+        dataInicio: pastStart,
+        dataFim: new Date(Date.now() - 60 * 60 * 1000),
+        status: 'CANCELADO',
+        ministerios: [],
+      });
+      await service.update(
+        tenantId,
+        'ev-passado',
+        { status: 'CANCELADO' as any },
+        user,
+      );
+
+      expect(notificationDispatch.createNotification).not.toHaveBeenCalled();
+    });
+
+    it('preserva ministérios anteriores de eventoAtual em edição simultânea com status CANCELADO e usa SPECIFIC_USERS em multi-ministério', async () => {
+      const { service, notificationDispatch, prisma, transactionClient } = createService();
+      const minA = ministerioId;
+      const minB = '22222222-2222-4222-8222-222222222299';
+      const futureStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      prisma.ministerio.findMany.mockResolvedValue([{ id: minB, usaEscalas: true }]);
+      prisma.evento.findFirst.mockResolvedValue({
+        id: 'ev-multi',
+        tenantId,
+        titulo: 'Vigília',
+        tipo: EventoTipo.MINISTERIO,
+        dataInicio: futureStart,
+        status: 'AGENDADO',
+        ministerios: [{ ministerioId: minA }],
+      });
+      transactionClient.evento.findFirst.mockResolvedValue({
+        id: 'ev-multi',
+        tenantId,
+        titulo: 'Vigília',
+        tipo: EventoTipo.MINISTERIO,
+        dataInicio: futureStart,
+        status: 'CANCELADO',
+        ministerios: [{ ministerioId: minB }],
+      });
+      prisma.ministerioMembro.findMany.mockResolvedValue([
+        { membro: { user: { id: 'u-min-a' } } },
+        { membro: { user: { id: 'u-min-b' } } },
+      ]);
+
+      await service.update(
+        tenantId,
+        'ev-multi',
+        { status: 'CANCELADO' as any, ministerioIds: [minB] },
+        user,
+      );
+
+      expect(prisma.ministerioMembro.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            ministerioId: { in: expect.arrayContaining([minA, minB]) },
+          }),
+        }),
+      );
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipoPublico: 'SPECIFIC_USERS',
+          ministerioId: null,
+          userIds: ['u-min-a', 'u-min-b'],
+        }),
+      );
+    });
+
+    it('no remove coleta destinatários ANTES do delete para evento AGENDADO futuro e dispara notificação após excluir', async () => {
+      const { service, notificationDispatch, prisma } = createService();
+      const eventId = 'ev-del-1';
+      const futureStart = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const callOrder: string[] = [];
+
+      prisma.evento.findFirst.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        titulo: 'Culto Especial',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureStart,
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+      prisma.escalaDia.findMany.mockImplementation(async () => {
+        callOrder.push('resolve-escala');
+        return [];
+      });
+      prisma.user.findMany.mockImplementation(async () => {
+        callOrder.push('resolve-users');
+        return [{ id: 'u-igreja-1' }, { id: user.sub }];
+      });
+      prisma.evento.delete.mockImplementation(async () => {
+        callOrder.push('delete-evento');
+        return { id: eventId };
+      });
+      notificationDispatch.createNotification.mockImplementation(async () => {
+        callOrder.push('notify');
+        return { id: 'notif-del-1' };
+      });
+
+      await service.remove(tenantId, eventId, user, true);
+
+      expect(callOrder).toEqual([
+        'resolve-escala',
+        'resolve-users',
+        'delete-evento',
+        'notify',
+      ]);
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipoPublico: 'ALL_MEMBERS',
+          ministerioId: null,
+          urlDestino: '/agenda/visualizacao',
+          userIds: ['u-igreja-1'],
+        }),
+      );
+    });
+
+    it('no remove respeita notificarMembros=false e não notifica evento já CANCELADO ou passado', async () => {
+      const { service, notificationDispatch, prisma } = createService();
+      const futureStart = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+      prisma.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-del-optout',
+        tenantId,
+        titulo: 'Teste Errado',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureStart,
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+      await service.remove(tenantId, 'ev-del-optout', user, false);
+
+      prisma.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-del-ja-canc',
+        tenantId,
+        titulo: 'Já Cancelado',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureStart,
+        status: 'CANCELADO',
+        ministerios: [],
+      });
+      await service.remove(tenantId, 'ev-del-ja-canc', user, true);
+
+      expect(notificationDispatch.createNotification).not.toHaveBeenCalled();
+    });
+
+    it('notifica ADMIN e STAFF ativos em REUNIAO_INTERNA sem ministérios vinculados e ignora disparo se lista resultar vazia', async () => {
+      const { service, notificationDispatch, prisma } = createService();
+      const futureStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      prisma.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-reuniao-diretoria',
+        tenantId,
+        titulo: 'Reunião Diretoria',
+        tipo: EventoTipo.REUNIAO_INTERNA,
+        dataInicio: futureStart,
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+      prisma.user.findMany.mockResolvedValueOnce([
+        { id: 'staff-1' },
+        { id: user.sub },
+      ]);
+
+      await service.remove(tenantId, 'ev-reuniao-diretoria', user, true);
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: {
+          tenantId,
+          ativo: true,
+          status: 'ACTIVE',
+          role: { in: [Role.ADMIN, Role.STAFF] },
+        },
+        select: { id: true },
+      });
+      expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipoPublico: 'SPECIFIC_USERS',
+          ministerioId: null,
+          userIds: ['staff-1'],
+        }),
+      );
+
+      // Quando só o autor faz parte -> não dispara createNotification (evita fallback ALL_MEMBERS)
+      notificationDispatch.createNotification.mockClear();
+      prisma.evento.findFirst.mockResolvedValueOnce({
+        id: 'ev-so-autor',
+        tenantId,
+        titulo: 'Reunião Só Autor',
+        tipo: EventoTipo.REUNIAO_INTERNA,
+        dataInicio: futureStart,
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+      prisma.user.findMany.mockResolvedValueOnce([{ id: user.sub }]);
+
+      await service.remove(tenantId, 'ev-so-autor', user, true);
+
+      expect(notificationDispatch.createNotification).not.toHaveBeenCalled();
+    });
+
+    it('não reverte nem bloqueia o cancelamento se createNotification lançar erro', async () => {
+      const { service, notificationDispatch, prisma } = createService();
+      const futureStart = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      prisma.evento.findFirst.mockResolvedValue({
+        id: 'ev-erro-notif',
+        tenantId,
+        titulo: 'Culto Erro Push',
+        tipo: EventoTipo.GERAL,
+        dataInicio: futureStart,
+        status: 'AGENDADO',
+        ministerios: [],
+      });
+      prisma.user.findMany.mockResolvedValue([{ id: 'u-1' }]);
+      notificationDispatch.createNotification.mockRejectedValue(
+        new Error('Falha transitória de push'),
+      );
+
+      await expect(
+        service.remove(tenantId, 'ev-erro-notif', user, true),
+      ).resolves.toEqual({ message: 'Evento removido com sucesso.' });
+      expect(prisma.evento.delete).toHaveBeenCalledWith({
+        where: { id: 'ev-erro-notif' },
+      });
     });
   });
 });

@@ -661,6 +661,10 @@
     "statusModal": {
       "description": "Escolha o novo estado para o evento \"{title}\"."
     },
+    "cancelNotification": {
+      "label": "Notificar membros e voluntários sobre o cancelamento",
+      "hint": "Envia alerta na app e Push para ministérios associados e voluntários escalados. Desmarque se estiver a remover um evento criado por engano."
+    },
     "status": {
       "AGENDADO": "Agendado",
       "REALIZADO": "Realizado",

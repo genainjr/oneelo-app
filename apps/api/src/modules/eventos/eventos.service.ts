@@ -17,6 +17,8 @@ import {
   NotificationOrigin,
   Prisma,
   Role,
+  StatusConfirmacao,
+  StatusEscala,
   StatusEvento,
   StatusMembro,
   UserStatus,
@@ -809,6 +811,45 @@ export class EventosService {
     if (updatedEvento) {
       if (updatedEvento.status === StatusEvento.CANCELADO) {
         await this.cancelEventReminder(tenantId, id);
+
+        const transitionedToCanceled =
+          eventoAtual.status !== StatusEvento.CANCELADO;
+        if (
+          transitionedToCanceled &&
+          dto.notificarMembros !== false &&
+          this.isUpcomingOrOngoingEvent(updatedEvento) &&
+          this.notificationDispatch
+        ) {
+          try {
+            const effectiveTipo =
+              eventoAtual.tipo === EventoTipo.GERAL ||
+              updatedEvento.tipo === EventoTipo.GERAL
+                ? EventoTipo.GERAL
+                : updatedEvento.tipo;
+            const recipients = await this.resolveEventCancellationRecipients(
+              tenantId,
+              {
+                id: updatedEvento.id,
+                tipo: effectiveTipo,
+                ministerios: updatedEvento.ministerios,
+              },
+              user.sub,
+              (eventoAtual.ministerios ?? []).map((m) => m.ministerioId),
+            );
+            await this.notifyEventCancellation(
+              tenantId,
+              { ...updatedEvento, tipo: effectiveTipo },
+              recipients,
+              user.sub,
+            );
+          } catch (error) {
+            this.logger.error(
+              `Falha ao notificar cancelamento do evento ${id}: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          }
+        }
       } else if (dto.dataInicio !== undefined || dto.status === StatusEvento.AGENDADO) {
         await this.rescheduleEventReminder(updatedEvento);
       }
@@ -817,16 +858,54 @@ export class EventosService {
     return updatedEvento;
   }
 
-  async remove(tenantId: string, id: string, user: JwtPayload) {
+  async remove(
+    tenantId: string,
+    id: string,
+    user: JwtPayload,
+    notificarMembros = true,
+  ) {
     if (!(await this.canManageEvent(tenantId, id, user))) {
       throw new ForbiddenException('Acesso negado para manipular este evento.');
     }
 
-    await this.getEventoPorId(tenantId, id, user);
+    const evento = await this.getEventoPorId(tenantId, id, user);
+
+    const shouldNotify =
+      notificarMembros &&
+      evento.status === StatusEvento.AGENDADO &&
+      this.isUpcomingOrOngoingEvent(evento);
+
+    let cancellationRecipients: Awaited<
+      ReturnType<EventosService['resolveEventCancellationRecipients']>
+    > | null = null;
+    if (shouldNotify && this.notificationDispatch) {
+      try {
+        cancellationRecipients = await this.resolveEventCancellationRecipients(
+          tenantId,
+          evento,
+          user.sub,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Falha ao resolver destinatários para exclusão do evento ${id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
 
     await this.cancelEventReminder(tenantId, id);
 
     await this.prisma.evento.delete({ where: { id } });
+
+    if (cancellationRecipients) {
+      await this.notifyEventCancellation(
+        tenantId,
+        evento,
+        cancellationRecipients,
+        user.sub,
+      );
+    }
 
     return { message: 'Evento removido com sucesso.' };
   }
@@ -1253,6 +1332,254 @@ export class EventosService {
       );
     } else {
       await this.scheduleEventReminder(evento);
+    }
+  }
+
+  private isUpcomingOrOngoingEvent(evento: {
+    dataInicio: Date;
+    dataFim?: Date | null;
+  }): boolean {
+    const endOrStart = new Date(evento.dataFim ?? evento.dataInicio);
+    return endOrStart.getTime() > Date.now();
+  }
+
+  private async resolveEventCancellationRecipients(
+    tenantId: string,
+    evento: {
+      id: string;
+      tipo: EventoTipo;
+      ministerios?: Array<{ ministerioId: string }>;
+    },
+    actorUserId: string,
+    extraMinistryIds: string[] = [],
+  ): Promise<{
+    scheduledUserIds: string[];
+    generalUserIds: string[];
+    uniqueMinistryIds: string[];
+  }> {
+    const uniqueMinistryIds = this.uniqueIds([
+      ...(evento.ministerios ?? []).map((m) => m.ministerioId),
+      ...extraMinistryIds,
+    ]);
+
+    // 1. Voluntários escalados diretamente no evento (escala PUBLICADA, sem RECUSADO)
+    const scheduledSet = new Set<string>();
+    if (this.prisma.escalaDia?.findMany) {
+      const escalaDias = await this.prisma.escalaDia.findMany({
+        where: {
+          eventoId: evento.id,
+          escala: {
+            tenantId,
+            status: StatusEscala.PUBLICADA,
+          },
+        },
+        select: {
+          itens: {
+            where: {
+              statusConfirmacao: { not: StatusConfirmacao.RECUSADO },
+              membro: {
+                tenantId,
+                deletedAt: null,
+                status: StatusMembro.ATIVO,
+                user: {
+                  is: {
+                    tenantId,
+                    ativo: true,
+                    status: UserStatus.ACTIVE,
+                  },
+                },
+              },
+            },
+            select: {
+              membro: {
+                select: {
+                  user: {
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      for (const dia of escalaDias) {
+        for (const item of dia.itens ?? []) {
+          const uid = item.membro?.user?.id;
+          if (uid && uid !== actorUserId) {
+            scheduledSet.add(uid);
+          }
+        }
+      }
+    }
+
+    // 2. Demais destinatários conforme o tipo do evento (excluindo autor e quem já está escalado)
+    const generalSet = new Set<string>();
+
+    if (evento.tipo === EventoTipo.GERAL) {
+      if (this.prisma.user?.findMany) {
+        const activeUsers = await this.prisma.user.findMany({
+          where: {
+            tenantId,
+            ativo: true,
+            status: UserStatus.ACTIVE,
+          },
+          select: { id: true },
+        });
+
+        for (const u of activeUsers) {
+          if (u.id && u.id !== actorUserId && !scheduledSet.has(u.id)) {
+            generalSet.add(u.id);
+          }
+        }
+      }
+    } else if (uniqueMinistryIds.length > 0) {
+      const members = await this.prisma.ministerioMembro.findMany({
+        where: {
+          ministerioId: { in: uniqueMinistryIds },
+          ministerio: { tenantId, ativo: true },
+          membro: {
+            tenantId,
+            deletedAt: null,
+            status: StatusMembro.ATIVO,
+            user: {
+              is: {
+                tenantId,
+                ativo: true,
+                status: UserStatus.ACTIVE,
+              },
+            },
+          },
+        },
+        select: {
+          membro: {
+            select: {
+              user: {
+                select: { id: true },
+              },
+            },
+          },
+        },
+      });
+
+      for (const m of members) {
+        const uid = m.membro?.user?.id;
+        if (uid && uid !== actorUserId && !scheduledSet.has(uid)) {
+          generalSet.add(uid);
+        }
+      }
+    } else if (evento.tipo === EventoTipo.REUNIAO_INTERNA) {
+      // Reunião interna sem ministério vinculado: visível para ADMIN e STAFF ativos
+      if (this.prisma.user?.findMany) {
+        const leaders = await this.prisma.user.findMany({
+          where: {
+            tenantId,
+            ativo: true,
+            status: UserStatus.ACTIVE,
+            role: { in: [Role.ADMIN, Role.STAFF] },
+          },
+          select: { id: true },
+        });
+
+        for (const u of leaders) {
+          if (u.id && u.id !== actorUserId && !scheduledSet.has(u.id)) {
+            generalSet.add(u.id);
+          }
+        }
+      }
+    }
+
+    return {
+      scheduledUserIds: Array.from(scheduledSet),
+      generalUserIds: Array.from(generalSet),
+      uniqueMinistryIds,
+    };
+  }
+
+  private async notifyEventCancellation(
+    tenantId: string,
+    evento: {
+      id: string;
+      titulo: string;
+      tipo: EventoTipo;
+      dataInicio: Date;
+      local?: string | null;
+    },
+    recipients: {
+      scheduledUserIds: string[];
+      generalUserIds: string[];
+      uniqueMinistryIds: string[];
+    },
+    actorUserId: string,
+  ) {
+    if (!this.notificationDispatch) return;
+    const { scheduledUserIds, generalUserIds, uniqueMinistryIds } = recipients;
+    if (scheduledUserIds.length === 0 && generalUserIds.length === 0) return;
+
+    try {
+      const dataInicioDate = new Date(evento.dataInicio);
+      const dataFormatada = new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'America/Sao_Paulo',
+      }).format(dataInicioDate);
+      const horarioFormatado = new Intl.DateTimeFormat('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo',
+      }).format(dataInicioDate);
+      const localSuffix = evento.local ? ` (${evento.local})` : '';
+      const cooldownBucket = Math.floor(Date.now() / (5 * 60 * 1000));
+      const now = new Date();
+
+      if (scheduledUserIds.length > 0) {
+        await this.notificationDispatch.createNotification({
+          tenantId,
+          titulo: `Evento cancelado (sua escala): ${evento.titulo}`,
+          mensagem: `O evento "${evento.titulo}" em que você estava escalado(a) para ${dataFormatada} às ${horarioFormatado}${localSuffix} foi cancelado. Caso tenha salvo na sua agenda pessoal, lembre-se de removê-lo.`,
+          urlDestino: '/minhas-escalas',
+          origem: NotificationOrigin.SYSTEM_AUTOMATION,
+          tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+          ministerioId: null,
+          scheduledAt: now,
+          idempotencyKey: `tenant:${tenantId}:evento:${evento.id}:cancelled-scheduled:${cooldownBucket}`,
+          criadoPorId: actorUserId,
+          userIds: scheduledUserIds,
+          ignorePreferences: true,
+        });
+      }
+
+      if (generalUserIds.length > 0) {
+        const isSingleMinistry =
+          evento.tipo !== EventoTipo.GERAL && uniqueMinistryIds.length === 1;
+        const tipoPublico =
+          evento.tipo === EventoTipo.GERAL
+            ? NotificationAudienceType.ALL_MEMBERS
+            : isSingleMinistry
+              ? NotificationAudienceType.MINISTRY
+              : NotificationAudienceType.SPECIFIC_USERS;
+
+        await this.notificationDispatch.createNotification({
+          tenantId,
+          titulo: `Evento cancelado: ${evento.titulo}`,
+          mensagem: `O evento "${evento.titulo}" previsto para ${dataFormatada} às ${horarioFormatado}${localSuffix} foi cancelado. Caso tenha salvo na sua agenda pessoal, lembre-se de removê-lo.`,
+          urlDestino: '/agenda/visualizacao',
+          origem: NotificationOrigin.SYSTEM_AUTOMATION,
+          tipoPublico,
+          ministerioId: isSingleMinistry ? uniqueMinistryIds[0] : null,
+          scheduledAt: now,
+          idempotencyKey: `tenant:${tenantId}:evento:${evento.id}:cancelled:${cooldownBucket}`,
+          criadoPorId: actorUserId,
+          userIds: generalUserIds,
+        });
+      }
+    } catch (error) {
+      this.logger.error(
+        `Falha ao notificar cancelamento do evento ${evento.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
 

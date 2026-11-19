@@ -19,6 +19,7 @@ export interface UseEventosOptions {
 export type EventoInput = Partial<Omit<Evento, 'ministerios'>> & {
   ministerios?: EventoMinisterioInput[];
   ministerioIds?: string[];
+  notificarMembros?: boolean;
 };
 
 export function useEventos(initialFilter: FilterEventos = {}, options: UseEventosOptions = {}) {
@@ -100,8 +101,10 @@ export function useEventos(initialFilter: FilterEventos = {}, options: UseEvento
     return updated;
   }
 
-  async function deleteEvento(id: string) {
-    await api.delete(`/api/eventos/${id}`);
+  async function deleteEvento(id: string, options?: { notificarMembros?: boolean }) {
+    const query =
+      options?.notificarMembros === false ? '?notificarMembros=false' : '';
+    await api.delete(`/api/eventos/${id}${query}`);
     setRawEventos((prev) => prev.filter((e) => e.id !== id));
   }
 

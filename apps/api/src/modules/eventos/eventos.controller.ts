@@ -136,9 +136,18 @@ export class EventosController {
 
   @Delete(':id')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
-  remove(@Param('id') id: string, @Req() req: Request) {
+  remove(
+    @Param('id') id: string,
+    @Query('notificarMembros') notificarMembros: string | undefined,
+    @Req() req: Request,
+  ) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.eventosService.remove(tenantId, id, user);
+    return this.eventosService.remove(
+      tenantId,
+      id,
+      user,
+      notificarMembros !== 'false',
+    );
   }
 }

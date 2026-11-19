@@ -138,8 +138,39 @@ export default function AgendaPage() {
   const [pendingDeleteEvento, setPendingDeleteEvento] = useState<Evento | null>(null);
   const [pendingStatusEvento, setPendingStatusEvento] = useState<Evento | null>(null);
   const [pendingNotifyEvento, setPendingNotifyEvento] = useState<Evento | null>(null);
+  const [notifyCancellation, setNotifyCancellation] = useState(true);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [notifyLoading, setNotifyLoading] = useState(false);
+
+  function isEventoUpcomingOrOngoing(ev: Pick<Evento, 'dataInicio' | 'dataFim'>) {
+    const endOrStart = new Date(ev.dataFim ?? ev.dataInicio);
+    return Number.isFinite(endOrStart.getTime()) && endOrStart.getTime() > Date.now();
+  }
+
+  function renderCancelNotificationCheckbox(id: string) {
+    return (
+      <label
+        htmlFor={id}
+        className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-left cursor-pointer"
+      >
+        <input
+          id={id}
+          type="checkbox"
+          checked={notifyCancellation}
+          onChange={(e) => setNotifyCancellation(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+        />
+        <span className="space-y-0.5">
+          <span className="block text-xs font-semibold text-gray-800">
+            {t('cancelNotification.label')}
+          </span>
+          <span className="block text-xs leading-5 text-gray-600">
+            {t('cancelNotification.hint')}
+          </span>
+        </span>
+      </label>
+    );
+  }
 
   const basicHasLeadership =
     currentUser?.role === 'BASIC' &&
@@ -253,6 +284,9 @@ export default function AgendaPage() {
           ...commonPayload,
           dataInicio: new Date(dataInicio).toISOString(),
           dataFim: dataFim ? new Date(dataFim).toISOString() : undefined,
+          ...(selectedEvento.status !== 'CANCELADO' && status === 'CANCELADO'
+            ? { notificarMembros: notifyCancellation }
+            : {}),
         };
         await updateEvento(selectedEvento.id, payload);
       } else if (createMode === 'weekly') {
@@ -297,7 +331,12 @@ export default function AgendaPage() {
     setConfirmLoading(true);
     setFeedback(null);
     try {
-      await updateEvento(ev.id, { status: nextStatus });
+      await updateEvento(ev.id, {
+        status: nextStatus,
+        ...(nextStatus === 'CANCELADO'
+          ? { notificarMembros: notifyCancellation }
+          : {}),
+      });
       setPendingStatusEvento(null);
     } catch (error: unknown) {
       setFeedback({
@@ -310,7 +349,13 @@ export default function AgendaPage() {
   }
 
   function handleDelete(ev: Evento) {
+    setNotifyCancellation(true);
     setPendingDeleteEvento(ev);
+  }
+
+  function openStatusModal(ev: Evento) {
+    setNotifyCancellation(true);
+    setPendingStatusEvento(ev);
   }
 
   async function confirmDeleteEvento() {
@@ -318,7 +363,9 @@ export default function AgendaPage() {
     setConfirmLoading(true);
     setFeedback(null);
     try {
-      await deleteEvento(pendingDeleteEvento.id);
+      await deleteEvento(pendingDeleteEvento.id, {
+        notificarMembros: notifyCancellation,
+      });
       setPendingDeleteEvento(null);
     } catch (error: unknown) {
       setFeedback({
@@ -375,6 +422,7 @@ export default function AgendaPage() {
     );
     setMinisterioSearch('');
     setCreateMode('single');
+    setNotifyCancellation(true);
     setModalError(null);
     setIsModalOpen(true);
   }
@@ -617,7 +665,7 @@ export default function AgendaPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => setPendingStatusEvento(ev)}
+                        onClick={() => openStatusModal(ev)}
                         className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50"
                         title={t('actions.changeStatus')}
                         aria-label={t('actions.changeStatus')}
@@ -723,6 +771,15 @@ export default function AgendaPage() {
                 <option value="CANCELADO">{t('status.CANCELADO')}</option>
               </SelectField>
             </div>
+
+            {selectedEvento &&
+              selectedEvento.status !== 'CANCELADO' &&
+              status === 'CANCELADO' &&
+              isEventoUpcomingOrOngoing({
+                dataInicio: dataInicio || selectedEvento.dataInicio,
+                dataFim: dataFim || selectedEvento.dataFim,
+              }) &&
+              renderCancelNotificationCheckbox('ev-edit-notify-cancel')}
 
             <div className="space-y-4">
               <SelectField id="ev-tipo" label={t('modal.typeLabel')} value={tipo} onChange={(e) => setTipo(e.target.value as EventoTipo)}>
@@ -937,13 +994,28 @@ export default function AgendaPage() {
       >
         <div className="text-sm leading-6 text-gray-600">
           {pendingStatusEvento ? t('statusModal.description', { title: pendingStatusEvento.titulo }) : ''}
+          {pendingStatusEvento &&
+            pendingStatusEvento.status !== 'CANCELADO' &&
+            isEventoUpcomingOrOngoing(pendingStatusEvento) &&
+            renderCancelNotificationCheckbox('ev-status-notify-cancel')}
         </div>
       </ModalShell>
 
       <ConfirmDialog
         isOpen={!!pendingDeleteEvento}
         title={t('modal.deleteTooltip')}
-        description={pendingDeleteEvento ? t('deleteConfirm', { title: pendingDeleteEvento.titulo }) : ''}
+        description={
+          pendingDeleteEvento ? (
+            <div>
+              <p>{t('deleteConfirm', { title: pendingDeleteEvento.titulo })}</p>
+              {pendingDeleteEvento.status === 'AGENDADO' &&
+                isEventoUpcomingOrOngoing(pendingDeleteEvento) &&
+                renderCancelNotificationCheckbox('ev-delete-notify-cancel')}
+            </div>
+          ) : (
+            ''
+          )
+        }
         confirmLabel={t('modal.deleteTooltip')}
         loading={confirmLoading}
         onConfirm={confirmDeleteEvento}
