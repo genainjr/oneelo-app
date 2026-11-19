@@ -1080,7 +1080,7 @@ export class SocialAuthService {
       return requestedPath;
     }
 
-    return user.role === Role.BASIC ? '/personal-panel' : '/dashboard';
+    return user.role === Role.SUPER_ADMIN ? '/admin' : '/personal-panel';
   }
 
   private toPendingResult(payload: PendingLinkPayload): PendingLinkResult {
@@ -1159,7 +1159,7 @@ export class SocialAuthService {
       value.includes('://') ||
       value.startsWith('/api/')
     ) {
-      return '/dashboard';
+      return '/personal-panel';
     }
 
     return value;

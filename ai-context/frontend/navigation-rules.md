@@ -28,15 +28,17 @@ Este documento define o comportamento esperado de navegacao por perfil no fronte
 
 ### ADMIN
 
-Pode acessar a experiencia administrativa do tenant:
+Pode acessar a experiencia administrativa e pessoal do tenant (destino padrao pos-login e abertura do PWA: `/personal-panel`, salvo `?redirect=` explicito):
 
-- `/dashboard`
+- `/personal-panel` (1º item do bloco superior da sidebar, com dados pessoais e de lideranca escopados ao proprio usuario via `?scope=personal`)
+- `/dashboard` (2º item do bloco superior da sidebar, com KPIs institucionais da igreja)
 - `/membros`
 - `/membros/visualizacao`
 - `/ministerios`
 - `/ministerios/visualizacao`
 - `/escalas`
 - `/escalas/visualizacao`
+- `/minhas-escalas` (exibido no grupo `Conta` da sidebar quando o administrador possui membro vinculado com escalas)
 - `/agenda`
 - `/agenda/visualizacao`
 - `/meu-perfil`
@@ -45,15 +47,17 @@ Pode acessar a experiencia administrativa do tenant:
 
 ### STAFF
 
-Pode acessar a operacao global do tenant:
+Pode acessar a operacao global e pessoal do tenant (destino padrao pos-login e abertura do PWA: `/personal-panel`, salvo `?redirect=` explicito):
 
-- `/dashboard`
+- `/personal-panel` (1º item do bloco superior da sidebar, com dados pessoais e de lideranca escopados ao proprio usuario via `?scope=personal`)
+- `/dashboard` (2º item do bloco superior da sidebar, com KPIs institucionais da igreja)
 - `/membros`
 - `/membros/visualizacao`
 - `/ministerios`
 - `/ministerios/visualizacao`
 - `/escalas`
 - `/escalas/visualizacao`
+- `/minhas-escalas` (exibido no grupo `Conta` da sidebar quando o usuario possui membro vinculado com escalas)
 - `/agenda`
 - `/agenda/visualizacao`
 - `/meu-perfil`

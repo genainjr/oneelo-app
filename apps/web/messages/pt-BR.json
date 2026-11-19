@@ -135,6 +135,7 @@
     "subtitle": "{date} · Seus próximos compromissos e confirmações.",
     "quickAccess": "Acesso Rápido",
     "quickLinks": {
+      "churchDashboard": "Dashboard da Igreja",
       "viewSchedules": "Minhas Escalas",
       "agenda": "Agenda",
       "profile": "Meu Perfil",
@@ -155,6 +156,7 @@
     "leader": {
       "subtitle": "{date} · Sua liderança, escalas e eventos sob acompanhamento.",
       "quickLinks": {
+        "churchDashboard": "Dashboard da Igreja",
         "viewSchedules": "Minhas Escalas",
         "ministries": "Ministérios",
         "schedules": "Escalas",
@@ -179,6 +181,12 @@
       "title": "Você ainda não possui escalas vinculadas",
       "description": "Seu painel continua ativo para acompanhar agenda, perfil e informações gerais da igreja.",
       "action": "Ver meu perfil"
+    },
+    "noMemberLink": {
+      "title": "Conta administrativa sem cadastro de membro vinculado",
+      "description": "Vincule seu usuário a um cadastro de membro para liberar sua Carteirinha Digital, Minhas Escalas e acompanhamento de liderança pessoal.",
+      "manageMembers": "Gerenciar Membros",
+      "openChurchDashboard": "Ir para o Dashboard da Igreja"
     }
   },
   "members": {

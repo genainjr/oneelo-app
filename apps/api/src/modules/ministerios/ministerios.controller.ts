@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
   Req,
 } from '@nestjs/common';
 import { MinisteriosService } from './ministerios.service';
@@ -38,10 +39,10 @@ export class MinisteriosController {
 
   @Get('resumo')
   @Roles(Role.ADMIN, Role.STAFF, Role.BASIC)
-  findResumo(@Req() req: Request) {
+  findResumo(@Query('scope') scope: string | undefined, @Req() req: Request) {
     const tenantId = req['tenantId'] as string;
     const user = req['user'] as JwtPayload;
-    return this.ministeriosService.findResumo(tenantId, user);
+    return this.ministeriosService.findResumo(tenantId, user, scope === 'personal');
   }
 
   @Get(':id/membros-disponiveis')

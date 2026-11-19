@@ -58,4 +58,58 @@ describe('MinisteriosService - elegibilidade para escalas', () => {
       where: { ministerioId_membroId: { ministerioId, membroId } }, data: { podeSerEscalado: false },
     });
   });
+
+  it('filtra findResumo pelos ministerios liderados quando personalScope=true mesmo para ADMIN', async () => {
+    const { service, prisma } = createContext();
+    (prisma.ministerio as any).count = jest.fn().mockResolvedValue(1);
+    (prisma.client as any).ministerioMembro = {
+      findMany: jest.fn()
+        .mockResolvedValueOnce([{ membroId }])
+        .mockResolvedValueOnce([{ membroId, membro: { dataNascimento: new Date() } }]),
+    };
+
+    const adminComMembro: JwtPayload = { ...admin, memberId: membroId };
+    const resumo = await service.findResumo(tenantId, adminComMembro, true);
+
+    expect(resumo).toEqual({ ministerios: 1, membros: 1, aniversariantes: 1 });
+    expect((prisma.ministerio as any).count).toHaveBeenCalledWith({
+      where: {
+        tenantId,
+        ativo: true,
+        membros: {
+          some: {
+            membroId,
+            role: { in: [MinistryRole.LEADER, MinistryRole.ASSISTANT_LEADER] },
+          },
+        },
+      },
+    });
+  });
+
+  it('retorna zeros em findResumo com personalScope=true quando ADMIN nao possui memberId', async () => {
+    const { service, prisma } = createContext();
+    (prisma.ministerio as any).count = jest.fn();
+
+    const resumo = await service.findResumo(tenantId, admin, true);
+
+    expect(resumo).toEqual({ ministerios: 0, membros: 0, aniversariantes: 0 });
+    expect((prisma.ministerio as any).count).not.toHaveBeenCalled();
+  });
+
+  it('mantem escopo global do tenant em findResumo para ADMIN quando personalScope=false', async () => {
+    const { service, prisma } = createContext();
+    (prisma.ministerio as any).count = jest.fn().mockResolvedValue(4);
+    (prisma.client as any).ministerioMembro = {
+      findMany: jest.fn()
+        .mockResolvedValueOnce([{ membroId }])
+        .mockResolvedValueOnce([]),
+    };
+
+    const resumo = await service.findResumo(tenantId, { ...admin, memberId: membroId }, false);
+
+    expect(resumo).toEqual({ ministerios: 4, membros: 1, aniversariantes: 0 });
+    expect((prisma.ministerio as any).count).toHaveBeenCalledWith({
+      where: { tenantId, ativo: true },
+    });
+  });
 });

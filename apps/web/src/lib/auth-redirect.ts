@@ -50,7 +50,7 @@ export function getPostLoginTarget(
     return '/onboarding';
   }
 
-  const fallback = user.role === 'BASIC' ? '/personal-panel' : '/dashboard';
+  const fallback = user.role === 'SUPER_ADMIN' ? '/admin' : '/personal-panel';
   const safeRedirect = isSafeAppRedirect(redirect) ? redirect : null;
 
   if (safeRedirect && !(user.role === 'BASIC' && safeRedirect === '/dashboard')) {

@@ -6,7 +6,7 @@ const ONEELO_MANIFEST = {
   short_name: 'One Elo',
   description: 'One Elo - plataforma de gestao para igrejas da Lookup Labs.',
   id: '/dashboard',
-  start_url: '/dashboard?source=pwa',
+  start_url: '/personal-panel?source=pwa',
   scope: '/',
   display: 'standalone',
   background_color: '#ffffff',
@@ -59,7 +59,7 @@ export class PwaService {
         name: tenant.pwaShortName,
         short_name: tenant.pwaShortName,
         id: `/pwa/tenant/${tenant.id}`,
-        start_url: `/dashboard?source=pwa&igreja=${encodeURIComponent(tenantSlug)}`,
+        start_url: `/personal-panel?source=pwa&igreja=${encodeURIComponent(tenantSlug)}`,
         icons: [
           { src: versionedIcon(`${iconBaseUrl}icon-192.png`), sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: versionedIcon(tenant.pwaIconUrl), sizes: '512x512', type: 'image/png', purpose: 'any' },

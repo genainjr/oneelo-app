@@ -155,6 +155,7 @@ export async function middleware(request: NextRequest) {
       pathname === '/login' ||
       pathname.startsWith('/activate') ||
       pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/personal-panel') ||
       pathname.startsWith('/admin') ||
       pathname.startsWith('/configuracoes')
     ) {
@@ -165,6 +166,7 @@ export async function middleware(request: NextRequest) {
       if (
         (pathname === '/login' ||
           pathname.startsWith('/dashboard') ||
+          pathname.startsWith('/personal-panel') ||
           pathname.startsWith('/configuracoes')) &&
         !targetUrl.searchParams.has('igreja') &&
         !targetUrl.searchParams.has('church')
@@ -211,9 +213,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
-  // Usuário comum tentando acessar /admin → redireciona para dashboard
+  // Usuário comum tentando acessar /admin → redireciona para painel pessoal
   if (!isSuperAdmin && pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/personal-panel', request.url));
   }
 
   if (isBasic) {

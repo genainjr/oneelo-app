@@ -5,7 +5,7 @@ const oneEloManifest = {
   short_name: 'One Elo',
   description: 'One Elo — plataforma de gestão para igrejas da Lookup Labs.',
   id: '/dashboard',
-  start_url: '/dashboard?source=pwa',
+  start_url: '/personal-panel?source=pwa',
   scope: '/',
   display: 'standalone',
   background_color: '#ffffff',
