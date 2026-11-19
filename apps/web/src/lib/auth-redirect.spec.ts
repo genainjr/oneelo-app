@@ -22,30 +22,15 @@ describe('getTenantLoginPath', () => {
 });
 
 describe('getPostLoginTarget', () => {
-  it('direciona ADMIN/STAFF com membro vinculado e BASIC para /personal-panel por padrão', () => {
+  it('direciona ADMIN e STAFF sempre para /dashboard por padrão (mesmo com membro vinculado)', () => {
     assert.equal(
       getPostLoginTarget({
         role: 'ADMIN',
         memberId: 'membro-1',
         onboardingCompletedAt: '2026-01-01T00:00:00Z',
       }),
-      '/personal-panel',
+      '/dashboard',
     );
-    assert.equal(
-      getPostLoginTarget({
-        role: 'STAFF',
-        memberId: 'membro-2',
-        onboardingCompletedAt: '2026-01-01T00:00:00Z',
-      }),
-      '/personal-panel',
-    );
-    assert.equal(
-      getPostLoginTarget({ role: 'BASIC', onboardingCompletedAt: '2026-01-01T00:00:00Z' }),
-      '/personal-panel',
-    );
-  });
-
-  it('direciona ADMIN e STAFF sem membro vinculado para /dashboard (inclusive se redirect for /personal-panel)', () => {
     assert.equal(
       getPostLoginTarget({
         role: 'ADMIN',
@@ -55,30 +40,46 @@ describe('getPostLoginTarget', () => {
       '/dashboard',
     );
     assert.equal(
-      getPostLoginTarget(
-        {
-          role: 'STAFF',
-          memberId: null,
-          onboardingCompletedAt: '2026-01-01T00:00:00Z',
-        },
-        '/personal-panel',
-      ),
+      getPostLoginTarget({
+        role: 'STAFF',
+        memberId: 'membro-2',
+        onboardingCompletedAt: '2026-01-01T00:00:00Z',
+      }),
+      '/dashboard',
+    );
+    assert.equal(
+      getPostLoginTarget({
+        role: 'STAFF',
+        memberId: null,
+        onboardingCompletedAt: '2026-01-01T00:00:00Z',
+      }),
       '/dashboard',
     );
   });
 
-  it('direciona SUPER_ADMIN para /admin por padrão', () => {
+  it('direciona BASIC para /personal-panel e SUPER_ADMIN para /admin por padrão', () => {
+    assert.equal(
+      getPostLoginTarget({ role: 'BASIC', onboardingCompletedAt: '2026-01-01T00:00:00Z' }),
+      '/personal-panel',
+    );
     assert.equal(
       getPostLoginTarget({ role: 'SUPER_ADMIN', onboardingCompletedAt: '2026-01-01T00:00:00Z' }),
       '/admin',
     );
   });
 
-  it('preserva redirect explícito seguro para ADMIN/STAFF e bloqueia /dashboard para BASIC', () => {
+  it('permite redirect explícito para /personal-panel só quando ADMIN/STAFF possui membro vinculado e bloqueia /dashboard para BASIC', () => {
     assert.equal(
       getPostLoginTarget(
         { role: 'ADMIN', memberId: 'membro-1', onboardingCompletedAt: '2026-01-01T00:00:00Z' },
-        '/dashboard',
+        '/personal-panel',
+      ),
+      '/personal-panel',
+    );
+    assert.equal(
+      getPostLoginTarget(
+        { role: 'STAFF', memberId: null, onboardingCompletedAt: '2026-01-01T00:00:00Z' },
+        '/personal-panel',
       ),
       '/dashboard',
     );

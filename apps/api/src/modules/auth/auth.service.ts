@@ -1095,54 +1095,58 @@ export class AuthService {
       status === UserStatus.PENDING ? this.createActivationToken() : null;
 
     // Validar memberId se fornecido
+    let releaseDisabledUserId: string | null = null;
     if (dto.memberId) {
-      const membro = await this.prisma.membro.findFirst({
-        where: { id: dto.memberId, tenantId },
-        include: { user: true },
-      });
-      if (!membro) {
-        throw new NotFoundException('Membro não encontrado.');
-      }
-      if (membro.user) {
-        throw new ConflictException(
-          'Este membro já possui um usuário vinculado.',
-        );
-      }
+      ({ releaseDisabledUserId } = await this.resolveMemberForUserLink(
+        tenantId,
+        dto.memberId,
+      ));
     }
+
+    const createData = {
+      tenantId,
+      nome: dto.nome,
+      email: dto.email,
+      telefoneLogin,
+      senhaHash,
+      role: dto.role,
+      status,
+      ativo: status === UserStatus.ACTIVE,
+      activationTokenHash: activation?.tokenHash ?? null,
+      activationExpiresAt: activation?.expiresAt ?? null,
+      activationCreatedAt: activation?.createdAt ?? null,
+      activatedAt: status === UserStatus.ACTIVE ? new Date() : null,
+      memberId: dto.memberId ?? null,
+    };
+    const userSelect = {
+      id: true,
+      nome: true,
+      email: true,
+      telefoneLogin: true,
+      role: true,
+      ativo: true,
+      status: true,
+      activationExpiresAt: true,
+      activationCreatedAt: true,
+      activatedAt: true,
+      onboardingCompletedAt: true,
+      createdAt: true,
+    };
 
     let newUser;
     try {
-      newUser = await this.prisma.user.create({
-        data: {
-          tenantId,
-          nome: dto.nome,
-          email: dto.email,
-          telefoneLogin,
-          senhaHash,
-          role: dto.role,
-          status,
-          ativo: status === UserStatus.ACTIVE,
-          activationTokenHash: activation?.tokenHash ?? null,
-          activationExpiresAt: activation?.expiresAt ?? null,
-          activationCreatedAt: activation?.createdAt ?? null,
-          activatedAt: status === UserStatus.ACTIVE ? new Date() : null,
-          memberId: dto.memberId ?? null,
-        },
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          telefoneLogin: true,
-          role: true,
-          ativo: true,
-          status: true,
-          activationExpiresAt: true,
-          activationCreatedAt: true,
-          activatedAt: true,
-          onboardingCompletedAt: true,
-          createdAt: true,
-        },
-      });
+      newUser = releaseDisabledUserId
+        ? await this.prisma.$transaction(async (tx) => {
+            await tx.user.update({
+              where: { id: releaseDisabledUserId! },
+              data: { memberId: null },
+            });
+            return tx.user.create({ data: createData, select: userSelect });
+          })
+        : await this.prisma.user.create({
+            data: createData,
+            select: userSelect,
+          });
     } catch (error) {
       this.rethrowPhoneUniqueConflict(error);
     }
@@ -1625,48 +1629,56 @@ export class AuthService {
     if (dto.senha) updateData.senhaHash = await bcrypt.hash(dto.senha, 10);
 
     // Tratar vínculo com membro
+    let releaseDisabledUserId: string | null = null;
     if (dto.memberId !== undefined) {
       if (dto.memberId === null) {
         // Desvincular
         updateData.memberId = null;
       } else {
         // Validar e vincular
-        const membro = await this.prisma.membro.findFirst({
-          where: { id: dto.memberId, tenantId },
-          include: { user: true },
-        });
-        if (!membro) {
-          throw new NotFoundException('Membro não encontrado.');
-        }
-        if (membro.user && membro.user.id !== id) {
-          throw new ConflictException(
-            'Este membro já possui um usuário vinculado.',
-          );
-        }
+        ({ releaseDisabledUserId } = await this.resolveMemberForUserLink(
+          tenantId,
+          dto.memberId,
+          id,
+        ));
         updateData.memberId = dto.memberId;
       }
     }
 
+    const userSelect = {
+      id: true,
+      nome: true,
+      email: true,
+      telefoneLogin: true,
+      role: true,
+      ativo: true,
+      status: true,
+      activationExpiresAt: true,
+      activationCreatedAt: true,
+      activatedAt: true,
+      onboardingCompletedAt: true,
+      createdAt: true,
+    };
+
     let updated;
     try {
-      updated = await this.prisma.user.update({
-        where: { id },
-        data: updateData,
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          telefoneLogin: true,
-          role: true,
-          ativo: true,
-          status: true,
-          activationExpiresAt: true,
-          activationCreatedAt: true,
-          activatedAt: true,
-          onboardingCompletedAt: true,
-          createdAt: true,
-        },
-      });
+      updated = releaseDisabledUserId
+        ? await this.prisma.$transaction(async (tx) => {
+            await tx.user.update({
+              where: { id: releaseDisabledUserId! },
+              data: { memberId: null },
+            });
+            return tx.user.update({
+              where: { id },
+              data: updateData,
+              select: userSelect,
+            });
+          })
+        : await this.prisma.user.update({
+            where: { id },
+            data: updateData,
+            select: userSelect,
+          });
     } catch (error) {
       this.rethrowPhoneUniqueConflict(error);
     }
@@ -1705,7 +1717,11 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id },
-      data: { ativo: false, status: UserStatus.DISABLED },
+      data: {
+        ativo: false,
+        status: UserStatus.DISABLED,
+        memberId: null,
+      },
     });
 
     await this.prisma.auditLog.create({
@@ -1715,6 +1731,9 @@ export class AuthService {
         entidade: 'usuarios',
         entidadeId: id,
         acao: AcaoAuditoria.DELETAR,
+        ...(user.memberId
+          ? { payloadBefore: { memberId: user.memberId } }
+          : {}),
         ipAddress: ip,
       },
     });
@@ -1722,12 +1741,56 @@ export class AuthService {
     return { message: 'Usuário desativado com sucesso.' };
   }
 
+  private async resolveMemberForUserLink(
+    tenantId: string,
+    memberId: string,
+    excludeUserId?: string,
+  ): Promise<{ releaseDisabledUserId: string | null }> {
+    const membro = await this.prisma.membro.findFirst({
+      where: { id: memberId, tenantId, deletedAt: null },
+      include: {
+        user: {
+          select: { id: true, ativo: true, status: true },
+        },
+      },
+    });
+
+    if (!membro) {
+      throw new NotFoundException('Membro não encontrado.');
+    }
+
+    if (membro.user && membro.user.id !== excludeUserId) {
+      const isDisabledUser =
+        !membro.user.ativo && membro.user.status === UserStatus.DISABLED;
+
+      if (!isDisabledUser) {
+        throw new ConflictException(
+          'Este membro já possui um usuário vinculado.',
+        );
+      }
+
+      return { releaseDisabledUserId: membro.user.id };
+    }
+
+    return { releaseDisabledUserId: null };
+  }
+
   async findAvailableMembers(tenantId: string) {
     return this.prisma.membro.findMany({
       where: {
         tenantId,
         deletedAt: null,
-        user: null, // apenas membros sem user vinculado
+        OR: [
+          { user: null },
+          {
+            user: {
+              is: {
+                ativo: false,
+                status: UserStatus.DISABLED,
+              },
+            },
+          },
+        ],
       },
       select: { id: true, nome: true, email: true, whatsapp: true },
       orderBy: { nome: 'asc' },

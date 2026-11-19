@@ -64,7 +64,7 @@ export function getPostLoginTarget(
   const fallback =
     user.role === 'SUPER_ADMIN'
       ? '/admin'
-      : canUsePersonalPanel
+      : user.role === 'BASIC'
         ? '/personal-panel'
         : '/dashboard';
   const safeRedirect = isSafeAppRedirect(redirect) ? redirect : null;

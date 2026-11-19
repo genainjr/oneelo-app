@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Role, UserStatus } from '@prisma/client';
@@ -340,8 +341,8 @@ describe('AuthService phone password login', () => {
   });
 });
 
-describe('AuthService available members', () => {
-  it('inclui whatsapp para preencher a credencial telefonica no cadastro', async () => {
+describe('AuthService available members & member unlinking', () => {
+  it('inclui whatsapp e considera membros sem user ou vinculados a usuario DISABLED no cadastro', async () => {
     const prisma = {
       membro: { findMany: jest.fn().mockResolvedValue([]) },
     };
@@ -353,11 +354,178 @@ describe('AuthService available members', () => {
       where: {
         tenantId: 'tenant-1',
         deletedAt: null,
-        user: null,
+        OR: [
+          { user: null },
+          {
+            user: {
+              is: {
+                ativo: false,
+                status: UserStatus.DISABLED,
+              },
+            },
+          },
+        ],
       },
       select: { id: true, nome: true, email: true, whatsapp: true },
       orderBy: { nome: 'asc' },
     });
+  });
+
+  it('limpa memberId ao desativar usuario via deleteUser para liberar o membro', async () => {
+    const prisma = {
+      user: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'user-2',
+          tenantId: 'tenant-1',
+          memberId: 'membro-1',
+        }),
+        update: jest.fn().mockResolvedValue({ id: 'user-2' }),
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const service = createService(prisma);
+
+    await service.deleteUser('user-2', 'tenant-1', 'admin-1', '127.0.0.1');
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-2' },
+      data: {
+        ativo: false,
+        status: UserStatus.DISABLED,
+        memberId: null,
+      },
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        acao: 'DELETAR',
+        payloadBefore: { memberId: 'membro-1' },
+      }),
+    });
+  });
+
+  it('rejeita vincular membro excluido (soft delete) em createUser e updateUser', async () => {
+    const prisma = {
+      user: {
+        findFirst: jest.fn().mockResolvedValueOnce(null),
+      },
+      membro: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const service = createService(prisma);
+
+    await expect(
+      service.createUser(
+        {
+          nome: 'Usuario Teste',
+          email: 'teste@example.com',
+          role: Role.BASIC,
+          memberId: 'membro-excluido',
+        },
+        'tenant-1',
+        'admin-1',
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.membro.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'membro-excluido',
+        tenantId: 'tenant-1',
+        deletedAt: null,
+      },
+      include: {
+        user: { select: { id: true, ativo: true, status: true } },
+      },
+    });
+  });
+
+  it('desvincula usuario DISABLED legado ao vincular o membro a outro usuario em createUser', async () => {
+    const tx = {
+      user: {
+        update: jest.fn().mockResolvedValue({ id: 'user-disabled-legacy', memberId: null }),
+        create: jest.fn().mockResolvedValue({
+          id: 'user-novo',
+          nome: 'Novo Usuario',
+          email: 'novo@example.com',
+          telefoneLogin: null,
+          role: Role.BASIC,
+          ativo: false,
+          status: UserStatus.PENDING,
+          activationExpiresAt: new Date(),
+          activationCreatedAt: new Date(),
+          activatedAt: null,
+          onboardingCompletedAt: null,
+          createdAt: new Date(),
+        }),
+      },
+    };
+    const prisma = {
+      user: {
+        findFirst: jest.fn().mockResolvedValueOnce(null),
+      },
+      membro: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'membro-1',
+          user: { id: 'user-disabled-legacy', ativo: false, status: UserStatus.DISABLED },
+        }),
+      },
+      $transaction: jest.fn((cb: (client: typeof tx) => unknown) => cb(tx)),
+      auditLog: { create: jest.fn().mockResolvedValue(undefined) },
+    };
+    const service = createService(prisma);
+
+    await service.createUser(
+      {
+        nome: 'Novo Usuario',
+        email: 'novo@example.com',
+        role: Role.BASIC,
+        memberId: 'membro-1',
+      },
+      'tenant-1',
+      'admin-1',
+    );
+
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-disabled-legacy' },
+      data: { memberId: null },
+    });
+    expect(tx.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ memberId: 'membro-1' }),
+      }),
+    );
+  });
+
+  it('bloqueia com ConflictException quando o membro esta vinculado a usuario ativo ou pendente', async () => {
+    const prisma = {
+      user: {
+        findFirst: jest.fn().mockResolvedValueOnce({
+          id: 'user-editado',
+          tenantId: 'tenant-1',
+          email: 'editado@example.com',
+          telefoneLogin: null,
+          authProviders: [],
+        }),
+      },
+      membro: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'membro-1',
+          user: { id: 'user-ativo', ativo: true, status: UserStatus.ACTIVE },
+        }),
+      },
+    };
+    const service = createService(prisma);
+
+    await expect(
+      service.updateUser(
+        'user-editado',
+        { memberId: 'membro-1' },
+        'tenant-1',
+        'admin-1',
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });
 

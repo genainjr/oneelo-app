@@ -194,7 +194,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
   }
 
   function handleGoogleLogin() {
-    const safeRedirect = isSafeAppRedirect(redirect) && redirect ? redirect : '/personal-panel';
+    const safeRedirect = isSafeAppRedirect(redirect) && redirect ? redirect : '/dashboard';
     window.location.href = `/api/auth/oauth/google/start?redirect=${encodeURIComponent(safeRedirect)}`;
   }
 

@@ -17,18 +17,18 @@ Branch sugerida para implementação: feature/painel-pessoal-administrador
 
 ## 1. Objetivo da Entrega
 
-Unificar a experiência inicial da comunidade no One Elo fazendo com que usuários com perfil administrativo (`ADMIN` e `STAFF`) também tenham acesso completo ao **Painel Pessoal (`/personal-panel`)** — e passem a entrar diretamente nele após o login, mantendo o **Dashboard Geral (`/dashboard`)** a 1 clique no topo do menu lateral para a operação institucional.
+Disponibilizar o acesso completo ao **Painel Pessoal (`/personal-panel`)** para administradores e liderança geral (`ADMIN` e `STAFF`) que possuam `Membro` vinculado, mantendo o **Dashboard Geral (`/dashboard`) sempre em 1º lugar** na navegação lateral e na entrada pós-login/PWA.
 
 Com esta entrega:
-1. **Entrada unificada em `/personal-panel` para quem possui membro vinculado:** `ADMIN` e `STAFF` com `Membro` vinculado (e `BASIC`) iniciam a sessão no Painel Pessoal (login por e-mail/telefone/CPF, OAuth Google e abertura do PWA), enquanto contas administrativas sem `Membro` vinculado entram diretamente em `/dashboard` (e são redirecionadas de `/personal-panel` para `/dashboard`), preservando `/admin` para `SUPER_ADMIN` e links diretos (`?redirect=`).
-2. **Sidebar clara e sem conflito de posição (`apps/web/src/components/app/sidebar.tsx`):**
-   - No topo do menu administrativo (`ADMIN`/`STAFF`), **Painel Pessoal** (exibido somente quando o usuário possui `Membro` vinculado) e **Dashboard** ficam lado a lado antes do grupo `Gestão`, garantindo visibilidade imediata da tela ativa logo na entrada.
+1. **Dashboard sempre primeiro para `ADMIN`/`STAFF`:** O redirecionamento padrão pós-login (tradicional, OAuth Google e `start_url` do PWA) mantém `ADMIN` e `STAFF` entrando sempre em `/dashboard`, preservando `/personal-panel` para `BASIC`, `/admin` para `SUPER_ADMIN` e links diretos (`?redirect=`, exceto `/personal-panel` para quem não tem membro vinculado).
+2. **Sidebar clara com hierarquia consistente (`apps/web/src/components/app/sidebar.tsx`):**
+   - No topo do menu administrativo (`ADMIN`/`STAFF`), **Dashboard** ocupa sempre a **1ª posição** e **Painel Pessoal** aparece logo abaixo em **2ª posição** (apenas quando o usuário possui `Membro` ativo vinculado) antes do grupo `Gestão`.
    - A habilitação de **Minhas Escalas** na sidebar também passa a considerar `user.memberId` para `ADMIN`/`STAFF` que possuam escalas vinculadas.
-   - O grupo `Conta` permanece dedicado a `Meu Perfil`, `Notificações`, `Site` e `Configurações`.
+   - O grupo `Conta` permanece dedicado a `Minhas Escalas` (condicional), `Meu Perfil`, `Notificações`, `Site` e `Configurações`.
 3. **Dados pessoais fiéis em `/personal-panel` para `ADMIN`/`STAFF`:**
    - O resumo de liderança no Painel Pessoal passa a refletir estritamente os ministérios em que o administrador/staff atua como `LEADER` ou `ASSISTANT_LEADER` (sem vazar números globais da igreja para os cards pessoais).
    - O administrador com membro vinculado visualiza sua **Carteirinha Digital**, **Próxima Escala**, **Pendências**, **Exportação para Agenda** e **Liderança**.
-   - Quando um `ADMIN`/`STAFF` ainda não tiver `Membro` vinculado (`!user?.membro` e `!user?.memberId`), o item `Painel Pessoal` fica oculto na Sidebar e qualquer acesso direto a `/personal-panel` redireciona para `/dashboard`.
+   - Quando um `ADMIN`/`STAFF` não possuir `Membro` vinculado (`!user?.membro?.id`), o item `Painel Pessoal` fica oculto na Sidebar e qualquer acesso direto a `/personal-panel` redireciona para `/dashboard`.
 
 ---
 
@@ -180,12 +180,46 @@ Status: concluido
 - [x] Validar ponta a ponta em desktop e mobile (`390x844`): login como `ADMIN`/`STAFF` caindo direto em `/personal-panel`, exibição correta de escalas/liderança/carteirinha, alternância rápida para `/dashboard`, preservação do fluxo `BASIC` (sem acesso a `/dashboard`) e `SUPER_ADMIN` em `/admin`
 - [x] Critério de validação da etapa: Builds e testes verdes em ambos os pacotes e todos os perfis validados sem regressões.
 
+### Etapa 5 - Ajustes pós-Staging: Dashboard Sempre Primeiro e Liberação de Membro em Usuários Desativados
+Status: concluido
+
+- [x] Atualizar `apps/web/src/components/app/sidebar.tsx`:
+  - [x] Posicionar **Dashboard** (`/dashboard`) sempre em 1º lugar e **Painel Pessoal** (`/personal-panel`) logo abaixo em 2º lugar (somente quando `user?.membro?.id` existir)
+- [x] Atualizar `apps/web/src/app/(dashboard)/personal-panel/page.tsx`:
+  - [x] Garantir redirecionamento para `/dashboard` quando usuário não-`BASIC` não possuir membro ativo vinculado (`!user?.membro?.id`)
+- [x] Atualizar `apps/web/src/lib/auth-redirect.ts`:
+  - [x] Garantir que `getPostLoginTarget` direcione `ADMIN` e `STAFF` sempre para `/dashboard` por padrão (mantendo `BASIC` em `/personal-panel` e `SUPER_ADMIN` em `/admin`)
+- [x] Atualizar `apps/web/src/lib/auth-redirect.spec.ts`:
+  - [x] Atualizar suíte unitária validando entrada padrão em `/dashboard` para `ADMIN`/`STAFF` (com e sem membro vinculado) e regras de `?redirect=`
+- [x] Atualizar `apps/web/src/app/(auth)/login/login-client.tsx`:
+  - [x] Alinhar fallback de `handleGoogleLogin` para `'/dashboard'`
+- [x] Atualizar `apps/web/src/middleware.ts`:
+  - [x] Alinhar redirect de usuário comum fora de `/admin` para `'/dashboard'` (ou `'/personal-panel'` quando `BASIC`)
+- [x] Atualizar `apps/web/src/app/manifest.webmanifest/route.ts`:
+  - [x] Alinhar `start_url` do manifesto padrão para `'/dashboard?source=pwa'`
+- [x] Atualizar `apps/api/src/modules/auth/social-auth.service.ts`:
+  - [x] Alinhar fallback de `getPostAuthRedirect` e `normalizeRedirectPath` para `/dashboard`
+- [x] Atualizar `apps/api/src/modules/pwa/pwa.service.ts`:
+  - [x] Alinhar `start_url` para `/dashboard?source=pwa` (e com `?igreja=` no manifesto do tenant)
+- [x] Atualizar `apps/api/src/modules/pwa/pwa.service.spec.ts`:
+  - [x] Validar `start_url` em `/dashboard?source=pwa` nos testes do manifesto
+- [x] Atualizar `apps/api/src/modules/auth/auth.service.ts`:
+  - [x] Limpar `memberId: null` em `deleteUser` ao desativar usuário
+  - [x] Atualizar `findAvailableMembers` para incluir também membros cujo vínculo anterior aponta para usuário `DISABLED` (`ativo: false`)
+  - [x] Extrair helper `resolveMemberForUserLink` validando `deletedAt: null` e liberando usuário `DISABLED` legado de forma atômica em `createUser` e `updateUser`
+- [x] Atualizar `apps/api/src/modules/auth/auth.service.spec.ts`:
+  - [x] Cobrir `deleteUser`, `findAvailableMembers`, bloqueio de membro excluído e reivindicação segura de membro com usuário `DISABLED` legado
+- [x] Atualizar `ai-context/frontend/navigation-rules.md` documentando `/dashboard` como 1º item e entrada padrão para `ADMIN`/`STAFF`
+- [x] Atualizar `ai-context/backlog/painel-pessoal-administrador.md` refletindo a decisão final
+- [x] Critério de validação da etapa: Todos os testes automatizados em `apps/api` e `apps/web`, builds e verificação no navegador verdes.
+
 ---
 
 ## 5. Critérios de Aceite Gerais
 
-- [x] Usuários `ADMIN` e `STAFF` com `Membro` vinculado (e `BASIC`) entram diretamente em `/personal-panel` após login tradicional, login Google OAuth ou abertura pelo PWA; contas `ADMIN`/`STAFF` sem `Membro` vinculado entram diretamente em `/dashboard` (respeitando `?redirect=` explícito quando informado e mantendo `SUPER_ADMIN` em `/admin`).
-- [x] Na Sidebar de `ADMIN` e `STAFF`, **Painel Pessoal** (visível apenas quando há `Membro` vinculado) e **Dashboard** aparecem destacados no topo antes do grupo `Gestão`, enquanto o grupo `Conta` permanece enxuto (com `Minhas Escalas` visível apenas quando o usuário possui escalas).
+- [x] Usuários `ADMIN` e `STAFF` entram sempre em `/dashboard` por padrão após login tradicional, login Google OAuth ou abertura pelo PWA (mantendo `BASIC` em `/personal-panel`, `SUPER_ADMIN` em `/admin` e `?redirect=` explícito quando permitido).
+- [x] Na Sidebar de `ADMIN` e `STAFF`, **Dashboard** aparece sempre em 1º lugar no topo e **Painel Pessoal** aparece logo abaixo em 2º lugar apenas quando há `Membro` vinculado antes do grupo `Gestão`, enquanto o grupo `Conta` exibe `Minhas Escalas` apenas quando o usuário possui escalas.
 - [x] O Painel Pessoal exibe exclusivamente os dados pessoais e de liderança própria do usuário logado (`scope=personal`), sem misturar KPIs globais da igreja nos cards pessoais do administrador.
 - [x] Administradores com membro vinculado acessam **Minha Carteirinha**, **Próxima Escala**, **Pendências** e exportação para calendário diretamente do Painel Pessoal; administradores sem membro vinculado não exibem o item `Painel Pessoal` e são redirecionados para `/dashboard` caso acessem `/personal-panel`.
+- [x] Ao desativar/excluir um usuário no cadastro de usuários (`deleteUser`), o vínculo com o membro (`memberId`) é liberado para novo cadastro/edição, sem exibir membros excluídos (`deletedAt != null`).
 - [x] Usuários `BASIC` mantêm o bloqueio estrito às rotas administrativas (`/dashboard`, `/membros`, `/configuracoes`, etc.) tanto na UI quanto no `middleware.ts`.

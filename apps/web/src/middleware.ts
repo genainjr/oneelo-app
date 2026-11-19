@@ -213,9 +213,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
-  // Usuário comum tentando acessar /admin → redireciona para painel pessoal
+  // Usuário comum tentando acessar /admin → redireciona para a tela principal do perfil
   if (!isSuperAdmin && pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/personal-panel', request.url));
+    return NextResponse.redirect(
+      new URL(isBasic ? '/personal-panel' : '/dashboard', request.url),
+    );
   }
 
   if (isBasic) {

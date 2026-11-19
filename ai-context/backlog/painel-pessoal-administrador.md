@@ -18,11 +18,11 @@
 - **Ação**: Disponibilizar o acesso ao Painel Pessoal para todos os perfis com acesso administrativo (`ADMIN`, `PASTOR`, `SECRETARIA`, `LEADER`):
 
   1. **Navegação na Sidebar (`apps/web/src/components/app/sidebar.tsx`):**
-     - Exibir **Painel Pessoal** (`/personal-panel`) como 1º item do bloco superior de `navItems` (`ADMIN`/`STAFF`) seguido por **Dashboard** (`/dashboard`) antes do grupo `Gestão`, **somente quando o usuário possuir `Membro` vinculado** (`user.memberId || user.membro?.id`), com ícones distintos (`ICONS.personalPanel` e `ICONS.dashboard`). Contas administrativas sem membro vinculado exibem apenas **Dashboard**.
+     - Exibir sempre **Dashboard** (`/dashboard`) como **1º item** no topo de `navItems` (`ADMIN`/`STAFF`) e **Painel Pessoal** (`/personal-panel`) logo abaixo em **2º** antes do grupo `Gestão`, **somente quando o usuário possuir `Membro` vinculado** (`user?.membro?.id`), com ícones distintos (`ICONS.dashboard` e `ICONS.personalPanel`). Contas administrativas sem membro vinculado exibem apenas **Dashboard**.
      - Exibir **Minhas Escalas** (`/minhas-escalas`) no grupo `Conta` quando `ADMIN`/`STAFF` possuir membro vinculado com escalas.
 
   2. **Comportamento Pós-Login e PWA (`apps/web/src/lib/auth-redirect.ts`, `social-auth.service.ts`, `pwa.service.ts`):**
-     - Direcionar `ADMIN` e `STAFF` **com membro vinculado** (e `BASIC`) para `/personal-panel` no pós-login (tradicional e OAuth Google), e direcionar `ADMIN` e `STAFF` **sem membro vinculado** para `/dashboard` (inclusive redirecionando de `/personal-panel` para `/dashboard` quando aberto sem membro vinculado).
+     - Manter o redirecionamento padrão pós-login (tradicional, OAuth Google e `start_url` do PWA) de `ADMIN` e `STAFF` **sempre para `/dashboard` em qualquer caso** (tendo ou não membro vinculado), mantendo `BASIC` em `/personal-panel` e `SUPER_ADMIN` em `/admin`. Contas administrativas sem membro vinculado são redirecionadas de `/personal-panel` para `/dashboard`.
 
   3. **Validação de Permissões e Contexto (`/personal-panel` e `GET /api/ministerios/resumo?scope=personal`):**
      - Garantir que `/personal-panel` renderize os dados pessoais e de liderança própria do administrador logado (`scope=personal`) e atalho rápido para o **Dashboard da Igreja** (`/dashboard`).

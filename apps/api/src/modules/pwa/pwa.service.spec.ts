@@ -14,7 +14,7 @@ describe('PwaService', () => {
       name: 'One Elo',
       short_name: 'One Elo',
       id: '/dashboard',
-      start_url: '/personal-panel?source=pwa',
+      start_url: '/dashboard?source=pwa',
       theme_color: '#0f2f73',
     });
   });
@@ -35,7 +35,7 @@ describe('PwaService', () => {
       name: 'Comunidade',
       short_name: 'Comunidade',
       id: '/pwa/tenant/tenant-1',
-      start_url: '/personal-panel?source=pwa&igreja=comunidade',
+      start_url: '/dashboard?source=pwa&igreja=comunidade',
       theme_color: '#09090b',
     });
     expect(result.version).toBe(`${new Date('2026-07-18T12:00:00Z').getTime()}-5`);

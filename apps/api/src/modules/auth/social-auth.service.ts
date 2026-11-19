@@ -1084,7 +1084,7 @@ export class SocialAuthService {
     const defaultTarget =
       user.role === Role.SUPER_ADMIN
         ? '/admin'
-        : canUsePersonalPanel
+        : user.role === Role.BASIC
           ? '/personal-panel'
           : '/dashboard';
 
@@ -1175,7 +1175,7 @@ export class SocialAuthService {
       value.includes('://') ||
       value.startsWith('/api/')
     ) {
-      return '/personal-panel';
+      return '/dashboard';
     }
 
     return value;

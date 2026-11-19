@@ -107,7 +107,7 @@ export default function PersonalPanelPage() {
   const t = useTranslations('dashboardPersonal');
   const router = useRouter();
   const { user, loadingUser } = useAuthUser();
-  const hasLinkedMember = Boolean(user?.memberId || user?.membro?.id);
+  const hasLinkedMember = Boolean(user?.membro?.id);
   const [today, setToday] = useState('');
   const [ministeriosResumo, setMinisteriosResumo] = useState<MinisteriosResumo | null>(null);
   const [escalasProximoMes, setEscalasProximoMes] = useState<EscalaResumo[]>([]);
