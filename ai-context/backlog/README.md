@@ -34,7 +34,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
 | 22/07/2026 | [central-documentos.md](central-documentos.md) | Central de documentos, Carteirinhas de Membros e Exportações | ✅ **Implementado** (Fila assíncrona, Supabase Storage, Carteirinha Digital estilo CNH, lote A4 duplex e QR Code) |
-| 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | Módulo financeiro, permissões e patrimônio | 🟡 **MVP + Recorrentes Implementados** (Contas, categorias, lançamentos, séries/parcelas em lote, baixa de pendências, permissões); Patrimônio despriorizado e impressão PDF/PNG pendente em IMP-010 |
+| 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | **FT-014: Módulo financeiro, permissões e patrimônio** | 🟡 **Parcial (MVP + Recorrentes 6.1 Implementados)** — Entregas 1–5 e 6.1 (recorrência/parcelamento em lote + baixa `confirm`) ativas; **pendentes**: aprovação com motivo/dupla validação (6), ação em série `recurringGroupId`, relatórios/comparativos e PDF (`IMP-010`/7), Patrimônio (8) e Conciliação OFX/CSV (9) |
 | 18/07/2026 | [tenant-branded-experience.md](tenant-branded-experience.md) | **FT-012: Experiência personalizada da igreja por tenant** | ✅ **Concluído** (Entregue via PWA dinâmico, FT-018, FT-019 e Tema Unificado) |
 | 17/07/2026 | [phone-password-login.md](phone-password-login.md) | Login com telefone e senha | ✅ **Implementado** (E.164, login unificado por email/telefone, Meu Perfil) |
 | 17/07/2026 | [notification-center.md](notification-center.md) | Central e infraestrutura robusta de notificações | ✅ **Implementado** (Persistência, retentativas, inbox in-app, regras e preferências via PRs #212/#213) |
