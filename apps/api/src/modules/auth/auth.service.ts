@@ -203,6 +203,7 @@ export class AuthService {
         nome: user.nome,
         email: user.email,
         role: user.role,
+        memberId: user.memberId ?? null,
         onboardingCompletedAt: user.onboardingCompletedAt,
         tenantId: user.tenantId,
         tenantNome: user.tenant!.nome,

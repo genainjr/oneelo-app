@@ -28,10 +28,10 @@ Este documento define o comportamento esperado de navegacao por perfil no fronte
 
 ### ADMIN
 
-Pode acessar a experiencia administrativa e pessoal do tenant (destino padrao pos-login e abertura do PWA: `/personal-panel`, salvo `?redirect=` explicito):
+Pode acessar a experiencia administrativa e pessoal do tenant (destino padrao pos-login: `/personal-panel` quando possuir `Membro` vinculado ou `/dashboard` quando for conta administrativa sem `Membro` vinculado, salvo `?redirect=` explicito):
 
-- `/personal-panel` (1º item do bloco superior da sidebar, com dados pessoais e de lideranca escopados ao proprio usuario via `?scope=personal`)
-- `/dashboard` (2º item do bloco superior da sidebar, com KPIs institucionais da igreja)
+- `/personal-panel` (exibido como 1º item do bloco superior da sidebar apenas quando o usuario possui `Membro` vinculado, com dados pessoais e de lideranca escopados ao proprio usuario via `?scope=personal`; contas sem `Membro` vinculado sao redirecionadas para `/dashboard`)
+- `/dashboard` (bloco superior da sidebar, com KPIs institucionais da igreja)
 - `/membros`
 - `/membros/visualizacao`
 - `/ministerios`
@@ -47,10 +47,10 @@ Pode acessar a experiencia administrativa e pessoal do tenant (destino padrao po
 
 ### STAFF
 
-Pode acessar a operacao global e pessoal do tenant (destino padrao pos-login e abertura do PWA: `/personal-panel`, salvo `?redirect=` explicito):
+Pode acessar a operacao global e pessoal do tenant (destino padrao pos-login: `/personal-panel` quando possuir `Membro` vinculado ou `/dashboard` quando for conta sem `Membro` vinculado, salvo `?redirect=` explicito):
 
-- `/personal-panel` (1º item do bloco superior da sidebar, com dados pessoais e de lideranca escopados ao proprio usuario via `?scope=personal`)
-- `/dashboard` (2º item do bloco superior da sidebar, com KPIs institucionais da igreja)
+- `/personal-panel` (exibido como 1º item do bloco superior da sidebar apenas quando o usuario possui `Membro` vinculado, com dados pessoais e de lideranca escopados ao proprio usuario via `?scope=personal`; contas sem `Membro` vinculado sao redirecionadas para `/dashboard`)
+- `/dashboard` (bloco superior da sidebar, com KPIs institucionais da igreja)
 - `/membros`
 - `/membros/visualizacao`
 - `/ministerios`

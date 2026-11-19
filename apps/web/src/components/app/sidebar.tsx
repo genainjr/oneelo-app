@@ -293,8 +293,11 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const toggleSection = (href: string) =>
     setOpenSections((prev) => ({ ...prev, [href]: !prev[href] }));
 
+  const hasLinkedMember = Boolean(user?.memberId || user?.membro?.id);
   const navItems: NavItem[] = [
-    { href: '/personal-panel', label: t('personalPanel'), icon: ICONS.personalPanel },
+    ...(hasLinkedMember
+      ? [{ href: '/personal-panel', label: t('personalPanel'), icon: ICONS.personalPanel }]
+      : []),
     { href: '/dashboard', label: t('dashboard'), icon: ICONS.dashboard },
     {
       href: '/membros',

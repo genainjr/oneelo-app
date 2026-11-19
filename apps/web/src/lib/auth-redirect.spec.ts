@@ -22,18 +22,48 @@ describe('getTenantLoginPath', () => {
 });
 
 describe('getPostLoginTarget', () => {
-  it('direciona ADMIN, STAFF e BASIC para /personal-panel por padrão', () => {
+  it('direciona ADMIN/STAFF com membro vinculado e BASIC para /personal-panel por padrão', () => {
     assert.equal(
-      getPostLoginTarget({ role: 'ADMIN', onboardingCompletedAt: '2026-01-01T00:00:00Z' }),
+      getPostLoginTarget({
+        role: 'ADMIN',
+        memberId: 'membro-1',
+        onboardingCompletedAt: '2026-01-01T00:00:00Z',
+      }),
       '/personal-panel',
     );
     assert.equal(
-      getPostLoginTarget({ role: 'STAFF', onboardingCompletedAt: '2026-01-01T00:00:00Z' }),
+      getPostLoginTarget({
+        role: 'STAFF',
+        memberId: 'membro-2',
+        onboardingCompletedAt: '2026-01-01T00:00:00Z',
+      }),
       '/personal-panel',
     );
     assert.equal(
       getPostLoginTarget({ role: 'BASIC', onboardingCompletedAt: '2026-01-01T00:00:00Z' }),
       '/personal-panel',
+    );
+  });
+
+  it('direciona ADMIN e STAFF sem membro vinculado para /dashboard (inclusive se redirect for /personal-panel)', () => {
+    assert.equal(
+      getPostLoginTarget({
+        role: 'ADMIN',
+        memberId: null,
+        onboardingCompletedAt: '2026-01-01T00:00:00Z',
+      }),
+      '/dashboard',
+    );
+    assert.equal(
+      getPostLoginTarget(
+        {
+          role: 'STAFF',
+          memberId: null,
+          onboardingCompletedAt: '2026-01-01T00:00:00Z',
+        },
+        '/personal-panel',
+      ),
+      '/dashboard',
     );
   });
 
@@ -46,7 +76,10 @@ describe('getPostLoginTarget', () => {
 
   it('preserva redirect explícito seguro para ADMIN/STAFF e bloqueia /dashboard para BASIC', () => {
     assert.equal(
-      getPostLoginTarget({ role: 'ADMIN', onboardingCompletedAt: '2026-01-01T00:00:00Z' }, '/dashboard'),
+      getPostLoginTarget(
+        { role: 'ADMIN', memberId: 'membro-1', onboardingCompletedAt: '2026-01-01T00:00:00Z' },
+        '/dashboard',
+      ),
       '/dashboard',
     );
     assert.equal(

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { addMonths, format, startOfMonth, endOfMonth } from 'date-fns';
 import { PageHeader } from '@/components/app/page-header';
@@ -104,7 +105,9 @@ const QUICK_ACCESS_ICONS = {
 
 export default function PersonalPanelPage() {
   const t = useTranslations('dashboardPersonal');
-  const { user } = useAuthUser();
+  const router = useRouter();
+  const { user, loadingUser } = useAuthUser();
+  const hasLinkedMember = Boolean(user?.memberId || user?.membro?.id);
   const [today, setToday] = useState('');
   const [ministeriosResumo, setMinisteriosResumo] = useState<MinisteriosResumo | null>(null);
   const [escalasProximoMes, setEscalasProximoMes] = useState<EscalaResumo[]>([]);
@@ -147,6 +150,13 @@ export default function PersonalPanelPage() {
   useEffect(() => {
     setToday(formatDate(new Date()));
   }, []);
+
+  useEffect(() => {
+    if (loadingUser || !user) return;
+    if (user.role !== 'BASIC' && !hasLinkedMember) {
+      router.replace('/dashboard');
+    }
+  }, [hasLinkedMember, loadingUser, router, user]);
 
   const leadershipMinisterios = useMemo(() => {
     const memberships = (user?.membro?.ministerios ?? []).filter(
@@ -395,6 +405,10 @@ export default function PersonalPanelPage() {
     : hasEscalas
       ? t('subtitle', { date: today })
       : t('noMinistry.subtitle', { date: today });
+
+  if (!loadingUser && user && user.role !== 'BASIC' && !hasLinkedMember) {
+    return null;
+  }
 
   return (
     <div className="max-w-5xl mx-auto">

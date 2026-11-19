@@ -20,15 +20,15 @@ Branch sugerida para implementação: feature/painel-pessoal-administrador
 Unificar a experiência inicial da comunidade no One Elo fazendo com que usuários com perfil administrativo (`ADMIN` e `STAFF`) também tenham acesso completo ao **Painel Pessoal (`/personal-panel`)** — e passem a entrar diretamente nele após o login, mantendo o **Dashboard Geral (`/dashboard`)** a 1 clique no topo do menu lateral para a operação institucional.
 
 Com esta entrega:
-1. **Entrada unificada em `/personal-panel`:** `ADMIN`, `STAFF` e `BASIC` iniciam a sessão no Painel Pessoal (login por e-mail/telefone/CPF, OAuth Google e abertura do PWA), preservando `/admin` para `SUPER_ADMIN` e links diretos (`?redirect=`).
+1. **Entrada unificada em `/personal-panel` para quem possui membro vinculado:** `ADMIN` e `STAFF` com `Membro` vinculado (e `BASIC`) iniciam a sessão no Painel Pessoal (login por e-mail/telefone/CPF, OAuth Google e abertura do PWA), enquanto contas administrativas sem `Membro` vinculado entram diretamente em `/dashboard` (e são redirecionadas de `/personal-panel` para `/dashboard`), preservando `/admin` para `SUPER_ADMIN` e links diretos (`?redirect=`).
 2. **Sidebar clara e sem conflito de posição (`apps/web/src/components/app/sidebar.tsx`):**
-   - No topo do menu administrativo (`ADMIN`/`STAFF`), **Painel Pessoal** e **Dashboard** ficam lado a lado antes do grupo `Gestão`, garantindo visibilidade imediata da tela ativa logo na entrada.
+   - No topo do menu administrativo (`ADMIN`/`STAFF`), **Painel Pessoal** (exibido somente quando o usuário possui `Membro` vinculado) e **Dashboard** ficam lado a lado antes do grupo `Gestão`, garantindo visibilidade imediata da tela ativa logo na entrada.
    - A habilitação de **Minhas Escalas** na sidebar também passa a considerar `user.memberId` para `ADMIN`/`STAFF` que possuam escalas vinculadas.
    - O grupo `Conta` permanece dedicado a `Meu Perfil`, `Notificações`, `Site` e `Configurações`.
 3. **Dados pessoais fiéis em `/personal-panel` para `ADMIN`/`STAFF`:**
    - O resumo de liderança no Painel Pessoal passa a refletir estritamente os ministérios em que o administrador/staff atua como `LEADER` ou `ASSISTANT_LEADER` (sem vazar números globais da igreja para os cards pessoais).
    - O administrador com membro vinculado visualiza sua **Carteirinha Digital**, **Próxima Escala**, **Pendências**, **Exportação para Agenda** e **Liderança**.
-   - Quando um `ADMIN`/`STAFF` ainda não tiver `Membro` vinculado (`!user?.membro`), o Painel Pessoal exibe orientação amigável para vinculação sem quebrar cards ou atalhos de gestão.
+   - Quando um `ADMIN`/`STAFF` ainda não tiver `Membro` vinculado (`!user?.membro` e `!user?.memberId`), o item `Painel Pessoal` fica oculto na Sidebar e qualquer acesso direto a `/personal-panel` redireciona para `/dashboard`.
 
 ---
 
@@ -184,8 +184,8 @@ Status: concluido
 
 ## 5. Critérios de Aceite Gerais
 
-- [x] Usuários `ADMIN`, `STAFF` e `BASIC` entram diretamente em `/personal-panel` após login tradicional, login Google OAuth ou abertura pelo PWA (respeitando `?redirect=` explícito quando informado e mantendo `SUPER_ADMIN` em `/admin`).
-- [x] Na Sidebar de `ADMIN` e `STAFF`, **Painel Pessoal** e **Dashboard** aparecem destacados no topo antes do grupo `Gestão`, enquanto o grupo `Conta` permanece enxuto (com `Minhas Escalas` visível apenas quando o usuário possui escalas).
+- [x] Usuários `ADMIN` e `STAFF` com `Membro` vinculado (e `BASIC`) entram diretamente em `/personal-panel` após login tradicional, login Google OAuth ou abertura pelo PWA; contas `ADMIN`/`STAFF` sem `Membro` vinculado entram diretamente em `/dashboard` (respeitando `?redirect=` explícito quando informado e mantendo `SUPER_ADMIN` em `/admin`).
+- [x] Na Sidebar de `ADMIN` e `STAFF`, **Painel Pessoal** (visível apenas quando há `Membro` vinculado) e **Dashboard** aparecem destacados no topo antes do grupo `Gestão`, enquanto o grupo `Conta` permanece enxuto (com `Minhas Escalas` visível apenas quando o usuário possui escalas).
 - [x] O Painel Pessoal exibe exclusivamente os dados pessoais e de liderança própria do usuário logado (`scope=personal`), sem misturar KPIs globais da igreja nos cards pessoais do administrador.
-- [x] Administradores com membro vinculado acessam **Minha Carteirinha**, **Próxima Escala**, **Pendências** e exportação para calendário diretamente do Painel Pessoal; administradores sem membro vinculado recebem orientação clara sem erros de tela.
+- [x] Administradores com membro vinculado acessam **Minha Carteirinha**, **Próxima Escala**, **Pendências** e exportação para calendário diretamente do Painel Pessoal; administradores sem membro vinculado não exibem o item `Painel Pessoal` e são redirecionados para `/dashboard` caso acessem `/personal-panel`.
 - [x] Usuários `BASIC` mantêm o bloqueio estrito às rotas administrativas (`/dashboard`, `/membros`, `/configuracoes`, etc.) tanto na UI quanto no `middleware.ts`.
