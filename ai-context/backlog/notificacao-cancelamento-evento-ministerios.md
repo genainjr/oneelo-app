@@ -1,6 +1,6 @@
 # Backlog - Notificação de Cancelamento de Eventos por Ministério
 
-### IMP-010 Notificação Automática de Cancelamento de Eventos aos Ministérios Vinculados
+### IMP-011 Notificação Automática de Cancelamento de Eventos aos Ministérios Vinculados
 
 - **Prioridade**: alta (comunicação e não-regressão de presença nos cultos)
 - **Status**: pendente
