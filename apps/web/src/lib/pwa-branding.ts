@@ -1,4 +1,10 @@
 import type { AuthUser } from '@/types';
+import {
+  TENANT_BRAND_COOKIE,
+  buildClearTenantBrandCookieString,
+  buildTenantBrandCookieString,
+  parseTenantBrandCookie,
+} from './tenant-brand-cookie';
 
 export const TENANT_MANIFEST_REVISION = '5';
 const TENANT_PWA_CACHE_KEY = 'oneelo:tenant-pwa-meta';
@@ -26,6 +32,19 @@ export function hasCustomTenantPwa(tenant?: TenantPwaBranding | null): boolean {
   );
 }
 
+function readTenantBrandCookieClient(): TenantPwaBranding | null {
+  if (typeof document === 'undefined' || !document.cookie) return null;
+  const prefix = `${TENANT_BRAND_COOKIE}=`;
+  const entries = document.cookie.split(';');
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (trimmed.startsWith(prefix)) {
+      return parseTenantBrandCookie(trimmed.slice(prefix.length));
+    }
+  }
+  return null;
+}
+
 export function saveCachedTenantPwa(tenant?: TenantPwaBranding | null): void {
   if (typeof window === 'undefined' || !tenant?.slug) return;
   try {
@@ -35,20 +54,27 @@ export function saveCachedTenantPwa(tenant?: TenantPwaBranding | null): void {
       if (tenant[key] !== undefined) return tenant[key] ?? null;
       return sameSlug ? (existing?.[key] ?? null) : null;
     };
-    localStorage.setItem(
-      TENANT_PWA_CACHE_KEY,
-      JSON.stringify({
-        nome: tenant.nome,
-        slug: tenant.slug,
-        logoUrl: resolveOptional('logoUrl'),
-        pwaShortName: resolveOptional('pwaShortName'),
-        pwaIconUrl: resolveOptional('pwaIconUrl'),
-        pwaIconKey: resolveOptional('pwaIconKey'),
-        pwaUpdatedAt: resolveOptional('pwaUpdatedAt'),
-        themePalette: resolveOptional('themePalette'),
-        primaryColor: resolveOptional('primaryColor'),
-      }),
-    );
+    const merged: TenantPwaBranding = {
+      nome: tenant.nome,
+      slug: tenant.slug,
+      logoUrl: resolveOptional('logoUrl'),
+      pwaShortName: resolveOptional('pwaShortName'),
+      pwaIconUrl: resolveOptional('pwaIconUrl'),
+      pwaIconKey: resolveOptional('pwaIconKey'),
+      pwaUpdatedAt: resolveOptional('pwaUpdatedAt'),
+      themePalette: resolveOptional('themePalette'),
+      primaryColor: resolveOptional('primaryColor'),
+    };
+    localStorage.setItem(TENANT_PWA_CACHE_KEY, JSON.stringify(merged));
+    if (typeof document !== 'undefined') {
+      const cookieStr = buildTenantBrandCookieString(
+        merged,
+        window.location.protocol === 'https:',
+      );
+      if (cookieStr) {
+        document.cookie = cookieStr;
+      }
+    }
   } catch {
     // ignore storage errors
   }
@@ -58,17 +84,24 @@ export function readCachedTenantPwa(): TenantPwaBranding | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(TENANT_PWA_CACHE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as TenantPwaBranding;
+    if (raw) {
+      return JSON.parse(raw) as TenantPwaBranding;
+    }
   } catch {
-    return null;
+    // ignore storage errors
   }
+  return readTenantBrandCookieClient();
 }
 
 export function clearCachedTenantPwa(): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(TENANT_PWA_CACHE_KEY);
+    if (typeof document !== 'undefined') {
+      document.cookie = buildClearTenantBrandCookieString(
+        window.location.protocol === 'https:',
+      );
+    }
   } catch {
     // ignore storage errors
   }

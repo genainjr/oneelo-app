@@ -17,6 +17,7 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 19/11/2026 | [pwa-notificacoes-tema-instantaneo-plan.md](pwa-notificacoes-tema-instantaneo-plan.md) | Eliminação do Delay e Flash de Cores Padrão na Tela de Autorização de Notificações do PWA (Concluído) |
 | 19/11/2026 | [painel-pessoal-administrador-plan.md](painel-pessoal-administrador-plan.md) | Acesso ao Painel Pessoal para Administradores e Liderança Geral (FT-020 — Concluído) |
 | 18/11/2026 | [tema-personalizado-tenant-plan.md](tema-personalizado-tenant-plan.md) | Personalização de Cores e Identidade Visual da Igreja (FT-022 — Concluído) |
 | 17/11/2026 | [pwa-tenant-identificacao-login-logoff-plan.md](pwa-tenant-identificacao-login-logoff-plan.md) | Correção de Identificação do Tenant no PWA, Manifesto, Login e Logoff (Concluído) |

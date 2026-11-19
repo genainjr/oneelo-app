@@ -16,6 +16,7 @@ import {
   CalendarPlus,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuthUser } from '@/contexts/auth-user-context';
 import {
   getPushStatus,
   enablePushNotifications,
@@ -55,6 +56,7 @@ function formatTimeAgo(dateString: string): string {
 
 export function NotificationBellInbox() {
   const router = useRouter();
+  const { user, loadingUser } = useAuthUser();
   const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<UserInboxItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -64,7 +66,12 @@ export function NotificationBellInbox() {
   // Push status
   const [pushStatus, setPushStatus] = useState<PushSupportStatus>('unsupported');
   const [pushLoading, setPushLoading] = useState(false);
-  const [showPermissionIntro, setShowPermissionIntro] = useState(false);
+  const [pushReadyToPrompt, setPushReadyToPrompt] = useState(false);
+  const [permissionIntroDismissed, setPermissionIntroDismissed] = useState(false);
+  const [manualPermissionIntro, setManualPermissionIntro] = useState(false);
+  const showPermissionIntro =
+    manualPermissionIntro ||
+    (pushReadyToPrompt && !permissionIntroDismissed && !loadingUser && Boolean(user));
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -94,7 +101,7 @@ export function NotificationBellInbox() {
         (!isIOS || isStandaloneMode());
 
       if (canAutoPrompt) {
-        setShowPermissionIntro(true);
+        setPushReadyToPrompt(true);
       }
     } catch {
       setPushStatus('unsupported');
@@ -218,12 +225,14 @@ export function NotificationBellInbox() {
   };
 
   const handleEnablePush = async () => {
-    setShowPermissionIntro(true);
+    setManualPermissionIntro(true);
   };
 
   const handleEnableConfirmed = async () => {
     localStorage.setItem(AUTO_PROMPT_DISMISSED_KEY, 'true');
-    setShowPermissionIntro(false);
+    setManualPermissionIntro(false);
+    setPermissionIntroDismissed(true);
+    setPushReadyToPrompt(false);
     setPushLoading(true);
 
     try {
@@ -461,7 +470,9 @@ export function NotificationBellInbox() {
                 type="button"
                 onClick={() => {
                   localStorage.setItem(AUTO_PROMPT_DISMISSED_KEY, 'true');
-                  setShowPermissionIntro(false);
+                  setManualPermissionIntro(false);
+                  setPermissionIntroDismissed(true);
+                  setPushReadyToPrompt(false);
                 }}
                 className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
               >

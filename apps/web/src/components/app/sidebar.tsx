@@ -16,6 +16,7 @@ import {
   clearCachedTenantPwa,
   readCachedTenantPwa,
   saveCachedTenantPwa,
+  type TenantPwaBranding,
 } from '@/lib/pwa-branding';
 
 const ICONS = {
@@ -153,6 +154,7 @@ interface NavItem {
 
 interface SidebarProps {
   user: AuthUser | null;
+  fallbackTenant?: TenantPwaBranding | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -189,7 +191,7 @@ const EXACT_ROOTS = [
 // Pill "Em breve" do menu — contraste legivel sobre o fundo da sidebar
 const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-sidebar-badge-bg text-sidebar-badge-text';
 
-export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
+export function Sidebar({ user, fallbackTenant = null, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations('nav');
@@ -220,8 +222,9 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     ) ?? false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
-  const tenantName = user?.tenant?.pwaShortName || user?.tenant?.nome || 'One Elo';
-  const tenantIcon = user?.tenant?.logoUrl || user?.tenant?.pwaIconUrl || '/logo.jpg';
+  const resolvedBrand = user?.tenant ?? (!user ? fallbackTenant : null);
+  const tenantName = resolvedBrand?.pwaShortName || resolvedBrand?.nome || 'One Elo';
+  const tenantIcon = resolvedBrand?.logoUrl || resolvedBrand?.pwaIconUrl || '/logo.jpg';
 
   useEffect(() => {
     setCurrentLocale(readLocaleCookie());

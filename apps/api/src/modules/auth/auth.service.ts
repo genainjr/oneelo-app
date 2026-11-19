@@ -399,91 +399,92 @@ export class AuthService {
   }
 
   async me(userId: string, tenantId: string) {
-    const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        telefoneLogin: true,
-        role: true,
-        status: true,
-        senhaHash: true,
-        onboardingCompletedAt: true,
-        tenantId: true,
-        memberId: true,
-        createdAt: true,
-        membro: {
-          where: { deletedAt: null, status: StatusMembro.ATIVO },
-          select: {
-            id: true,
-            nome: true,
-            nomeExibicao: true,
-            fotoUrl: true,
-            fotoKey: true,
-            email: true,
-            whatsapp: true,
-            dataNascimento: true,
-            status: true,
-            matricula: true,
-            cargo: true,
-            dataBatismo: true,
-            cpf: true,
-            rg: true,
-            sexo: true,
-            estadoCivil: true,
-            ministerios: {
-              where: {
-                ministerio: { ativo: true },
-              },
-              select: {
-                role: true,
-                ministerio: {
-                  select: {
-                    id: true,
-                    nome: true,
-                    usaEscalas: true,
+    const [user, financeManagerCount] = await Promise.all([
+      this.prisma.user.findFirst({
+        where: { id: userId, tenantId, ativo: true, status: UserStatus.ACTIVE },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          telefoneLogin: true,
+          role: true,
+          status: true,
+          senhaHash: true,
+          onboardingCompletedAt: true,
+          tenantId: true,
+          memberId: true,
+          createdAt: true,
+          membro: {
+            where: { deletedAt: null, status: StatusMembro.ATIVO },
+            select: {
+              id: true,
+              nome: true,
+              nomeExibicao: true,
+              fotoUrl: true,
+              fotoKey: true,
+              email: true,
+              whatsapp: true,
+              dataNascimento: true,
+              status: true,
+              matricula: true,
+              cargo: true,
+              dataBatismo: true,
+              cpf: true,
+              rg: true,
+              sexo: true,
+              estadoCivil: true,
+              ministerios: {
+                where: {
+                  ministerio: { ativo: true },
+                },
+                select: {
+                  role: true,
+                  ministerio: {
+                    select: {
+                      id: true,
+                      nome: true,
+                      usaEscalas: true,
+                    },
                   },
                 },
               },
             },
           },
-        },
-        tenant: {
-          select: {
-            nome: true,
-            slug: true,
-            plano: true,
-            limiteMembros: true,
-            logoUrl: true,
-            logoKey: true,
-            pwaShortName: true,
-            pwaIconUrl: true,
-            pwaIconKey: true,
-            pwaUpdatedAt: true,
-            themePalette: true,
-            primaryColor: true,
+          tenant: {
+            select: {
+              nome: true,
+              slug: true,
+              plano: true,
+              limiteMembros: true,
+              logoUrl: true,
+              logoKey: true,
+              pwaShortName: true,
+              pwaIconUrl: true,
+              pwaIconKey: true,
+              pwaUpdatedAt: true,
+              themePalette: true,
+              primaryColor: true,
+            },
+          },
+          financePermissions: {
+            where: { revokedAt: null },
+            select: { role: true },
+            take: 1,
           },
         },
-        financePermissions: {
-          where: { revokedAt: null },
-          select: { role: true },
-          take: 1,
+      }),
+      this.prisma.financePermission.count({
+        where: {
+          tenantId,
+          role: FinanceRole.FINANCE_MANAGER,
+          revokedAt: null,
         },
-      },
-    });
+      }),
+    ]);
 
     if (!user) {
       throw new UnauthorizedException('Sessão inválida.');
     }
-
-    const financeManagerCount = await this.prisma.financePermission.count({
-      where: {
-        tenantId,
-        role: FinanceRole.FINANCE_MANAGER,
-        revokedAt: null,
-      },
-    });
 
     const { senhaHash, financePermissions, ...safeUser } = user;
     const financePermission = financePermissions[0]?.role ?? null;

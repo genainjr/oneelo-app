@@ -48,6 +48,18 @@ import {
   OAUTH_STATE_COOKIE,
 } from './social-auth.constants';
 
+const TENANT_BRAND_COOKIE = 'oneelo_tenant_brand';
+const TENANT_BRAND_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+interface TenantBrandCookieSource {
+  slug?: string | null;
+  nome?: string | null;
+  logoUrl?: string | null;
+  pwaIconUrl?: string | null;
+  themePalette?: string | null;
+  primaryColor?: string | null;
+}
+
 @ApiTags('Autenticação')
 @Controller('auth')
 export class AuthController {
@@ -73,6 +85,37 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: parseDurationToMilliseconds(expiresIn),
     });
+  }
+
+  private syncTenantBrandCookie(
+    res: Response,
+    req: Request,
+    tenant?: TenantBrandCookieSource | null,
+  ) {
+    if (!tenant?.slug || !tenant?.nome) {
+      return;
+    }
+
+    const payload = JSON.stringify({
+      slug: tenant.slug,
+      nome: tenant.nome,
+      logoUrl: tenant.logoUrl ?? null,
+      pwaIconUrl: tenant.pwaIconUrl ?? null,
+      themePalette: tenant.themePalette ?? null,
+      primaryColor: tenant.primaryColor ?? null,
+    });
+
+    res.cookie(TENANT_BRAND_COOKIE, payload, {
+      httpOnly: false,
+      secure: this.isHttpsRequest(req),
+      sameSite: 'lax',
+      maxAge: TENANT_BRAND_COOKIE_MAX_AGE_MS,
+      path: '/',
+    });
+  }
+
+  private clearTenantBrandCookie(res: Response) {
+    res.clearCookie(TENANT_BRAND_COOKIE, { path: '/' });
   }
 
   private setTransientCookie(
@@ -145,6 +188,7 @@ export class AuthController {
     const { accessToken, user, expiresIn, expiresAt } = await this.authService.login(dto, ip);
 
     this.setAccessTokenCookie(res, req, accessToken, expiresIn);
+    this.syncTenantBrandCookie(res, req, user.tenant);
 
     return { message: 'Login realizado com sucesso.', user, expiresIn, expiresAt };
   }
@@ -174,6 +218,7 @@ export class AuthController {
       await this.authService.activateWithPassword(token, dto, getClientIp(req));
 
     this.setAccessTokenCookie(res, req, accessToken, expiresIn);
+    this.syncTenantBrandCookie(res, req, user.tenant);
 
     return { message: 'Conta ativada com sucesso.', user, expiresIn, expiresAt };
   }
@@ -228,6 +273,7 @@ export class AuthController {
 
     if (result.status === 'authenticated') {
       this.setAccessTokenCookie(res, req, result.session.accessToken, result.session.expiresIn);
+      this.syncTenantBrandCookie(res, req, result.session.user.tenant);
       return res.redirect(result.redirectPath);
     }
 
@@ -269,6 +315,7 @@ export class AuthController {
 
     this.clearTransientCookie(res, OAUTH_PENDING_LINK_COOKIE);
     this.setAccessTokenCookie(res, req, accessToken, expiresIn);
+    this.syncTenantBrandCookie(res, req, user.tenant);
 
     return {
       message: 'Conta Google vinculada com sucesso.',
@@ -302,14 +349,25 @@ export class AuthController {
 
     // Remove o cookie de sessão
     res.clearCookie('access_token');
+    if (user.role === Role.SUPER_ADMIN) {
+      this.clearTenantBrandCookie(res);
+    }
 
     return { message: 'Logout realizado com sucesso.' };
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async me(@CurrentUser() user: JwtPayload) {
-    return this.authService.me(user.sub, user.tenantId!);
+  async me(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: true }) res?: Response,
+    @Req() req?: Request,
+  ) {
+    const profile = await this.authService.me(user.sub, user.tenantId!);
+    if (res && req) {
+      this.syncTenantBrandCookie(res, req, profile.tenant);
+    }
+    return profile;
   }
 
   @Patch('me/onboarding')
