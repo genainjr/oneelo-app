@@ -10,6 +10,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
+| 19/11/2026 | [importacao-extrato-bancario.md](importacao-extrato-bancario.md) | **FT-023: Importação de Extratos Bancários (OFX / CSV / XLSX)** | ⚪ **Pendente** (Parser bancário, preview *dry-run*, anti-duplicidade `FITID`/hash, baixa em pendências e conciliação) |
 | 18/11/2026 | [tema-personalizado-tenant.md](tema-personalizado-tenant.md) | **FT-022: Personalização de Cores e Identidade Visual da Igreja** | ✅ **Implementado** (7 presets curados + color picker HEX com contraste WCAG AA, preview em tempo real e sincronização em portal/login/dashboard/OG) |
 | 18/11/2026 | [dizimos-ofertas-pix-comprovantes.md](dizimos-ofertas-pix-comprovantes.md) | **FT-021: Dízimos e Ofertas Digitais (PIX, Comprovantes e Conciliação)** | ⚪ **Pendente** (QR Code PIX para telão/site/app, upload de comprovante pelo membro e conciliação na tesouraria) |
 | 18/11/2026 | [notificacao-cancelamento-evento-ministerios.md](notificacao-cancelamento-evento-ministerios.md) | **IMP-011: Notificação de Cancelamento de Eventos por Ministério** | ⚪ **Pendente** (Disparo automático de alerta in-app/push aos voluntários do ministério quando evento é cancelado) |
@@ -34,7 +35,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
 | 22/07/2026 | [central-documentos.md](central-documentos.md) | Central de documentos, Carteirinhas de Membros e Exportações | ✅ **Implementado** (Fila assíncrona, Supabase Storage, Carteirinha Digital estilo CNH, lote A4 duplex e QR Code) |
-| 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | **FT-014: Módulo financeiro, permissões e patrimônio** | 🟡 **Parcial (MVP + Recorrentes 6.1 Implementados)** — Entregas 1–5 e 6.1 (recorrência/parcelamento em lote + baixa `confirm`) ativas; **pendentes**: aprovação com motivo/dupla validação (6), ação em série `recurringGroupId`, relatórios/comparativos e PDF (`IMP-010`/7), Patrimônio (8) e Conciliação OFX/CSV (9) |
+| 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | **FT-014: Módulo financeiro, permissões e patrimônio** | 🟡 **Parcial (MVP + Recorrentes 6.1 Implementados)** — Entregas 1–5 e 6.1 (recorrência/parcelamento em lote + baixa `confirm`) ativas; **pendentes**: aprovação com motivo/dupla validação (6), ação em série `recurringGroupId`, relatórios/comparativos e PDF (`IMP-010`/7), Patrimônio (8) e Conciliação OFX/CSV (9 / `FT-023`) |
 | 18/07/2026 | [tenant-branded-experience.md](tenant-branded-experience.md) | **FT-012: Experiência personalizada da igreja por tenant** | ✅ **Concluído** (Entregue via PWA dinâmico, FT-018, FT-019 e Tema Unificado) |
 | 17/07/2026 | [phone-password-login.md](phone-password-login.md) | Login com telefone e senha | ✅ **Implementado** (E.164, login unificado por email/telefone, Meu Perfil) |
 | 17/07/2026 | [notification-center.md](notification-center.md) | Central e infraestrutura robusta de notificações | ✅ **Implementado** (Persistência, retentativas, inbox in-app, regras e preferências via PRs #212/#213) |
