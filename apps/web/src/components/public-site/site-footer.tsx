@@ -123,9 +123,9 @@ export function SiteFooter({
                           rel="noopener noreferrer"
                           aria-label={social.label}
                           title={social.label}
-                          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-2 text-xs font-semibold text-zinc-200 transition hover:border-amber-400/60 hover:bg-zinc-900 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-2 text-xs font-semibold text-zinc-200 transition hover:border-[var(--site-accent-border-strong)] hover:bg-zinc-900 hover:text-[var(--site-accent-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent-ring)]"
                         >
-                          <Icon className="h-4 w-4 text-amber-400" aria-hidden="true" />
+                          <Icon className="h-4 w-4 text-[var(--site-accent-text)]" aria-hidden="true" />
                           <span>{social.label}</span>
                         </a>
                       </li>
@@ -146,7 +146,7 @@ export function SiteFooter({
               <div className="space-y-1.5 text-xs leading-relaxed text-zinc-400">
                 <div className="flex items-start gap-2">
                   <MapPin
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--site-accent-text)]"
                     aria-hidden="true"
                   />
                   <span>{addressSummary}</span>
@@ -156,7 +156,7 @@ export function SiteFooter({
                     href={mapsLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-8 items-center gap-1 pl-5 font-semibold text-amber-300 transition hover:text-amber-200"
+                    className="inline-flex min-h-8 items-center gap-1 pl-5 font-semibold text-[var(--site-accent-text)] transition hover:underline"
                   >
                     <span>Abrir no Google Maps</span>
                     <ExternalLink className="h-3 w-3" aria-hidden="true" />
@@ -171,9 +171,9 @@ export function SiteFooter({
                   <li>
                     <a
                       href={telHref}
-                      className="inline-flex min-h-8 items-center gap-2 text-zinc-300 transition hover:text-amber-300"
+                      className="inline-flex min-h-8 items-center gap-2 text-zinc-300 transition hover:text-[var(--site-accent-text)]"
                     >
-                      <Phone className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+                      <Phone className="h-3.5 w-3.5 shrink-0 text-[var(--site-accent-text)]" aria-hidden="true" />
                       <span className="whitespace-nowrap">{phoneDisplay}</span>
                     </a>
                   </li>
@@ -182,9 +182,9 @@ export function SiteFooter({
                   <li>
                     <a
                       href={`mailto:${tenant.email}`}
-                      className="inline-flex min-h-8 items-center gap-2 text-zinc-300 transition hover:text-amber-300"
+                      className="inline-flex min-h-8 items-center gap-2 text-zinc-300 transition hover:text-[var(--site-accent-text)]"
                     >
-                      <Mail className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+                      <Mail className="h-3.5 w-3.5 shrink-0 text-[var(--site-accent-text)]" aria-hidden="true" />
                       <span className="break-all">{tenant.email}</span>
                     </a>
                   </li>
@@ -201,7 +201,7 @@ export function SiteFooter({
             Portal desenvolvido com{' '}
             <a
               href={canonicalAppOrigin}
-              className="inline-flex min-h-9 items-center font-semibold text-zinc-300 underline-offset-4 hover:text-amber-300 hover:underline"
+              className="inline-flex min-h-9 items-center font-semibold text-zinc-300 underline-offset-4 hover:text-[var(--site-accent-text)] hover:underline"
             >
               One Elo
             </a>

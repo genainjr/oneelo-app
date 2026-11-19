@@ -39,6 +39,8 @@ export interface PublicSiteTenant {
   slug: string;
   logoUrl?: string | null;
   pwaIconUrl?: string | null;
+  themePalette?: string | null;
+  primaryColor?: string | null;
   email?: string | null;
   telefone?: string | null;
 }
@@ -101,7 +103,10 @@ export interface PublicSiteData {
 }
 
 export interface PublicNewsDetailResponse {
-  tenant: Pick<PublicSiteTenant, 'nome' | 'slug' | 'logoUrl' | 'pwaIconUrl'>;
+  tenant: Pick<
+    PublicSiteTenant,
+    'nome' | 'slug' | 'logoUrl' | 'pwaIconUrl' | 'themePalette' | 'primaryColor'
+  >;
   news: PublicTenantNews;
 }
 

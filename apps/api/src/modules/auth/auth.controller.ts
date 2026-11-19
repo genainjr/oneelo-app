@@ -28,6 +28,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UpdateLoginPhoneDto } from './dto/update-login-phone.dto';
 import { UpdateTenantPwaSettingsDto } from './dto/update-tenant-pwa-settings.dto';
+import { UpdateTenantThemeDto } from './dto/update-tenant-theme.dto';
 import { AuditLogsQueryDto } from './dto/audit-logs-query.dto';
 import type { Response, Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -448,6 +449,18 @@ export class AuthController {
     @Req() req: Request,
   ) {
     return this.authService.updateTenantPwaSettings(user.tenantId!, dto, user.sub, getClientIp(req));
+  }
+
+  @Patch('tenant/theme')
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Atualiza paleta e cor primaria da identidade visual da igreja' })
+  async updateTenantTheme(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateTenantThemeDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.updateTenantTheme(user.tenantId!, dto, user.sub, getClientIp(req));
   }
 
   @Post('tenant/pwa-icon')

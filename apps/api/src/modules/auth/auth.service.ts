@@ -18,6 +18,8 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UpdateLoginPhoneDto } from './dto/update-login-phone.dto';
 import { UpdateTenantPwaSettingsDto } from './dto/update-tenant-pwa-settings.dto';
+import { UpdateTenantThemeDto } from './dto/update-tenant-theme.dto';
+import { resolveNormalizedTenantTheme } from './tenant-theme.constants';
 import { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { TenantMediaService } from '../../common/storage/tenant-media.service';
 import {
@@ -156,6 +158,8 @@ export class AuthService {
         pwaIconUrl?: string | null;
         pwaIconKey?: string | null;
         pwaUpdatedAt?: Date | string | null;
+        themePalette?: string | null;
+        primaryColor?: string | null;
       } | null;
     },
     ip?: string,
@@ -215,6 +219,8 @@ export class AuthService {
                 user.tenant.pwaUpdatedAt instanceof Date
                   ? user.tenant.pwaUpdatedAt.toISOString()
                   : (user.tenant.pwaUpdatedAt ?? null),
+              themePalette: user.tenant.themePalette ?? null,
+              primaryColor: user.tenant.primaryColor ?? null,
             }
           : undefined,
       },
@@ -279,7 +285,14 @@ export class AuthService {
         email: true,
         activationExpiresAt: true,
         tenant: {
-          select: { nome: true, slug: true, logoUrl: true, pwaIconUrl: true },
+          select: {
+            nome: true,
+            slug: true,
+            logoUrl: true,
+            pwaIconUrl: true,
+            themePalette: true,
+            primaryColor: true,
+          },
         },
       },
     });
@@ -447,6 +460,8 @@ export class AuthService {
             pwaIconUrl: true,
             pwaIconKey: true,
             pwaUpdatedAt: true,
+            themePalette: true,
+            primaryColor: true,
           },
         },
         financePermissions: {
@@ -1789,6 +1804,8 @@ export class AuthService {
         pwaIconUrl: true,
         pwaIconKey: true,
         pwaUpdatedAt: true,
+        themePalette: true,
+        primaryColor: true,
       },
     });
     await this.prisma.auditLog.create({
@@ -1803,6 +1820,68 @@ export class AuthService {
         payloadAfter: { pwaShortName: shortName },
       },
     });
+    return updated;
+  }
+
+  async updateTenantTheme(
+    tenantId: string,
+    dto: UpdateTenantThemeDto,
+    actorId: string,
+    ip?: string,
+  ) {
+    if (!tenantId) {
+      throw new BadRequestException('Usuario sem tenant associado.');
+    }
+
+    const previous = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, themePalette: true, primaryColor: true },
+    });
+    if (!previous) {
+      throw new NotFoundException('Tenant nao encontrado.');
+    }
+
+    const normalized = resolveNormalizedTenantTheme(dto);
+
+    const updated = await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        themePalette: normalized.themePalette,
+        primaryColor: normalized.primaryColor,
+      },
+      select: {
+        nome: true,
+        slug: true,
+        logoUrl: true,
+        logoKey: true,
+        pwaShortName: true,
+        pwaIconUrl: true,
+        pwaIconKey: true,
+        pwaUpdatedAt: true,
+        themePalette: true,
+        primaryColor: true,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId: actorId,
+        entidade: 'Tenant',
+        entidadeId: tenantId,
+        acao: AcaoAuditoria.ATUALIZAR,
+        ipAddress: ip ?? null,
+        payloadBefore: {
+          themePalette: previous.themePalette ?? null,
+          primaryColor: previous.primaryColor ?? null,
+        },
+        payloadAfter: {
+          themePalette: normalized.themePalette,
+          primaryColor: normalized.primaryColor,
+        },
+      },
+    });
+
     return updated;
   }
 

@@ -14,6 +14,7 @@ import {
   syncThemeColorMeta,
 } from '@/lib/pwa-branding';
 import { AuthUser } from '@/types';
+import { buildTenantBrandThemeStyle } from '@/lib/brand-theme';
 import { InternationalPhoneInput } from '@/components/app/international-phone-input';
 import { ChurchBrandMark } from '@/components/public-site/church-brand-mark';
 import type { PublicTenantInfo } from '@/components/public-site/join/tenant-public';
@@ -69,12 +70,16 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
         slug: initialChurch.slug,
         logoUrl: initialChurch.logoUrl ?? null,
         pwaIconUrl: initialChurch.pwaIconUrl ?? null,
+        themePalette: initialChurch.themePalette ?? null,
+        primaryColor: initialChurch.primaryColor ?? null,
       });
       syncTenantPwaHead(readCachedTenantPwa() ?? {
         nome: initialChurch.nome,
         slug: initialChurch.slug,
         logoUrl: initialChurch.logoUrl ?? null,
         pwaIconUrl: initialChurch.pwaIconUrl ?? null,
+        themePalette: initialChurch.themePalette ?? null,
+        primaryColor: initialChurch.primaryColor ?? null,
       });
       return;
     }
@@ -88,6 +93,8 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
         slug: cached.slug,
         logoUrl: cached.logoUrl || cached.pwaIconUrl || null,
         pwaIconUrl: cached.pwaIconUrl || null,
+        themePalette: cached.themePalette ?? null,
+        primaryColor: cached.primaryColor ?? null,
       });
       syncTenantPwaHead(cached);
     }
@@ -105,6 +112,8 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
           slug: info.slug,
           logoUrl: info.logoUrl ?? null,
           pwaIconUrl: info.pwaIconUrl ?? null,
+          themePalette: info.themePalette ?? null,
+          primaryColor: info.primaryColor ?? null,
         });
         syncTenantPwaHead(readCachedTenantPwa());
       })
@@ -149,6 +158,8 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
           slug: church.slug,
           logoUrl: church.logoUrl ?? null,
           pwaIconUrl: church.pwaIconUrl ?? null,
+          themePalette: church.themePalette ?? null,
+          primaryColor: church.primaryColor ?? null,
         });
       }
       const target = getPostLoginTarget(response.user, redirect);
@@ -211,9 +222,9 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
           <SiteNavigationLink
             href={siteHomeHref}
             isExternal={isCustomDomainTarget}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-amber-400/50 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-[var(--site-accent-border-strong)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
           >
-            <ArrowLeft className="h-3.5 w-3.5 text-[var(--site-accent)]" aria-hidden="true" />
+            <ArrowLeft className="h-3.5 w-3.5 text-[var(--site-accent-text)]" aria-hidden="true" />
             <span>Voltar para o site</span>
           </SiteNavigationLink>
 
@@ -221,9 +232,9 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
             <SiteNavigationLink
               href={siteJoinHref}
               isExternal={isCustomDomainTarget}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-amber-400/50 hover:text-amber-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3.5 py-1.5 text-zinc-300 transition hover:border-[var(--site-accent-border-strong)] hover:text-[var(--site-accent-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
             >
-              <UserPlus className="h-3.5 w-3.5 text-[var(--site-accent)]" aria-hidden="true" />
+              <UserPlus className="h-3.5 w-3.5 text-[var(--site-accent-text)]" aria-hidden="true" />
               <span>Cadastre-se</span>
             </SiteNavigationLink>
           )}
@@ -241,7 +252,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
                 size="lg"
               />
             </div>
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--site-accent)]">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--site-accent-text)]">
               Área de Membros
             </p>
             <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl [text-wrap:balance]">
@@ -333,7 +344,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
                 placeholder={t('emailPlaceholder')}
                 className={
                   isChurchBranded
-                    ? 'w-full rounded-xl border border-zinc-800 bg-zinc-900/90 px-4 py-2.5 text-white placeholder-zinc-500 transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30'
+                    ? 'w-full rounded-xl border border-zinc-800 bg-zinc-900/90 px-4 py-2.5 text-white placeholder-zinc-500 transition focus:border-[var(--site-accent-ring)] focus:outline-none focus:ring-2 focus:ring-[var(--site-accent-border)]'
                     : 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder-indigo-300/60 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-400'
                 }
               />
@@ -374,7 +385,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
                 placeholder={t('passwordPlaceholder')}
                 className={
                   isChurchBranded
-                    ? 'w-full rounded-xl border border-zinc-800 bg-zinc-900/90 py-2.5 pl-4 pr-11 text-white placeholder-zinc-500 transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30'
+                    ? 'w-full rounded-xl border border-zinc-800 bg-zinc-900/90 py-2.5 pl-4 pr-11 text-white placeholder-zinc-500 transition focus:border-[var(--site-accent-ring)] focus:outline-none focus:ring-2 focus:ring-[var(--site-accent-border)]'
                     : 'w-full rounded-xl border border-white/20 bg-white/10 py-2.5 pl-4 pr-11 text-white placeholder-indigo-300/60 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-400'
                 }
               />
@@ -385,7 +396,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
                 aria-pressed={showPassword}
                 className={
                   isChurchBranded
-                    ? 'absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-400 transition hover:text-amber-300 focus-visible:outline-2 focus-visible:outline-amber-400'
+                    ? 'absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-400 transition hover:text-[var(--site-accent-text)] focus-visible:outline-2 focus-visible:outline-[var(--site-accent-ring)]'
                     : 'absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-indigo-200/80 transition hover:text-white focus-visible:outline-2 focus-visible:outline-white'
                 }
               >
@@ -415,7 +426,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
             disabled={loading}
             className={
               isChurchBranded
-                ? 'mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--site-accent)] px-5 py-2.5 text-sm font-bold text-[var(--site-accent-foreground)] shadow-lg shadow-amber-500/15 transition hover:bg-[var(--site-accent-hover)] disabled:cursor-not-allowed disabled:opacity-60'
+                ? 'mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--site-accent)] px-5 py-2.5 text-sm font-bold text-[var(--site-accent-foreground)] shadow-[0_10px_25px_-5px_var(--theme-brand-shadow)] transition hover:bg-[var(--site-accent-hover)] disabled:cursor-not-allowed disabled:opacity-60'
                 : 'mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60'
             }
           >
@@ -452,7 +463,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
           onClick={handleGoogleLogin}
           className={
             isChurchBranded
-              ? 'flex min-h-11 w-full items-center justify-center gap-3 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-amber-400/60 hover:bg-zinc-800'
+              ? 'flex min-h-11 w-full items-center justify-center gap-3 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-[var(--site-accent-border-strong)] hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]'
               : 'flex min-h-11 w-full items-center justify-center gap-3 rounded-xl border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-lg shadow-black/10 transition hover:bg-gray-50'
           }
         >
@@ -473,7 +484,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
             <SiteNavigationLink
               href={siteJoinHref}
               isExternal={isCustomDomainTarget}
-              className="font-semibold text-[var(--site-accent)] underline-offset-4 hover:underline"
+              className="font-semibold text-[var(--site-accent-text)] underline-offset-4 hover:underline"
             >
               Preencher cadastro
             </SiteNavigationLink>
@@ -497,6 +508,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
     return (
       <div
         data-brand-theme="church"
+        style={buildTenantBrandThemeStyle(church)}
         className="public-site-root relative flex min-h-screen w-full items-center justify-center overflow-x-clip bg-zinc-950 px-4 py-10 text-zinc-100"
       >
         <div
@@ -505,7 +517,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-amber-500/10 blur-3xl"
+          className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-[var(--site-accent-glow)] blur-3xl"
         />
         <div className="relative z-10 flex w-full justify-center">{formContent}</div>
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { syncThemeColorMeta } from '@/lib/pwa-branding';
+import { buildTenantBrandThemeStyle } from '@/lib/brand-theme';
 import { formatDate } from '@/lib/utils';
 
 type ValidacaoResponse = {
@@ -22,6 +23,8 @@ type ValidacaoResponse = {
   igreja: {
     nome: string;
     logoUrl?: string | null;
+    themePalette?: string | null;
+    primaryColor?: string | null;
   };
 };
 
@@ -68,6 +71,7 @@ export default function ValidarCarteirinhaPage() {
   return (
     <div
       data-brand-theme={data?.igreja ? 'church' : undefined}
+      style={data?.igreja ? buildTenantBrandThemeStyle(data.igreja) : undefined}
       className="min-h-screen bg-zinc-950 py-10 px-4 flex flex-col items-center justify-center font-sans"
     >
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
@@ -115,7 +119,7 @@ export default function ValidarCarteirinhaPage() {
                   </div>
                 )}
                 <div className="text-left">
-                  <p className="text-[11px] uppercase tracking-wider text-sidebar-active-text font-semibold">Igreja Emissora</p>
+                  <p className="text-[11px] uppercase tracking-wider text-sidebar-badge-text font-semibold">Igreja Emissora</p>
                   <h1 className="text-base font-bold text-white line-clamp-1">{data.igreja.nome}</h1>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/app/sidebar';
 import { Header } from '@/components/app/header';
@@ -11,10 +11,17 @@ import type { AuthUser } from '@/types';
 import { AuthUserProvider } from '@/contexts/auth-user-context';
 import { isOnboardingEnabled } from '@/lib/auth-redirect';
 import {
+  TENANT_THEME_CSS_VARIABLE_KEYS,
+  resolveTenantBrandTheme,
+} from '@/lib/brand-theme';
+import {
   readCachedTenantPwa,
   saveCachedTenantPwa,
   syncTenantPwaHead,
 } from '@/lib/pwa-branding';
+
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export function DashboardShell({
   children,
@@ -105,10 +112,35 @@ export function DashboardShell({
   }, [pathname, router, user]);
 
   const brandTheme = user && !user.tenant ? 'oneelo' : 'church';
+  const shellRef = useRef<HTMLDivElement | null>(null);
+
+  useIsomorphicLayoutEffect(() => {
+    const el = shellRef.current;
+    if (!el) return;
+
+    if (brandTheme !== 'church') {
+      for (const key of TENANT_THEME_CSS_VARIABLE_KEYS) {
+        el.style.removeProperty(key);
+      }
+      return;
+    }
+
+    const effectiveTenant = user?.tenant ?? readCachedTenantPwa();
+    const vars = resolveTenantBrandTheme(effectiveTenant).cssVariables;
+    for (const [key, value] of Object.entries(vars)) {
+      el.style.setProperty(key, value);
+    }
+  }, [
+    brandTheme,
+    user?.tenant,
+    user?.tenant?.themePalette,
+    user?.tenant?.primaryColor,
+  ]);
 
   return (
     <AuthUserProvider value={{ user, setUser, loadingUser, refreshUser }}>
       <div
+        ref={shellRef}
         data-brand-theme={brandTheme}
         className="flex h-screen h-[100dvh] overflow-hidden bg-gray-50"
       >

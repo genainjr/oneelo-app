@@ -33,7 +33,7 @@ export function SiteNewsSection({
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 max-w-2xl space-y-2.5">
-          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
+          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--theme-accent-ink)]">
             <Newspaper className="h-4 w-4" aria-hidden="true" />
             <span>Vida em Comunidade</span>
           </div>
@@ -51,7 +51,7 @@ export function SiteNewsSection({
               <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-2xs transition duration-200 hover:-translate-y-0.5 hover:border-zinc-900/20 hover:shadow-md">
                 <Link
                   href={`${prefix}/noticias/${item.slug}`}
-                  className="relative block aspect-[16/10] w-full overflow-hidden bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset"
+                  className="relative block aspect-[16/10] w-full overflow-hidden bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-accent-ring)] focus-visible:ring-inset"
                 >
                   {item.imagemUrl ? (
                     <>
@@ -70,14 +70,14 @@ export function SiteNewsSection({
                       />
                     </>
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 to-zinc-800 text-amber-400/70">
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 to-zinc-800 text-[var(--site-accent-text)] opacity-75">
                       <Newspaper className="h-10 w-10" aria-hidden="true" />
                     </div>
                   )}
 
                   {item.destaque && (
-                    <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-zinc-950/90 px-3 py-1 text-[11px] font-bold text-amber-400 shadow-xs ring-1 ring-amber-400/40 backdrop-blur-sm">
-                      <Star className="h-3 w-3 fill-amber-400" aria-hidden="true" />
+                    <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-zinc-950/90 px-3 py-1 text-[11px] font-bold text-[var(--site-accent-text)] shadow-xs ring-1 ring-[var(--site-accent-border)] backdrop-blur-sm">
+                      <Star className="h-3 w-3 fill-current" aria-hidden="true" />
                       Destaque
                     </span>
                   )}
@@ -85,7 +85,7 @@ export function SiteNewsSection({
 
                 <div className="flex flex-1 flex-col p-5 sm:p-6">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-stone-500">
-                    <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
+                    <Calendar className="h-3.5 w-3.5 shrink-0 text-[var(--theme-accent-ink)]" aria-hidden="true" />
                     <time dateTime={item.dataPublicacao}>
                       {formatNewsDate(item.dataPublicacao)}
                     </time>
@@ -94,7 +94,7 @@ export function SiteNewsSection({
                   <h3 className="mt-2.5 text-lg font-bold leading-snug text-zinc-950 [text-wrap:balance]">
                     <Link
                       href={`${prefix}/noticias/${item.slug}`}
-                      className="rounded-sm transition-colors hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                      className="rounded-sm transition-colors hover:text-[var(--theme-accent-ink-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-accent-ring)] focus-visible:ring-offset-2"
                     >
                       {item.titulo}
                     </Link>
@@ -107,10 +107,10 @@ export function SiteNewsSection({
                   <div className="mt-auto border-t border-stone-100 pt-4">
                     <Link
                       href={`${prefix}/noticias/${item.slug}`}
-                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full text-sm font-bold text-zinc-950 transition hover:text-amber-700 group-hover:gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full text-sm font-bold text-zinc-950 transition hover:text-[var(--theme-accent-ink-hover)] group-hover:gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-accent-ring)] focus-visible:ring-offset-2"
                     >
                       <span>Ler comunicado</span>
-                      <ArrowRight className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                      <ArrowRight className="h-4 w-4 text-[var(--theme-accent-ink)]" aria-hidden="true" />
                     </Link>
                   </div>
                 </div>

@@ -48,7 +48,7 @@ export function SiteAboutSection({
             }
           >
             <div className="space-y-2.5">
-              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
+              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--theme-accent-ink)]">
                 <BookOpen className="h-4 w-4" aria-hidden="true" />
                 <span>Nossa Identidade</span>
               </div>
@@ -76,7 +76,7 @@ export function SiteAboutSection({
                 {historiaParagraphs.length > 0 && (
                   <div className="min-w-0 space-y-3 rounded-2xl border border-stone-200/90 bg-[#faf9f6] p-6">
                     <div className="flex items-center gap-3 text-sm font-bold text-zinc-950">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-amber-400">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-[var(--site-accent-text)]">
                         <HeartHandshake className="h-4 w-4" aria-hidden="true" />
                       </span>
                       <h3 className="[text-wrap:balance]">Nossa História</h3>
@@ -92,7 +92,7 @@ export function SiteAboutSection({
                 {visaoParagraphs.length > 0 && (
                   <div className="min-w-0 space-y-3 rounded-2xl border border-stone-200/90 bg-[#faf9f6] p-6">
                     <div className="flex items-center gap-3 text-sm font-bold text-zinc-950">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-amber-400">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-[var(--site-accent-text)]">
                         <Compass className="h-4 w-4" aria-hidden="true" />
                       </span>
                       <h3 className="[text-wrap:balance]">Visão e Valores</h3>
@@ -127,12 +127,12 @@ export function SiteAboutSection({
                 <div className="space-y-3 p-6">
                   <div className="flex items-center gap-3">
                     {!config.pastoresFotoUrl && (
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-400/50 bg-zinc-900 text-amber-400">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--site-accent-border)] bg-zinc-900 text-[var(--site-accent-text)]">
                         <UserRound className="h-5 w-5" aria-hidden="true" />
                       </span>
                     )}
                     <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-400">
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--site-accent-text)]">
                         Liderança Pastoral
                       </p>
                       {config.pastoresNomes && (

@@ -34,9 +34,9 @@
   --theme-sidebar-badge-text: #c7d2fe;
 }
 
-/* Tema padrão unificado da igreja: Obsidiana + Âmbar (pronto para override por tenant na FT-012) */
+/* Tema padrão unificado da igreja: Obsidiana + Âmbar (evita sobrescrever variáveis herdadas quando .public-site-root está aninhado em [data-brand-theme="church"]) */
 [data-brand-theme="church"],
-.public-site-root {
+.public-site-root:not([data-brand-theme="church"] .public-site-root) {
   --theme-brand: #fbbf24;
   --theme-brand-hover: #f59e0b;
   --theme-brand-foreground: #09090b;
@@ -65,6 +65,16 @@
   --theme-sidebar-ring: #fbbf24;
   --theme-sidebar-badge-bg: rgba(251, 191, 36, 0.16);
   --theme-sidebar-badge-text: #fcd34d;
+
+  --site-accent: #fbbf24;
+  --site-accent-hover: #fcd34d;
+  --site-accent-foreground: #09090b;
+  --site-accent-text: #fcd34d;
+  --site-accent-ring: #fbbf24;
+  --site-accent-tint: rgba(251, 191, 36, 0.14);
+  --site-accent-glow: rgba(251, 191, 36, 0.12);
+  --site-accent-border: rgba(251, 191, 36, 0.4);
+  --site-accent-border-strong: rgba(251, 191, 36, 0.65);
 }
 
 @theme inline {
@@ -119,18 +129,15 @@ body {
   background: #9ca3af;
 }
 
-/* Portal público dos tenants: design tokens semânticos + scrollbar dark consistente */
+/* Portal público dos tenants: tokens estruturais dark + accent-color */
 .public-site-root {
   --site-bg: #09090b;
   --site-surface: #121216;
   --site-border: #27272a;
   --site-text: #fafafa;
   --site-muted: #a1a1aa;
-  --site-accent: #fbbf24;
-  --site-accent-hover: #fcd34d;
-  --site-accent-foreground: #09090b;
   --site-paper: #faf9f6;
-  accent-color: var(--site-accent);
+  accent-color: var(--theme-accent-ink, var(--site-accent));
 }
 
 html:has(.public-site-root),
@@ -164,7 +171,7 @@ html:has(.public-site-root)::-webkit-scrollbar-thumb {
 }
 
 html:has(.public-site-root)::-webkit-scrollbar-thumb:hover {
-  background: #f59e0b;
+  background: #71717a;
 }
 
 @media print {

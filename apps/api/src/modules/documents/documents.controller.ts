@@ -37,7 +37,15 @@ export class DocumentsController {
       where: { id: memberId, deletedAt: null },
       include: {
         tenant: {
-          select: { id: true, nome: true, logoUrl: true, slug: true, ativo: true },
+          select: {
+            id: true,
+            nome: true,
+            logoUrl: true,
+            slug: true,
+            ativo: true,
+            themePalette: true,
+            primaryColor: true,
+          },
         },
       },
     });
@@ -62,6 +70,8 @@ export class DocumentsController {
       igreja: {
         nome: member.tenant.nome,
         logoUrl: member.tenant.logoUrl,
+        themePalette: member.tenant.themePalette ?? null,
+        primaryColor: member.tenant.primaryColor ?? null,
       },
     };
   }

@@ -12,6 +12,8 @@ export type TenantPwaBranding = Pick<
   | 'pwaIconUrl'
   | 'pwaIconKey'
   | 'pwaUpdatedAt'
+  | 'themePalette'
+  | 'primaryColor'
 >;
 
 export function hasCustomTenantPwa(tenant?: TenantPwaBranding | null): boolean {
@@ -29,16 +31,22 @@ export function saveCachedTenantPwa(tenant?: TenantPwaBranding | null): void {
   try {
     const existing = readCachedTenantPwa();
     const sameSlug = existing?.slug === tenant.slug;
+    const resolveOptional = <K extends keyof TenantPwaBranding>(key: K) => {
+      if (tenant[key] !== undefined) return tenant[key] ?? null;
+      return sameSlug ? (existing?.[key] ?? null) : null;
+    };
     localStorage.setItem(
       TENANT_PWA_CACHE_KEY,
       JSON.stringify({
         nome: tenant.nome,
         slug: tenant.slug,
-        logoUrl: tenant.logoUrl ?? (sameSlug ? existing?.logoUrl ?? null : null),
-        pwaShortName: tenant.pwaShortName ?? (sameSlug ? existing?.pwaShortName ?? null : null),
-        pwaIconUrl: tenant.pwaIconUrl ?? (sameSlug ? existing?.pwaIconUrl ?? null : null),
-        pwaIconKey: tenant.pwaIconKey ?? (sameSlug ? existing?.pwaIconKey ?? null : null),
-        pwaUpdatedAt: tenant.pwaUpdatedAt ?? (sameSlug ? existing?.pwaUpdatedAt ?? null : null),
+        logoUrl: resolveOptional('logoUrl'),
+        pwaShortName: resolveOptional('pwaShortName'),
+        pwaIconUrl: resolveOptional('pwaIconUrl'),
+        pwaIconKey: resolveOptional('pwaIconKey'),
+        pwaUpdatedAt: resolveOptional('pwaUpdatedAt'),
+        themePalette: resolveOptional('themePalette'),
+        primaryColor: resolveOptional('primaryColor'),
       }),
     );
   } catch {

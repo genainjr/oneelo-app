@@ -115,7 +115,7 @@ export function SiteLocationSection({
             <div className="grid grid-cols-1 lg:grid-cols-12">
               <div className="min-w-0 space-y-6 p-6 sm:p-9 lg:col-span-7">
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
+                  <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--theme-accent-ink)]">
                     <MapPin className="h-4 w-4" aria-hidden="true" />
                     <span>Onde Estamos</span>
                   </div>
@@ -138,7 +138,7 @@ export function SiteLocationSection({
                 {config?.horarioSecretaria && (
                   <div className="flex items-start gap-3 rounded-2xl border border-stone-200/80 bg-[#faf9f6] px-4 py-3.5 text-sm text-stone-700">
                     <Clock
-                      className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--theme-accent-ink)]"
                       aria-hidden="true"
                     />
                     <div className="min-w-0">
@@ -159,9 +159,9 @@ export function SiteLocationSection({
                         href={mapsLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-zinc-950 px-6 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-zinc-950 px-6 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-accent-ring)] focus-visible:ring-offset-2"
                       >
-                        <MapPin className="h-4 w-4 text-amber-400" aria-hidden="true" />
+                        <MapPin className="h-4 w-4 text-[var(--site-accent-text)]" aria-hidden="true" />
                         <span>Abrir no Google Maps</span>
                         <ExternalLink
                           className="h-3.5 w-3.5 opacity-80"
@@ -175,7 +175,7 @@ export function SiteLocationSection({
                         href={whatsappHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex min-h-11 items-center gap-2.5 rounded-full border border-zinc-800 bg-zinc-950 py-1.5 pl-1.5 pr-5 text-sm font-semibold text-white shadow-xs transition hover:border-amber-400/70 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                        className="inline-flex min-h-11 items-center gap-2.5 rounded-full border border-zinc-800 bg-zinc-950 py-1.5 pl-1.5 pr-5 text-sm font-semibold text-white shadow-xs transition hover:border-[var(--site-accent-border-strong)] hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-accent-ring)] focus-visible:ring-offset-2"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-zinc-950">
                           <WhatsAppIcon className="h-4 w-4" />
@@ -188,7 +188,7 @@ export function SiteLocationSection({
               </div>
 
               <div className="flex flex-col justify-center space-y-4 bg-zinc-950 p-6 text-white sm:p-9 lg:col-span-5">
-                <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-amber-400">
+                <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--site-accent-text)]">
                   Contato Direto
                 </h3>
 
@@ -197,9 +197,9 @@ export function SiteLocationSection({
                     <li>
                       <a
                         href={telHref}
-                        className="flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 transition hover:border-amber-400/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        className="flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 transition hover:border-[var(--site-accent-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent-ring)]"
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-zinc-950 text-amber-400">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--site-accent-border)] bg-zinc-950 text-[var(--site-accent-text)]">
                           <Phone className="h-4 w-4" aria-hidden="true" />
                         </span>
                         <div className="min-w-0">
@@ -218,9 +218,9 @@ export function SiteLocationSection({
                     <li>
                       <a
                         href={`mailto:${tenant.email}`}
-                        className="flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 transition hover:border-amber-400/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        className="flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 transition hover:border-[var(--site-accent-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent-ring)]"
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-zinc-950 text-amber-400">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--site-accent-border)] bg-zinc-950 text-[var(--site-accent-text)]">
                           <Mail className="h-4 w-4" aria-hidden="true" />
                         </span>
                         <div className="min-w-0">
@@ -250,9 +250,9 @@ export function SiteLocationSection({
                               href={social.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-amber-400/50 hover:text-amber-300"
+                              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-[var(--site-accent-border-strong)] hover:text-[var(--site-accent-text)]"
                             >
-                              <Icon className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+                              <Icon className="h-3.5 w-3.5 text-[var(--site-accent-text)]" aria-hidden="true" />
                               <span>{social.label}</span>
                             </a>
                           </li>
@@ -266,7 +266,7 @@ export function SiteLocationSection({
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 lg:items-stretch">
               <div className="min-w-0 space-y-2.5 p-6 sm:p-9 lg:col-span-6">
-                <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
+                <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--theme-accent-ink)]">
                   <Mail className="h-4 w-4" aria-hidden="true" />
                   <span>Atendimento</span>
                 </div>
@@ -286,7 +286,7 @@ export function SiteLocationSection({
                         href={whatsappHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group flex min-h-12 items-center justify-between gap-3 rounded-full border border-zinc-700/90 bg-zinc-900/95 py-1.5 pl-2 pr-4 text-sm font-bold text-white transition hover:border-amber-400/60 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        className="group flex min-h-12 items-center justify-between gap-3 rounded-full border border-zinc-700/90 bg-zinc-900/95 py-1.5 pl-2 pr-4 text-sm font-bold text-white transition hover:border-[var(--site-accent-border-strong)] hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent-ring)]"
                       >
                         <span className="inline-flex min-w-0 items-center gap-3">
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-zinc-950 transition group-hover:scale-105">
@@ -294,7 +294,7 @@ export function SiteLocationSection({
                           </span>
                           <span>Iniciar conversa no WhatsApp</span>
                         </span>
-                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[var(--site-accent)] opacity-80 transition group-hover:opacity-100" aria-hidden="true" />
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[var(--site-accent-text)] opacity-80 transition group-hover:opacity-100" aria-hidden="true" />
                       </a>
                     </li>
                   )}
@@ -303,9 +303,9 @@ export function SiteLocationSection({
                     <li>
                       <a
                         href={telHref}
-                        className="flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 transition hover:border-amber-400/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        className="flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 transition hover:border-[var(--site-accent-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent-ring)]"
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-zinc-950 text-amber-400">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--site-accent-border)] bg-zinc-950 text-[var(--site-accent-text)]">
                           <Phone className="h-4 w-4" aria-hidden="true" />
                         </span>
                         <div className="min-w-0">
@@ -324,9 +324,9 @@ export function SiteLocationSection({
                     <li>
                       <a
                         href={`mailto:${tenant.email}`}
-                        className="flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 transition hover:border-amber-400/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        className="flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-200 transition hover:border-[var(--site-accent-border-strong)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent-ring)]"
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-zinc-950 text-amber-400">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--site-accent-border)] bg-zinc-950 text-[var(--site-accent-text)]">
                           <Mail className="h-4 w-4" aria-hidden="true" />
                         </span>
                         <div className="min-w-0">
@@ -356,9 +356,9 @@ export function SiteLocationSection({
                               href={social.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-amber-400/50 hover:text-amber-300"
+                              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-[var(--site-accent-border-strong)] hover:text-[var(--site-accent-text)]"
                             >
-                              <Icon className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+                              <Icon className="h-3.5 w-3.5 text-[var(--site-accent-text)]" aria-hidden="true" />
                               <span>{social.label}</span>
                             </a>
                           </li>

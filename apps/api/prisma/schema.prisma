@@ -282,6 +282,8 @@ model Tenant {
   pwaIconUrl       String?          @map("pwa_icon_url")
   pwaIconKey       String?          @map("pwa_icon_key")
   pwaUpdatedAt     DateTime?        @map("pwa_updated_at")
+  themePalette     String?          @map("theme_palette")
+  primaryColor     String?          @map("primary_color")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
 

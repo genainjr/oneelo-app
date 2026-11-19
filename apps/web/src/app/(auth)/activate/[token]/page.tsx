@@ -6,6 +6,7 @@ import { ChurchBrandMark } from '@/components/public-site/church-brand-mark';
 import { api, HttpError } from '@/lib/api';
 import { getPostLoginTarget } from '@/lib/auth-redirect';
 import { saveCachedTenantPwa, syncThemeColorMeta } from '@/lib/pwa-branding';
+import { buildTenantBrandThemeStyle } from '@/lib/brand-theme';
 import { AuthUser } from '@/types';
 
 type ActivationDetails = {
@@ -18,6 +19,8 @@ type ActivationDetails = {
     nome: string;
     slug: string;
     logoUrl?: string | null;
+    themePalette?: string | null;
+    primaryColor?: string | null;
   } | null;
   expiresAt: string;
 };
@@ -113,6 +116,7 @@ export default function ActivateAccountPage() {
   return (
     <div
       data-brand-theme={hasTenant ? 'church' : undefined}
+      style={hasTenant ? buildTenantBrandThemeStyle(details?.tenant) : undefined}
       className={
         loading
           ? 'flex min-h-screen w-full items-center justify-center bg-zinc-950 py-8 text-zinc-100'
@@ -123,7 +127,7 @@ export default function ActivateAccountPage() {
     >
       {hasTenant && (
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div className="absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-amber-500/10 blur-3xl" />
+          <div className="absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-[var(--site-accent-glow)] blur-3xl" />
           <div
             className="absolute inset-0 opacity-[0.04]"
             style={{
@@ -152,7 +156,7 @@ export default function ActivateAccountPage() {
                 />
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-white">Ativar conta</h1>
-              <p className="mt-1 text-sm text-amber-400">{details?.tenant?.nome}</p>
+              <p className="mt-1 text-sm text-[var(--site-accent-text)]">{details?.tenant?.nome}</p>
             </>
           ) : (
             <>
@@ -186,7 +190,7 @@ export default function ActivateAccountPage() {
                 <p
                   className={
                     hasTenant
-                      ? 'text-sm font-semibold uppercase tracking-wide text-amber-400'
+                      ? 'text-sm font-semibold uppercase tracking-wide text-[var(--site-accent-text)]'
                       : 'text-sm font-semibold uppercase tracking-wide text-indigo-200'
                   }
                 >
@@ -252,7 +256,7 @@ export default function ActivateAccountPage() {
                   onChange={(event) => setSenha(event.target.value)}
                   className={
                     hasTenant
-                      ? 'w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white placeholder-zinc-500 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20'
+                      ? 'w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white placeholder-zinc-500 outline-none transition focus:border-[var(--site-accent-ring)] focus:ring-2 focus:ring-[var(--site-accent-border)]'
                       : 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder-indigo-200/60 outline-none transition focus:border-transparent focus:ring-2 focus:ring-indigo-400'
                   }
                   placeholder="Minimo 6 caracteres"
@@ -280,7 +284,7 @@ export default function ActivateAccountPage() {
                   onChange={(event) => setConfirmarSenha(event.target.value)}
                   className={
                     hasTenant
-                      ? 'w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white placeholder-zinc-500 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20'
+                      ? 'w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-white placeholder-zinc-500 outline-none transition focus:border-[var(--site-accent-ring)] focus:ring-2 focus:ring-[var(--site-accent-border)]'
                       : 'w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder-indigo-200/60 outline-none transition focus:border-transparent focus:ring-2 focus:ring-indigo-400'
                   }
                   placeholder="Repita a senha"
@@ -298,7 +302,7 @@ export default function ActivateAccountPage() {
                 disabled={submitting}
                 className={
                   hasTenant
-                    ? 'flex w-full items-center justify-center rounded-xl bg-[var(--site-accent)] px-4 py-2.5 font-semibold text-[var(--site-accent-foreground)] shadow-lg shadow-amber-500/10 transition hover:bg-[var(--site-accent-hover)] disabled:cursor-not-allowed disabled:opacity-60'
+                    ? 'flex w-full items-center justify-center rounded-xl bg-[var(--site-accent)] px-4 py-2.5 font-semibold text-[var(--site-accent-foreground)] shadow-[0_10px_25px_-5px_var(--theme-brand-shadow)] transition hover:bg-[var(--site-accent-hover)] disabled:cursor-not-allowed disabled:opacity-60'
                     : 'flex w-full items-center justify-center rounded-xl bg-indigo-500 px-4 py-2.5 font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60'
                 }
               >

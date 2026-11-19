@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   ArrowRight,
   Bell,
@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/app/page-header';
 import { StatusBadge } from '@/components/app/status-badge';
 import { api } from '@/lib/api';
 import { getPostLoginTarget, isOnboardingEnabled } from '@/lib/auth-redirect';
+import { buildTenantBrandThemeStyle } from '@/lib/brand-theme';
 import {
   type BeforeInstallPromptEvent,
   detectInstallPlatform,
@@ -243,10 +244,18 @@ export default function OnboardingPage() {
   const iosNeedsInstalledAppForPush = platform === 'ios' && !standalone;
   const pushBlocked = PUSH_BLOCKED_STATUS.includes(pushStatus) || iosNeedsInstalledAppForPush;
   const brandTheme = user ? (user.tenant ? 'church' : 'oneelo') : cachedTenant ? 'church' : undefined;
+  const churchThemeStyle =
+    brandTheme === 'church'
+      ? buildTenantBrandThemeStyle(user?.tenant ?? cachedTenant)
+      : undefined;
 
   if (loadingUser) {
     return (
-      <main data-brand-theme={brandTheme} className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
+      <main
+        data-brand-theme={brandTheme}
+        style={churchThemeStyle}
+        className="flex min-h-screen items-center justify-center bg-gray-50 px-6"
+      >
         <div className="flex items-center gap-3 text-sm font-medium text-gray-600">
           <Loader2 className={`h-5 w-5 animate-spin ${brandTheme ? 'text-accent-ink' : 'text-zinc-500'}`} />
           Carregando primeiro acesso...
@@ -256,11 +265,21 @@ export default function OnboardingPage() {
   }
 
   if (iosManualFlow && !standalone) {
-    return <IOSInstallGuide userName={user?.nome} brandTheme={brandTheme} />;
+    return (
+      <IOSInstallGuide
+        userName={user?.nome}
+        brandTheme={brandTheme}
+        brandStyle={churchThemeStyle}
+      />
+    );
   }
 
   return (
-    <main data-brand-theme={brandTheme} className="min-h-screen bg-gray-50">
+    <main
+      data-brand-theme={brandTheme}
+      style={churchThemeStyle}
+      className="min-h-screen bg-gray-50"
+    >
       <div className="mx-auto w-full max-w-5xl p-4 md:p-6">
         <PageHeader
           title="Configuracao inicial"
@@ -603,12 +622,18 @@ function ActionRow({ children }: { children: ReactNode }) {
 function IOSInstallGuide({
   userName,
   brandTheme,
+  brandStyle,
 }: {
   userName?: string;
   brandTheme?: 'church' | 'oneelo';
+  brandStyle?: CSSProperties;
 }) {
   return (
-    <main data-brand-theme={brandTheme} className="min-h-screen bg-gray-50">
+    <main
+      data-brand-theme={brandTheme}
+      style={brandStyle}
+      className="min-h-screen bg-gray-50"
+    >
       <div className="mx-auto w-full max-w-3xl p-4 pb-8 md:p-6">
         <PageHeader
           title="Primeiro acesso"

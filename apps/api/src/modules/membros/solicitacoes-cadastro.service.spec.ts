@@ -23,6 +23,8 @@ describe('SolicitacoesCadastroService (Public)', () => {
     slug: 'igreja-vida-nova',
     logoUrl: 'https://cdn.oneelo.com/logos/tenant-123.png',
     pwaIconUrl: 'https://cdn.oneelo.com/pwa/tenant-123.png',
+    themePalette: null as string | null,
+    primaryColor: null as string | null,
     ativo: true,
     websiteConfig: null as { customDomain: string | null; dnsStatus: DnsStatus } | null,
   };
@@ -71,6 +73,8 @@ describe('SolicitacoesCadastroService (Public)', () => {
         slug: mockTenant.slug,
         logoUrl: mockTenant.logoUrl,
         pwaIconUrl: mockTenant.pwaIconUrl,
+        themePalette: null,
+        primaryColor: null,
         customDomain: null,
       });
       expect(prisma.tenant.findUnique).toHaveBeenCalledWith({
@@ -83,6 +87,8 @@ describe('SolicitacoesCadastroService (Public)', () => {
       prisma.tenant.findUnique.mockResolvedValue({
         ...mockTenant,
         logoUrl: null,
+        themePalette: 'royal-blue',
+        primaryColor: '#1d4ed8',
       });
 
       const result = await service.getPublicTenantInfo('igreja-vida-nova');
@@ -92,6 +98,8 @@ describe('SolicitacoesCadastroService (Public)', () => {
         slug: mockTenant.slug,
         logoUrl: mockTenant.pwaIconUrl,
         pwaIconUrl: mockTenant.pwaIconUrl,
+        themePalette: 'royal-blue',
+        primaryColor: '#1d4ed8',
         customDomain: null,
       });
     });

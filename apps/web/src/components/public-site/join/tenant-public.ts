@@ -5,6 +5,8 @@ export interface PublicTenantInfo {
   slug: string;
   logoUrl?: string | null;
   pwaIconUrl?: string | null;
+  themePalette?: string | null;
+  primaryColor?: string | null;
   customDomain?: string | null;
 }
 

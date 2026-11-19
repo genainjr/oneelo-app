@@ -98,6 +98,8 @@ interface AuthSessionResult {
       pwaIconUrl?: string | null;
       pwaIconKey?: string | null;
       pwaUpdatedAt?: string | null;
+      themePalette?: string | null;
+      primaryColor?: string | null;
     };
   };
 }
@@ -1061,6 +1063,8 @@ export class SocialAuthService {
               pwaIconUrl: user.tenant.pwaIconUrl ?? null,
               pwaIconKey: user.tenant.pwaIconKey ?? null,
               pwaUpdatedAt: user.tenant.pwaUpdatedAt?.toISOString() ?? null,
+              themePalette: user.tenant.themePalette ?? null,
+              primaryColor: user.tenant.primaryColor ?? null,
             }
           : undefined,
       },

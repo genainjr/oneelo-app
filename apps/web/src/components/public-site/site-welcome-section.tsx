@@ -23,7 +23,7 @@ export function SiteWelcomeSection({
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center lg:gap-10">
           <div className="min-w-0 space-y-3 lg:col-span-5">
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--theme-accent-ink)]">
               <Sparkles className="h-4 w-4" aria-hidden="true" />
               <span>Conexão & Acolhimento</span>
             </div>
@@ -39,9 +39,9 @@ export function SiteWelcomeSection({
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-7">
-            <div className="flex flex-col justify-between gap-5 rounded-2xl border border-stone-200/90 bg-[#faf9f6] p-6 transition hover:border-amber-400/60 hover:shadow-sm">
+            <div className="flex flex-col justify-between gap-5 rounded-2xl border border-stone-200/90 bg-[#faf9f6] p-6 transition hover:border-[var(--theme-accent-soft-border)] hover:shadow-sm">
               <div className="space-y-2.5">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-zinc-950 text-amber-400">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-zinc-950 text-[var(--site-accent-text)]">
                   <HeartHandshake className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <h3 className="text-lg font-bold tracking-tight text-zinc-950 [text-wrap:balance]">
@@ -54,9 +54,9 @@ export function SiteWelcomeSection({
 
               <Link
                 href={cadastroHref}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-accent-ring)] focus-visible:ring-offset-2"
               >
-                <UserPlus className="h-4 w-4 text-amber-400" aria-hidden="true" />
+                <UserPlus className="h-4 w-4 text-[var(--site-accent-text)]" aria-hidden="true" />
                 <span>Fazer Cadastro</span>
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
@@ -64,7 +64,7 @@ export function SiteWelcomeSection({
 
             <div className="flex flex-col justify-between gap-5 rounded-2xl border border-zinc-800 bg-zinc-950 p-6 text-white shadow-sm">
               <div className="space-y-2.5">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-amber-400/40 bg-zinc-900 text-amber-400">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--site-accent-border)] bg-zinc-900 text-[var(--site-accent-text)]">
                   <LogIn className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <h3 className="text-lg font-bold tracking-tight text-white [text-wrap:balance]">
@@ -77,7 +77,7 @@ export function SiteWelcomeSection({
 
               <a
                 href={membersLoginHref}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-amber-400 px-5 py-2.5 text-sm font-bold text-zinc-950 transition hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--site-accent)] px-5 py-2.5 text-sm font-bold text-[var(--site-accent-foreground)] transition hover:bg-[var(--site-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--site-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               >
                 <LogIn className="h-4 w-4" aria-hidden="true" />
                 <span>Área de Membros</span>
