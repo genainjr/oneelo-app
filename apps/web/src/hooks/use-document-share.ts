@@ -22,7 +22,7 @@ export interface UseDocumentShareOptions<TFilter extends Record<string, any>> {
   endpoint: string;
   filter: TFilter;
   tenantLogoUrl?: string | null;
-  weeklyOptions: WeeklyExportOption[];
+  weeklyOptions?: WeeklyExportOption[];
   documentTitle?: string;
   defaultPdfFileName?: string;
   pngFileNamePrefix?: string;
@@ -63,7 +63,7 @@ export function useDocumentShare<TFilter extends Record<string, any>>({
   endpoint,
   filter,
   tenantLogoUrl,
-  weeklyOptions,
+  weeklyOptions = [],
   documentTitle = 'Documento',
   defaultPdfFileName = 'documento.pdf',
   pngFileNamePrefix = 'documento',

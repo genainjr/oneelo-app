@@ -17,7 +17,7 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 
 | Criação | Documento | Assunto |
 |---|---|---|
-| 19/11/2026 | [financeiro-exportacao-pdf-png-plan.md](financeiro-exportacao-pdf-png-plan.md) | Exportação Unificada PDF/PNG na Visualização Financeira (IMP-010 — Em andamento) |
+| 19/11/2026 | [financeiro-exportacao-pdf-png-plan.md](financeiro-exportacao-pdf-png-plan.md) | Exportação Unificada em PDF na Visualização Financeira (IMP-010 — Concluído) |
 | 19/11/2026 | [notificacao-cancelamento-evento-ministerios-plan.md](notificacao-cancelamento-evento-ministerios-plan.md) | Notificação Automática de Cancelamento de Eventos aos Ministérios Vinculados (IMP-011 — Concluído) |
 | 19/11/2026 | [pwa-notificacoes-tema-instantaneo-plan.md](pwa-notificacoes-tema-instantaneo-plan.md) | Eliminação do Delay e Flash de Cores Padrão na Tela de Autorização de Notificações do PWA (Concluído) |
 | 19/11/2026 | [painel-pessoal-administrador-plan.md](painel-pessoal-administrador-plan.md) | Acesso ao Painel Pessoal para Administradores e Liderança Geral (FT-020 — Concluído) |

@@ -131,7 +131,7 @@ export default function FinanceiroPage() {
     isDebouncing: isTransactionDebouncing,
   } = useFilterState({
     initialState: initialTransactionFilters,
-    debounceFields: [],
+    debounceFields: ["description"],
     debounceMs: 350,
     onApply: setAppliedTransactionFilters,
   });

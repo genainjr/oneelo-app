@@ -33,6 +33,7 @@ export type FinanceiroQueryFilters = {
   eventoId?: string;
   memberId?: string;
   recurringGroupId?: string;
+  description?: string;
   limit?: number;
 };
 
@@ -299,6 +300,7 @@ function buildTransactionsUrl(filters?: FinanceiroQueryFilters) {
   if (filters?.eventoId) params.set("eventoId", filters.eventoId);
   if (filters?.memberId) params.set("memberId", filters.memberId);
   if (filters?.recurringGroupId) params.set("recurringGroupId", filters.recurringGroupId);
+  if (filters?.description?.trim()) params.set("description", filters.description.trim());
   params.set("limit", String(filters?.limit ?? 500));
   return `/api/financeiro/transactions?${params.toString()}`;
 }
@@ -336,12 +338,14 @@ export function useFinanceiroData(filters?: FinanceiroQueryFilters) {
             eventoId: filters.eventoId,
             memberId: filters.memberId,
             recurringGroupId: filters.recurringGroupId,
+            description: filters.description?.trim() || undefined,
             limit: filters.limit,
           }
         : undefined,
     [
       filters?.accountId,
       filters?.categoryId,
+      filters?.description,
       filters?.endDate,
       filters?.eventoId,
       filters?.limit,

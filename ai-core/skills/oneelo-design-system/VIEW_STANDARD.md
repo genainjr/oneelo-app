@@ -160,7 +160,9 @@ Telas de visualização read-only com dados periódicos (`/escalas/visualizacao`
 />
 ```
 
-O controle deve ser sempre mediado por `<ExportShareDialog />` e pelo hook `useDocumentShare`.
+O controle deve ser sempre mediado pelo hook `useDocumentShare` acompanhado de `<ExportSharePreparedBanner />` e `<ExportShareErrorBanner />`:
+- Em visualizações que suportam **PDF e imagem PNG** (`/escalas/visualizacao`, `/agenda/visualizacao`), o botão abre `<ExportShareDialog />` para escolha de formato/semana.
+- Em visualizações **exclusivamente PDF** (`/financeiro/visualizacao`), o botão aciona `handleExportPdf()` diretamente sem modal intermediário, mantendo o mesmo botão quadrado (`Share2` / `LoaderCircle`) e os mesmos banners de preparo/erro.
 
 ---
 
