@@ -373,8 +373,8 @@ export default function AgendaVisualizacaoPage() {
           </div>
         ) : sortedEventos.length === 0 ? (
           <EmptyState
-            title={t('view.empty.title')}
-            description={t('view.empty.description')}
+            title={t('view.emptyTitle')}
+            description={t('view.emptyDescription')}
           />
         ) : (
           <div className="space-y-3">
