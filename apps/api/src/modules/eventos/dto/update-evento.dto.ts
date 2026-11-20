@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsString,
   IsOptional,
   IsEnum,
@@ -51,4 +52,8 @@ export class UpdateEventoDto {
   @IsEnum(StatusEvento)
   @IsOptional()
   status?: StatusEvento;
+
+  @IsBoolean()
+  @IsOptional()
+  notificarMembros?: boolean;
 }

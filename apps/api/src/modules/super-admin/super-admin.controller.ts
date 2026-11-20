@@ -55,6 +55,7 @@ export class SuperAdminController {
       sameSite: 'lax',
       maxAge: 8 * 60 * 60 * 1000,
     });
+    res.clearCookie('oneelo_tenant_brand', { path: '/' });
 
     return { message: 'Login realizado com sucesso.', user };
   }

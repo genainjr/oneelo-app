@@ -13,6 +13,8 @@ describe('PwaService', () => {
     expect(result.manifest).toMatchObject({
       name: 'One Elo',
       short_name: 'One Elo',
+      id: '/dashboard',
+      start_url: '/dashboard?source=pwa',
       theme_color: '#0f2f73',
     });
   });

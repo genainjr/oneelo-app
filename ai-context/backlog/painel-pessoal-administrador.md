@@ -3,7 +3,7 @@
 ### FT-020 Acesso ao Painel Pessoal para Administradores e Liderança Geral
 
 - **Prioridade**: alta (experiência do usuário e usabilidade da liderança)
-- **Status**: pendente
+- **Status**: concluido
 - **Fase**: experiência do usuário / RBAC / dashboard
 - **Categoria**: produto / UX / RBAC / navegação
 - **Esforço estimado**: baixo a médio
@@ -18,16 +18,13 @@
 - **Ação**: Disponibilizar o acesso ao Painel Pessoal para todos os perfis com acesso administrativo (`ADMIN`, `PASTOR`, `SECRETARIA`, `LEADER`):
 
   1. **Navegação na Sidebar (`apps/web/src/components/app/sidebar.tsx`):**
-     - Incluir a opção de navegar para o **Painel Pessoal** também no menu dos administradores/líderes.
-     - *Opção A (Menu Direto):* Exibir tanto o `Dashboard` (Visão Igreja) quanto o `Painel Pessoal` (Minha Visão) no topo da sidebar.
-     - *Opção B (Alternador de Visão / Switcher):* Permitir alternar suavemente entre a **Visão da Igreja** (KPIs administrativos) e o **Painel Pessoal** (minha vida na igreja) no cabeçalho ou topo do menu.
-     - *Opção C (Item no grupo de Conta/Pessoal):* Manter o `Dashboard` como entrada inicial no topo e disponibilizar `Painel Pessoal` com destaque para acesso rápido à carteirinha, escalas pessoais e pendências.
+     - Exibir sempre **Dashboard** (`/dashboard`) como **1º item** no topo de `navItems` (`ADMIN`/`STAFF`) e **Painel Pessoal** (`/personal-panel`) logo abaixo em **2º** antes do grupo `Gestão`, **somente quando o usuário possuir `Membro` vinculado** (`user?.membro?.id`), com ícones distintos (`ICONS.dashboard` e `ICONS.personalPanel`). Contas administrativas sem membro vinculado exibem apenas **Dashboard**.
+     - Exibir **Minhas Escalas** (`/minhas-escalas`) no grupo `Conta` quando `ADMIN`/`STAFF` possuir membro vinculado com escalas.
 
-  2. **Comportamento Pós-Login (`apps/web/src/lib/auth-redirect.ts`):**
-     - Manter o redirecionamento padrão do `ADMIN` para o `/dashboard` geral (ou respeitar a preferência da última tela visitada).
-     - Manter o redirecionamento do `BASIC` para o `/personal-panel`.
+  2. **Comportamento Pós-Login e PWA (`apps/web/src/lib/auth-redirect.ts`, `social-auth.service.ts`, `pwa.service.ts`):**
+     - Manter o redirecionamento padrão pós-login (tradicional, OAuth Google e `start_url` do PWA) de `ADMIN` e `STAFF` **sempre para `/dashboard` em qualquer caso** (tendo ou não membro vinculado), mantendo `BASIC` em `/personal-panel` e `SUPER_ADMIN` em `/admin`. Contas administrativas sem membro vinculado são redirecionadas de `/personal-panel` para `/dashboard`.
 
-  3. **Validação de Permissões e Contexto (`/personal-panel`):**
-     - Garantir que a página `/personal-panel` renderize com precisão os dados do administrador logado (suas escalas pessoais, liderados dos ministérios que lidera, aniversariantes e pendências pessoais).
+  3. **Validação de Permissões e Contexto (`/personal-panel` e `GET /api/ministerios/resumo?scope=personal`):**
+     - Garantir que `/personal-panel` renderize os dados pessoais e de liderança própria do administrador logado (`scope=personal`) e atalho rápido para o **Dashboard da Igreja** (`/dashboard`).
 
 - **Impacto**: O administrador deixa de ser tratado apenas como um operador do sistema e passa a ter acesso imediato às suas próprias escalas, carteirinha e compromissos espirituais na comunidade, sem necessidade de logout ou criação de conta secundária.

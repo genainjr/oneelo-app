@@ -155,6 +155,7 @@ export async function middleware(request: NextRequest) {
       pathname === '/login' ||
       pathname.startsWith('/activate') ||
       pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/personal-panel') ||
       pathname.startsWith('/admin') ||
       pathname.startsWith('/configuracoes')
     ) {
@@ -165,6 +166,7 @@ export async function middleware(request: NextRequest) {
       if (
         (pathname === '/login' ||
           pathname.startsWith('/dashboard') ||
+          pathname.startsWith('/personal-panel') ||
           pathname.startsWith('/configuracoes')) &&
         !targetUrl.searchParams.has('igreja') &&
         !targetUrl.searchParams.has('church')
@@ -188,19 +190,32 @@ export async function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get(AUTH_COOKIE)?.value;
+  const requestedChurch =
+    request.nextUrl.searchParams.get('igreja') ||
+    request.nextUrl.searchParams.get('church');
 
   if (!token) {
     const isAdminRoute = pathname.startsWith('/admin');
     const loginUrl = new URL(isAdminRoute ? '/admin/login' : '/login', request.url);
-    const requestedChurch =
-      request.nextUrl.searchParams.get('igreja') ||
-      request.nextUrl.searchParams.get('church');
     if (!isAdminRoute && requestedChurch) {
       loginUrl.searchParams.set('igreja', requestedChurch);
     }
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
+
+  const nextWithChurchHeader = () => {
+    if (!requestedChurch) {
+      return NextResponse.next();
+    }
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-oneelo-church-slug', requestedChurch);
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  };
 
   const role = decodeJwtRole(token);
   const isSuperAdmin = role === 'SUPER_ADMIN';
@@ -211,9 +226,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
-  // Usuário comum tentando acessar /admin → redireciona para dashboard
+  // Usuário comum tentando acessar /admin → redireciona para a tela principal do perfil
   if (!isSuperAdmin && pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(
+      new URL(isBasic ? '/personal-panel' : '/dashboard', request.url),
+    );
   }
 
   if (isBasic) {
@@ -231,7 +248,7 @@ export async function middleware(request: NextRequest) {
         (path) => pathname === path || pathname.startsWith(`${path}/`),
       )
     ) {
-      return NextResponse.next();
+      return nextWithChurchHeader();
     }
 
     const isBlocked = blockedBasicPaths.some(
@@ -239,11 +256,15 @@ export async function middleware(request: NextRequest) {
     );
 
     if (isBlocked) {
-      return NextResponse.redirect(new URL('/personal-panel', request.url));
+      const personalPanelUrl = new URL('/personal-panel', request.url);
+      if (requestedChurch) {
+        personalPanelUrl.searchParams.set('igreja', requestedChurch);
+      }
+      return NextResponse.redirect(personalPanelUrl);
     }
   }
 
-  const response = NextResponse.next();
+  const response = nextWithChurchHeader();
 
   if (!request.cookies.get(LOCALE_COOKIE)) {
     const locale = detectLocale(request);

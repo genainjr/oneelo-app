@@ -330,6 +330,8 @@ Valor entregue:
 
 ### Entrega 9 - Conciliação bancária
 
+> Especificação detalhada expandida na **[FT-023: Importação de Extratos Bancários (OFX / CSV / XLSX)](importacao-extrato-bancario.md)**.
+
 Objetivo: automatizar conferência, somente depois do fluxo manual estar maduro.
 
 Escopo:

@@ -12,13 +12,16 @@ import { AuthUserProvider } from '@/contexts/auth-user-context';
 import { isOnboardingEnabled } from '@/lib/auth-redirect';
 import {
   TENANT_THEME_CSS_VARIABLE_KEYS,
+  buildTenantBrandThemeStyle,
   resolveTenantBrandTheme,
 } from '@/lib/brand-theme';
 import {
   readCachedTenantPwa,
   saveCachedTenantPwa,
   syncTenantPwaHead,
+  type TenantPwaBranding,
 } from '@/lib/pwa-branding';
+import type { TenantBrandSnapshot } from '@/lib/tenant-brand-cookie';
 
 const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? useLayoutEffect : useEffect;
@@ -26,9 +29,11 @@ const useIsomorphicLayoutEffect =
 export function DashboardShell({
   children,
   initialUser,
+  initialTenantBrand = null,
 }: {
   children: React.ReactNode;
   initialUser: AuthUser | null;
+  initialTenantBrand?: TenantBrandSnapshot | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -87,6 +92,8 @@ export function DashboardShell({
     };
   }, [refreshUser]);
 
+  const ssrFallbackBrand: TenantPwaBranding | null = initialTenantBrand ?? null;
+
   // Sincronização dinâmica da identidade PWA da igreja no <head> do cliente
   useEffect(() => {
     if (user?.tenant) {
@@ -95,7 +102,12 @@ export function DashboardShell({
       return;
     }
 
-    const cachedTenant = readCachedTenantPwa();
+    if (user && !user.tenant) {
+      syncTenantPwaHead(null);
+      return;
+    }
+
+    const cachedTenant = readCachedTenantPwa() ?? ssrFallbackBrand;
     if (cachedTenant) {
       syncTenantPwaHead(cachedTenant);
       return;
@@ -104,7 +116,7 @@ export function DashboardShell({
     if (!loadingUser) {
       syncTenantPwaHead(null);
     }
-  }, [user?.tenant, loadingUser]);
+  }, [user, loadingUser, ssrFallbackBrand]);
 
   useEffect(() => {
     if (!isOnboardingEnabled() || !user || pathname === '/onboarding') return;
@@ -113,6 +125,11 @@ export function DashboardShell({
 
   const brandTheme = user && !user.tenant ? 'oneelo' : 'church';
   const shellRef = useRef<HTMLDivElement | null>(null);
+  const ssrTenantBrand = user?.tenant ?? ssrFallbackBrand;
+  const ssrShellStyle =
+    brandTheme === 'church' && ssrTenantBrand
+      ? buildTenantBrandThemeStyle(ssrTenantBrand)
+      : undefined;
 
   useIsomorphicLayoutEffect(() => {
     const el = shellRef.current;
@@ -125,7 +142,8 @@ export function DashboardShell({
       return;
     }
 
-    const effectiveTenant = user?.tenant ?? readCachedTenantPwa();
+    const effectiveTenant =
+      user?.tenant ?? readCachedTenantPwa() ?? ssrFallbackBrand;
     const vars = resolveTenantBrandTheme(effectiveTenant).cssVariables;
     for (const [key, value] of Object.entries(vars)) {
       el.style.setProperty(key, value);
@@ -135,6 +153,7 @@ export function DashboardShell({
     user?.tenant,
     user?.tenant?.themePalette,
     user?.tenant?.primaryColor,
+    ssrFallbackBrand,
   ]);
 
   return (
@@ -142,15 +161,20 @@ export function DashboardShell({
       <div
         ref={shellRef}
         data-brand-theme={brandTheme}
+        style={ssrShellStyle}
         className="flex h-screen h-[100dvh] overflow-hidden bg-gray-50"
       >
         <Sidebar
           user={user}
+          fallbackTenant={ssrFallbackBrand}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <Header onMenuClick={() => setSidebarOpen(true)} />
+          <Header
+            onMenuClick={() => setSidebarOpen(true)}
+            fallbackTenantName={ssrFallbackBrand?.nome ?? null}
+          />
           <main
             data-dashboard-scroll-container
             className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-6"

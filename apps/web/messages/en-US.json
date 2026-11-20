@@ -135,6 +135,7 @@
     "subtitle": "{date} · Your upcoming commitments and confirmations.",
     "quickAccess": "Quick Access",
     "quickLinks": {
+      "churchDashboard": "Church Dashboard",
       "viewSchedules": "My Schedules",
       "agenda": "Calendar",
       "profile": "My Profile",
@@ -155,6 +156,7 @@
     "leader": {
       "subtitle": "{date} · Your leadership, schedules, and events under review.",
       "quickLinks": {
+        "churchDashboard": "Church Dashboard",
         "viewSchedules": "My Schedules",
         "ministries": "Ministries",
         "schedules": "Schedules",
@@ -179,6 +181,12 @@
       "title": "You do not have assigned schedules yet",
       "description": "Your panel stays available so you can follow the calendar, your profile, and general church information.",
       "action": "View my profile"
+    },
+    "noMemberLink": {
+      "title": "Administrative account without a linked member profile",
+      "description": "Link your user account to a member profile to unlock your Digital Member Card, My Schedules, and personal leadership tracking.",
+      "manageMembers": "Manage Members",
+      "openChurchDashboard": "Go to Church Dashboard"
     }
   },
   "members": {
@@ -652,6 +660,10 @@
     },
     "statusModal": {
       "description": "Choose the new status for \"{title}\"."
+    },
+    "cancelNotification": {
+      "label": "Notify members and volunteers about cancellation",
+      "hint": "Sends an in-app and Push alert to linked ministries and scheduled volunteers. Uncheck if removing an event created by mistake."
     },
     "status": {
       "AGENDADO": "Scheduled",

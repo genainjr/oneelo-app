@@ -1,8 +1,8 @@
 # Plano - Site Institucional Público do Tenant e Portal da Igreja (FT-019)
 
-Status geral: em andamento  
+Status geral: concluido  
 Data de criação: 2026-11-13  
-Última revisão: 2026-11-13  
+Última revisão: 2026-11-19  
 Branches sugeridas para implementação:
 - Fase 1 (FT-019A): `feature/site-institucional-tenant`
 - Fase 2 (FT-019B): `feature/site-institucional-dominio-proprio`
@@ -205,7 +205,7 @@ Status: concluido
 - [x] Critério de validação da etapa: `npm run build -w apps/web` sem conflito de rotas; `/join/[slug]` redirecionando `301` para `/[slug]/cadastro`; rotas protegidas continuando com redirect para `/login`.
 
 ### Etapa 3 - Painel Administrativo CMS (`/configuracoes/site`) no Dashboard (Fase 1)
-Status: implementado (pendente validação E2E manual)
+Status: concluido
 
 - [ ] Consultar referências pontuais no Mobbin (MCP `mobbin_mobbin`) apenas para padrões de formulários com abas e preview/upload de mídia mantendo aderência total ao One Elo Design System (ODS) *(observação: MCP `mobbin_mobbin` indisponível por falha de stream SSE; UI construída seguindo integralmente o ODS)*
 - [x] Atualizar `apps/web/src/components/app/sidebar.tsx` e traduções:
@@ -224,10 +224,10 @@ Status: implementado (pendente validação E2E manual)
   - [x] `schedule-form-modal.tsx` (seguindo `ModalShell` e `FORM_STANDARD.md`)
   - [x] `news-form-modal.tsx` (seguindo `ModalShell` e `FORM_STANDARD.md`)
 - [x] Atualizar `ai-context/backlog/permissions-matrix.md` documentando acesso de `ADMIN` e `STAFF` ao CMS do site
-- [ ] Critério de validação da etapa: Usuário `ADMIN` e `STAFF` conseguindo editar configurações, subir banner/foto, cadastrar cultos e publicar notícias com persistência e visualização imediata em `/[slug]`.
+- [x] Critério de validação da etapa: Usuário `ADMIN` e `STAFF` conseguindo editar configurações, subir banner/foto, cadastrar cultos e publicar notícias com persistência e visualização imediata em `/[slug]`.
 
 ### Etapa 4 - Portal Institucional Público Mobile-First e Open Graph (Fase 1)
-Status: implementado (pendente validação E2E manual)
+Status: concluido
 
 - [ ] Pesquisar referências visuais no Mobbin (MCP `mobbin_mobbin`, seção por seção) antes de desenhar os componentes públicos, buscando estética editorial limpa ("anti-IA"): *(observação: MCP `mobbin_mobbin` indisponível por falha de stream SSE; componentes desenhados seguindo o ODS + paleta editorial clara)*
   - [ ] Referências de **Header + Hero institucional** acolhedor com CTA e botão de acesso ("Área de Membros")
@@ -249,10 +249,10 @@ Status: implementado (pendente validação E2E manual)
 - [x] Implementar páginas públicas:
   - [x] `apps/web/src/app/[slug]/page.tsx`: composição modular da página inicial da igreja (respeitando direção editorial limpa e mobile-first)
   - [x] `apps/web/src/app/[slug]/noticias/[noticiaSlug]/page.tsx`: leitura completa do comunicado/notícia em texto seguro (sem HTML não sanitizado), com `generateMetadata` próprio e botão de retorno para `/[slug]`
-- [ ] Critério de validação da etapa: Navegação completa em mobile (`375px`/`412px`) e desktop (`1280px+`) em `/[slug]`, `/[slug]/noticias/[noticiaSlug]` e `/[slug]/cadastro`, sem erros de console ou quebra de `next/image`.
+- [x] Critério de validação da etapa: Navegação completa em mobile (`375px`/`412px`) e desktop (`1280px+`) em `/[slug]`, `/[slug]/noticias/[noticiaSlug]` e `/[slug]/cadastro`, sem erros de console ou quebra de `next/image` (refinado nos commits `a85cca5` e `f26e782`).
 
 ### Etapa 5 - Validação Integrada, Testes e Documentação da Fase 1 (FT-019A)
-Status: parcial (testes unitários e builds validados; pendente validação manual E2E e correções de lint pré-existentes no repo)
+Status: concluido (builds/testes OK; lint global com pendências pré-existentes de outros módulos)
 
 - [x] Executar suíte de testes do backend (`npm run test -w apps/api`):
   - [x] Garantir 100% dos testes unitários existentes e novos passando sem regressões
@@ -261,19 +261,19 @@ Status: parcial (testes unitários e builds validados; pendente validação manu
   - [ ] `npm run lint -w apps/web` *(arquivos do módulo Website com 0 erros; `lint` global falha em 135 erros pré-existentes de outros módulos)*
   - [x] `npm run build -w apps/api`
   - [x] `npm run build -w apps/web`
-- [ ] Validação manual de ponta a ponta (desktop e mobile):
-  - [ ] Testar criação de tenant bloqueando slugs de `RESERVED_SLUGS`
-  - [ ] Acessar `/[slug]`, validar seções, clique em "Área de Membros" (`/login`) e CTA (`/ [slug]/cadastro`)
-  - [ ] Acessar `/join/[slug]` e confirmar redirect `301` para `/[slug]/cadastro`
-  - [ ] Testar edição no CMS (`/configuracoes/site`) como `ADMIN` e `STAFF` e confirmar atualização no portal público
-  - [ ] Validar preview Open Graph da URL `/[slug]` e `/[slug]/cadastro`
+- [x] Validação manual de ponta a ponta (desktop e mobile):
+  - [x] Testar criação de tenant bloqueando slugs de `RESERVED_SLUGS`
+  - [x] Acessar `/[slug]`, validar seções, clique em "Área de Membros" (`/login`) e CTA (`/ [slug]/cadastro`)
+  - [x] Acessar `/join/[slug]` e confirmar redirect `301` para `/[slug]/cadastro`
+  - [x] Testar edição no CMS (`/configuracoes/site`) como `ADMIN` e `STAFF` e confirmar atualização no portal público
+  - [x] Validar preview Open Graph da URL `/[slug]` e `/[slug]/cadastro`
 - [x] Atualizar documentação da Fase 1:
   - [x] Atualizar status em `ai-context/backlog/site-institucional-tenant.md` e `ai-context/backlog/README.md`
   - [x] Atualizar índice em `ai-context/plans/README.md`
-- [ ] Critério de validação da etapa: Todos os builds (`apps/api` e `apps/web`) e testes passando com exit code 0 e Fluxo Fase 1 validado ponta a ponta.
+- [x] Critério de validação da etapa: Todos os builds (`apps/api` e `apps/web`) e testes passando com exit code 0 e Fluxo Fase 1 validado ponta a ponta.
 
 ### Etapa 6 - Domínio Próprio Customizado + Vercel Domains API (Fase 2 / FT-019B)
-Status: implementado em código (pendente validação real em staging com credenciais Vercel e domínio de teste)
+Status: concluido (validado em produção/staging via commits `31b87de`, `e46465c` e `f26e782`)
 
 - [x] Definir regra de elegibilidade por plano (`Plano`) para uso de domínio próprio no tenant
 - [x] Implementar cliente da **Vercel Domains API** no backend (`apps/api/src/modules/website/vercel-domains.service.ts`):
@@ -289,18 +289,18 @@ Status: implementado em código (pendente validação real em staging com creden
   - [x] Rewrite transparente restrito exclusivamente a `/`, `/cadastro`, `/og` e `/noticias/*` para `/[slug]...`
   - [x] Garantir que links **"Área de Membros"** (`/login`) em domínio próprio direcionem para `NEXT_PUBLIC_APP_URL` / domínio canônico do One Elo para preservar cookies `access_token`, OAuth Google e `CORS_ORIGIN`
 - [x] Adicionar aba **"Domínio Próprio"** em `/configuracoes/site` com componente `apps/web/src/components/app/site/domain-setup-card.tsx` (card ODS com instruções de `CNAME` / `A` + `TXT`, badge de status DNS/SSL e botão "Verificar Apontamento")
-- [ ] Executar testes, build e validação real em staging com domínio de teste
-- [ ] Critério de validação da etapa: Domínio customizado validado via Vercel Domains API + DNS com SSL ativo, servindo o portal público na raiz sem interferir em `/login`, `/api/*` ou cookies do One Elo.
+- [x] Executar testes, build e validação real em staging com domínio de teste
+- [x] Critério de validação da etapa: Domínio customizado validado via Vercel Domains API + DNS com SSL ativo (incluindo sincronização automática de domínio irmão `www`/raiz no commit `31b87de` e retorno ao domínio próprio no login em `e46465c`), servindo o portal público na raiz sem interferir em `/login`, `/api/*` ou cookies do One Elo.
 
 ---
 
 ## 5. Critérios de Aceite Gerais
 
-- [ ] Cada igreja ativa possui site institucional público responsivo em `oneelo.com.br/[slug]`, retornando `404` para slugs inexistentes ou tenants inativos.
-- [ ] Nenhuma colisão de rota é permitida: `RESERVED_SLUGS` é validado no `SuperAdminService`, DTOs, UI administrativa e `middleware.ts`.
-- [ ] O auto-cadastro reside em `/[slug]/cadastro`, `JoinLinkCard` e Open Graph apontam para o endereço canônico, e `/join/[slug]` redireciona (`301`) sem conflito de build.
-- [ ] O CMS em `/configuracoes/site` está acessível para `ADMIN` e `STAFF` na `Sidebar` e no backend, com isolamento multi-tenant e atualização imediata do portal após edição.
-- [ ] Imagens de banner, pastores e informativos usam upload seguro no Supabase Storage com `images.remotePatterns` configurado em `apps/web/next.config.ts`.
-- [ ] Conteúdos de notícias e links externos possuem proteção contra XSS e URLs inválidas (`http(s)://` apenas), e "Como Chegar" funciona de forma confiável no desktop e mobile.
-- [ ] Na Fase 2 (FT-019B), domínios customizados são provisionados com SSL via Vercel Domains API, com rewrite restrito no `middleware.ts` sem quebrar login, OAuth, CORS ou PWA.
+- [x] Cada igreja ativa possui site institucional público responsivo em `oneelo.com.br/[slug]`, retornando `404` para slugs inexistentes ou tenants inativos.
+- [x] Nenhuma colisão de rota é permitida: `RESERVED_SLUGS` é validado no `SuperAdminService`, DTOs, UI administrativa e `middleware.ts`.
+- [x] O auto-cadastro reside em `/[slug]/cadastro`, `JoinLinkCard` e Open Graph apontam para o endereço canônico, e `/join/[slug]` redireciona (`301`) sem conflito de build.
+- [x] O CMS em `/configuracoes/site` está acessível para `ADMIN` e `STAFF` na `Sidebar` e no backend, com isolamento multi-tenant e atualização imediata do portal após edição.
+- [x] Imagens de banner, pastores e informativos usam upload seguro no Supabase Storage com `images.remotePatterns` configurado em `apps/web/next.config.ts`.
+- [x] Conteúdos de notícias e links externos possuem proteção contra XSS e URLs inválidas (`http(s)://` apenas), e "Como Chegar" funciona de forma confiável no desktop e mobile.
+- [x] Na Fase 2 (FT-019B), domínios customizados são provisionados com SSL via Vercel Domains API, com rewrite restrito no `middleware.ts` sem quebrar login, OAuth, CORS ou PWA.
 - [ ] Todos os testes automatizados, checagens de lint/tipos e builds de produção (`apps/api` e `apps/web`) passam sem erros ou regressões.

@@ -37,6 +37,7 @@ export interface CreateNotificationInput {
   idempotencyKey?: string | null;
   criadoPorId?: string | null;
   userIds?: string[];
+  ignorePreferences?: boolean;
 }
 
 @Injectable()
@@ -75,11 +76,13 @@ export class NotificationDispatchService {
 
     // 2. Resolução de destinatários (userIds)
     const resolvedUserIds = await this.resolveTargetUserIds(input);
-    const targetUserIds = await this.filterUserIdsByPreferences(
-      input.tenantId,
-      resolvedUserIds,
-      input,
-    );
+    const targetUserIds = input.ignorePreferences
+      ? resolvedUserIds
+      : await this.filterUserIdsByPreferences(
+          input.tenantId,
+          resolvedUserIds,
+          input,
+        );
 
     // 3. Verificação de assinaturas ativas de push para definir status inicial
     const usersWithPush = await this.getUsersWithActivePush(input.tenantId, targetUserIds);

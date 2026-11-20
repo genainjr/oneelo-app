@@ -86,6 +86,7 @@ interface AuthSessionResult {
     nome: string;
     email: string;
     role: Role;
+    memberId: string | null;
     tenantId: string | null;
     onboardingCompletedAt: Date | null;
     tenantNome: string;
@@ -1050,6 +1051,7 @@ export class SocialAuthService {
         nome: user.nome,
         email: user.email,
         role: user.role,
+        memberId: user.memberId ?? null,
         tenantId: user.tenantId,
         onboardingCompletedAt: user.onboardingCompletedAt,
         tenantNome: user.tenant!.nome,
@@ -1076,11 +1078,25 @@ export class SocialAuthService {
       return '/onboarding';
     }
 
-    if (requestedPath && !(user.role === Role.BASIC && requestedPath === '/dashboard')) {
+    const canUsePersonalPanel =
+      user.role === Role.BASIC ||
+      ((user.role === Role.ADMIN || user.role === Role.STAFF) && Boolean(user.memberId));
+    const defaultTarget =
+      user.role === Role.SUPER_ADMIN
+        ? '/admin'
+        : user.role === Role.BASIC
+          ? '/personal-panel'
+          : '/dashboard';
+
+    if (
+      requestedPath &&
+      !(user.role === Role.BASIC && requestedPath === '/dashboard') &&
+      !(!canUsePersonalPanel && requestedPath === '/personal-panel')
+    ) {
       return requestedPath;
     }
 
-    return user.role === Role.BASIC ? '/personal-panel' : '/dashboard';
+    return defaultTarget;
   }
 
   private toPendingResult(payload: PendingLinkPayload): PendingLinkResult {

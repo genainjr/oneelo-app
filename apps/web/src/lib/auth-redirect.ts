@@ -42,18 +42,38 @@ export function isSafeAppRedirect(value: string | null | undefined) {
   return true;
 }
 
+export function hasLinkedMember(
+  user?: Pick<AuthUser, 'memberId' | 'membro'> | null,
+): boolean {
+  return Boolean(user?.memberId || user?.membro?.id);
+}
+
 export function getPostLoginTarget(
-  user: Pick<AuthUser, 'role' | 'onboardingCompletedAt'>,
+  user: Pick<AuthUser, 'role' | 'onboardingCompletedAt'> &
+    Partial<Pick<AuthUser, 'memberId' | 'membro'>>,
   redirect?: string | null,
 ) {
   if (isOnboardingEnabled() && !user.onboardingCompletedAt) {
     return '/onboarding';
   }
 
-  const fallback = user.role === 'BASIC' ? '/personal-panel' : '/dashboard';
+  const canUsePersonalPanel =
+    user.role === 'BASIC' ||
+    ((user.role === 'ADMIN' || user.role === 'STAFF') && hasLinkedMember(user));
+
+  const fallback =
+    user.role === 'SUPER_ADMIN'
+      ? '/admin'
+      : user.role === 'BASIC'
+        ? '/personal-panel'
+        : '/dashboard';
   const safeRedirect = isSafeAppRedirect(redirect) ? redirect : null;
 
-  if (safeRedirect && !(user.role === 'BASIC' && safeRedirect === '/dashboard')) {
+  if (
+    safeRedirect &&
+    !(user.role === 'BASIC' && safeRedirect === '/dashboard') &&
+    !(!canUsePersonalPanel && safeRedirect === '/personal-panel')
+  ) {
     return safeRedirect;
   }
 

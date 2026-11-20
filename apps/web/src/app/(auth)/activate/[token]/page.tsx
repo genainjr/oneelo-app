@@ -102,6 +102,9 @@ export default function ActivateAccountPage() {
   }
 
   function handleGoogleActivation() {
+    if (details?.tenant) {
+      saveCachedTenantPwa(details.tenant);
+    }
     window.location.href = `/api/auth/oauth/google/start?activationToken=${encodeURIComponent(token)}`;
   }
 

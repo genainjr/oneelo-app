@@ -39,6 +39,7 @@ const PAGE_TITLES: Record<string, string> = {
 
 interface HeaderProps {
   onMenuClick: () => void;
+  fallbackTenantName?: string | null;
 }
 
 function fallbackPageTitle(pathname: string) {
@@ -50,9 +51,10 @@ function fallbackPageTitle(pathname: string) {
     .replace(/^./u, (character) => character.toLocaleUpperCase('pt-BR'));
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({ onMenuClick, fallbackTenantName = null }: HeaderProps) {
   const pathname = usePathname();
   const { user } = useAuthUser();
+  const displayedTenantName = user?.tenant?.nome ?? (!user ? fallbackTenantName : null);
 
   const title =
     Object.entries(PAGE_TITLES)
@@ -77,8 +79,8 @@ export function Header({ onMenuClick }: HeaderProps) {
       {/* Título */}
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-lg font-semibold leading-tight text-gray-900">{title}</h1>
-        {user?.tenant?.nome && (
-          <p className="truncate text-[11px] text-gray-500 lg:hidden">{user.tenant.nome}</p>
+        {displayedTenantName && (
+          <p className="truncate text-[11px] text-gray-500 lg:hidden">{displayedTenantName}</p>
         )}
       </div>
 

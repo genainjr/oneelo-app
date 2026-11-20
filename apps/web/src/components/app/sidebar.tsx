@@ -16,12 +16,18 @@ import {
   clearCachedTenantPwa,
   readCachedTenantPwa,
   saveCachedTenantPwa,
+  type TenantPwaBranding,
 } from '@/lib/pwa-branding';
 
 const ICONS = {
   dashboard: (
     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  ),
+  personalPanel: (
+    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
     </svg>
   ),
   members: (
@@ -148,6 +154,7 @@ interface NavItem {
 
 interface SidebarProps {
   user: AuthUser | null;
+  fallbackTenant?: TenantPwaBranding | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -184,7 +191,7 @@ const EXACT_ROOTS = [
 // Pill "Em breve" do menu — contraste legivel sobre o fundo da sidebar
 const SOON_BADGE_CLASS = 'text-[10px] leading-none px-1.5 py-0.5 rounded-md bg-sidebar-badge-bg text-sidebar-badge-text';
 
-export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
+export function Sidebar({ user, fallbackTenant = null, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations('nav');
@@ -215,25 +222,29 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
     ) ?? false);
   const localeDropdownRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
-  const tenantName = user?.tenant?.pwaShortName || user?.tenant?.nome || 'One Elo';
-  const tenantIcon = user?.tenant?.logoUrl || user?.tenant?.pwaIconUrl || '/logo.jpg';
+  const resolvedBrand = user?.tenant ?? (!user ? fallbackTenant : null);
+  const tenantName = resolvedBrand?.pwaShortName || resolvedBrand?.nome || 'One Elo';
+  const tenantIcon = resolvedBrand?.logoUrl || resolvedBrand?.pwaIconUrl || '/logo.jpg';
 
   useEffect(() => {
     setCurrentLocale(readLocaleCookie());
   }, []);
 
-  const { items: minhasEscalas } = useMinhasEscalas({}, { enabled: user?.role === 'BASIC' });
+  const { items: minhasEscalas } = useMinhasEscalas(
+    {},
+    { enabled: Boolean(user && (user.role === 'BASIC' || user.memberId)) },
+  );
   const { escalas: escalasVisualizacao } = useEscalasVisualizacao({}, { enabled: user?.role === 'BASIC' });
 
   useEffect(() => {
-    if (user?.role !== 'BASIC') {
+    if (!user || (user.role !== 'BASIC' && !user.memberId)) {
       setBasicHasEscalas(false);
       setBasicHasEscalasVisualizacao(false);
       return;
     }
 
     setBasicHasEscalas(minhasEscalas.length > 0);
-    setBasicHasEscalasVisualizacao(escalasVisualizacao.length > 0);
+    setBasicHasEscalasVisualizacao(user.role === 'BASIC' && escalasVisualizacao.length > 0);
   }, [escalasVisualizacao, minhasEscalas, user]);
 
   useEffect(() => {
@@ -285,8 +296,12 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const toggleSection = (href: string) =>
     setOpenSections((prev) => ({ ...prev, [href]: !prev[href] }));
 
+  const hasLinkedMember = Boolean(user?.membro?.id);
   const navItems: NavItem[] = [
     { href: '/dashboard', label: t('dashboard'), icon: ICONS.dashboard },
+    ...(hasLinkedMember
+      ? [{ href: '/personal-panel', label: t('personalPanel'), icon: ICONS.personalPanel }]
+      : []),
     {
       href: '/membros',
       label: t('members'),
@@ -353,7 +368,15 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       : []),
     { href: '/grupos', label: t('groups'), icon: ICONS.groups, comingSoon: true, groupStart: 'groupFuture' },
     { href: '/integracoes', label: t('integrations'), icon: ICONS.integrations, comingSoon: true },
-    { href: '/meu-perfil', label: t('profile'), icon: ICONS.profile, groupStart: 'groupAccount' },
+    ...(basicHasEscalas
+      ? [{ href: '/minhas-escalas', label: 'Minhas Escalas', icon: ICONS.schedules, groupStart: 'groupAccount' }]
+      : []),
+    {
+      href: '/meu-perfil',
+      label: t('profile'),
+      icon: ICONS.profile,
+      ...(!basicHasEscalas ? { groupStart: 'groupAccount' } : {}),
+    },
     { href: '/configuracoes/notificacoes', label: 'Notificações', icon: ICONS.notifications },
     { href: '/configuracoes/site', label: t('website'), icon: ICONS.website, staffOnly: true },
     { href: '/configuracoes', label: t('settings'), icon: ICONS.settings, adminOnly: true },

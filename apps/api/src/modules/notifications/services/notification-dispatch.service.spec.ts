@@ -308,6 +308,48 @@ describe('NotificationDispatchService', () => {
         }),
       );
     });
+
+    it('deve ignorar preferências pessoais quando ignorePreferences=true (ex.: voluntários escalados em evento cancelado)', async () => {
+      prisma.notification.findUnique.mockResolvedValue(null);
+      prisma.user.findMany.mockResolvedValue([{ id: 'user-escalado-optout' }]);
+      prisma.pushSubscription.findMany.mockResolvedValue([
+        { userId: 'user-escalado-optout' },
+      ]);
+      prisma.notification.create.mockImplementation(({ data }: any) => ({
+        id: 'notif-bypass',
+        ...data,
+      }));
+
+      await service.createNotification({
+        tenantId: 'tenant-1',
+        titulo: 'Evento cancelado (sua escala): Culto',
+        mensagem: 'O evento foi cancelado.',
+        urlDestino: '/minhas-escalas',
+        origem: NotificationOrigin.SYSTEM_AUTOMATION,
+        tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+        idempotencyKey: 'tenant:tenant-1:evento:ev-1:cancelled-scheduled:123',
+        userIds: ['user-escalado-optout'],
+        ignorePreferences: true,
+      });
+
+      expect(prisma.userNotificationPreference.findMany).not.toHaveBeenCalled();
+      expect(prisma.notification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            destinatarios: {
+              createMany: {
+                data: [
+                  {
+                    userId: 'user-escalado-optout',
+                    status: RecipientDeliveryStatus.PENDING,
+                  },
+                ],
+              },
+            },
+          }),
+        }),
+      );
+    });
   });
 
   describe('rescheduleNotification e cancelNotification', () => {

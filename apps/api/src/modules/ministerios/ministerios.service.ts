@@ -35,11 +35,15 @@ export class MinisteriosService {
     return new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00-03:00`);
   }
 
-  private buildVisibleWhere(tenantId: string, user: JwtPayload) {
+  private buildVisibleWhere(
+    tenantId: string,
+    user: JwtPayload,
+    personalScope = false,
+  ) {
     const where: any = { tenantId, ativo: true };
 
-    // BASIC vê apenas os ministérios em que participa como LEADER ou ASSISTANT_LEADER
-    if (user.role === Role.BASIC) {
+    // BASIC (ou consulta com escopo pessoal explícito) vê apenas os ministérios em que participa como LEADER ou ASSISTANT_LEADER
+    if (user.role === Role.BASIC || personalScope) {
       if (!user.memberId) return null;
       where.membros = {
         some: {
@@ -126,8 +130,12 @@ export class MinisteriosService {
     }));
   }
 
-  async findResumo(tenantId: string, user: JwtPayload) {
-    const where = this.buildVisibleWhere(tenantId, user);
+  async findResumo(
+    tenantId: string,
+    user: JwtPayload,
+    personalScope = false,
+  ) {
+    const where = this.buildVisibleWhere(tenantId, user, personalScope);
     if (!where) {
       return { ministerios: 0, membros: 0, aniversariantes: 0 };
     }
