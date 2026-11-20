@@ -10,6 +10,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
+| 19/11/2026 | [exportacao-excel-xlsx.md](exportacao-excel-xlsx.md) | **FT-024: Exportação para Excel (`.xlsx`) além de CSV** | ⚪ **Pendente** (Habilitar seletor `XLSX` já previsto no `ExportShell` com formatação nativa via `exceljs` nos 5 módulos) |
 | 19/11/2026 | [importacao-extrato-bancario.md](importacao-extrato-bancario.md) | **FT-023: Importação de Extratos Bancários (OFX / CSV / XLSX)** | ⚪ **Pendente** (Parser bancário, preview *dry-run*, anti-duplicidade `FITID`/hash, baixa em pendências e conciliação) |
 | 18/11/2026 | [tema-personalizado-tenant.md](tema-personalizado-tenant.md) | **FT-022: Personalização de Cores e Identidade Visual da Igreja** | ✅ **Implementado** (7 presets curados + color picker HEX com contraste WCAG AA, preview em tempo real e sincronização em portal/login/dashboard/OG) |
 | 18/11/2026 | [dizimos-ofertas-pix-comprovantes.md](dizimos-ofertas-pix-comprovantes.md) | **FT-021: Dízimos e Ofertas Digitais (PIX, Comprovantes e Conciliação)** | ⚪ **Pendente** (QR Code PIX para telão/site/app, upload de comprovante pelo membro e conciliação na tesouraria) |
