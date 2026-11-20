@@ -290,7 +290,7 @@ Escopo:
 - agrupamento por categoria;
 - comparativo mensal simples;
 - visão por conta/caixa;
-- exportação para PDF pela futura Central de Documentos (e migração do botão legado `Imprimir` de `/financeiro/visualizacao` para o padrão unificado `ExportShareDialog` + `useDocumentShare` com Playwright/Chromium de Escalas e Agenda, registrado em `IMP-010`).
+- exportação oficial de extrato em **PDF A4 paisagem** via `GET /api/financeiro/exportacao` (Playwright/Chromium, `ETag`/cache privado, paginação `Página X de Y`, totalizador fiel separado por status e tipo e botão direto `Share2` + `useDocumentShare` em `/financeiro/visualizacao`, **sem** gravação em `DocumentJob` para preservar o RBAC financeiro — **concluída via `IMP-010`**).
 
 Critérios de aceite:
 

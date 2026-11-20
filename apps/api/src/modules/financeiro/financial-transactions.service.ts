@@ -4,6 +4,7 @@ import {
   AcaoAuditoria,
   FinanceRole,
   FinancialCategoryType,
+  FinancialPaymentMethod,
   FinancialTransactionStatus,
   FinancialTransactionType,
   Prisma,
@@ -15,13 +16,102 @@ import {
   getFinancialReceiptPath,
   validateFinancialReceiptUpload,
 } from '../../common/storage/image-upload';
+import {
+  includesNormalizedText,
+  normalizeSearchText,
+} from '../../common/utils/search-text';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import type { Multer } from 'multer';
 import { FinanceAuthorizationService } from './finance-authorization.service';
 import { ConfirmFinancialTransactionDto } from './dto/confirm-financial-transaction.dto';
 import { CreateFinancialTransactionDto } from './dto/create-financial-transaction.dto';
 import { CreateFinancialTransactionsBatchDto } from './dto/create-financial-transactions-batch.dto';
+import { ExportFinanceiroDto } from './dto/export-financeiro.dto';
 import { UpdateFinancialTransactionDto } from './dto/update-financial-transaction.dto';
+import type {
+  FinanceiroDocumentInput,
+  FinanceiroDocumentItem,
+  FinanceiroDocumentTotals,
+  FinanceiroFilterLabel,
+} from './export/financeiro-document.types';
+
+export const FINANCEIRO_TYPE_LABELS: Record<FinancialTransactionType, string> = {
+  INCOME: 'Entrada',
+  EXPENSE: 'Saída',
+};
+
+export const FINANCEIRO_STATUS_LABELS: Record<FinancialTransactionStatus, string> = {
+  DRAFT: 'Rascunho',
+  PENDING: 'Pendente',
+  CONFIRMED: 'Confirmado',
+  CANCELLED: 'Cancelado',
+};
+
+export const FINANCEIRO_PAYMENT_METHOD_LABELS: Record<FinancialPaymentMethod, string> = {
+  PIX: 'Pix',
+  CASH: 'Dinheiro',
+  CREDIT_CARD: 'Cartão de crédito',
+  DEBIT_CARD: 'Cartão de débito',
+  BANK_TRANSFER: 'Transferência',
+  BOLETO: 'Boleto',
+  CHECK: 'Cheque',
+  OTHER: 'Outro',
+};
+
+export function getFinancialTransactionDisplayTitle(transaction: {
+  description?: string | null;
+  type: FinancialTransactionType;
+  counterpartyName?: string | null;
+  evento?: { titulo?: string | null } | null;
+  category: { name: string };
+}): string {
+  const description = transaction.description?.trim();
+  if (description) return description;
+  const eventTitle = transaction.evento?.titulo?.trim();
+  if (eventTitle) return eventTitle;
+  const counterpartyName = transaction.counterpartyName?.trim();
+  if (counterpartyName) return counterpartyName;
+  return `${FINANCEIRO_TYPE_LABELS[transaction.type]} - ${transaction.category.name}`;
+}
+
+export function matchesFinancialTransactionSearch(
+  transaction: {
+    description?: string | null;
+    type: FinancialTransactionType;
+    counterpartyName?: string | null;
+    paymentMethod?: FinancialPaymentMethod | null;
+    category: { name: string };
+    account: { name: string };
+    evento?: { titulo?: string | null } | null;
+    member?: { nome?: string | null } | null;
+  },
+  search: string | null | undefined,
+): boolean {
+  const normalizedQuery = normalizeSearchText(search);
+  if (!normalizedQuery) return true;
+
+  const displayTitle = getFinancialTransactionDisplayTitle(transaction);
+  const paymentLabel = transaction.paymentMethod
+    ? (FINANCEIRO_PAYMENT_METHOD_LABELS[transaction.paymentMethod] ?? transaction.paymentMethod)
+    : null;
+  const typeLabel = FINANCEIRO_TYPE_LABELS[transaction.type];
+
+  const searchable = [
+    displayTitle,
+    transaction.description,
+    typeLabel,
+    transaction.category?.name,
+    transaction.account?.name,
+    transaction.counterpartyName,
+    transaction.evento?.titulo,
+    transaction.member?.nome,
+    paymentLabel,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return includesNormalizedText(searchable, normalizedQuery);
+}
 
 const WRITE_ROLES: FinanceRole[] = [
   FinanceRole.FINANCE_OPERATOR,
@@ -34,6 +124,7 @@ const CANCEL_ROLES: FinanceRole[] = APPROVE_ROLES;
 const MAX_BATCH_OCCURRENCES = 120;
 const DEFAULT_LIST_LIMIT = 500;
 const MAX_LIST_LIMIT = 500;
+const MAX_SEARCH_SCAN_LIMIT = 2000;
 
 const TRANSACTION_INCLUDE = {
   account: { select: { id: true, name: true, type: true } },
@@ -68,6 +159,7 @@ export class FinancialTransactionsService {
       eventoId?: string;
       memberId?: string;
       recurringGroupId?: string;
+      description?: string;
       limit?: number;
     },
   ) {
@@ -79,26 +171,299 @@ export class FinancialTransactionsService {
         ? Math.min(Math.max(Math.trunc(requestedLimit), 1), MAX_LIST_LIMIT)
         : DEFAULT_LIST_LIMIT;
 
-    const transactions = await this.prisma.financialTransaction.findMany({
-      where: {
-        tenantId,
-        ...(filters.type ? { type: filters.type } : {}),
-        ...(filters.status ? { status: filters.status } : {}),
-        ...(filters.accountId ? { accountId: filters.accountId } : {}),
-        ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
-        ...(filters.eventoId ? { eventoId: filters.eventoId } : {}),
-        ...(filters.memberId ? { memberId: filters.memberId } : {}),
-        ...(filters.recurringGroupId ? { recurringGroupId: filters.recurringGroupId } : {}),
-        ...this.buildDateRangeFilter(filters.startDate, filters.endDate),
-      },
-      include: TRANSACTION_INCLUDE,
-      orderBy: filters.recurringGroupId
+    const where = this.buildTransactionWhere(tenantId, filters);
+    const orderBy: Prisma.FinancialTransactionOrderByWithRelationInput[] =
+      filters.recurringGroupId
         ? [{ installmentNumber: 'asc' }, { date: 'asc' }]
-        : [{ date: 'desc' }, { createdAt: 'desc' }],
+        : [{ date: 'desc' }, { createdAt: 'desc' }];
+
+    const normalizedDescription = normalizeSearchText(filters.description);
+
+    if (normalizedDescription) {
+      const scanned = await this.prisma.financialTransaction.findMany({
+        where,
+        include: TRANSACTION_INCLUDE,
+        orderBy,
+        take: MAX_SEARCH_SCAN_LIMIT,
+      });
+
+      return scanned
+        .filter((transaction) =>
+          matchesFinancialTransactionSearch(transaction, normalizedDescription),
+        )
+        .slice(0, take)
+        .map((transaction) => this.serializeTransaction(transaction));
+    }
+
+    const transactions = await this.prisma.financialTransaction.findMany({
+      where,
+      include: TRANSACTION_INCLUDE,
+      orderBy,
       take,
     });
 
     return transactions.map((transaction) => this.serializeTransaction(transaction));
+  }
+
+  async prepareExportData(
+    tenantId: string,
+    query: ExportFinanceiroDto,
+    actor: JwtPayload,
+  ): Promise<FinanceiroDocumentInput> {
+    await this.financeAuthorization.ensureCanAccessFinanceData(tenantId, actor);
+
+    const where = this.buildTransactionWhere(tenantId, query);
+    const orderBy: Prisma.FinancialTransactionOrderByWithRelationInput[] =
+      query.recurringGroupId
+        ? [{ installmentNumber: 'asc' }, { date: 'asc' }, { createdAt: 'asc' }]
+        : [{ date: 'desc' }, { createdAt: 'desc' }];
+
+    const normalizedDescription = normalizeSearchText(query.description);
+
+    const [tenant, rawRows] = await Promise.all([
+      this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { nome: true, logoUrl: true },
+      }),
+      this.prisma.financialTransaction.findMany({
+        where,
+        include: TRANSACTION_INCLUDE,
+        orderBy,
+        take: normalizedDescription
+          ? MAX_SEARCH_SCAN_LIMIT + 1
+          : MAX_LIST_LIMIT + 1,
+      }),
+    ]);
+
+    let selectedRows: TransactionWithRelations[];
+    let truncated = false;
+    let totalMatchingCount = 0;
+
+    if (normalizedDescription) {
+      const scannedHitCap = rawRows.length > MAX_SEARCH_SCAN_LIMIT;
+      const scanPool = scannedHitCap
+        ? rawRows.slice(0, MAX_SEARCH_SCAN_LIMIT)
+        : rawRows;
+      const matchedRows = scanPool.filter((transaction) =>
+        matchesFinancialTransactionSearch(transaction, normalizedDescription),
+      );
+      totalMatchingCount = matchedRows.length;
+      truncated = matchedRows.length > MAX_LIST_LIMIT || scannedHitCap;
+      selectedRows = matchedRows.slice(0, MAX_LIST_LIMIT);
+    } else {
+      truncated = rawRows.length > MAX_LIST_LIMIT;
+      selectedRows = truncated ? rawRows.slice(0, MAX_LIST_LIMIT) : rawRows;
+      totalMatchingCount = truncated
+        ? await this.prisma.financialTransaction.count({ where })
+        : selectedRows.length;
+    }
+
+    if (selectedRows.length === 0) {
+      throw new NotFoundException(
+        'Nenhum lançamento financeiro encontrado para os filtros informados.',
+      );
+    }
+
+    // Ordenação cronológica crescente para exibição documental (paridade com /financeiro/visualizacao)
+    const sortedRows = [...selectedRows].sort((a, b) => {
+      if (query.recurringGroupId) {
+        const instA = a.installmentNumber ?? Number.MAX_SAFE_INTEGER;
+        const instB = b.installmentNumber ?? Number.MAX_SAFE_INTEGER;
+        if (instA !== instB) return instA - instB;
+      }
+      const dateDiff = a.date.getTime() - b.date.getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+
+    const items: FinanceiroDocumentItem[] = sortedRows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      status: row.status,
+      date: row.date,
+      paidAt: row.paidAt ?? null,
+      updatedAt: row.updatedAt,
+      amount: this.toAmountNumber(row.amount),
+      description: row.description ?? null,
+      paymentMethod: row.paymentMethod ?? null,
+      counterpartyName: row.counterpartyName ?? null,
+      installmentNumber: row.installmentNumber ?? null,
+      totalInstallments: row.totalInstallments ?? null,
+      account: { id: row.account.id, name: row.account.name },
+      category: { id: row.category.id, name: row.category.name },
+      evento: row.evento ? { id: row.evento.id, titulo: row.evento.titulo } : null,
+      member: row.member ? { id: row.member.id, nome: row.member.nome } : null,
+    }));
+
+    const totals = this.computeExportTotals(items);
+    const appliedFilterLabels = this.buildAppliedFilterLabels(query, items[0]);
+
+    return {
+      tenantId,
+      organizationName: tenant?.nome?.trim() || 'One Elo',
+      logoUrl: tenant?.logoUrl ?? null,
+      issuedAt: new Date(),
+      periodo: {
+        startDate: query.startDate,
+        endDate: query.endDate,
+      },
+      filters: {
+        status: query.status,
+        type: query.type,
+        accountId: query.accountId,
+        categoryId: query.categoryId,
+        eventoId: query.eventoId,
+        memberId: query.memberId,
+        recurringGroupId: query.recurringGroupId,
+        description: query.description?.trim() || undefined,
+      },
+      appliedFilterLabels,
+      items,
+      totals,
+      truncated,
+      totalMatchingCount,
+    };
+  }
+
+  private buildTransactionWhere(
+    tenantId: string,
+    filters: {
+      startDate?: string;
+      endDate?: string;
+      type?: FinancialTransactionType;
+      status?: FinancialTransactionStatus;
+      accountId?: string;
+      categoryId?: string;
+      eventoId?: string;
+      memberId?: string;
+      recurringGroupId?: string;
+    },
+  ): Prisma.FinancialTransactionWhereInput {
+    return {
+      tenantId,
+      ...(filters.type ? { type: filters.type } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.accountId ? { accountId: filters.accountId } : {}),
+      ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+      ...(filters.eventoId ? { eventoId: filters.eventoId } : {}),
+      ...(filters.memberId ? { memberId: filters.memberId } : {}),
+      ...(filters.recurringGroupId ? { recurringGroupId: filters.recurringGroupId } : {}),
+      ...this.buildDateRangeFilter(filters.startDate, filters.endDate),
+    };
+  }
+
+  private computeExportTotals(items: FinanceiroDocumentItem[]): FinanceiroDocumentTotals {
+    let confirmedCount = 0;
+    let confirmedIncomeCents = 0;
+    let confirmedExpenseCents = 0;
+    let pendingCount = 0;
+    let pendingIncomeCents = 0;
+    let pendingExpenseCents = 0;
+    let draftCount = 0;
+    let draftIncomeCents = 0;
+    let draftExpenseCents = 0;
+    let cancelledCount = 0;
+    let cancelledIncomeCents = 0;
+    let cancelledExpenseCents = 0;
+
+    for (const item of items) {
+      const cents = Math.round(item.amount * 100);
+      const isIncome = item.type === FinancialTransactionType.INCOME;
+
+      if (item.status === FinancialTransactionStatus.CONFIRMED) {
+        confirmedCount += 1;
+        if (isIncome) confirmedIncomeCents += cents;
+        else confirmedExpenseCents += cents;
+      } else if (item.status === FinancialTransactionStatus.PENDING) {
+        pendingCount += 1;
+        if (isIncome) pendingIncomeCents += cents;
+        else pendingExpenseCents += cents;
+      } else if (item.status === FinancialTransactionStatus.DRAFT) {
+        draftCount += 1;
+        if (isIncome) draftIncomeCents += cents;
+        else draftExpenseCents += cents;
+      } else if (item.status === FinancialTransactionStatus.CANCELLED) {
+        cancelledCount += 1;
+        if (isIncome) cancelledIncomeCents += cents;
+        else cancelledExpenseCents += cents;
+      }
+    }
+
+    return {
+      count: items.length,
+      confirmedCount,
+      confirmedIncome: confirmedIncomeCents / 100,
+      confirmedExpense: confirmedExpenseCents / 100,
+      confirmedNet: (confirmedIncomeCents - confirmedExpenseCents) / 100,
+      pendingCount,
+      pendingIncome: pendingIncomeCents / 100,
+      pendingExpense: pendingExpenseCents / 100,
+      pendingNet: (pendingIncomeCents - pendingExpenseCents) / 100,
+      draftCount,
+      draftIncome: draftIncomeCents / 100,
+      draftExpense: draftExpenseCents / 100,
+      cancelledCount,
+      cancelledIncome: cancelledIncomeCents / 100,
+      cancelledExpense: cancelledExpenseCents / 100,
+    };
+  }
+
+  private buildAppliedFilterLabels(
+    query: ExportFinanceiroDto,
+    sampleItem: FinanceiroDocumentItem,
+  ): FinanceiroFilterLabel[] {
+    const labels: FinanceiroFilterLabel[] = [];
+
+    if (query.status) {
+      labels.push({
+        label: 'Status',
+        value: FINANCEIRO_STATUS_LABELS[query.status] ?? query.status,
+      });
+    }
+    if (query.type) {
+      labels.push({
+        label: 'Tipo',
+        value: FINANCEIRO_TYPE_LABELS[query.type] ?? query.type,
+      });
+    }
+    if (query.accountId) {
+      labels.push({
+        label: 'Conta',
+        value: sampleItem.account.name,
+      });
+    }
+    if (query.categoryId) {
+      labels.push({
+        label: 'Categoria',
+        value: sampleItem.category.name,
+      });
+    }
+    if (query.eventoId) {
+      labels.push({
+        label: 'Evento',
+        value: sampleItem.evento?.titulo ?? 'Evento filtrado',
+      });
+    }
+    if (query.memberId) {
+      labels.push({
+        label: 'Membro',
+        value: sampleItem.member?.nome ?? 'Membro filtrado',
+      });
+    }
+    if (query.recurringGroupId) {
+      labels.push({
+        label: 'Série',
+        value: 'Lançamentos recorrentes',
+      });
+    }
+    if (query.description?.trim()) {
+      labels.push({
+        label: 'Busca',
+        value: query.description.trim(),
+      });
+    }
+
+    return labels;
   }
 
   async getSummary(

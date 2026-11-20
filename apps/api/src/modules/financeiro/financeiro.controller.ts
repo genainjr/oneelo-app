@@ -1,9 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { memoryStorage } from 'multer';
 import type { Multer } from 'multer';
+import { performance } from 'node:perf_hooks';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ExportServiceUnavailableException } from '../../common/export';
 import { MAX_FINANCIAL_RECEIPT_SIZE } from '../../common/storage/image-upload';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { ConfirmFinancialTransactionDto } from './dto/confirm-financial-transaction.dto';
@@ -11,10 +13,12 @@ import { CreateFinancialAccountDto } from './dto/create-financial-account.dto';
 import { CreateFinancialCategoryDto } from './dto/create-financial-category.dto';
 import { CreateFinancialTransactionDto } from './dto/create-financial-transaction.dto';
 import { CreateFinancialTransactionsBatchDto } from './dto/create-financial-transactions-batch.dto';
+import { ExportFinanceiroDto } from './dto/export-financeiro.dto';
 import { UpdateFinancialAccountDto } from './dto/update-financial-account.dto';
 import { UpdateFinancialCategoryDto } from './dto/update-financial-category.dto';
 import { UpdateFinancialTransactionDto } from './dto/update-financial-transaction.dto';
 import { UpdateFinancePermissionDto } from './dto/update-finance-permission.dto';
+import { FinanceiroDocumentRendererService } from './export/financeiro-document-renderer.service';
 import { FinancialAccountsService } from './financial-accounts.service';
 import { FinancialCategoriesService } from './financial-categories.service';
 import { FinancialTransactionsService } from './financial-transactions.service';
@@ -35,6 +39,7 @@ export class FinanceiroController {
     private readonly accountsService: FinancialAccountsService,
     private readonly categoriesService: FinancialCategoriesService,
     private readonly transactionsService: FinancialTransactionsService,
+    private readonly documentRenderer: FinanceiroDocumentRendererService,
   ) {}
 
   @Get('permissions/me')
@@ -135,6 +140,7 @@ export class FinanceiroController {
     @Query('eventoId') eventoId?: string,
     @Query('memberId') memberId?: string,
     @Query('recurringGroupId') recurringGroupId?: string,
+    @Query('description') description?: string,
     @Query('limit') limit?: string,
   ) {
     return this.transactionsService.findAll(user.tenantId!, user, {
@@ -147,6 +153,7 @@ export class FinanceiroController {
       eventoId,
       memberId,
       recurringGroupId,
+      description,
       limit: limit !== undefined ? Number(limit) : undefined,
     });
   }
@@ -163,6 +170,55 @@ export class FinanceiroController {
       endDate,
       accountId,
     });
+  }
+
+  @Get('exportacao')
+  async exportPdf(
+    @Query() query: ExportFinanceiroDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const rawIfNoneMatch = req.headers['if-none-match'];
+    const ifNoneMatch = Array.isArray(rawIfNoneMatch)
+      ? rawIfNoneMatch.join(', ')
+      : rawIfNoneMatch;
+
+    try {
+      const queryStart = performance.now();
+      const input = await this.transactionsService.prepareExportData(
+        user.tenantId!,
+        query,
+        user,
+      );
+      const queryMs = Math.round(performance.now() - queryStart);
+      const document = await this.documentRenderer.renderPdf(input, {
+        ifNoneMatch,
+        queryMs,
+      });
+
+      res.setHeader('X-Document-Page-Count', String(document.pageCount));
+      if (document.etag) {
+        res.setHeader('ETag', document.etag);
+        res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
+      }
+
+      if (document.notModified) {
+        return res.status(304).end();
+      }
+
+      res.setHeader('Content-Type', document.mimeType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${document.fileName}"`,
+      );
+      return res.send(document.buffer);
+    } catch (error) {
+      if (error instanceof ExportServiceUnavailableException) {
+        res.setHeader('Retry-After', String(error.retryAfterSeconds));
+      }
+      throw error;
+    }
   }
 
   @Post('transactions/batch')

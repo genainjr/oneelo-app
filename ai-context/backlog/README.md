@@ -36,7 +36,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 | Criação | Documento | Assunto | Status no Código |
 |---|---|---|---|
 | 22/07/2026 | [central-documentos.md](central-documentos.md) | Central de documentos, Carteirinhas de Membros e Exportações | ✅ **Implementado** (Fila assíncrona, Supabase Storage, Carteirinha Digital estilo CNH, lote A4 duplex e QR Code) |
-| 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | **FT-014: Módulo financeiro, permissões e patrimônio** | 🟡 **Parcial (MVP + Recorrentes 6.1 Implementados)** — Entregas 1–5 e 6.1 (recorrência/parcelamento em lote + baixa `confirm`) ativas; **pendentes**: aprovação com motivo/dupla validação (6), ação em série `recurringGroupId`, relatórios/comparativos e PDF (`IMP-010`/7), Patrimônio (8) e Conciliação OFX/CSV (9 / `FT-023`) |
+| 22/07/2026 | [financeiro-patrimonial.md](financeiro-patrimonial.md) | **FT-014: Módulo financeiro, permissões e patrimônio** | 🟡 **Parcial (MVP + Recorrentes 6.1 + Extrato PDF `IMP-010` Implementados)** — Entregas 1–5, 6.1 (recorrência/parcelamento em lote + baixa `confirm`) e exportação oficial em PDF (`GET /api/financeiro/exportacao`) ativas; **pendentes**: aprovação com motivo/dupla validação (6), ação em série `recurringGroupId`, relatórios/comparativos avançados (7), Patrimônio (8) e Conciliação OFX/CSV (9 / `FT-023`) |
 | 18/07/2026 | [tenant-branded-experience.md](tenant-branded-experience.md) | **FT-012: Experiência personalizada da igreja por tenant** | ✅ **Concluído** (Entregue via PWA dinâmico, FT-018, FT-019 e Tema Unificado) |
 | 17/07/2026 | [phone-password-login.md](phone-password-login.md) | Login com telefone e senha | ✅ **Implementado** (E.164, login unificado por email/telefone, Meu Perfil) |
 | 17/07/2026 | [notification-center.md](notification-center.md) | Central e infraestrutura robusta de notificações | ✅ **Implementado** (Persistência, retentativas, inbox in-app, regras e preferências via PRs #212/#213) |
@@ -53,7 +53,7 @@ Os documentos abaixo estão ordenados pela data em que foram adicionados ao repo
 | 05/06/2026 | [features-roadmap.md](features-roadmap.md) | Features de produto pós-MVP & Super Admin | 🟡 **FT-000 Super Admin e FT-002 Calendários Implementados**; demais pós-MVP despriorizados |
 | 03/06/2026 | [security.md](security.md) | Correções de segurança pendentes | ✅ **Implementado** (IP real em auditoria `SEC-001` e cookies seguros `SEC-002`) |
 | 03/06/2026 | [permissions-matrix.md](permissions-matrix.md) | Matriz de permissões por role e recurso | 📖 **Documentado** (Referência ativa de RBAC) |
-| 03/06/2026 | [improvements.md](improvements.md) | Melhorias gerais e débito técnico | 🟡 **9 de 10 implementados** (`IMP-001` a `IMP-009` concluídos; **`IMP-010` pendente**: impressão unificada PDF/PNG em `/financeiro/visualizacao`) |
+| 03/06/2026 | [improvements.md](improvements.md) | Melhorias gerais e débito técnico | ✅ **10 de 10 implementados** (`IMP-001` a `IMP-010` concluídos, incluindo exportação oficial em PDF de `/financeiro/visualizacao`) |
 
 ---
 

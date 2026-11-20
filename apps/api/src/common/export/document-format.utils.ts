@@ -84,3 +84,20 @@ export function matchesIfNoneMatch(ifNoneMatch: string | undefined, etag: string
     .map((candidate) => candidate.trim())
     .some((candidate) => candidate === '*' || normalizeEtagValue(candidate) === target);
 }
+
+export function countPdfPagesFromBuffer(buffer: Buffer): number {
+  try {
+    const text = buffer.toString('latin1');
+    const pageMatches = text.match(/\/Type\s*\/Page\b/g);
+    if (pageMatches && pageMatches.length > 0) {
+      return pageMatches.length;
+    }
+    const countMatch = text.match(/\/Count\s+(\d+)/);
+    if (countMatch && Number(countMatch[1]) > 0) {
+      return Number(countMatch[1]);
+    }
+  } catch {
+    // fallback
+  }
+  return 1;
+}
