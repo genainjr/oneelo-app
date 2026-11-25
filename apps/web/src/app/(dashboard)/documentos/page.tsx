@@ -1,16 +1,29 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, Clock, FileText, IdCard, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
 import { FilterActions, FilterShell } from '@/components/app/filter-shell';
-import { FilterSelect } from '@/components/app/filter-field';
+import { FilterInput, FilterSelect } from '@/components/app/filter-field';
+import { useFilterState } from '@/hooks/use-filter-state';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, includesNormalizedText } from '@/lib/utils';
 import { useAuthUser } from '@/contexts/auth-user-context';
 import { DocumentJob, TipoDocumento, StatusDocumentJob } from '@/types';
+
+interface DocumentFilterState {
+  search: string;
+  formato: string;
+  status: string;
+}
+
+const EMPTY_DOCUMENT_FILTERS: DocumentFilterState = {
+  search: '',
+  formato: '',
+  status: 'TODOS',
+};
 
 const DOCUMENT_TABS = [
   { id: 'TODOS', label: 'Todos', icon: FileText, fullWidthMobile: true },
@@ -151,8 +164,21 @@ export default function CentralDocumentosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTipo, setSelectedTipo] = useState<string>('TODOS');
-  const [selectedStatus, setSelectedStatus] = useState<string>('TODOS');
+  const [appliedFilters, setAppliedFilters] = useState<DocumentFilterState>(EMPTY_DOCUMENT_FILTERS);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  const {
+    formState: filterState,
+    setField: setFilterField,
+    handleClear: handleClearFilters,
+    handleSubmit: handleFilterSubmit,
+    isDebouncing,
+  } = useFilterState<DocumentFilterState>({
+    initialState: EMPTY_DOCUMENT_FILTERS,
+    debounceFields: ['search'],
+    debounceMs: 350,
+    onApply: setAppliedFilters,
+  });
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -174,7 +200,9 @@ export default function CentralDocumentosPage() {
           params.append('tipoDocumento', selectedTipo);
         }
       }
-      if (selectedStatus !== 'TODOS') params.append('status', selectedStatus);
+      if (appliedFilters.status && appliedFilters.status !== 'TODOS') {
+        params.append('status', appliedFilters.status);
+      }
 
       const query = params.toString() ? `?${params.toString()}` : '';
       const data = await api.get<{ items: DocumentJob[]; total: number } | DocumentJob[]>(
@@ -195,7 +223,33 @@ export default function CentralDocumentosPage() {
     } finally {
       if (!isPolling) setLoading(false);
     }
-  }, [selectedTipo, selectedStatus]);
+  }, [selectedTipo, appliedFilters.status]);
+
+  const filteredJobs = useMemo(
+    () =>
+      jobs.filter((job) => {
+        if (appliedFilters.formato && job.formato !== appliedFilters.formato) {
+          return false;
+        }
+        if (appliedFilters.search.trim()) {
+          const config = TIPO_DOCUMENTO_CONFIG[job.tipoDocumento];
+          const searchable = [
+            job.detalhes?.titulo,
+            job.detalhes?.subtitulo,
+            config?.label,
+            job.requestedByUser?.nome,
+            job.formato,
+          ]
+            .filter(Boolean)
+            .join(' ');
+          if (!includesNormalizedText(searchable, appliedFilters.search)) {
+            return false;
+          }
+        }
+        return true;
+      }),
+    [jobs, appliedFilters.formato, appliedFilters.search],
+  );
 
   useEffect(() => {
     fetchJobs();
@@ -314,22 +368,42 @@ export default function CentralDocumentosPage() {
       {/* Filtros ODS */}
       <FilterShell
         className="mb-0"
+        onSubmit={handleFilterSubmit}
         actions={
           <FilterActions
             clearLabel="Limpar"
             reloadLabel="Recarregar"
-            onClear={() => setSelectedStatus('TODOS')}
+            onClear={() => handleClearFilters()}
             onReload={() => void fetchJobs()}
             loading={loading}
+            isDebouncing={isDebouncing}
           />
         }
       >
-        <div className="grid grid-cols-1 gap-4 sm:max-w-xs">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <FilterInput
+            id="filter-search"
+            type="search"
+            label="Documento ou solicitante"
+            value={filterState.search}
+            onChange={(e) => setFilterField('search', e.target.value)}
+            placeholder="Buscar por título, subtítulo ou solicitante..."
+          />
+          <FilterSelect
+            id="filter-formato"
+            label="Formato"
+            value={filterState.formato}
+            onChange={(e) => setFilterField('formato', e.target.value)}
+          >
+            <option value="">Todos os formatos</option>
+            <option value="PDF">PDF</option>
+            <option value="PNG">PNG</option>
+          </FilterSelect>
           <FilterSelect
             id="filter-status"
             label="Status"
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            value={filterState.status}
+            onChange={(e) => setFilterField('status', e.target.value)}
           >
             <option value="TODOS">Todos os status</option>
             <option value="COMPLETED">Concluídos</option>
@@ -349,7 +423,7 @@ export default function CentralDocumentosPage() {
           </svg>
           <p className="mt-3 text-sm font-medium text-gray-500">Carregando documentos...</p>
         </div>
-      ) : jobs.length === 0 ? (
+      ) : filteredJobs.length === 0 ? (
         <EmptyState
           title="Nenhum documento encontrado"
           description="Os documentos gerados por escalas, agenda e carteirinhas de membros aparecerão aqui."
@@ -370,7 +444,7 @@ export default function CentralDocumentosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {jobs.map((job) => {
+                {filteredJobs.map((job) => {
                   const config = TIPO_DOCUMENTO_CONFIG[job.tipoDocumento] || {
                     label: job.tipoDocumento,
                     color: 'text-gray-600 bg-gray-50 border-gray-100',
