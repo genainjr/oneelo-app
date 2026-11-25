@@ -5,10 +5,10 @@ import Link from "next/link";
 import { Banknote, CalendarDays, CircleDollarSign, CreditCard, FileText, LoaderCircle, Share2, ShieldCheck, Tags, WalletCards } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
-import type { EventoOption } from "@/components/app/evento-search-combobox";
+import { getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
 import { ExportShareErrorBanner, ExportSharePreparedBanner } from "@/components/app/export-share-dialog";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
-import type { MembroOption } from "@/components/app/membro-search-combobox";
+import { getMembroPrintName, type MembroOption } from "@/components/app/membro-search-combobox";
 import { PageHeader } from "@/components/app/page-header";
 import { Skeleton } from "@/components/app/skeleton";
 import { StatCard } from "@/components/app/stat-card";
@@ -284,12 +284,12 @@ export default function FinanceiroVisualizacaoPage() {
 
       <ExportShareErrorBanner error={exportError} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" loading={loadingData} />
-        <StatCard title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} confirmado(s) no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" loading={loadingData} />
-        <StatCard title="Saídas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
-        <StatCard title="A Receber" value={currencyFormatter.format(financialSummary.pendingIncome)} description="Contas pendentes de entrada" icon={<CircleDollarSign className="h-5 w-5" />} color="amber" loading={loadingData} />
-        <StatCard title="A Pagar" value={currencyFormatter.format(financialSummary.pendingExpense)} description={`${financialSummary.pendingCount} pendência(s) no período`} icon={<Banknote className="h-5 w-5" />} color="amber" loading={loadingData} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+        <StatCard compact title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" loading={loadingData} />
+        <StatCard compact title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} confirmado(s) no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" loading={loadingData} />
+        <StatCard compact title="Saídas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
+        <StatCard compact title="A Receber" value={currencyFormatter.format(financialSummary.pendingIncome)} description="Contas pendentes de entrada" icon={<CircleDollarSign className="h-5 w-5" />} color="amber" loading={loadingData} />
+        <StatCard compact title="A Pagar" value={currencyFormatter.format(financialSummary.pendingExpense)} description={`${financialSummary.pendingCount} pendência(s) no período`} icon={<Banknote className="h-5 w-5" />} color="amber" loading={loadingData} />
       </div>
 
       {dataError && (
@@ -336,6 +336,7 @@ export default function FinanceiroVisualizacaoPage() {
             }}
             onEventoSelect={(evento) => {
               setSelectedEventoFilter(evento);
+              setEventoFilterSearch(getEventoDisplayName(evento));
               setTransactionFilterField("eventoId", evento.id);
             }}
             onEventoClear={() => {
@@ -354,6 +355,7 @@ export default function FinanceiroVisualizacaoPage() {
             }}
             onMembroSelect={(membro) => {
               setSelectedMembroFilter(membro);
+              setMembroFilterSearch(getMembroPrintName(membro));
               setTransactionFilterField("memberId", membro.id);
             }}
             onMembroClear={() => {

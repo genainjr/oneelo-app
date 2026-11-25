@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Banknote, CircleDollarSign, Landmark } from "lucide-react";
-import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
+import { EventoSearchCombobox, type EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterInput, FilterSelect } from "@/components/app/filter-field";
-import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
+import { MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
 import { api } from "@/lib/api";
 import { includesNormalizedText } from "@/lib/utils";
 import { FinanceRole, type StatusEvento } from "@/types";
@@ -539,10 +539,7 @@ export function FinanceiroTransactionFilterFields({
           emptyMessage="Nenhum evento encontrado."
           selectedPrefix="Evento"
           onSearchChange={onEventoSearchChange}
-          onSelect={(evento) => {
-            onEventoSelect(evento);
-            onEventoSearchChange(getEventoDisplayName(evento));
-          }}
+          onSelect={onEventoSelect}
           onClear={onEventoClear}
         />
       </div>
@@ -558,10 +555,7 @@ export function FinanceiroTransactionFilterFields({
           emptyMessage="Nenhum membro encontrado."
           selectedPrefix="Selecionado"
           onSearchChange={onMembroSearchChange}
-          onSelect={(membro) => {
-            onMembroSelect(membro);
-            onMembroSearchChange(getMembroPrintName(membro));
-          }}
+          onSelect={onMembroSelect}
           onClear={onMembroClear}
         />
       </div>
