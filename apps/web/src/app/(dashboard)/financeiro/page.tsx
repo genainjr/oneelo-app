@@ -8,9 +8,9 @@ import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { DataTable, type Column } from "@/components/app/data-table";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
-import type { EventoOption } from "@/components/app/evento-search-combobox";
+import { getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
-import type { MembroOption } from "@/components/app/membro-search-combobox";
+import { getMembroPrintName, type MembroOption } from "@/components/app/membro-search-combobox";
 import { PageHeader } from "@/components/app/page-header";
 import { PrimaryActionButton } from "@/components/app/primary-action-button";
 import { Skeleton } from "@/components/app/skeleton";
@@ -131,7 +131,7 @@ export default function FinanceiroPage() {
     isDebouncing: isTransactionDebouncing,
   } = useFilterState({
     initialState: initialTransactionFilters,
-    debounceFields: [],
+    debounceFields: ["description"],
     debounceMs: 350,
     onApply: setAppliedTransactionFilters,
   });
@@ -627,6 +627,7 @@ export default function FinanceiroPage() {
             }}
             onEventoSelect={(evento) => {
               setSelectedEventoFilter(evento);
+              setEventoFilterSearch(getEventoDisplayName(evento));
               setTransactionFilterField("eventoId", evento.id);
             }}
             onEventoClear={() => {
@@ -645,6 +646,7 @@ export default function FinanceiroPage() {
             }}
             onMembroSelect={(membro) => {
               setSelectedMembroFilter(membro);
+              setMembroFilterSearch(getMembroPrintName(membro));
               setTransactionFilterField("memberId", membro.id);
             }}
             onMembroClear={() => {

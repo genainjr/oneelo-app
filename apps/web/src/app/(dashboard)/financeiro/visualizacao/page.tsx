@@ -2,16 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Banknote, CalendarDays, CircleDollarSign, CreditCard, FileText, ShieldCheck, Tags, WalletCards } from "lucide-react";
+import { Banknote, CalendarDays, CircleDollarSign, CreditCard, FileText, LoaderCircle, Share2, ShieldCheck, Tags, WalletCards } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
-import type { EventoOption } from "@/components/app/evento-search-combobox";
+import { getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
+import { ExportShareErrorBanner, ExportSharePreparedBanner } from "@/components/app/export-share-dialog";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
-import type { MembroOption } from "@/components/app/membro-search-combobox";
+import { getMembroPrintName, type MembroOption } from "@/components/app/membro-search-combobox";
 import { PageHeader } from "@/components/app/page-header";
-import { PrintDocumentHeader, PrintScheduleFooter } from "@/components/app/print-layout";
 import { Skeleton } from "@/components/app/skeleton";
 import { StatCard } from "@/components/app/stat-card";
+import { useDocumentShare } from "@/hooks/use-document-share";
 import { useFilterState } from "@/hooks/use-filter-state";
 import { useAuthUser } from "@/contexts/auth-user-context";
 import { api } from "@/lib/api";
@@ -23,12 +24,9 @@ import {
   FinancialTransactionFilterState,
   PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
-  TRANSACTION_STATUS_LABELS,
-  TRANSACTION_TYPE_LABELS,
   currencyFormatter,
   dateFormatter,
   financeiroEventosPath,
-  formatInstallmentLabel,
   getTransactionDisplayTitle,
   matchTransactionSearch,
   toLocalDateInputValue,
@@ -77,9 +75,7 @@ export default function FinanceiroVisualizacaoPage() {
   const [eventoFilterSearch, setEventoFilterSearch] = useState("");
   const [selectedMembroFilter, setSelectedMembroFilter] = useState<MembroOption | null>(null);
   const [selectedEventoFilter, setSelectedEventoFilter] = useState<EventoOption | null>(null);
-  const [tenantName, setTenantName] = useState("One Elo");
   const [tenantLogoUrl, setTenantLogoUrl] = useState<string | null>(null);
-  const [printedAt, setPrintedAt] = useState(() => new Date());
 
   const {
     formState: transactionFilterState,
@@ -90,7 +86,7 @@ export default function FinanceiroVisualizacaoPage() {
     isDebouncing: isTransactionDebouncing,
   } = useFilterState({
     initialState: initialTransactionFilters,
-    debounceFields: [],
+    debounceFields: ["description"],
     debounceMs: 350,
     onApply: setAppliedTransactionFilters,
   });
@@ -98,11 +94,6 @@ export default function FinanceiroVisualizacaoPage() {
   const { user: currentUser } = useAuthUser();
 
   useEffect(() => {
-    if (currentUser?.tenant?.nome) {
-      setTenantName(currentUser.tenant.nome);
-    } else {
-      setTenantName("One Elo");
-    }
     setTenantLogoUrl(currentUser?.tenant?.logoUrl ?? null);
   }, [currentUser]);
 
@@ -161,19 +152,57 @@ export default function FinanceiroVisualizacaoPage() {
     [appliedTransactionFilters, transactions],
   );
 
-  const printPeriod = useMemo(() => {
-    if (appliedTransactionFilters.startDate || appliedTransactionFilters.endDate) {
-      const start = appliedTransactionFilters.startDate ? dateFormatter.format(new Date(`${appliedTransactionFilters.startDate}T00:00:00`)) : "Início";
-      const end = appliedTransactionFilters.endDate ? dateFormatter.format(new Date(`${appliedTransactionFilters.endDate}T00:00:00`)) : "Atual";
-      return `${start} - ${end}`;
+  const exportFilter = useMemo(() => {
+    const filter: Record<string, string> = {};
+    if (appliedTransactionFilters.startDate) filter.startDate = appliedTransactionFilters.startDate;
+    if (appliedTransactionFilters.endDate) filter.endDate = appliedTransactionFilters.endDate;
+    if (appliedTransactionFilters.status && appliedTransactionFilters.status !== "all") {
+      filter.status = appliedTransactionFilters.status;
     }
+    if (appliedTransactionFilters.type && appliedTransactionFilters.type !== "all") {
+      filter.type = appliedTransactionFilters.type;
+    }
+    if (appliedTransactionFilters.eventoId) filter.eventoId = appliedTransactionFilters.eventoId;
+    if (appliedTransactionFilters.memberId) filter.memberId = appliedTransactionFilters.memberId;
+    const trimmedDescription = appliedTransactionFilters.description.trim();
+    if (trimmedDescription) filter.description = trimmedDescription;
+    return filter;
+  }, [appliedTransactionFilters]);
 
-    if (filteredTransactions.length === 0) return "Sem período";
+  const defaultPdfFileName = useMemo(() => {
+    const { startDate, endDate } = appliedTransactionFilters;
+    if (startDate && endDate) {
+      if (startDate === endDate) return `extrato-financeiro-${startDate}.pdf`;
+      const startMatch = startDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const endMatch = endDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (startMatch && endMatch && startMatch[1] === endMatch[1] && startMatch[2] === endMatch[2]) {
+        const lastDay = new Date(Date.UTC(Number(startMatch[1]), Number(startMatch[2]), 0)).getUTCDate();
+        if (Number(startMatch[3]) === 1 && Number(endMatch[3]) === lastDay) {
+          return `extrato-financeiro-${startMatch[1]}-${startMatch[2]}.pdf`;
+        }
+      }
+      return `extrato-financeiro-${startDate}-a-${endDate}.pdf`;
+    }
+    if (startDate) return `extrato-financeiro-a-partir-de-${startDate}.pdf`;
+    if (endDate) return `extrato-financeiro-ate-${endDate}.pdf`;
+    return "extrato-financeiro.pdf";
+  }, [appliedTransactionFilters]);
 
-    const first = filteredTransactions[0];
-    const last = filteredTransactions[filteredTransactions.length - 1];
-    return `${dateFormatter.format(new Date(first.date))} - ${dateFormatter.format(new Date(last.date))}`;
-  }, [appliedTransactionFilters.endDate, appliedTransactionFilters.startDate, filteredTransactions]);
+  const {
+    exporting,
+    exportError,
+    preparedFiles,
+    handleExportPdf,
+    handleFallbackShare,
+    downloadAllFiles,
+  } = useDocumentShare({
+    endpoint: "/api/financeiro/exportacao",
+    filter: exportFilter,
+    tenantLogoUrl,
+    documentTitle: "Extrato Financeiro",
+    defaultPdfFileName,
+    resetDependencies: [filteredTransactions],
+  });
 
   function clearTransactionFilters() {
     setSelectedMembroFilter(null);
@@ -181,11 +210,6 @@ export default function FinanceiroVisualizacaoPage() {
     setSelectedEventoFilter(null);
     setEventoFilterSearch("");
     handleClearTransactionFilters();
-  }
-
-  function handlePrint() {
-    setPrintedAt(new Date());
-    window.setTimeout(() => window.print(), 0);
   }
 
   if (loadingPermission) {
@@ -232,29 +256,40 @@ export default function FinanceiroVisualizacaoPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="no-print space-y-6">
+    <div className="p-6 space-y-6">
       <PageHeader
         title="Visualização Financeira"
         description={`Acesso atual: ${summary.role ? ROLE_LABELS[summary.role] : "Sem acesso"}. Consulte saldo, entradas, saídas e extrato.`}
         action={(
-          <button
-            type="button"
-            onClick={handlePrint}
-            disabled={loadingData || filteredTransactions.length === 0}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Imprimir
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleExportPdf()}
+              disabled={loadingData || isTransactionDebouncing || filteredTransactions.length === 0 || exporting !== null}
+              aria-label="Compartilhar"
+              title="Compartilhar"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-brand-foreground hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {exporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+            </button>
+          </div>
         )}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" loading={loadingData} />
-        <StatCard title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} confirmado(s) no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" loading={loadingData} />
-        <StatCard title="Saídas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
-        <StatCard title="A Receber" value={currencyFormatter.format(financialSummary.pendingIncome)} description="Contas pendentes de entrada" icon={<CircleDollarSign className="h-5 w-5" />} color="amber" loading={loadingData} />
-        <StatCard title="A Pagar" value={currencyFormatter.format(financialSummary.pendingExpense)} description={`${financialSummary.pendingCount} pendência(s) no período`} icon={<Banknote className="h-5 w-5" />} color="amber" loading={loadingData} />
+      <ExportSharePreparedBanner
+        preparedFiles={preparedFiles}
+        onShare={handleFallbackShare}
+        onDownload={downloadAllFiles}
+      />
+
+      <ExportShareErrorBanner error={exportError} />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+        <StatCard compact title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" loading={loadingData} />
+        <StatCard compact title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} confirmado(s) no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" loading={loadingData} />
+        <StatCard compact title="Saídas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
+        <StatCard compact title="A Receber" value={currencyFormatter.format(financialSummary.pendingIncome)} description="Contas pendentes de entrada" icon={<CircleDollarSign className="h-5 w-5" />} color="amber" loading={loadingData} />
+        <StatCard compact title="A Pagar" value={currencyFormatter.format(financialSummary.pendingExpense)} description={`${financialSummary.pendingCount} pendência(s) no período`} icon={<Banknote className="h-5 w-5" />} color="amber" loading={loadingData} />
       </div>
 
       {dataError && (
@@ -301,6 +336,7 @@ export default function FinanceiroVisualizacaoPage() {
             }}
             onEventoSelect={(evento) => {
               setSelectedEventoFilter(evento);
+              setEventoFilterSearch(getEventoDisplayName(evento));
               setTransactionFilterField("eventoId", evento.id);
             }}
             onEventoClear={() => {
@@ -319,6 +355,7 @@ export default function FinanceiroVisualizacaoPage() {
             }}
             onMembroSelect={(membro) => {
               setSelectedMembroFilter(membro);
+              setMembroFilterSearch(getMembroPrintName(membro));
               setTransactionFilterField("memberId", membro.id);
             }}
             onMembroClear={() => {
@@ -396,53 +433,6 @@ export default function FinanceiroVisualizacaoPage() {
           </div>
         )}
       </section>
-      </div>
-
-      <div className="print-area print-document hidden" aria-hidden="true">
-        <section className="print-page">
-          <PrintDocumentHeader
-            organizationName={tenantName}
-            documentTitle="Extrato Financeiro"
-            period={printPeriod}
-            logoUrl={tenantLogoUrl}
-          />
-          <div className="print-table-frame">
-            <table className="print-schedule-table">
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Descrição</th>
-                  <th>Parcela</th>
-                  <th>Tipo</th>
-                  <th>Status</th>
-                  <th>Conta</th>
-                  <th>Categoria</th>
-                  <th>Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="print-empty">Nenhum lançamento encontrado.</td>
-                  </tr>
-                ) : filteredTransactions.map((item) => (
-                  <tr key={item.id}>
-                    <td>{dateFormatter.format(new Date(item.date))}</td>
-                    <td>{getTransactionDisplayTitle(item)}</td>
-                    <td>{formatInstallmentLabel(item.installmentNumber, item.totalInstallments) ?? "-"}</td>
-                    <td>{TRANSACTION_TYPE_LABELS[item.type]}</td>
-                    <td>{TRANSACTION_STATUS_LABELS[item.status]}</td>
-                    <td>{item.account.name}</td>
-                    <td>{item.category.name}</td>
-                    <td>{currencyFormatter.format(item.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <PrintScheduleFooter printedAt={printedAt} />
-        </section>
-      </div>
     </div>
   );
 }

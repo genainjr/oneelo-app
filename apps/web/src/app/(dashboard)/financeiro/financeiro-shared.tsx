@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Banknote, CircleDollarSign, Landmark } from "lucide-react";
-import { EventoSearchCombobox, getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
+import { EventoSearchCombobox, type EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterInput, FilterSelect } from "@/components/app/filter-field";
-import { getMembroPrintName, MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
+import { MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
 import { api } from "@/lib/api";
 import { includesNormalizedText } from "@/lib/utils";
 import { FinanceRole, type StatusEvento } from "@/types";
@@ -33,6 +33,7 @@ export type FinanceiroQueryFilters = {
   eventoId?: string;
   memberId?: string;
   recurringGroupId?: string;
+  description?: string;
   limit?: number;
 };
 
@@ -299,6 +300,7 @@ function buildTransactionsUrl(filters?: FinanceiroQueryFilters) {
   if (filters?.eventoId) params.set("eventoId", filters.eventoId);
   if (filters?.memberId) params.set("memberId", filters.memberId);
   if (filters?.recurringGroupId) params.set("recurringGroupId", filters.recurringGroupId);
+  if (filters?.description?.trim()) params.set("description", filters.description.trim());
   params.set("limit", String(filters?.limit ?? 500));
   return `/api/financeiro/transactions?${params.toString()}`;
 }
@@ -336,12 +338,14 @@ export function useFinanceiroData(filters?: FinanceiroQueryFilters) {
             eventoId: filters.eventoId,
             memberId: filters.memberId,
             recurringGroupId: filters.recurringGroupId,
+            description: filters.description?.trim() || undefined,
             limit: filters.limit,
           }
         : undefined,
     [
       filters?.accountId,
       filters?.categoryId,
+      filters?.description,
       filters?.endDate,
       filters?.eventoId,
       filters?.limit,
@@ -535,10 +539,7 @@ export function FinanceiroTransactionFilterFields({
           emptyMessage="Nenhum evento encontrado."
           selectedPrefix="Evento"
           onSearchChange={onEventoSearchChange}
-          onSelect={(evento) => {
-            onEventoSelect(evento);
-            onEventoSearchChange(getEventoDisplayName(evento));
-          }}
+          onSelect={onEventoSelect}
           onClear={onEventoClear}
         />
       </div>
@@ -554,10 +555,7 @@ export function FinanceiroTransactionFilterFields({
           emptyMessage="Nenhum membro encontrado."
           selectedPrefix="Selecionado"
           onSearchChange={onMembroSearchChange}
-          onSelect={(membro) => {
-            onMembroSelect(membro);
-            onMembroSearchChange(getMembroPrintName(membro));
-          }}
+          onSelect={onMembroSelect}
           onClear={onMembroClear}
         />
       </div>

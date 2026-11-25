@@ -8,6 +8,7 @@ import type { Browser } from 'playwright';
 import {
   ChromiumRendererService,
   CHROMIUM_LOW_MEMORY_ARGS,
+  countPdfPagesFromBuffer,
   DocumentCacheService,
   escapeHtml,
   ExportServiceUnavailableException,
@@ -18,6 +19,7 @@ import {
   toMiB,
   renderBaseDocumentStyles,
   renderDocumentHeader,
+  renderPdfFooterTemplate,
   ROLE_COLORS,
   WEEKDAY_GROUP_LABELS,
   WEEKDAY_LABELS,
@@ -37,7 +39,12 @@ import type {
   RenderedDocument,
 } from './evento-document.types';
 
-export { CHROMIUM_LOW_MEMORY_ARGS, ExportServiceUnavailableException };
+export {
+  CHROMIUM_LOW_MEMORY_ARGS,
+  ExportServiceUnavailableException,
+  countPdfPagesFromBuffer,
+  renderPdfFooterTemplate,
+};
 
 export const TIPO_EVENTO_LABEL: Record<EventoTipo, string> = {
   GERAL: 'Geral',
@@ -148,41 +155,6 @@ export function formatPeriodSubtitle(input: EventoDocumentInput): string {
   }
 
   return 'Eventos programados';
-}
-
-export function renderPdfFooterTemplate(
-  lookupLabsLogoDataUri?: string | null,
-): string {
-  const logo = lookupLabsLogoDataUri
-    ? `<img src="${escapeHtml(lookupLabsLogoDataUri)}" style="width:8mm;height:8mm;object-fit:contain;mix-blend-mode:multiply;" />`
-    : '';
-
-  return `<div style="font-family:Arial,sans-serif;font-size:8pt;width:100%;padding:0 8mm;box-sizing:border-box;display:flex;justify-content:flex-start;align-items:flex-end;color:#334155;">
-    <div style="display:flex;align-items:center;gap:2mm;">
-      ${logo}
-      <div style="display:flex;flex-direction:column;">
-        <span style="font-size:8pt;font-weight:700;color:#334155;line-height:1.1;">One Elo</span>
-        <span style="font-size:6.5pt;font-weight:500;color:#64748b;line-height:1.1;margin-top:1px;">Lookup Labs</span>
-      </div>
-    </div>
-  </div>`;
-}
-
-export function countPdfPagesFromBuffer(buffer: Buffer): number {
-  try {
-    const text = buffer.toString('latin1');
-    const pageMatches = text.match(/\/Type\s*\/Page\b/g);
-    if (pageMatches && pageMatches.length > 0) {
-      return pageMatches.length;
-    }
-    const countMatch = text.match(/\/Count\s+(\d+)/);
-    if (countMatch && Number(countMatch[1]) > 0) {
-      return Number(countMatch[1]);
-    }
-  } catch {
-    // fallback
-  }
-  return 1;
 }
 
 function formatEventDate(date: Date, options: Intl.DateTimeFormatOptions = {}): string {

@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   AcaoAuditoria,
   FinanceRole,
@@ -14,6 +14,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { CreateFinancialTransactionsBatchDto } from './dto/create-financial-transactions-batch.dto';
+import { ExportFinanceiroDto } from './dto/export-financeiro.dto';
 import { FinanceAuthorizationService } from './finance-authorization.service';
 import { FinancialTransactionsService } from './financial-transactions.service';
 
@@ -63,6 +64,12 @@ describe('FinancialTransactionsService', () => {
     };
 
     const prisma = {
+      tenant: {
+        findUnique: jest.fn().mockResolvedValue({
+          nome: 'Igreja Central',
+          logoUrl: 'https://cdn.example.com/logo.png',
+        }),
+      },
       financialAccount: {
         findFirst: jest.fn().mockResolvedValue({ id: accountId, tenantId, active: true }),
         findMany: jest.fn().mockResolvedValue([{ id: accountId, initialBalance: makeDecimal(1000) }]),
@@ -87,6 +94,7 @@ describe('FinancialTransactionsService', () => {
       },
       financialTransaction: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockImplementation(async ({ data }) => ({
           id: 'tx-single-1',
@@ -504,5 +512,303 @@ describe('FinancialTransactionsService', () => {
         take: 500,
       }),
     );
+  });
+
+  it('normaliza ExportFinanceiroDto convertendo strings vazias e "all" em undefined e restringindo formato a pdf', async () => {
+    const validDto = plainToInstance(ExportFinanceiroDto, {
+      formato: '',
+      status: 'all',
+      type: 'all',
+      description: '  dízimo  ',
+      startDate: '2026-11-01',
+      endDate: '',
+      _t: '1795136000000',
+    });
+    expect(await validate(validDto)).toHaveLength(0);
+    expect(validDto.formato).toBe('pdf');
+    expect(validDto.status).toBeUndefined();
+    expect(validDto.type).toBeUndefined();
+    expect(validDto.description).toBe('dízimo');
+    expect(validDto.endDate).toBeUndefined();
+
+    const invalidFormatDto = plainToInstance(ExportFinanceiroDto, {
+      formato: 'png',
+    });
+    expect((await validate(invalidFormatDto)).length).toBeGreaterThan(0);
+  });
+
+  it('filtra description sem acentos em múltiplos campos (descrição, categoria, contraparte, membro, evento, tipo e pagamento) em findAll', async () => {
+    const { service, prisma } = createService(FinanceRole.FINANCE_VIEWER);
+    const makeRow = (overrides: Record<string, unknown>) => ({
+      id: 'tx-1',
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.CONFIRMED,
+      date: new Date('2026-11-10T12:00:00.000Z'),
+      paidAt: new Date('2026-11-10T12:00:00.000Z'),
+      createdAt: new Date('2026-11-10T12:00:00.000Z'),
+      updatedAt: new Date('2026-11-10T12:00:00.000Z'),
+      amount: makeDecimal(100),
+      description: 'Oferta de Missões',
+      paymentMethod: FinancialPaymentMethod.CREDIT_CARD,
+      counterpartyName: 'José Conceição',
+      installmentNumber: null,
+      totalInstallments: null,
+      account: { id: accountId, name: 'Caixa Central', type: 'CASH' },
+      category: { id: categoryId, name: 'Dízimos', type: 'INCOME' },
+      evento: { id: 'ev-1', titulo: 'Conferência Profética', dataInicio: new Date(), dataFim: null, local: null, status: 'AGENDADO' },
+      member: { id: memberId, nome: 'Ação Comunitária', email: null, whatsapp: null },
+      createdBy: { id: 'user-1', nome: 'Tesoureiro' },
+      ...overrides,
+    });
+
+    const rows = [
+      makeRow({ id: 'tx-dizimo' }),
+      makeRow({
+        id: 'tx-energia',
+        type: FinancialTransactionType.EXPENSE,
+        description: 'Conta de Energia',
+        paymentMethod: FinancialPaymentMethod.BOLETO,
+        counterpartyName: 'Companhia Elétrica',
+        category: { id: 'cat-2', name: 'Utilidades', type: 'EXPENSE' },
+        evento: null,
+        member: null,
+      }),
+    ];
+
+    // Busca sem acento em forma de pagamento traduzida ("Cartão de crédito")
+    prisma.financialTransaction.findMany.mockResolvedValueOnce(rows);
+    const byPayment = await service.findAll(tenantId, makeUser(), { description: 'cartao de credito' });
+    expect(byPayment.map((item) => item.id)).toEqual(['tx-dizimo']);
+    expect(prisma.financialTransaction.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ take: 2000 }),
+    );
+
+    // Busca sem acento em evento
+    prisma.financialTransaction.findMany.mockResolvedValueOnce(rows);
+    const byEvento = await service.findAll(tenantId, makeUser(), { description: 'conferencia' });
+    expect(byEvento.map((item) => item.id)).toEqual(['tx-dizimo']);
+
+    // Busca sem acento em tipo traduzido ("Saída")
+    prisma.financialTransaction.findMany.mockResolvedValueOnce(rows);
+    const byType = await service.findAll(tenantId, makeUser(), { description: 'saida' });
+    expect(byType.map((item) => item.id)).toEqual(['tx-energia']);
+
+    // Busca sem acento em membro
+    prisma.financialTransaction.findMany.mockResolvedValueOnce(rows);
+    const byMember = await service.findAll(tenantId, makeUser(), { description: 'acao comunitaria' });
+    expect(byMember.map((item) => item.id)).toEqual(['tx-dizimo']);
+  });
+
+  it('prepara dados de exportação ordenados cronologicamente com totais em centavos separando CONFIRMED, PENDING, DRAFT e CANCELLED e rótulos legíveis', async () => {
+    const { service, prisma } = createService(FinanceRole.FINANCE_VIEWER);
+    prisma.financialTransaction.findMany.mockResolvedValueOnce([
+      {
+        id: 'tx-cancel',
+        tenantId,
+        type: FinancialTransactionType.EXPENSE,
+        status: FinancialTransactionStatus.CANCELLED,
+        date: new Date('2026-11-20T12:00:00.000Z'),
+        paidAt: null,
+        createdAt: new Date('2026-11-20T12:00:00.000Z'),
+        updatedAt: new Date('2026-11-20T12:00:00.000Z'),
+        amount: makeDecimal(999.99),
+        description: 'Compra cancelada',
+        paymentMethod: FinancialPaymentMethod.PIX,
+        counterpartyName: 'Fornecedor X',
+        installmentNumber: null,
+        totalInstallments: null,
+        account: { id: accountId, name: 'Banco Principal', type: 'BANK' },
+        category: { id: categoryId, name: 'Manutenção', type: 'EXPENSE' },
+        evento: { id: 'ev-1', titulo: 'Congresso Anual', dataInicio: new Date(), dataFim: null, local: null, status: 'AGENDADO' },
+        member: { id: memberId, nome: 'João Silva', email: null, whatsapp: null },
+        createdBy: { id: 'user-1', nome: 'Tesoureiro' },
+      },
+      {
+        id: 'tx-draft',
+        tenantId,
+        type: FinancialTransactionType.INCOME,
+        status: FinancialTransactionStatus.DRAFT,
+        date: new Date('2026-11-15T12:00:00.000Z'),
+        paidAt: null,
+        createdAt: new Date('2026-11-15T12:00:00.000Z'),
+        updatedAt: new Date('2026-11-15T12:00:00.000Z'),
+        amount: makeDecimal(400),
+        description: 'Rascunho oferta',
+        paymentMethod: null,
+        counterpartyName: null,
+        installmentNumber: null,
+        totalInstallments: null,
+        account: { id: accountId, name: 'Banco Principal', type: 'BANK' },
+        category: { id: categoryId, name: 'Manutenção', type: 'EXPENSE' },
+        evento: { id: 'ev-1', titulo: 'Congresso Anual', dataInicio: new Date(), dataFim: null, local: null, status: 'AGENDADO' },
+        member: { id: memberId, nome: 'João Silva', email: null, whatsapp: null },
+        createdBy: { id: 'user-1', nome: 'Tesoureiro' },
+      },
+      {
+        id: 'tx-pending',
+        tenantId,
+        type: FinancialTransactionType.EXPENSE,
+        status: FinancialTransactionStatus.PENDING,
+        date: new Date('2026-11-12T12:00:00.000Z'),
+        paidAt: null,
+        createdAt: new Date('2026-11-12T12:00:00.000Z'),
+        updatedAt: new Date('2026-11-12T12:00:00.000Z'),
+        amount: makeDecimal(150.25),
+        description: 'Som pendente',
+        paymentMethod: FinancialPaymentMethod.BOLETO,
+        counterpartyName: null,
+        installmentNumber: 1,
+        totalInstallments: 2,
+        account: { id: accountId, name: 'Banco Principal', type: 'BANK' },
+        category: { id: categoryId, name: 'Manutenção', type: 'EXPENSE' },
+        evento: { id: 'ev-1', titulo: 'Congresso Anual', dataInicio: new Date(), dataFim: null, local: null, status: 'AGENDADO' },
+        member: { id: memberId, nome: 'João Silva', email: null, whatsapp: null },
+        createdBy: { id: 'user-1', nome: 'Tesoureiro' },
+      },
+      {
+        id: 'tx-conf-exp',
+        tenantId,
+        type: FinancialTransactionType.EXPENSE,
+        status: FinancialTransactionStatus.CONFIRMED,
+        date: new Date('2026-11-05T12:00:00.000Z'),
+        paidAt: new Date('2026-11-06T12:00:00.000Z'),
+        createdAt: new Date('2026-11-05T12:00:00.000Z'),
+        updatedAt: new Date('2026-11-06T12:00:00.000Z'),
+        amount: makeDecimal(100.1),
+        description: 'Limpeza',
+        paymentMethod: FinancialPaymentMethod.PIX,
+        counterpartyName: null,
+        installmentNumber: null,
+        totalInstallments: null,
+        account: { id: accountId, name: 'Banco Principal', type: 'BANK' },
+        category: { id: categoryId, name: 'Manutenção', type: 'EXPENSE' },
+        evento: { id: 'ev-1', titulo: 'Congresso Anual', dataInicio: new Date(), dataFim: null, local: null, status: 'AGENDADO' },
+        member: { id: memberId, nome: 'João Silva', email: null, whatsapp: null },
+        createdBy: { id: 'user-1', nome: 'Tesoureiro' },
+      },
+      {
+        id: 'tx-conf-inc',
+        tenantId,
+        type: FinancialTransactionType.INCOME,
+        status: FinancialTransactionStatus.CONFIRMED,
+        date: new Date('2026-11-02T12:00:00.000Z'),
+        paidAt: new Date('2026-11-02T12:00:00.000Z'),
+        createdAt: new Date('2026-11-02T12:00:00.000Z'),
+        updatedAt: new Date('2026-11-02T12:00:00.000Z'),
+        amount: makeDecimal(350.35),
+        description: 'Inscrições',
+        paymentMethod: FinancialPaymentMethod.PIX,
+        counterpartyName: 'João',
+        installmentNumber: null,
+        totalInstallments: null,
+        account: { id: accountId, name: 'Banco Principal', type: 'BANK' },
+        category: { id: categoryId, name: 'Manutenção', type: 'EXPENSE' },
+        evento: { id: 'ev-1', titulo: 'Congresso Anual', dataInicio: new Date(), dataFim: null, local: null, status: 'AGENDADO' },
+        member: { id: memberId, nome: 'João Silva', email: null, whatsapp: null },
+        createdBy: { id: 'user-1', nome: 'Tesoureiro' },
+      },
+    ]);
+
+    const exportData = await service.prepareExportData(
+      tenantId,
+      {
+        formato: 'pdf',
+        startDate: '2026-11-01',
+        endDate: '2026-11-30',
+        accountId,
+        categoryId,
+        eventoId: 'ev-1',
+        memberId,
+      },
+      makeUser(),
+    );
+
+    expect(exportData.organizationName).toBe('Igreja Central');
+    expect(exportData.items.map((item) => item.id)).toEqual([
+      'tx-conf-inc',
+      'tx-conf-exp',
+      'tx-pending',
+      'tx-draft',
+      'tx-cancel',
+    ]);
+    expect(exportData.totals).toEqual({
+      count: 5,
+      confirmedCount: 2,
+      confirmedIncome: 350.35,
+      confirmedExpense: 100.1,
+      confirmedNet: 250.25,
+      pendingCount: 1,
+      pendingIncome: 0,
+      pendingExpense: 150.25,
+      pendingNet: -150.25,
+      draftCount: 1,
+      draftIncome: 400,
+      draftExpense: 0,
+      cancelledCount: 1,
+      cancelledIncome: 0,
+      cancelledExpense: 999.99,
+    });
+    expect(exportData.appliedFilterLabels).toEqual([
+      { label: 'Conta', value: 'Banco Principal' },
+      { label: 'Categoria', value: 'Manutenção' },
+      { label: 'Evento', value: 'Congresso Anual' },
+      { label: 'Membro', value: 'João Silva' },
+    ]);
+    expect(exportData.truncated).toBe(false);
+    expect(exportData.totalMatchingCount).toBe(5);
+    // Zero queries extras para resolver nomes dos filtros
+    expect(prisma.financialAccount.findFirst).not.toHaveBeenCalled();
+    expect(prisma.financialCategory.findFirst).not.toHaveBeenCalled();
+    expect(prisma.evento.findFirst).not.toHaveBeenCalled();
+    expect(prisma.membro.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('sinaliza truncated e totalMatchingCount quando consulta excede 500 lançamentos, bloqueia RBAC (403) e lança 404 para lista vazia', async () => {
+    const { service, prisma, financeAuthorization } = createService(FinanceRole.FINANCE_VIEWER);
+
+    // 1. Truncated (> 500)
+    const rows501 = Array.from({ length: 501 }, (_, i) => ({
+      id: `tx-${i + 1}`,
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.CONFIRMED,
+      date: new Date('2026-11-01T12:00:00.000Z'),
+      paidAt: new Date('2026-11-01T12:00:00.000Z'),
+      createdAt: new Date(Date.UTC(2026, 10, 1, 12, 0, i)),
+      updatedAt: new Date('2026-11-01T12:00:00.000Z'),
+      amount: makeDecimal(10),
+      description: `Lançamento ${i + 1}`,
+      paymentMethod: null,
+      counterpartyName: null,
+      installmentNumber: null,
+      totalInstallments: null,
+      account: { id: accountId, name: 'Caixa', type: 'CASH' },
+      category: { id: categoryId, name: 'Ofertas', type: 'INCOME' },
+      evento: null,
+      member: null,
+      createdBy: { id: 'user-1', nome: 'Tesoureiro' },
+    }));
+    prisma.financialTransaction.findMany.mockResolvedValueOnce(rows501);
+    prisma.financialTransaction.count.mockResolvedValueOnce(732);
+
+    const truncatedData = await service.prepareExportData(tenantId, { formato: 'pdf' }, makeUser());
+    expect(truncatedData.items).toHaveLength(500);
+    expect(truncatedData.truncated).toBe(true);
+    expect(truncatedData.totalMatchingCount).toBe(732);
+
+    // 2. Lista vazia -> 404 NotFoundException
+    prisma.financialTransaction.findMany.mockResolvedValueOnce([]);
+    await expect(
+      service.prepareExportData(tenantId, { formato: 'pdf' }, makeUser()),
+    ).rejects.toThrow(NotFoundException);
+
+    // 3. Sem permissão financeira -> 403 ForbiddenException
+    financeAuthorization.ensureCanAccessFinanceData.mockRejectedValueOnce(
+      new ForbiddenException('Acesso negado: permissão financeira insuficiente.'),
+    );
+    await expect(
+      service.prepareExportData(tenantId, { formato: 'pdf' }, makeUser()),
+    ).rejects.toThrow(ForbiddenException);
   });
 });

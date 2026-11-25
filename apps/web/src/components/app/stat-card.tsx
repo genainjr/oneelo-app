@@ -10,6 +10,7 @@ interface StatCardProps {
   loading?: boolean;
   href?: string;
   action?: React.ReactNode;
+  compact?: boolean;
 }
 
 const colorMap = {
@@ -30,8 +31,26 @@ export function StatCard({
   loading = false,
   href,
   action,
+  compact = false,
 }: StatCardProps) {
-  const content = (
+  const content = compact ? (
+    <div className="min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-gray-500 truncate">{title}</p>
+        <div className={cn('p-2 rounded-xl flex-shrink-0', colorMap[color])}>
+          {icon}
+        </div>
+      </div>
+      {loading ? (
+        <div className="mt-2 h-8 w-24 bg-gray-100 rounded-lg animate-pulse" />
+      ) : (
+        <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums text-gray-900 whitespace-nowrap">{value}</p>
+      )}
+      {description && (
+        <p className="mt-1 whitespace-pre-line text-xs text-gray-400">{description}</p>
+      )}
+    </div>
+  ) : (
     <div className="flex items-start justify-between">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-500 truncate">{title}</p>

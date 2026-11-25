@@ -41,6 +41,31 @@ export function renderDocumentHeader(
   return `<header class="document-header">${tenantLogo}<div class="header-title"><h1>${escapeHtml(title)}</h1>${subtitleHtml}</div><div class="header-meta"><strong class="organization">${escapeHtml(input.organizationName)}</strong>${issuedAtHtml}<p class="header-period">${escapeHtml(subtitle)}</p></div></header>${brandHtml}`;
 }
 
+export function renderPdfFooterTemplate(
+  lookupLabsLogoDataUri?: string | null,
+  options?: { showPageNumbers?: boolean },
+): string {
+  const logo = lookupLabsLogoDataUri
+    ? `<img src="${escapeHtml(lookupLabsLogoDataUri)}" style="width:8mm;height:8mm;object-fit:contain;mix-blend-mode:multiply;" />`
+    : '';
+  const showPageNumbers = options?.showPageNumbers === true;
+  const justify = showPageNumbers ? 'space-between' : 'flex-start';
+  const pageNumbersHtml = showPageNumbers
+    ? `<div style="font-size:7pt;font-weight:600;color:#64748b;line-height:1.2;">Página <span class="pageNumber"></span> de <span class="totalPages"></span></div>`
+    : '';
+
+  return `<div style="font-family:Arial,sans-serif;font-size:8pt;width:100%;padding:0 8mm;box-sizing:border-box;display:flex;justify-content:${justify};align-items:flex-end;color:#334155;">
+    <div style="display:flex;align-items:center;gap:2mm;">
+      ${logo}
+      <div style="display:flex;flex-direction:column;">
+        <span style="font-size:8pt;font-weight:700;color:#334155;line-height:1.1;">One Elo</span>
+        <span style="font-size:6.5pt;font-weight:500;color:#64748b;line-height:1.1;margin-top:1px;">Lookup Labs</span>
+      </div>
+    </div>
+    ${pageNumbersHtml}
+  </div>`;
+}
+
 export function renderBaseDocumentStyles(): string {
   return `<style>
     * { box-sizing: border-box; }

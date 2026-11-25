@@ -137,18 +137,27 @@
 
 ---
 
-### IMP-010 Migrar impressão de `/financeiro/visualizacao` para exportação unificada (PDF/PNG)
+### IMP-010 Migrar impressão de `/financeiro/visualizacao` para exportação unificada em PDF
 
-- **Status**: pendente
+- **Status**: implementado
 - **Prioridade**: media
 - **Categoria**: produto / UX / ODS / exportacao
-- **Contexto**: Enquanto `/escalas/visualizacao` e `/agenda/visualizacao` já migraram do botão legado `Imprimir` (`window.print()`) para o fluxo unificado de exportação e compartilhamento (`ExportShareDialog` + `useDocumentShare` + geração Playwright/Chromium no backend, conforme `FT-015`), `/financeiro/visualizacao` ainda utiliza `window.print()` com tabela HTML estática (`print-schedule-table`).
-- **Acao**: Criar endpoint de renderização de extrato financeiro em PDF/PNG no backend (`apps/api/src/modules/financeiro/`) respeitando RBAC (`FINANCE_VIEWER`+) e período/filtros ativos, e substituir o botão legado `Imprimir` em `/financeiro/visualizacao` pelo padrão `ExportShareDialog` + `useDocumentShare` + banners ODS.
-- **Impacto**: Padroniza o layout oficial OneElo na prestação de contas financeira, elimina variação entre drivers de impressão do navegador e habilita download/compartilhamento direto em PDF e imagem no mobile e desktop.
-- **Arquivos afetados previstos**:
+- **Contexto**: Enquanto `/escalas/visualizacao` e `/agenda/visualizacao` já haviam migrado do botão legado `Imprimir` (`window.print()`) para o fluxo unificado de exportação e compartilhamento (`useDocumentShare` + Playwright/Chromium no backend), `/financeiro/visualizacao` ainda utilizava `window.print()` com tabela HTML estática (`print-schedule-table`).
+- **Acao**: Concluído com escopo exclusivamente **PDF (A4 paisagem)** via `GET /api/financeiro/exportacao` (`FinanceiroDocumentRendererService` + `ExportModule`), respeitando `FinanceAuthorizationService` (`FINANCE_VIEWER`+, inclusive perfis `BASIC` autorizados), sem gravação em `DocumentJob`, com cache privado `ETag`/`304`, rodapé com paginação `Página X de Y`, cabeçalho limpo sem cards globais, chips de filtros aplicados, totalizador fiel separado por status e tipo (excluindo `CANCELLED`/`DRAFT` do resultado líquido), filtro textual `description` com debounce de 350ms em `/financeiro` e `/financeiro/visualizacao`, e substituição do botão legado `Imprimir` pelo botão padrão `Share2` + `useDocumentShare` + `ExportSharePreparedBanner`/`ExportShareErrorBanner`.
+- **Plano de execução**: [financeiro-exportacao-pdf-png-plan.md](../plans/financeiro-exportacao-pdf-png-plan.md)
+- **Impacto**: Padroniza o layout oficial OneElo na prestação de contas financeira, elimina variação entre drivers de impressão do navegador e habilita download/compartilhamento direto em PDF no mobile e desktop.
+- **Arquivos afetados**:
+  - `apps/api/src/common/export/base-document-styles.ts`
+  - `apps/api/src/common/export/document-format.utils.ts`
+  - `apps/api/src/modules/eventos/export/evento-document-renderer.service.ts`
+  - `apps/api/src/modules/financeiro/dto/export-financeiro.dto.ts`
+  - `apps/api/src/modules/financeiro/export/financeiro-document.types.ts`
+  - `apps/api/src/modules/financeiro/export/financeiro-document-renderer.service.ts`
   - `apps/api/src/modules/financeiro/financeiro.controller.ts`
+  - `apps/api/src/modules/financeiro/financeiro.module.ts`
   - `apps/api/src/modules/financeiro/financial-transactions.service.ts`
-  - `apps/web/src/app/(dashboard)/financeiro/visualizacao/page.tsx`
-  - `apps/web/src/components/app/export-share-dialog.tsx`
   - `apps/web/src/hooks/use-document-share.ts`
+  - `apps/web/src/app/(dashboard)/financeiro/financeiro-shared.tsx`
+  - `apps/web/src/app/(dashboard)/financeiro/page.tsx`
+  - `apps/web/src/app/(dashboard)/financeiro/visualizacao/page.tsx`
 
