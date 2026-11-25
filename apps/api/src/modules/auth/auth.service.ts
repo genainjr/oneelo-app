@@ -1017,6 +1017,7 @@ export class AuthService {
           role: true,
           ativo: true,
           status: true,
+          senhaHash: true,
           activationExpiresAt: true,
           activationCreatedAt: true,
           activatedAt: true,
@@ -1024,7 +1025,13 @@ export class AuthService {
           memberId: true,
           createdAt: true,
           membro: {
+            where: { deletedAt: null },
             select: { id: true, nome: true },
+          },
+          authProviders: {
+            where: { ativo: true },
+            select: { id: true },
+            take: 1,
           },
           financePermissions: {
             where: { revokedAt: null },
@@ -1035,10 +1042,28 @@ export class AuthService {
         orderBy: { nome: 'asc' },
       })
       .then((users) =>
-        users.map(({ financePermissions, ...user }) => ({
-          ...user,
-          financePermission: financePermissions[0]?.role ?? null,
-        })),
+        users.map(
+          ({
+            financePermissions,
+            senhaHash,
+            authProviders,
+            membro,
+            ...user
+          }) => {
+            const activeMembro = membro
+              ? { id: membro.id, nome: membro.nome }
+              : null;
+
+            return {
+              ...user,
+              memberId: activeMembro ? user.memberId : null,
+              membro: activeMembro,
+              financePermission: financePermissions[0]?.role ?? null,
+              hasPassword: Boolean(senhaHash),
+              hasAuthProvider: (authProviders?.length ?? 0) > 0,
+            };
+          },
+        ),
       );
   }
 
