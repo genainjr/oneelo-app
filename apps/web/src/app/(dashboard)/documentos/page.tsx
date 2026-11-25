@@ -2,12 +2,23 @@
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { CalendarDays, Clock, FileText, IdCard, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/app/page-header';
 import { EmptyState } from '@/components/app/empty-state';
+import { FilterActions, FilterShell } from '@/components/app/filter-shell';
+import { FilterSelect } from '@/components/app/filter-field';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useAuthUser } from '@/contexts/auth-user-context';
 import { DocumentJob, TipoDocumento, StatusDocumentJob } from '@/types';
+
+const DOCUMENT_TABS = [
+  { id: 'TODOS', label: 'Todos', icon: FileText, fullWidthMobile: true },
+  { id: 'CARTEIRINHA_INDIVIDUAL', label: 'Carteirinhas', icon: IdCard },
+  { id: 'CARTEIRINHAS_LOTE', label: 'Lote (A4)', icon: Printer },
+  { id: 'ESCALAS', label: 'Escalas', icon: CalendarDays },
+  { id: 'AGENDA', label: 'Agenda', icon: Clock },
+] as const;
 
 function formatBytes(bytes?: number | null) {
   if (!bytes || bytes === 0) return '—';
@@ -228,7 +239,7 @@ export default function CentralDocumentosPage() {
         document.body.removeChild(link);
       }
     } catch (err: any) {
-      alert(err?.message || 'Não foi possível gerar link de download.');
+      setError(err?.message || 'Não foi possível gerar link de download.');
     }
   }
 
@@ -238,7 +249,7 @@ export default function CentralDocumentosPage() {
       await api.post(`/api/documents/jobs/${job.id}/retry`);
       await fetchJobs();
     } catch (err: any) {
-      alert(err?.message || 'Falha ao reprocessar documento.');
+      setError(err?.message || 'Falha ao reprocessar documento.');
     } finally {
       setRetryingId(null);
     }
@@ -254,66 +265,80 @@ export default function CentralDocumentosPage() {
   }, [fetchJobs]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Central de Documentos"
         description="Acompanhe, baixe e reemita exportações de escalas, agenda e carteirinhas de membros."
       />
 
+      {/* Abas de tipo (padrão ODS: Central de Notificações / Membros / Financeiro) */}
+      <div className="border-b border-gray-200">
+        <div className="grid grid-cols-2 gap-2 pb-2 sm:flex sm:gap-6 sm:pb-0">
+          {DOCUMENT_TABS.map((tab) => {
+            const TabIcon = tab.icon;
+            const isActive = selectedTipo === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedTipo(tab.id)}
+                className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
+                  'fullWidthMobile' in tab && tab.fullWidthMobile ? 'col-span-2 sm:col-span-1' : ''
+                } ${
+                  isActive
+                    ? 'bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink'
+                    : 'text-gray-500 hover:text-gray-700 sm:border-transparent'
+                }`}
+              >
+                <TabIcon className="h-4 w-4 shrink-0" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {error && (
-        <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700 flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
           <span>{error}</span>
-          <button onClick={() => fetchJobs()} className="font-semibold underline hover:text-rose-900">
+          <button
+            type="button"
+            onClick={() => fetchJobs()}
+            className="font-semibold underline hover:text-rose-900"
+          >
             Tentar novamente
           </button>
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-2xs">
-        {/* Tabs de tipo */}
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: 'TODOS', label: 'Todos' },
-            { id: 'CARTEIRINHA_INDIVIDUAL', label: 'Carteirinhas' },
-            { id: 'CARTEIRINHAS_LOTE', label: 'Lote (A4)' },
-            { id: 'ESCALAS', label: 'Escalas' },
-            { id: 'AGENDA', label: 'Agenda' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setSelectedTipo(tab.id)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
-                selectedTipo === tab.id
-                  ? 'bg-brand text-brand-foreground shadow-2xs'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filtro de status */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="filter-status" className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Status:
-          </label>
-          <select
+      {/* Filtros ODS */}
+      <FilterShell
+        className="mb-0"
+        actions={
+          <FilterActions
+            clearLabel="Limpar"
+            reloadLabel="Recarregar"
+            onClear={() => setSelectedStatus('TODOS')}
+            onReload={() => void fetchJobs()}
+            loading={loading}
+          />
+        }
+      >
+        <div className="grid grid-cols-1 gap-4 sm:max-w-xs">
+          <FilterSelect
             id="filter-status"
+            label="Status"
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700 focus:border-accent-ring focus:bg-white focus:outline-none"
           >
             <option value="TODOS">Todos os status</option>
             <option value="COMPLETED">Concluídos</option>
             <option value="PROCESSING">Processando</option>
             <option value="PENDING">Na fila</option>
             <option value="FAILED">Com falha</option>
-          </select>
+          </FilterSelect>
         </div>
-      </div>
+      </FilterShell>
 
       {/* Conteúdo */}
       {loading ? (
