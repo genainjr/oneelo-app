@@ -9,6 +9,36 @@ import {
 export const TENANT_MANIFEST_REVISION = '5';
 const TENANT_PWA_CACHE_KEY = 'oneelo:tenant-pwa-meta';
 
+export interface LoginTenantFallbackInput {
+  querySlug?: string | null;
+  sourceParam?: string | null;
+  isStandaloneDisplayMode?: boolean;
+}
+
+export function isStandalonePwaContext(sourceParam?: string | null): boolean {
+  if (sourceParam === 'pwa') return true;
+  if (typeof window === 'undefined') return false;
+  const nav = window.navigator as Navigator & { standalone?: boolean };
+  const isDisplayStandalone =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(display-mode: standalone)').matches;
+  return Boolean(nav.standalone || isDisplayStandalone);
+}
+
+/**
+ * Em navegador comum acessando `/login` diretamente (sem `?igreja=`), nao reutiliza o ultimo
+ * tenant em cache; o fallback sem query string fica restrito ao contexto de PWA instalado.
+ */
+export function canUseCachedTenantOnLogin({
+  querySlug,
+  sourceParam,
+  isStandaloneDisplayMode = false,
+}: LoginTenantFallbackInput): boolean {
+  return Boolean(
+    querySlug?.trim() || sourceParam === 'pwa' || isStandaloneDisplayMode,
+  );
+}
+
 export type TenantPwaBranding = Pick<
   NonNullable<AuthUser['tenant']>,
   | 'nome'
