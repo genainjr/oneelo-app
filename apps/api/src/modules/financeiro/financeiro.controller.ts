@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { memoryStorage } from 'multer';
@@ -14,15 +14,18 @@ import { CreateFinancialCategoryDto } from './dto/create-financial-category.dto'
 import { CreateFinancialTransactionDto } from './dto/create-financial-transaction.dto';
 import { CreateFinancialTransactionsBatchDto } from './dto/create-financial-transactions-batch.dto';
 import { ExportFinanceiroDto } from './dto/export-financeiro.dto';
+import { RejectFinancialTransactionDto } from './dto/reject-financial-transaction.dto';
 import { UpdateFinancialAccountDto } from './dto/update-financial-account.dto';
 import { UpdateFinancialCategoryDto } from './dto/update-financial-category.dto';
 import { UpdateFinancialTransactionDto } from './dto/update-financial-transaction.dto';
 import { UpdateFinancePermissionDto } from './dto/update-finance-permission.dto';
+import { UpsertTenantPixConfigDto } from './dto/upsert-tenant-pix-config.dto';
 import { FinanceiroDocumentRendererService } from './export/financeiro-document-renderer.service';
 import { FinancialAccountsService } from './financial-accounts.service';
 import { FinancialCategoriesService } from './financial-categories.service';
 import { FinancialTransactionsService } from './financial-transactions.service';
 import { FinanceiroService } from './financeiro.service';
+import { TenantPixConfigService } from './tenant-pix-config.service';
 
 function getClientIp(req: Request): string | undefined {
   const forwardedFor = req.headers['x-forwarded-for'];
@@ -40,7 +43,27 @@ export class FinanceiroController {
     private readonly categoriesService: FinancialCategoriesService,
     private readonly transactionsService: FinancialTransactionsService,
     private readonly documentRenderer: FinanceiroDocumentRendererService,
+    private readonly tenantPixConfigService: TenantPixConfigService,
   ) {}
+
+  @Get('pix-config')
+  async getPixConfig(@CurrentUser() user: JwtPayload) {
+    return this.tenantPixConfigService.getConfig(user.tenantId!, user);
+  }
+
+  @Put('pix-config')
+  async upsertPixConfig(
+    @Body() dto: UpsertTenantPixConfigDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.tenantPixConfigService.upsertConfig(
+      user.tenantId!,
+      user,
+      dto,
+      getClientIp(req),
+    );
+  }
 
   @Get('permissions/me')
   async getMyPermission(@CurrentUser() user: JwtPayload) {
@@ -135,6 +158,7 @@ export class FinanceiroController {
     @Query('endDate') endDate?: string,
     @Query('type') type?: any,
     @Query('status') status?: any,
+    @Query('source') source?: any,
     @Query('accountId') accountId?: string,
     @Query('categoryId') categoryId?: string,
     @Query('eventoId') eventoId?: string,
@@ -148,6 +172,7 @@ export class FinanceiroController {
       endDate,
       type,
       status,
+      source,
       accountId,
       categoryId,
       eventoId,
@@ -281,6 +306,22 @@ export class FinanceiroController {
     );
   }
 
+  @Patch('transactions/:id/reject')
+  async rejectTransaction(
+    @Param('id') id: string,
+    @Body() dto: RejectFinancialTransactionDto,
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.transactionsService.reject(
+      user.tenantId!,
+      user,
+      id,
+      dto,
+      getClientIp(req),
+    );
+  }
+
   @Patch('transactions/:id/cancel')
   async cancelTransaction(
     @Param('id') id: string,
@@ -293,6 +334,14 @@ export class FinanceiroController {
       id,
       getClientIp(req),
     );
+  }
+
+  @Get('transactions/:id/receipt-url')
+  async getTransactionReceiptUrl(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.transactionsService.getReceiptSignedUrl(user.tenantId!, user, id);
   }
 
   @Post('transactions/:id/receipt')

@@ -32,6 +32,7 @@ export const RESERVED_SLUGS = [
   'manifest.webmanifest',
   'membros',
   'meu-perfil',
+  'minhas-contribuicoes',
   'minhas-escalas',
   'ministerios',
   'noticias',

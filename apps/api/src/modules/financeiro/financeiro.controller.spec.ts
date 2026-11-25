@@ -9,6 +9,7 @@ import { FinancialCategoriesService } from './financial-categories.service';
 import { FinancialTransactionsService } from './financial-transactions.service';
 import { FinanceiroController } from './financeiro.controller';
 import { FinanceiroService } from './financeiro.service';
+import { TenantPixConfigService } from './tenant-pix-config.service';
 
 describe('FinanceiroController - Exportação PDF', () => {
   let controller: FinanceiroController;
@@ -50,12 +51,26 @@ describe('FinanceiroController - Exportação PDF', () => {
               organizationName: 'Igreja Central',
               items: [],
             }),
+            reject: jest.fn().mockResolvedValue({ id: 'tx-1', status: 'CANCELLED' }),
+            getReceiptSignedUrl: jest.fn().mockResolvedValue({
+              url: 'https://signed.example/receipt',
+              expiresInSeconds: 300,
+              fileName: 'comprovante.pdf',
+              mimeType: 'application/pdf',
+            }),
           },
         },
         {
           provide: FinanceiroDocumentRendererService,
           useValue: {
             renderPdf: jest.fn(),
+          },
+        },
+        {
+          provide: TenantPixConfigService,
+          useValue: {
+            getConfig: jest.fn().mockResolvedValue({ config: null, brCode: null }),
+            upsertConfig: jest.fn().mockResolvedValue({ config: { enabled: true }, brCode: '000201...' }),
           },
         },
       ],
@@ -140,5 +155,29 @@ describe('FinanceiroController - Exportação PDF', () => {
     ).rejects.toBeInstanceOf(ExportServiceUnavailableException);
 
     expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '5');
+  });
+
+  it('encaminha rejectTransaction e getTransactionReceiptUrl corretamente', async () => {
+    await controller.rejectTransaction(
+      'tx-1',
+      { rejectionReason: 'Valor divergente do extrato' },
+      mockUser,
+      createMockReq(),
+    );
+    expect(transactionsService.reject).toHaveBeenCalledWith(
+      'tenant-123',
+      mockUser,
+      'tx-1',
+      { rejectionReason: 'Valor divergente do extrato' },
+      undefined,
+    );
+
+    const receipt = await controller.getTransactionReceiptUrl('tx-1', mockUser);
+    expect(transactionsService.getReceiptSignedUrl).toHaveBeenCalledWith(
+      'tenant-123',
+      mockUser,
+      'tx-1',
+    );
+    expect(receipt.url).toBe('https://signed.example/receipt');
   });
 });

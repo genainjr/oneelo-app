@@ -4,6 +4,7 @@ import {
   FinanceRole,
   FinancialCategoryType,
   FinancialPaymentMethod,
+  FinancialTransactionSource,
   FinancialTransactionStatus,
   FinancialTransactionType,
   Role,
@@ -95,6 +96,7 @@ describe('FinancialTransactionsService', () => {
       financialTransaction: {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _count: { _all: 0 }, _sum: { amount: null } }),
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockImplementation(async ({ data }) => ({
           id: 'tx-single-1',
@@ -102,6 +104,9 @@ describe('FinancialTransactionsService', () => {
           amount: makeDecimal(Number(data.amount)),
         })),
         update: jest.fn(),
+      },
+      user: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'member-user-1' }),
       },
       auditLog: {
         create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
@@ -123,7 +128,15 @@ describe('FinancialTransactionsService', () => {
 
     const storageService = {
       uploadPublicObject: jest.fn(),
-      deleteObject: jest.fn(),
+      uploadPrivateObject: jest.fn().mockImplementation(async (_b, p) => p),
+      createPrivateSignedUrl: jest
+        .fn()
+        .mockResolvedValue('https://demo.supabase.co/storage/v1/object/sign/financial-receipts/p?token=123'),
+      deleteObject: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const notificationDispatch = {
+      createNotification: jest.fn().mockResolvedValue({ id: 'notif-1' }),
     };
 
     return {
@@ -131,10 +144,13 @@ describe('FinancialTransactionsService', () => {
         prisma as unknown as PrismaService,
         financeAuthorization as unknown as FinanceAuthorizationService,
         storageService as unknown as SupabaseStorageService,
+        notificationDispatch as any,
       ),
       prisma,
       txClient,
       financeAuthorization,
+      storageService,
+      notificationDispatch,
     };
   };
 
@@ -467,6 +483,11 @@ describe('FinancialTransactionsService', () => {
       },
     ]);
 
+    prisma.financialTransaction.aggregate.mockResolvedValueOnce({
+      _count: { _all: 2 },
+      _sum: { amount: makeDecimal(180.5) },
+    });
+
     const summary = await service.getSummary(tenantId, makeUser(), {
       startDate: '2026-11-01',
       endDate: '2026-11-30',
@@ -481,6 +502,8 @@ describe('FinancialTransactionsService', () => {
       pendingIncome: 350,
       pendingExpense: 200,
       pendingCount: 3,
+      pendingMemberCount: 2,
+      pendingMemberAmount: 180.5,
     });
   });
 
@@ -810,5 +833,193 @@ describe('FinancialTransactionsService', () => {
     await expect(
       service.prepareExportData(tenantId, { formato: 'pdf' }, makeUser()),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('gera Signed URL privada, nunca expõe receiptUrl/receiptKey em retornos e bloqueia alterações indevidas em MEMBER_PORTAL', async () => {
+    const { service, prisma, storageService, notificationDispatch } = createService(
+      FinanceRole.FINANCE_APPROVER,
+    );
+
+    // 1. uploadReceipt usa storage privado e não expõe receiptUrl/receiptKey
+    prisma.financialTransaction.findFirst.mockResolvedValueOnce({
+      id: 'tx-treasury-1',
+      tenantId,
+      status: FinancialTransactionStatus.CONFIRMED,
+      source: FinancialTransactionSource.TREASURY,
+      receiptKey: null,
+      amount: makeDecimal(100),
+    });
+    prisma.financialTransaction.update.mockResolvedValueOnce({
+      id: 'tx-treasury-1',
+      tenantId,
+      status: FinancialTransactionStatus.CONFIRMED,
+      source: FinancialTransactionSource.TREASURY,
+      receiptUrl: null,
+      receiptKey: 'tenants/t/tx/receipt.pdf',
+      receiptFileName: 'recibo.pdf',
+      receiptMimeType: 'application/pdf',
+      amount: makeDecimal(100),
+    });
+
+    const uploaded = await service.uploadReceipt(
+      tenantId,
+      makeUser(),
+      'tx-treasury-1',
+      {
+        fieldname: 'file',
+        originalname: 'recibo.pdf',
+        encoding: '7bit',
+        mimetype: 'application/pdf',
+        size: 16,
+        buffer: Buffer.from('%PDF-1.7\n1 0 obj'),
+      } as any,
+    );
+
+    expect(storageService.uploadPrivateObject).toHaveBeenCalled();
+    expect(uploaded.hasReceipt).toBe(true);
+    expect((uploaded as any).receiptUrl).toBeUndefined();
+    expect((uploaded as any).receiptKey).toBeUndefined();
+
+    // 2. getReceiptSignedUrl retorna Signed URL privada de 300s
+    prisma.financialTransaction.findFirst.mockResolvedValueOnce({
+      id: 'tx-treasury-1',
+      tenantId,
+      receiptKey: 'tenants/t/tx/receipt.pdf',
+      receiptFileName: 'recibo.pdf',
+      receiptMimeType: 'application/pdf',
+    });
+    const signed = await service.getReceiptSignedUrl(tenantId, makeUser(), 'tx-treasury-1');
+    expect(signed.expiresInSeconds).toBe(300);
+    expect(signed.url).toContain('/object/sign/financial-receipts/');
+
+    // 3. confirm em MEMBER_PORTAL permite ajustar accountId/categoryId e notifica o membro
+    prisma.financialCategory.findFirst.mockResolvedValueOnce({
+      id: 'cat-inc-2',
+      tenantId,
+      active: true,
+      type: FinancialCategoryType.INCOME,
+    });
+    prisma.financialTransaction.findFirst.mockResolvedValueOnce({
+      id: 'tx-member-1',
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.PENDING,
+      source: FinancialTransactionSource.MEMBER_PORTAL,
+      memberId,
+      accountId,
+      categoryId,
+      paidAt: null,
+      paymentMethod: FinancialPaymentMethod.PIX,
+      amount: makeDecimal(150),
+    });
+    prisma.financialTransaction.update.mockResolvedValueOnce({
+      id: 'tx-member-1',
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.CONFIRMED,
+      source: FinancialTransactionSource.MEMBER_PORTAL,
+      memberId,
+      accountId,
+      categoryId: 'cat-inc-2',
+      paidAt: new Date('2026-11-25T12:00:00.000Z'),
+      paymentMethod: FinancialPaymentMethod.PIX,
+      amount: makeDecimal(150),
+      category: { id: 'cat-inc-2', name: 'Ofertas', type: FinancialCategoryType.INCOME },
+      receiptKey: 'tenants/t/tx-member-1/r.pdf',
+      receiptUrl: null,
+      receiptFileName: 'r.pdf',
+      receiptMimeType: 'application/pdf',
+    });
+
+    const confirmed = await service.confirm(tenantId, makeUser(), 'tx-member-1', {
+      accountId,
+      categoryId: 'cat-inc-2',
+      amount: 150,
+    });
+    expect(confirmed.status).toBe(FinancialTransactionStatus.CONFIRMED);
+    expect(confirmed.hasReceipt).toBe(true);
+    expect((confirmed as any).receiptKey).toBeUndefined();
+    expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: ['member-user-1'],
+        urlDestino: '/minhas-contribuicoes',
+        idempotencyKey: `tenant:${tenantId}:contribution:tx-member-1:confirmed`,
+      }),
+    );
+
+    // 4. reject exige motivo e notifica o membro
+    prisma.financialTransaction.findFirst.mockResolvedValueOnce({
+      id: 'tx-member-2',
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.PENDING,
+      source: FinancialTransactionSource.MEMBER_PORTAL,
+      memberId,
+      amount: makeDecimal(80),
+      rejectionReason: null,
+    });
+    prisma.financialTransaction.update.mockResolvedValueOnce({
+      id: 'tx-member-2',
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.CANCELLED,
+      source: FinancialTransactionSource.MEMBER_PORTAL,
+      memberId,
+      amount: makeDecimal(80),
+      rejectionReason: 'Comprovante ilegível',
+      category: { id: categoryId, name: 'Dízimos', type: FinancialCategoryType.INCOME },
+    });
+
+    const rejected = await service.reject(tenantId, makeUser(), 'tx-member-2', {
+      rejectionReason: 'Comprovante ilegível',
+    });
+    expect(rejected.status).toBe(FinancialTransactionStatus.CANCELLED);
+    expect(rejected.rejectionReason).toBe('Comprovante ilegível');
+    expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: ['member-user-1'],
+        idempotencyKey: `tenant:${tenantId}:contribution:tx-member-2:rejected`,
+      }),
+    );
+
+    // 5. Bloqueia update (alterar memberId, tipo ou confirmar), cancel genérico e removeReceipt em MEMBER_PORTAL
+    prisma.financialTransaction.findFirst.mockResolvedValueOnce({
+      id: 'tx-member-3',
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.PENDING,
+      source: FinancialTransactionSource.MEMBER_PORTAL,
+      memberId,
+      amount: makeDecimal(50),
+    });
+    await expect(
+      service.update(tenantId, makeUser(), 'tx-member-3', { memberId: 'other-member' }),
+    ).rejects.toThrow(ForbiddenException);
+
+    prisma.financialTransaction.findFirst.mockResolvedValueOnce({
+      id: 'tx-member-3',
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.PENDING,
+      source: FinancialTransactionSource.MEMBER_PORTAL,
+      memberId,
+      amount: makeDecimal(50),
+    });
+    await expect(service.cancel(tenantId, makeUser(), 'tx-member-3')).rejects.toThrow(
+      BadRequestException,
+    );
+
+    prisma.financialTransaction.findFirst.mockResolvedValueOnce({
+      id: 'tx-member-3',
+      tenantId,
+      type: FinancialTransactionType.INCOME,
+      status: FinancialTransactionStatus.PENDING,
+      source: FinancialTransactionSource.MEMBER_PORTAL,
+      memberId,
+      amount: makeDecimal(50),
+    });
+    await expect(service.removeReceipt(tenantId, makeUser(), 'tx-member-3')).rejects.toThrow(
+      BadRequestException,
+    );
   });
 });

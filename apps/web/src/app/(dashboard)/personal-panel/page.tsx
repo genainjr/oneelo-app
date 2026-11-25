@@ -99,6 +99,7 @@ const QUICK_ACCESS_ICONS = {
   mySchedules: '📝',
   scheduleFolder: '📋',
   agenda: '🗓️',
+  contributions: '💛',
   profile: '👤',
   ministries: '⛪',
 } as const;
@@ -374,6 +375,7 @@ export default function PersonalPanelPage() {
 
   const error = errorEscalas || errorEventos;
   const loading = loadingEscalas || loadingEventos;
+  const canSeeContributions = Boolean(hasLinkedMember && user?.tenant?.pixEnabled);
   const quickAccessItems = hasLeadership
     ? [
         ...(isStaffOrAdmin
@@ -382,6 +384,7 @@ export default function PersonalPanelPage() {
         { href: '/ministerios', label: t('leader.quickLinks.ministries'), emoji: QUICK_ACCESS_ICONS.ministries },
         { href: '/escalas', label: t('leader.quickLinks.schedules'), emoji: QUICK_ACCESS_ICONS.scheduleFolder },
         ...(hasEscalas ? [{ href: '/minhas-escalas', label: t('leader.quickLinks.viewSchedules'), emoji: QUICK_ACCESS_ICONS.mySchedules }] : []),
+        ...(canSeeContributions ? [{ href: '/minhas-contribuicoes', label: t('leader.quickLinks.contributions'), emoji: QUICK_ACCESS_ICONS.contributions }] : []),
         { href: '/agenda', label: t('leader.quickLinks.agenda'), emoji: QUICK_ACCESS_ICONS.agenda },
         { href: '/meu-perfil', label: t('leader.quickLinks.profile'), emoji: QUICK_ACCESS_ICONS.profile },
       ]
@@ -390,6 +393,7 @@ export default function PersonalPanelPage() {
           ? [{ href: '/dashboard', label: t('quickLinks.churchDashboard'), emoji: QUICK_ACCESS_ICONS.churchDashboard }]
           : []),
         ...(hasEscalas ? [{ href: '/minhas-escalas', label: t('quickLinks.viewSchedules'), emoji: QUICK_ACCESS_ICONS.mySchedules }] : []),
+        ...(canSeeContributions ? [{ href: '/minhas-contribuicoes', label: t('quickLinks.contributions'), emoji: QUICK_ACCESS_ICONS.contributions }] : []),
         { href: '/agenda/visualizacao', label: t('quickLinks.agenda'), emoji: QUICK_ACCESS_ICONS.agenda },
         { href: '/meu-perfil', label: t('quickLinks.profile'), emoji: QUICK_ACCESS_ICONS.profile },
       ];

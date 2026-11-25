@@ -1,14 +1,25 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   AcaoAuditoria,
   FinanceRole,
   FinancialCategoryType,
   FinancialPaymentMethod,
+  FinancialTransactionSource,
   FinancialTransactionStatus,
   FinancialTransactionType,
+  NotificationAudienceType,
+  NotificationOrigin,
   Prisma,
   StatusMembro,
+  UserStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
@@ -22,11 +33,13 @@ import {
 } from '../../common/utils/search-text';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import type { Multer } from 'multer';
+import { NotificationDispatchService } from '../notifications/services/notification-dispatch.service';
 import { FinanceAuthorizationService } from './finance-authorization.service';
 import { ConfirmFinancialTransactionDto } from './dto/confirm-financial-transaction.dto';
 import { CreateFinancialTransactionDto } from './dto/create-financial-transaction.dto';
 import { CreateFinancialTransactionsBatchDto } from './dto/create-financial-transactions-batch.dto';
 import { ExportFinanceiroDto } from './dto/export-financeiro.dto';
+import { RejectFinancialTransactionDto } from './dto/reject-financial-transaction.dto';
 import { UpdateFinancialTransactionDto } from './dto/update-financial-transaction.dto';
 import type {
   FinanceiroDocumentInput,
@@ -45,6 +58,11 @@ export const FINANCEIRO_STATUS_LABELS: Record<FinancialTransactionStatus, string
   PENDING: 'Pendente',
   CONFIRMED: 'Confirmado',
   CANCELLED: 'Cancelado',
+};
+
+export const FINANCEIRO_SOURCE_LABELS: Record<FinancialTransactionSource, string> = {
+  TREASURY: 'Tesouraria',
+  MEMBER_PORTAL: 'Portal do Membro',
 };
 
 export const FINANCEIRO_PAYMENT_METHOD_LABELS: Record<FinancialPaymentMethod, string> = {
@@ -79,6 +97,7 @@ export function matchesFinancialTransactionSearch(
     description?: string | null;
     type: FinancialTransactionType;
     counterpartyName?: string | null;
+    payerName?: string | null;
     paymentMethod?: FinancialPaymentMethod | null;
     category: { name: string };
     account: { name: string };
@@ -103,6 +122,7 @@ export function matchesFinancialTransactionSearch(
     transaction.category?.name,
     transaction.account?.name,
     transaction.counterpartyName,
+    transaction.payerName,
     transaction.evento?.titulo,
     transaction.member?.nome,
     paymentLabel,
@@ -138,12 +158,23 @@ type TransactionWithRelations = Prisma.FinancialTransactionGetPayload<{
   include: typeof TRANSACTION_INCLUDE;
 }>;
 
+const FINANCIAL_RECEIPTS_BUCKET = 'financial-receipts';
+const RECEIPT_SIGNED_URL_TTL_SECONDS = 300;
+const brlCurrencyFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+});
+
 @Injectable()
 export class FinancialTransactionsService {
+  private readonly logger = new Logger(FinancialTransactionsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly financeAuthorization: FinanceAuthorizationService,
     private readonly storageService: SupabaseStorageService,
+    @Optional()
+    private readonly notificationDispatch?: NotificationDispatchService,
   ) {}
 
   async findAll(
@@ -154,6 +185,7 @@ export class FinancialTransactionsService {
       endDate?: string;
       type?: FinancialTransactionType;
       status?: FinancialTransactionStatus;
+      source?: FinancialTransactionSource;
       accountId?: string;
       categoryId?: string;
       eventoId?: string;
@@ -280,6 +312,7 @@ export class FinancialTransactionsService {
       id: row.id,
       type: row.type,
       status: row.status,
+      source: row.source,
       date: row.date,
       paidAt: row.paidAt ?? null,
       updatedAt: row.updatedAt,
@@ -287,6 +320,7 @@ export class FinancialTransactionsService {
       description: row.description ?? null,
       paymentMethod: row.paymentMethod ?? null,
       counterpartyName: row.counterpartyName ?? null,
+      payerName: row.payerName ?? null,
       installmentNumber: row.installmentNumber ?? null,
       totalInstallments: row.totalInstallments ?? null,
       account: { id: row.account.id, name: row.account.name },
@@ -310,6 +344,7 @@ export class FinancialTransactionsService {
       filters: {
         status: query.status,
         type: query.type,
+        source: query.source,
         accountId: query.accountId,
         categoryId: query.categoryId,
         eventoId: query.eventoId,
@@ -332,6 +367,7 @@ export class FinancialTransactionsService {
       endDate?: string;
       type?: FinancialTransactionType;
       status?: FinancialTransactionStatus;
+      source?: FinancialTransactionSource;
       accountId?: string;
       categoryId?: string;
       eventoId?: string;
@@ -343,6 +379,7 @@ export class FinancialTransactionsService {
       tenantId,
       ...(filters.type ? { type: filters.type } : {}),
       ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.source ? { source: filters.source } : {}),
       ...(filters.accountId ? { accountId: filters.accountId } : {}),
       ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
       ...(filters.eventoId ? { eventoId: filters.eventoId } : {}),
@@ -426,6 +463,12 @@ export class FinancialTransactionsService {
         value: FINANCEIRO_TYPE_LABELS[query.type] ?? query.type,
       });
     }
+    if (query.source) {
+      labels.push({
+        label: 'Origem',
+        value: FINANCEIRO_SOURCE_LABELS[query.source] ?? query.source,
+      });
+    }
     if (query.accountId) {
       labels.push({
         label: 'Conta',
@@ -473,7 +516,7 @@ export class FinancialTransactionsService {
   ) {
     await this.financeAuthorization.ensureCanAccessFinanceData(tenantId, actor);
 
-    const [accounts, transactions] = await Promise.all([
+    const [accounts, transactions, pendingMemberAgg] = await Promise.all([
       this.prisma.financialAccount.findMany({ where: { tenantId, active: true } }),
       this.prisma.financialTransaction.findMany({
         where: {
@@ -486,6 +529,19 @@ export class FinancialTransactionsService {
         },
         select: { type: true, status: true, amount: true },
       }),
+      typeof this.prisma.financialTransaction.aggregate === 'function'
+        ? this.prisma.financialTransaction.aggregate({
+            where: {
+              tenantId,
+              source: FinancialTransactionSource.MEMBER_PORTAL,
+              status: FinancialTransactionStatus.PENDING,
+              type: FinancialTransactionType.INCOME,
+              ...(filters.accountId ? { accountId: filters.accountId } : {}),
+            },
+            _count: { _all: true },
+            _sum: { amount: true },
+          })
+        : Promise.resolve({ _count: { _all: 0 }, _sum: { amount: null } }),
     ]);
 
     const initialBalanceCents = accounts
@@ -518,6 +574,12 @@ export class FinancialTransactionsService {
       }
     }
 
+    const pendingMemberCount = pendingMemberAgg?._count?._all ?? 0;
+    const pendingMemberRawAmount = pendingMemberAgg?._sum?.amount;
+    const pendingMemberAmountCents = pendingMemberRawAmount
+      ? Math.round(this.toAmountNumber(pendingMemberRawAmount) * 100)
+      : 0;
+
     return {
       initialBalance: initialBalanceCents / 100,
       income: incomeCents / 100,
@@ -527,6 +589,8 @@ export class FinancialTransactionsService {
       pendingIncome: pendingIncomeCents / 100,
       pendingExpense: pendingExpenseCents / 100,
       pendingCount,
+      pendingMemberCount,
+      pendingMemberAmount: pendingMemberAmountCents / 100,
     };
   }
 
@@ -685,6 +749,36 @@ export class FinancialTransactionsService {
     if (dto.status === FinancialTransactionStatus.CANCELLED) {
       throw new BadRequestException('Use a ação de cancelamento para cancelar um lançamento.');
     }
+
+    if (current.source === FinancialTransactionSource.MEMBER_PORTAL) {
+      if (dto.type !== undefined && dto.type !== current.type) {
+        throw new BadRequestException(
+          'Não é permitido alterar o tipo de uma contribuição enviada pelo portal do membro.',
+        );
+      }
+      if (
+        dto.memberId !== undefined &&
+        (dto.memberId || null) !== (current.memberId || null)
+      ) {
+        throw new ForbiddenException(
+          'Não é permitido alterar o membro vinculado a uma contribuição enviada pelo portal do membro.',
+        );
+      }
+      if (dto.status === FinancialTransactionStatus.DRAFT) {
+        throw new BadRequestException(
+          'Contribuições enviadas pelo portal do membro não podem ser movidas para rascunho.',
+        );
+      }
+      if (
+        current.status !== FinancialTransactionStatus.CONFIRMED &&
+        dto.status === FinancialTransactionStatus.CONFIRMED
+      ) {
+        throw new BadRequestException(
+          'Use a ação "Dar Baixa / Confirmar" para confirmar contribuições enviadas pelo portal do membro.',
+        );
+      }
+    }
+
     if (
       current.status !== FinancialTransactionStatus.CONFIRMED &&
       dto.status === FinancialTransactionStatus.CONFIRMED
@@ -775,6 +869,17 @@ export class FinancialTransactionsService {
       throw new BadRequestException('Data de liquidação inválida.');
     }
 
+    const nextAccountId = dto.accountId ?? current.accountId;
+    const nextCategoryId = dto.categoryId ?? current.categoryId;
+    if (dto.accountId !== undefined || dto.categoryId !== undefined) {
+      await this.validateAccountAndCategory(
+        tenantId,
+        nextAccountId,
+        nextCategoryId,
+        current.type,
+      );
+    }
+
     const updated = await this.prisma.financialTransaction.update({
       where: { id },
       data: {
@@ -782,6 +887,8 @@ export class FinancialTransactionsService {
         paidAt,
         ...(dto.paymentMethod !== undefined ? { paymentMethod: dto.paymentMethod ?? null } : {}),
         ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
+        ...(dto.accountId !== undefined ? { accountId: dto.accountId } : {}),
+        ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
       },
       include: TRANSACTION_INCLUDE,
     });
@@ -794,16 +901,96 @@ export class FinancialTransactionsService {
         status: current.status,
         paidAt: current.paidAt,
         paymentMethod: current.paymentMethod,
+        accountId: current.accountId,
+        categoryId: current.categoryId,
         amount: this.toAmountNumber(current.amount),
       },
       {
         status: updated.status,
         paidAt: updated.paidAt,
         paymentMethod: updated.paymentMethod,
+        accountId: updated.accountId,
+        categoryId: updated.categoryId,
         amount: this.toAmountNumber(updated.amount),
       },
       ip,
     );
+
+    if (current.source === FinancialTransactionSource.MEMBER_PORTAL && current.memberId) {
+      await this.notifyMemberContributionDecision({
+        tenantId,
+        actorId: actor.sub,
+        memberId: current.memberId,
+        transactionId: id,
+        decision: 'confirmed',
+        amount: this.toAmountNumber(updated.amount),
+        categoryName: updated.category?.name,
+      });
+    }
+
+    return this.serializeTransaction(updated);
+  }
+
+  async reject(
+    tenantId: string,
+    actor: JwtPayload,
+    id: string,
+    dto: RejectFinancialTransactionDto,
+    ip?: string,
+  ) {
+    await this.financeAuthorization.ensureFinanceRole(tenantId, actor, APPROVE_ROLES);
+    const current = await this.findOneOrThrow(tenantId, id);
+
+    if (current.source !== FinancialTransactionSource.MEMBER_PORTAL) {
+      throw new BadRequestException(
+        'A recusa com motivo é exclusiva para comprovantes enviados pelo portal do membro.',
+      );
+    }
+    if (current.status !== FinancialTransactionStatus.PENDING) {
+      throw new BadRequestException(
+        'Apenas comprovantes de membros pendentes podem ser recusados.',
+      );
+    }
+
+    const rejectionReason = dto.rejectionReason?.trim() ?? '';
+    if (rejectionReason.length < 5 || rejectionReason.length > 500) {
+      throw new BadRequestException(
+        'O motivo da recusa deve ter entre 5 e 500 caracteres.',
+      );
+    }
+
+    const updated = await this.prisma.financialTransaction.update({
+      where: { id },
+      data: {
+        status: FinancialTransactionStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledByUserId: actor.sub,
+        rejectionReason,
+      },
+      include: TRANSACTION_INCLUDE,
+    });
+
+    await this.audit(
+      tenantId,
+      actor.sub,
+      id,
+      { status: current.status, rejectionReason: current.rejectionReason ?? null },
+      { status: updated.status, rejectionReason },
+      ip,
+    );
+
+    if (current.memberId) {
+      await this.notifyMemberContributionDecision({
+        tenantId,
+        actorId: actor.sub,
+        memberId: current.memberId,
+        transactionId: id,
+        decision: 'rejected',
+        amount: this.toAmountNumber(updated.amount),
+        categoryName: updated.category?.name,
+        rejectionReason,
+      });
+    }
 
     return this.serializeTransaction(updated);
   }
@@ -811,7 +998,17 @@ export class FinancialTransactionsService {
   async cancel(tenantId: string, actor: JwtPayload, id: string, ip?: string) {
     await this.financeAuthorization.ensureFinanceRole(tenantId, actor, CANCEL_ROLES);
     const current = await this.findOneOrThrow(tenantId, id);
-    if (current.status === FinancialTransactionStatus.CANCELLED) return { ...current, amount: current.amount.toNumber() };
+    if (current.status === FinancialTransactionStatus.CANCELLED) {
+      return this.serializeTransaction(current);
+    }
+    if (
+      current.source === FinancialTransactionSource.MEMBER_PORTAL &&
+      current.status === FinancialTransactionStatus.PENDING
+    ) {
+      throw new BadRequestException(
+        'Use a ação "Recusar" informando o motivo para rejeitar comprovantes pendentes enviados por membros.',
+      );
+    }
 
     const updated = await this.prisma.financialTransaction.update({
       where: { id },
@@ -820,9 +1017,17 @@ export class FinancialTransactionsService {
         cancelledAt: new Date(),
         cancelledByUserId: actor.sub,
       },
+      include: TRANSACTION_INCLUDE,
     });
-    await this.audit(tenantId, actor.sub, id, { status: current.status }, { status: updated.status }, ip);
-    return { ...updated, amount: updated.amount.toNumber() };
+    await this.audit(
+      tenantId,
+      actor.sub,
+      id,
+      { status: current.status },
+      { status: updated.status },
+      ip,
+    );
+    return this.serializeTransaction(updated);
   }
 
   async uploadReceipt(
@@ -838,41 +1043,65 @@ export class FinancialTransactionsService {
     if (current.status === FinancialTransactionStatus.CANCELLED) {
       throw new BadRequestException('Lançamento cancelado não pode receber comprovante.');
     }
+    if (current.source === FinancialTransactionSource.MEMBER_PORTAL) {
+      throw new BadRequestException(
+        'O comprovante enviado pelo membro não pode ser substituído pela tesouraria.',
+      );
+    }
 
     const path = getFinancialReceiptPath(tenantId, id, file!);
-    const receiptUrl = await this.storageService.uploadPublicObject(
-      'financial-receipts',
+    await this.storageService.uploadPrivateObject(
+      FINANCIAL_RECEIPTS_BUCKET,
       path,
       file!.buffer,
       file!.mimetype,
     );
 
-    if (current.receiptKey) {
-      await this.storageService.deleteObject('financial-receipts', current.receiptKey);
+    let updated: TransactionWithRelations;
+    try {
+      updated = await this.prisma.financialTransaction.update({
+        where: { id },
+        data: {
+          receiptUrl: null,
+          receiptKey: path,
+          receiptFileName: file!.originalname,
+          receiptMimeType: file!.mimetype,
+        },
+        include: TRANSACTION_INCLUDE,
+      });
+    } catch (error) {
+      await this.storageService
+        .deleteObject(FINANCIAL_RECEIPTS_BUCKET, path, { ignoreNotFound: true })
+        .catch(() => undefined);
+      throw error;
     }
 
-    const updated = await this.prisma.financialTransaction.update({
-      where: { id },
-      data: {
-        receiptUrl,
-        receiptKey: path,
-        receiptFileName: file!.originalname,
-        receiptMimeType: file!.mimetype,
-      },
-      include: {
-        account: { select: { id: true, name: true, type: true } },
-        category: { select: { id: true, name: true, type: true } },
-        member: { select: { id: true, nome: true, nomeExibicao: true, email: true, whatsapp: true } },
-      },
-    });
-    await this.audit(tenantId, actor.sub, id, { receiptKey: current.receiptKey }, { receiptKey: path }, ip);
-    return { ...updated, amount: updated.amount.toNumber() };
+    if (current.receiptKey && current.receiptKey !== path) {
+      await this.storageService
+        .deleteObject(FINANCIAL_RECEIPTS_BUCKET, current.receiptKey, { ignoreNotFound: true })
+        .catch(() => undefined);
+    }
+
+    await this.audit(
+      tenantId,
+      actor.sub,
+      id,
+      { receiptKey: current.receiptKey },
+      { receiptKey: path },
+      ip,
+    );
+    return this.serializeTransaction(updated);
   }
 
   async removeReceipt(tenantId: string, actor: JwtPayload, id: string, ip?: string) {
     await this.financeAuthorization.ensureFinanceRole(tenantId, actor, WRITE_ROLES);
     const current = await this.findOneOrThrow(tenantId, id);
-    await this.storageService.deleteObject('financial-receipts', current.receiptKey);
+    if (current.source === FinancialTransactionSource.MEMBER_PORTAL) {
+      throw new BadRequestException(
+        'O comprovante enviado pelo membro não pode ser removido pela tesouraria.',
+      );
+    }
+
     const updated = await this.prisma.financialTransaction.update({
       where: { id },
       data: {
@@ -881,14 +1110,47 @@ export class FinancialTransactionsService {
         receiptFileName: null,
         receiptMimeType: null,
       },
-      include: {
-        account: { select: { id: true, name: true, type: true } },
-        category: { select: { id: true, name: true, type: true } },
-        member: { select: { id: true, nome: true, nomeExibicao: true, email: true, whatsapp: true } },
-      },
+      include: TRANSACTION_INCLUDE,
     });
-    await this.audit(tenantId, actor.sub, id, { receiptKey: current.receiptKey }, { receiptKey: null }, ip);
-    return { ...updated, amount: updated.amount.toNumber() };
+
+    if (current.receiptKey) {
+      await this.storageService
+        .deleteObject(FINANCIAL_RECEIPTS_BUCKET, current.receiptKey, { ignoreNotFound: true })
+        .catch(() => undefined);
+    }
+
+    await this.audit(
+      tenantId,
+      actor.sub,
+      id,
+      { receiptKey: current.receiptKey },
+      { receiptKey: null },
+      ip,
+    );
+    return this.serializeTransaction(updated);
+  }
+
+  async getReceiptSignedUrl(tenantId: string, actor: JwtPayload, id: string) {
+    await this.financeAuthorization.ensureCanAccessFinanceData(tenantId, actor);
+    const current = await this.findOneOrThrow(tenantId, id);
+
+    const storageKey = current.receiptKey?.trim();
+    if (!storageKey) {
+      throw new NotFoundException('Comprovante privado não encontrado para este lançamento.');
+    }
+
+    const url = await this.storageService.createPrivateSignedUrl(
+      FINANCIAL_RECEIPTS_BUCKET,
+      storageKey,
+      RECEIPT_SIGNED_URL_TTL_SECONDS,
+    );
+
+    return {
+      url,
+      expiresInSeconds: RECEIPT_SIGNED_URL_TTL_SECONDS,
+      fileName: current.receiptFileName ?? null,
+      mimeType: current.receiptMimeType ?? null,
+    };
   }
 
   private async findOneOrThrow(tenantId: string, id: string) {
@@ -1020,11 +1282,81 @@ export class FinancialTransactionsService {
     return typeof amount === 'number' ? amount : amount.toNumber();
   }
 
-  private serializeTransaction<T extends { amount: { toNumber(): number } | number }>(transaction: T) {
+  private serializeTransaction<
+    T extends {
+      amount: { toNumber(): number } | number;
+      receiptUrl?: string | null;
+      receiptKey?: string | null;
+      receiptFileName?: string | null;
+      receiptMimeType?: string | null;
+    },
+  >(transaction: T) {
+    const { receiptUrl, receiptKey, ...safe } = transaction;
     return {
-      ...transaction,
+      ...safe,
       amount: this.toAmountNumber(transaction.amount),
+      hasReceipt: Boolean(receiptKey || receiptUrl),
+      receiptFileName: transaction.receiptFileName ?? null,
+      receiptMimeType: transaction.receiptMimeType ?? null,
     };
+  }
+
+  private async notifyMemberContributionDecision(params: {
+    tenantId: string;
+    actorId: string;
+    memberId: string;
+    transactionId: string;
+    decision: 'confirmed' | 'rejected';
+    amount: number;
+    categoryName?: string | null;
+    rejectionReason?: string;
+  }) {
+    if (!this.notificationDispatch) return;
+    try {
+      const targetUser = await this.prisma.user.findFirst({
+        where: {
+          tenantId: params.tenantId,
+          memberId: params.memberId,
+          ativo: true,
+          status: UserStatus.ACTIVE,
+        },
+        select: { id: true },
+      });
+
+      const userIds = targetUser && targetUser.id !== params.actorId ? [targetUser.id] : [];
+      if (userIds.length === 0) return;
+
+      const formattedAmount = brlCurrencyFormatter.format(params.amount);
+      const categorySuffix = params.categoryName ? ` (${params.categoryName})` : '';
+
+      const titulo =
+        params.decision === 'confirmed'
+          ? 'Contribuição confirmada'
+          : 'Comprovante de contribuição recusado';
+      const mensagem =
+        params.decision === 'confirmed'
+          ? `Sua contribuição de ${formattedAmount}${categorySuffix} foi confirmada pela tesouraria.`
+          : `Seu comprovante de ${formattedAmount}${categorySuffix} foi recusado. Motivo: ${params.rejectionReason}`;
+
+      await this.notificationDispatch.createNotification({
+        tenantId: params.tenantId,
+        titulo,
+        mensagem,
+        urlDestino: '/minhas-contribuicoes',
+        origem: NotificationOrigin.SYSTEM_AUTOMATION,
+        tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+        userIds,
+        criadoPorId: params.actorId,
+        idempotencyKey: `tenant:${params.tenantId}:contribution:${params.transactionId}:${params.decision}`,
+        ignorePreferences: true,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao notificar membro sobre contribuição ${params.transactionId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   private getMemberPrintName(member: { nome: string; nomeExibicao?: string | null }) {

@@ -6,8 +6,11 @@ import { EventoSearchCombobox, type EventoOption } from "@/components/app/evento
 import { FilterInput, FilterSelect } from "@/components/app/filter-field";
 import { MembroSearchCombobox, type MembroOption } from "@/components/app/membro-search-combobox";
 import { api } from "@/lib/api";
+import { PIX_KEY_TYPE_LABELS, type PixKeyType } from "@/lib/pix-brcode";
 import { includesNormalizedText } from "@/lib/utils";
 import { FinanceRole, type StatusEvento } from "@/types";
+
+export { PIX_KEY_TYPE_LABELS, type PixKeyType };
 
 export type FinancePermissionSummary = {
   role: FinanceRole | null;
@@ -21,13 +24,37 @@ export type FinancialAccountType = "CASH" | "BANK" | "PIX" | "OTHER";
 export type FinancialCategoryType = "INCOME" | "EXPENSE";
 export type FinancialTransactionType = "INCOME" | "EXPENSE";
 export type FinancialTransactionStatus = "DRAFT" | "PENDING" | "CONFIRMED" | "CANCELLED";
+export type FinancialTransactionSource = "TREASURY" | "MEMBER_PORTAL";
 export type FinancialPaymentMethod = "PIX" | "CASH" | "CREDIT_CARD" | "DEBIT_CARD" | "BANK_TRANSFER" | "BOLETO" | "CHECK" | "OTHER";
+
+export type TenantPixConfig = {
+  id: string;
+  tenantId: string;
+  enabled: boolean;
+  showOnPublicSite: boolean;
+  pixKeyType: PixKeyType;
+  pixKey: string;
+  merchantName: string;
+  merchantCity: string;
+  txidPrefix?: string | null;
+  defaultAccountId: string;
+  defaultAccount?: { id: string; name: string; type: FinancialAccountType; active: boolean } | null;
+};
+
+export type TenantPixConfigResponse = {
+  config: TenantPixConfig | null;
+  brCode: string | null;
+  suggestedMerchantName: string;
+  suggestedMerchantCity: string;
+  visibleIncomeCategoriesCount: number;
+};
 
 export type FinanceiroQueryFilters = {
   startDate?: string;
   endDate?: string;
   status?: "all" | FinancialTransactionStatus;
   type?: "all" | FinancialTransactionType;
+  source?: "all" | FinancialTransactionSource;
   accountId?: string;
   categoryId?: string;
   eventoId?: string;
@@ -50,12 +77,14 @@ export type FinancialCategory = {
   name: string;
   type: FinancialCategoryType;
   active: boolean;
+  visibleToMembers?: boolean;
 };
 
 export type FinancialTransaction = {
   id: string;
   type: FinancialTransactionType;
   status: FinancialTransactionStatus;
+  source?: FinancialTransactionSource;
   date: string;
   paidAt?: string | null;
   amount: number;
@@ -64,10 +93,12 @@ export type FinancialTransaction = {
   eventoId?: string | null;
   evento?: { id: string; titulo: string; dataInicio: string; dataFim?: string | null; local?: string | null; status: StatusEvento } | null;
   counterpartyName?: string | null;
+  payerName?: string | null;
+  rejectionReason?: string | null;
   recurringGroupId?: string | null;
   installmentNumber?: number | null;
   totalInstallments?: number | null;
-  receiptUrl?: string | null;
+  hasReceipt?: boolean;
   receiptFileName?: string | null;
   receiptMimeType?: string | null;
   memberId?: string | null;
@@ -85,6 +116,8 @@ export type FinancialSummary = {
   pendingIncome: number;
   pendingExpense: number;
   pendingCount: number;
+  pendingMemberCount: number;
+  pendingMemberAmount: number;
 };
 
 export const ROLE_LABELS: Record<FinanceRole, string> = {
@@ -116,6 +149,11 @@ export const TRANSACTION_STATUS_LABELS: Record<FinancialTransactionStatus, strin
   PENDING: "Pendente",
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
+};
+
+export const TRANSACTION_SOURCE_LABELS: Record<FinancialTransactionSource, string> = {
+  TREASURY: "Tesouraria",
+  MEMBER_PORTAL: "Portal do Membro",
 };
 
 export const PAYMENT_METHOD_LABELS: Record<FinancialPaymentMethod, string> = {
@@ -175,6 +213,15 @@ export function FinanceStatusBadge({ status }: { status: FinancialTransactionSta
   return (
     <span className={`inline-flex shrink-0 rounded-lg border px-2.5 py-0.5 text-xs font-bold ${getTransactionStatusClass(status)}`}>
       {TRANSACTION_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export function FinanceSourceBadge({ source }: { source?: FinancialTransactionSource }) {
+  if (source !== "MEMBER_PORTAL") return null;
+  return (
+    <span className="inline-flex shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+      Portal do Membro
     </span>
   );
 }
@@ -239,6 +286,7 @@ export function matchTransactionSearch(
     transaction.category?.name,
     transaction.account?.name,
     transaction.counterpartyName,
+    transaction.payerName,
     transaction.evento?.titulo,
     transaction.member?.nome,
     paymentLabel,
@@ -287,6 +335,8 @@ const emptySummary: FinancialSummary = {
   pendingIncome: 0,
   pendingExpense: 0,
   pendingCount: 0,
+  pendingMemberCount: 0,
+  pendingMemberAmount: 0,
 };
 
 function buildTransactionsUrl(filters?: FinanceiroQueryFilters) {
@@ -295,6 +345,7 @@ function buildTransactionsUrl(filters?: FinanceiroQueryFilters) {
   if (filters?.endDate) params.set("endDate", filters.endDate);
   if (filters?.status && filters.status !== "all") params.set("status", filters.status);
   if (filters?.type && filters.type !== "all") params.set("type", filters.type);
+  if (filters?.source && filters.source !== "all") params.set("source", filters.source);
   if (filters?.accountId) params.set("accountId", filters.accountId);
   if (filters?.categoryId) params.set("categoryId", filters.categoryId);
   if (filters?.eventoId) params.set("eventoId", filters.eventoId);
@@ -333,6 +384,7 @@ export function useFinanceiroData(filters?: FinanceiroQueryFilters) {
             endDate: filters.endDate,
             status: filters.status,
             type: filters.type,
+            source: filters.source,
             accountId: filters.accountId,
             categoryId: filters.categoryId,
             eventoId: filters.eventoId,
@@ -351,6 +403,7 @@ export function useFinanceiroData(filters?: FinanceiroQueryFilters) {
       filters?.limit,
       filters?.memberId,
       filters?.recurringGroupId,
+      filters?.source,
       filters?.startDate,
       filters?.status,
       filters?.type,
@@ -426,6 +479,7 @@ export type FinancialTransactionFilterState = {
   description: string;
   type: "all" | FinancialTransactionType;
   status: "all" | FinancialTransactionStatus;
+  source: "all" | FinancialTransactionSource;
   eventoId: string;
   memberId: string;
   startDate: string;
@@ -502,6 +556,28 @@ export function FinanceiroTransactionFilterFields({
         </FilterSelect>
       </div>
       <div className="xl:col-span-3">
+        <FilterSelect
+          label="Origem"
+          value={filters.source}
+          onChange={(event) =>
+            onFieldChange("source", event.target.value as FinancialTransactionFilterState["source"])
+          }
+        >
+          <option value="all">Todas</option>
+          <option value="TREASURY">{TRANSACTION_SOURCE_LABELS.TREASURY}</option>
+          <option value="MEMBER_PORTAL">{TRANSACTION_SOURCE_LABELS.MEMBER_PORTAL}</option>
+        </FilterSelect>
+      </div>
+      <div className="xl:col-span-3">
+        <FilterInput
+          type="search"
+          label="Descrição / Titular"
+          value={filters.description}
+          onChange={(event) => onFieldChange("description", event.target.value)}
+          placeholder="Buscar por descrição, titular..."
+        />
+      </div>
+      <div className="xl:col-span-3">
         <FilterInput
           label="A partir de (Data)"
           type="date"
@@ -518,16 +594,7 @@ export function FinanceiroTransactionFilterFields({
           onChange={(event) => onFieldChange("endDate", event.target.value)}
         />
       </div>
-      <div className="md:col-span-2 xl:col-span-4">
-        <FilterInput
-          type="search"
-          label="Descrição"
-          value={filters.description}
-          onChange={(event) => onFieldChange("description", event.target.value)}
-          placeholder="Buscar por descrição..."
-        />
-      </div>
-      <div className="xl:col-span-4">
+      <div className="xl:col-span-3">
         <EventoSearchCombobox
           label="Evento"
           optionalLabel="opcional"
@@ -543,7 +610,7 @@ export function FinanceiroTransactionFilterFields({
           onClear={onEventoClear}
         />
       </div>
-      <div className="xl:col-span-4">
+      <div className="xl:col-span-3">
         <MembroSearchCombobox
           label="Membro"
           optionalLabel="opcional"

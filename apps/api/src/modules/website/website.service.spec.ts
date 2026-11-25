@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AcaoAuditoria, DnsStatus, ModalidadeCulto, Plano } from '@prisma/client';
+import { AcaoAuditoria, DnsStatus, ModalidadeCulto, PixKeyType, Plano } from '@prisma/client';
 import type { Multer } from 'multer';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SupabaseStorageService } from '../../common/storage/supabase-storage.service';
@@ -24,6 +24,9 @@ describe('WebsiteService', () => {
       findFirst: jest.fn(),
       upsert: jest.fn(),
       update: jest.fn(),
+    },
+    tenantPixConfig: {
+      findUnique: jest.fn(),
     },
     churchSchedule: {
       findMany: jest.fn(),
@@ -101,6 +104,7 @@ describe('WebsiteService', () => {
 
     service = module.get<WebsiteService>(WebsiteService);
     mockPrisma.auditLog.create.mockResolvedValue({ id: 'audit-1' });
+    mockPrisma.tenantPixConfig.findUnique.mockResolvedValue(null);
     mockStorageService.deleteObject.mockResolvedValue(undefined);
     mockVercelDomainsService.syncCompanionRedirect.mockResolvedValue(undefined);
     mockVercelDomainsService.removeCompanionDomain.mockResolvedValue(undefined);
@@ -177,6 +181,53 @@ describe('WebsiteService', () => {
       expect(result.config).not.toHaveProperty('bannerKey');
       expect(result.schedules).toHaveLength(1);
       expect(result.news).toHaveLength(1);
+      expect(result.pix).toBeNull();
+    });
+
+    it('expõe bloco pix apenas quando enabled && showOnPublicSite && conta padrão ativa, sem vazar defaultAccountId', async () => {
+      mockPrisma.tenant.findUnique.mockResolvedValue(tenantFixture);
+      mockPrisma.tenantWebsiteConfig.findUnique.mockResolvedValue(null);
+      mockPrisma.churchSchedule.findMany.mockResolvedValue([]);
+      mockPrisma.tenantNews.findMany.mockResolvedValue([]);
+
+      // 1. enabled=true, showOnPublicSite=false -> null
+      mockPrisma.tenantPixConfig.findUnique.mockResolvedValueOnce({
+        enabled: true,
+        showOnPublicSite: false,
+        pixKeyType: PixKeyType.EMAIL,
+        pixKey: 'pix@igreja.org',
+        merchantName: 'Igreja Esperanca',
+        merchantCity: 'Sao Paulo',
+        txidPrefix: null,
+        defaultAccountId: 'secret-account-id',
+        defaultAccount: { active: true },
+      });
+      const hiddenRes = await service.getPublicSiteData('igreja-esperanca');
+      expect(hiddenRes.pix).toBeNull();
+
+      // 2. enabled=true, showOnPublicSite=true, defaultAccount.active=true -> exposto
+      mockPrisma.tenantPixConfig.findUnique.mockResolvedValueOnce({
+        enabled: true,
+        showOnPublicSite: true,
+        pixKeyType: PixKeyType.EMAIL,
+        pixKey: 'pix@igreja.org',
+        merchantName: 'Igreja Esperanca',
+        merchantCity: 'Sao Paulo',
+        txidPrefix: null,
+        defaultAccountId: 'secret-account-id',
+        defaultAccount: { active: true },
+      });
+      const publicRes = await service.getPublicSiteData('igreja-esperanca');
+      expect(publicRes.pix).toEqual(
+        expect.objectContaining({
+          pixKeyType: PixKeyType.EMAIL,
+          pixKey: 'pix@igreja.org',
+          merchantName: 'Igreja Esperanca',
+          merchantCity: 'Sao Paulo',
+          brCode: expect.stringContaining('br.gov.bcb.pix'),
+        }),
+      );
+      expect(publicRes.pix).not.toHaveProperty('defaultAccountId');
     });
 
     it('lança NotFoundException para slug reservado sem consultar banco', async () => {

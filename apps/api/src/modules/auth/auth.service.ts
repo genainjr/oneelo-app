@@ -160,6 +160,7 @@ export class AuthService {
         pwaUpdatedAt?: Date | string | null;
         themePalette?: string | null;
         primaryColor?: string | null;
+        pixConfig?: { enabled: boolean } | null;
       } | null;
     },
     ip?: string,
@@ -194,6 +195,20 @@ export class AuthService {
       },
     });
 
+    let pixEnabled = Boolean(user.tenant?.pixConfig?.enabled);
+    if (
+      user.tenant?.slug &&
+      user.tenant.pixConfig === undefined &&
+      user.tenantId &&
+      typeof this.prisma.tenantPixConfig?.findUnique === 'function'
+    ) {
+      const pixConfig = await this.prisma.tenantPixConfig.findUnique({
+        where: { tenantId: user.tenantId },
+        select: { enabled: true },
+      });
+      pixEnabled = Boolean(pixConfig?.enabled);
+    }
+
     return {
       accessToken,
       expiresIn,
@@ -222,6 +237,7 @@ export class AuthService {
                   : (user.tenant.pwaUpdatedAt ?? null),
               themePalette: user.tenant.themePalette ?? null,
               primaryColor: user.tenant.primaryColor ?? null,
+              pixEnabled,
             }
           : undefined,
       },
@@ -464,6 +480,11 @@ export class AuthService {
               pwaUpdatedAt: true,
               themePalette: true,
               primaryColor: true,
+              pixConfig: {
+                select: {
+                  enabled: true,
+                },
+              },
             },
           },
           financePermissions: {
@@ -486,11 +507,21 @@ export class AuthService {
       throw new UnauthorizedException('Sessão inválida.');
     }
 
-    const { senhaHash, financePermissions, ...safeUser } = user;
+    const { senhaHash, financePermissions, tenant, ...safeUser } = user;
     const financePermission = financePermissions[0]?.role ?? null;
+    const safeTenant = tenant
+      ? (() => {
+          const { pixConfig, ...tenantFields } = tenant;
+          return {
+            ...tenantFields,
+            pixEnabled: Boolean(pixConfig?.enabled),
+          };
+        })()
+      : tenant;
 
     return {
       ...safeUser,
+      tenant: safeTenant,
       financePermission,
       financeHasManager: financeManagerCount > 0,
       financeCanBootstrap:

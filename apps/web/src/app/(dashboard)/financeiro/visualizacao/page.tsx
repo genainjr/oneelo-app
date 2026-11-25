@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Banknote, CalendarDays, CircleDollarSign, CreditCard, FileText, LoaderCircle, Share2, ShieldCheck, Tags, WalletCards } from "lucide-react";
+import { Banknote, CalendarDays, CircleDollarSign, CreditCard, FileText, LoaderCircle, Share2, ShieldCheck, Tags, UserRound, WalletCards } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
 import { getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
 import { ExportShareErrorBanner, ExportSharePreparedBanner } from "@/components/app/export-share-dialog";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
+import { ReceiptPreviewModal } from "@/components/app/financeiro/receipt-preview-modal";
 import { getMembroPrintName, type MembroOption } from "@/components/app/membro-search-combobox";
 import { PageHeader } from "@/components/app/page-header";
 import { Skeleton } from "@/components/app/skeleton";
@@ -18,9 +19,11 @@ import { useAuthUser } from "@/contexts/auth-user-context";
 import { api } from "@/lib/api";
 import {
   FinanceInstallmentBadge,
+  FinanceSourceBadge,
   FinanceStatusBadge,
   FinanceTypeBadge,
   FinanceiroTransactionFilterFields,
+  FinancialTransaction,
   FinancialTransactionFilterState,
   PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
@@ -51,12 +54,14 @@ export default function FinanceiroVisualizacaoPage() {
     description: "",
     type: "all",
     status: "all",
+    source: "all",
     eventoId: "",
     memberId: "",
     startDate: initialPeriod.startDate,
     endDate: initialPeriod.endDate,
   }), [initialPeriod.endDate, initialPeriod.startDate]);
   const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
+  const [receiptPreview, setReceiptPreview] = useState<FinancialTransaction | null>(null);
   const {
     summary,
     loadingPermission,
@@ -142,6 +147,7 @@ export default function FinanceiroVisualizacaoPage() {
       if (!matchTransactionSearch(transaction, appliedTransactionFilters.description)) return false;
       if (appliedTransactionFilters.status !== "all" && transaction.status !== appliedTransactionFilters.status) return false;
       if (appliedTransactionFilters.type !== "all" && transaction.type !== appliedTransactionFilters.type) return false;
+      if (appliedTransactionFilters.source !== "all" && (transaction.source ?? "TREASURY") !== appliedTransactionFilters.source) return false;
       if (appliedTransactionFilters.eventoId && transaction.eventoId !== appliedTransactionFilters.eventoId) return false;
       if (appliedTransactionFilters.memberId && transaction.memberId !== appliedTransactionFilters.memberId) return false;
       const transactionDate = transaction.date.slice(0, 10);
@@ -161,6 +167,9 @@ export default function FinanceiroVisualizacaoPage() {
     }
     if (appliedTransactionFilters.type && appliedTransactionFilters.type !== "all") {
       filter.type = appliedTransactionFilters.type;
+    }
+    if (appliedTransactionFilters.source && appliedTransactionFilters.source !== "all") {
+      filter.source = appliedTransactionFilters.source;
     }
     if (appliedTransactionFilters.eventoId) filter.eventoId = appliedTransactionFilters.eventoId;
     if (appliedTransactionFilters.memberId) filter.memberId = appliedTransactionFilters.memberId;
@@ -288,7 +297,19 @@ export default function FinanceiroVisualizacaoPage() {
         <StatCard compact title="Saldo" value={currencyFormatter.format(financialSummary.balance)} description={`Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`} icon={<WalletCards className="h-5 w-5" />} color="brand" loading={loadingData} />
         <StatCard compact title="Entradas" value={currencyFormatter.format(financialSummary.income)} description={`${financialSummary.transactions} confirmado(s) no extrato`} icon={<CircleDollarSign className="h-5 w-5" />} color="emerald" loading={loadingData} />
         <StatCard compact title="Saídas" value={currencyFormatter.format(financialSummary.expense)} description="Cancelados não entram no saldo" icon={<Banknote className="h-5 w-5" />} color="rose" loading={loadingData} />
-        <StatCard compact title="A Receber" value={currencyFormatter.format(financialSummary.pendingIncome)} description="Contas pendentes de entrada" icon={<CircleDollarSign className="h-5 w-5" />} color="amber" loading={loadingData} />
+        <StatCard
+          compact
+          title="A Receber"
+          value={currencyFormatter.format(financialSummary.pendingIncome)}
+          description={
+            financialSummary.pendingMemberCount > 0
+              ? `${financialSummary.pendingMemberCount} comprovante(s) de membros aguardando conferência`
+              : "Contas pendentes de entrada"
+          }
+          icon={<CircleDollarSign className="h-5 w-5" />}
+          color="amber"
+          loading={loadingData}
+        />
         <StatCard compact title="A Pagar" value={currencyFormatter.format(financialSummary.pendingExpense)} description={`${financialSummary.pendingCount} pendência(s) no período`} icon={<Banknote className="h-5 w-5" />} color="amber" loading={loadingData} />
       </div>
 
@@ -382,6 +403,7 @@ export default function FinanceiroVisualizacaoPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <FinanceStatusBadge status={item.status} />
                       <FinanceTypeBadge type={item.type} />
+                      <FinanceSourceBadge source={item.source} />
                       <FinanceInstallmentBadge installmentNumber={item.installmentNumber} totalInstallments={item.totalInstallments} />
                     </div>
                   </div>
@@ -420,11 +442,21 @@ export default function FinanceiroVisualizacaoPage() {
                         <span className="truncate">Evento: {item.evento.titulo}</span>
                       </span>
                     )}
-                    {item.receiptUrl && (
-                      <a href={item.receiptUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-accent-ink hover:text-accent-ink-hover">
+                    {item.payerName && (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <UserRound className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="truncate">Titular: {item.payerName}</span>
+                      </span>
+                    )}
+                    {item.hasReceipt && (
+                      <button
+                        type="button"
+                        onClick={() => setReceiptPreview(item)}
+                        className="flex min-w-0 items-center gap-1.5 text-left text-accent-ink hover:text-accent-ink-hover"
+                      >
                         <FileText className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">Comprovante: {item.receiptFileName || "Abrir"}</span>
-                      </a>
+                        <span className="truncate">Comprovante: {item.receiptFileName || "Visualizar"}</span>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -433,6 +465,15 @@ export default function FinanceiroVisualizacaoPage() {
           </div>
         )}
       </section>
+
+      <ReceiptPreviewModal
+        isOpen={Boolean(receiptPreview)}
+        endpoint={receiptPreview ? `/api/financeiro/transactions/${receiptPreview.id}/receipt-url` : null}
+        title="Comprovante do Lançamento"
+        fileName={receiptPreview?.receiptFileName}
+        mimeType={receiptPreview?.receiptMimeType}
+        onClose={() => setReceiptPreview(null)}
+      />
     </div>
   );
 }

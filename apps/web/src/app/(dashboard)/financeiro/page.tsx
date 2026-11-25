@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, FileText, Pencil, ShieldCheck, Tags, Trash2, WalletCards } from "lucide-react";
+import { AlertCircle, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, FileText, Pencil, Presentation, QrCode, ShieldCheck, Tags, Trash2, UserRound, WalletCards, XCircle } from "lucide-react";
 import { CollapseButton } from "@/components/app/collapse-button";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { DataTable, type Column } from "@/components/app/data-table";
@@ -10,18 +10,23 @@ import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
 import { getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
+import { PixConfigModal } from "@/components/app/financeiro/pix-config-modal";
+import { PixTelaoModal } from "@/components/app/financeiro/pix-telao-modal";
+import { ReceiptPreviewModal } from "@/components/app/financeiro/receipt-preview-modal";
 import { getMembroPrintName, type MembroOption } from "@/components/app/membro-search-combobox";
 import { PageHeader } from "@/components/app/page-header";
 import { PrimaryActionButton } from "@/components/app/primary-action-button";
 import { Skeleton } from "@/components/app/skeleton";
 import { StatCard } from "@/components/app/stat-card";
+import { useAuthUser } from "@/contexts/auth-user-context";
 import { useFilterState } from "@/hooks/use-filter-state";
 import { api } from "@/lib/api";
-import { AccountModal, CategoryModal, TransactionConfirmModal, TransactionModal, TransactionStatusModal, type TransactionBatchFormData, type TransactionConfirmFormData, type TransactionFormData } from "./financeiro-modals";
+import { AccountModal, CategoryModal, RejectContributionModal, TransactionConfirmModal, TransactionModal, TransactionStatusModal, type TransactionBatchFormData, type TransactionConfirmFormData, type TransactionFormData } from "./financeiro-modals";
 import {
   ACCOUNT_TYPE_LABELS,
   ActiveBadge,
   FinanceInstallmentBadge,
+  FinanceSourceBadge,
   FinanceStatusBadge,
   FinanceTypeBadge,
   FinanceiroTransactionFilterFields,
@@ -31,6 +36,7 @@ import {
   FinancialCategoryType,
   FinancialTransaction,
   FinancialTransactionFilterState,
+  FinancialTransactionSource,
   FinancialTransactionStatus,
   PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
@@ -49,6 +55,9 @@ type ModalState =
   | { type: "transaction"; item: FinancialTransaction | null }
   | { type: "transaction-status"; item: FinancialTransaction }
   | { type: "transaction-confirm"; item: FinancialTransaction }
+  | { type: "transaction-reject"; item: FinancialTransaction }
+  | { type: "pix-config" }
+  | { type: "pix-telao" }
   | null;
 
 type ConfirmState =
@@ -80,6 +89,7 @@ const initialTransactionFilters: TransactionFilterState = {
   description: "",
   type: "all",
   status: "all",
+  source: "all",
   eventoId: "",
   memberId: "",
   startDate: currentMonthFilters.startDate,
@@ -87,6 +97,7 @@ const initialTransactionFilters: TransactionFilterState = {
 };
 
 export default function FinanceiroPage() {
+  const { user: currentUser } = useAuthUser();
   const [appliedTransactionFilters, setAppliedTransactionFilters] = useState<TransactionFilterState>(initialTransactionFilters);
   const {
     summary,
@@ -104,6 +115,7 @@ export default function FinanceiroPage() {
   } = useFinanceiroData(appliedTransactionFilters);
 
   const [modal, setModal] = useState<ModalState>(null);
+  const [receiptPreview, setReceiptPreview] = useState<FinancialTransaction | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [formError, setFormError] = useState("");
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
@@ -135,6 +147,52 @@ export default function FinanceiroPage() {
     debounceMs: 350,
     onApply: setAppliedTransactionFilters,
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sourceParam = params.get("source");
+    const statusParam = params.get("status");
+    const validSource: FinancialTransactionSource | null =
+      sourceParam === "TREASURY" || sourceParam === "MEMBER_PORTAL" ? sourceParam : null;
+    const validStatus: FinancialTransactionStatus | null =
+      statusParam === "DRAFT" ||
+      statusParam === "PENDING" ||
+      statusParam === "CONFIRMED" ||
+      statusParam === "CANCELLED"
+        ? statusParam
+        : null;
+
+    if (!validSource && !validStatus) return;
+
+    const nextFilters: TransactionFilterState = {
+      ...initialTransactionFilters,
+      ...(validSource ? { source: validSource } : {}),
+      ...(validStatus ? { status: validStatus } : {}),
+      ...(validSource === "MEMBER_PORTAL" && validStatus === "PENDING"
+        ? { startDate: "", endDate: "" }
+        : {}),
+    };
+    setTransactionFilterState(nextFilters);
+    setAppliedTransactionFilters(nextFilters);
+  }, [setTransactionFilterState]);
+
+  function openPendingMemberQueue() {
+    const queueFilters: TransactionFilterState = {
+      ...initialTransactionFilters,
+      source: "MEMBER_PORTAL",
+      status: "PENDING",
+      type: "all",
+      startDate: "",
+      endDate: "",
+    };
+    setSelectedMembroFilter(null);
+    setMembroFilterSearch("");
+    setSelectedEventoFilter(null);
+    setEventoFilterSearch("");
+    setTransactionFilterState(queueFilters);
+    setAppliedTransactionFilters(queueFilters);
+  }
 
   useEffect(() => {
     if (!summary?.role) return;
@@ -189,6 +247,7 @@ export default function FinanceiroPage() {
       if (!matchTransactionSearch(transaction, appliedTransactionFilters.description)) return false;
       if (appliedTransactionFilters.status !== "all" && transaction.status !== appliedTransactionFilters.status) return false;
       if (appliedTransactionFilters.type !== "all" && transaction.type !== appliedTransactionFilters.type) return false;
+      if (appliedTransactionFilters.source !== "all" && (transaction.source ?? "TREASURY") !== appliedTransactionFilters.source) return false;
       if (appliedTransactionFilters.eventoId && transaction.eventoId !== appliedTransactionFilters.eventoId) return false;
       if (appliedTransactionFilters.memberId && transaction.memberId !== appliedTransactionFilters.memberId) return false;
       const transactionDate = transaction.date.slice(0, 10);
@@ -257,6 +316,11 @@ export default function FinanceiroPage() {
           <div className="flex flex-wrap items-center gap-2">
             <ActiveBadge active={item.active} />
             <FinanceTypeBadge type={item.type} />
+            {item.type === "INCOME" && item.visibleToMembers && (
+              <span className="inline-flex shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                Visível p/ membros
+              </span>
+            )}
           </div>
         </div>
       ),
@@ -312,7 +376,7 @@ export default function FinanceiroPage() {
     }
   }
 
-  async function saveCategory(data: { name: string; type: FinancialCategoryType; active: boolean }) {
+  async function saveCategory(data: { name: string; type: FinancialCategoryType; active: boolean; visibleToMembers: boolean }) {
     if (!data.name.trim()) {
       setFormError("Informe o nome da categoria.");
       return;
@@ -320,7 +384,12 @@ export default function FinanceiroPage() {
     setSaving(true);
     setFormError("");
     try {
-      const payload = { name: data.name.trim(), type: data.type, active: data.active };
+      const payload = {
+        name: data.name.trim(),
+        type: data.type,
+        active: data.active,
+        visibleToMembers: data.type === "INCOME" ? data.visibleToMembers : false,
+      };
       const editingCategory = modal?.type === "category" ? modal.item : null;
       if (editingCategory) await api.patch(`/api/financeiro/categories/${editingCategory.id}`, payload);
       else await api.post("/api/financeiro/categories", payload);
@@ -366,7 +435,7 @@ export default function FinanceiroPage() {
         const formData = new FormData();
         formData.append("file", receiptFile);
         await api.post(`/api/financeiro/transactions/${savedTransaction.id}/receipt`, formData);
-      } else if (removeReceipt && editingTransaction?.receiptUrl) {
+      } else if (removeReceipt && editingTransaction?.hasReceipt) {
         await api.delete(`/api/financeiro/transactions/${savedTransaction.id}/receipt`);
       }
       setModal(null);
@@ -459,12 +528,32 @@ export default function FinanceiroPage() {
         paidAt: new Date(`${data.paidAt}T12:00:00`).toISOString(),
         paymentMethod: data.paymentMethod || null,
         amount: Number(data.amount),
+        accountId: data.accountId || undefined,
+        categoryId: data.categoryId || undefined,
       });
       setModal(null);
       setFeedback({ type: "success", message: "Pagamento confirmado e saldo atualizado com sucesso." });
       await reloadData();
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Não foi possível confirmar o pagamento.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function rejectMemberContribution(rejectionReason: string) {
+    if (modal?.type !== "transaction-reject") return;
+    setSaving(true);
+    setFormError("");
+    try {
+      await api.patch(`/api/financeiro/transactions/${modal.item.id}/reject`, {
+        rejectionReason,
+      });
+      setModal(null);
+      setFeedback({ type: "success", message: "Comprovante recusado e membro notificado." });
+      await reloadData();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Não foi possível recusar o comprovante.");
     } finally {
       setSaving(false);
     }
@@ -538,10 +627,61 @@ export default function FinanceiroPage() {
         title="Financeiro"
         description={`Gerencie os lançamentos financeiros. Acesso atual: ${summary.role ? ROLE_LABELS[summary.role] : "Sem acesso"}.`}
         stackActionsOnMobile
-        action={canCreateTransaction ? (
-          <PrimaryActionButton label="Novo Lançamento" onClick={() => { setFormError(""); setModal({ type: "transaction", item: null }); }} />
-        ) : undefined}
+        action={(
+          <div className="flex flex-wrap items-center gap-2">
+            {summary.role && (
+              <button
+                type="button"
+                onClick={() => setModal({ type: "pix-telao" })}
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50"
+              >
+                <Presentation className="h-4 w-4 text-accent-ink" />
+                <span>Telão PIX</span>
+              </button>
+            )}
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => setModal({ type: "pix-config" })}
+                className="inline-flex items-center gap-2 rounded-xl border border-accent-soft-border bg-accent-soft px-3.5 py-2 text-sm font-semibold text-accent-ink shadow-2xs transition hover:bg-accent-soft-hover"
+              >
+                <QrCode className="h-4 w-4" />
+                <span>Configurar PIX</span>
+              </button>
+            )}
+            {canCreateTransaction && (
+              <PrimaryActionButton label="Novo Lançamento" onClick={() => { setFormError(""); setModal({ type: "transaction", item: null }); }} />
+            )}
+          </div>
+        )}
       />
+
+      {financialSummary.pendingMemberCount > 0 && (
+        <button
+          type="button"
+          onClick={openPendingMemberQueue}
+          className="flex w-full flex-col items-start justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50 sm:flex-row sm:items-center"
+        >
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
+              <AlertCircle className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-indigo-950">
+                {financialSummary.pendingMemberCount === 1
+                  ? "1 comprovante de membro aguardando conferência"
+                  : `${financialSummary.pendingMemberCount} comprovantes de membros aguardando conferência`}
+              </p>
+              <p className="text-xs text-indigo-700">
+                Total em análise: {currencyFormatter.format(financialSummary.pendingMemberAmount)} · Clique para abrir a fila completa de conciliação.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex shrink-0 items-center rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs">
+            Conferir fila
+          </span>
+        </button>
+      )}
 
       {dataError && (
         <div className="flex items-center justify-between rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
@@ -577,7 +717,11 @@ export default function FinanceiroPage() {
         <StatCard
           title="A receber (Pendente)"
           value={currencyFormatter.format(financialSummary.pendingIncome)}
-          description="Entradas aguardando recebimento no período"
+          description={
+            financialSummary.pendingMemberCount > 0
+              ? `${financialSummary.pendingMemberCount} comprovante(s) de membros (${currencyFormatter.format(financialSummary.pendingMemberAmount)})`
+              : "Entradas aguardando recebimento no período"
+          }
           icon={<CircleDollarSign className="h-5 w-5" />}
           color="emerald"
           loading={loadingData}
@@ -672,6 +816,7 @@ export default function FinanceiroPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <FinanceStatusBadge status={item.status} />
                       <FinanceTypeBadge type={item.type} />
+                      <FinanceSourceBadge source={item.source} />
                       <FinanceInstallmentBadge installmentNumber={item.installmentNumber} totalInstallments={item.totalInstallments} />
                     </div>
                   </div>
@@ -710,13 +855,28 @@ export default function FinanceiroPage() {
                         <span className="truncate">Evento: {item.evento.titulo}</span>
                       </span>
                     )}
-                    {item.receiptUrl && (
-                      <a href={item.receiptUrl} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-accent-ink hover:text-accent-ink-hover">
+                    {item.payerName && (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <UserRound className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <span className="truncate">Titular: {item.payerName}</span>
+                      </span>
+                    )}
+                    {item.hasReceipt && (
+                      <button
+                        type="button"
+                        onClick={() => setReceiptPreview(item)}
+                        className="flex min-w-0 items-center gap-1.5 text-left text-accent-ink hover:text-accent-ink-hover"
+                      >
                         <FileText className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">Comprovante: {item.receiptFileName || "Abrir"}</span>
-                      </a>
+                        <span className="truncate">Comprovante: {item.receiptFileName || "Visualizar"}</span>
+                      </button>
                     )}
                   </div>
+                  {item.rejectionReason && (
+                    <p className="rounded-xl border border-rose-100 bg-rose-50/70 px-3 py-2 text-xs text-rose-700">
+                      <strong>Motivo da recusa:</strong> {item.rejectionReason}
+                    </p>
+                  )}
                 </div>
                 <div className="flex w-full justify-end sm:w-auto md:self-start">
                   <div className="flex flex-wrap items-center justify-end gap-2">
@@ -731,7 +891,18 @@ export default function FinanceiroPage() {
                         Dar Baixa
                       </button>
                     )}
-                    {canCancelTransaction && item.status !== "CANCELLED" && (
+                    {canCancelTransaction && item.source === "MEMBER_PORTAL" && item.status === "PENDING" && (
+                      <button
+                        type="button"
+                        onClick={() => { setFormError(""); setModal({ type: "transaction-reject", item }); }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition-all hover:bg-rose-100"
+                        title="Recusar comprovante com motivo"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Recusar
+                      </button>
+                    )}
+                    {canCancelTransaction && item.status !== "CANCELLED" && !(item.source === "MEMBER_PORTAL" && item.status === "PENDING") && (
                       <button
                         type="button"
                         onClick={() => { setFormError(""); setModal({ type: "transaction-status", item }); }}
@@ -756,7 +927,7 @@ export default function FinanceiroPage() {
                         <Pencil className="h-4 w-4 text-blue-600" />
                       </button>
                     )}
-                    {canCancelTransaction && item.status !== "CANCELLED" && (
+                    {canCancelTransaction && item.status !== "CANCELLED" && !(item.source === "MEMBER_PORTAL" && item.status === "PENDING") && (
                       <button
                         type="button"
                         onClick={() => setConfirm({ type: "transaction", item })}
@@ -854,15 +1025,53 @@ export default function FinanceiroPage() {
         onClose={() => setModal(null)}
         onSubmit={saveTransaction}
         onSubmitBatch={saveTransactionBatch}
+        onOpenReceipt={(tx) => setReceiptPreview(tx)}
       />
       <TransactionStatusModal isOpen={modal?.type === "transaction-status"} transaction={modal?.type === "transaction-status" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveTransactionStatus} />
       <TransactionConfirmModal
         isOpen={modal?.type === "transaction-confirm"}
         transaction={modal?.type === "transaction-confirm" ? modal.item : null}
+        accounts={accounts}
+        categories={categories}
         loading={saving}
         error={formError}
         onClose={() => setModal(null)}
         onSubmit={confirmTransactionSettlement}
+        onOpenReceipt={(tx) => setReceiptPreview(tx)}
+      />
+      <RejectContributionModal
+        isOpen={modal?.type === "transaction-reject"}
+        transaction={modal?.type === "transaction-reject" ? modal.item : null}
+        loading={saving}
+        error={formError}
+        onClose={() => setModal(null)}
+        onSubmit={rejectMemberContribution}
+        onOpenReceipt={(tx) => setReceiptPreview(tx)}
+      />
+      <PixConfigModal
+        isOpen={modal?.type === "pix-config"}
+        accounts={accounts}
+        onClose={() => setModal(null)}
+        onSaved={async () => {
+          setModal(null);
+          setFeedback({ type: "success", message: "Configuração PIX salva com sucesso." });
+          await reloadData();
+        }}
+      />
+      <PixTelaoModal
+        isOpen={modal?.type === "pix-telao"}
+        churchName={currentUser?.tenant?.nome || "Igreja"}
+        churchLogoUrl={currentUser?.tenant?.logoUrl}
+        churchSlug={currentUser?.tenant?.slug}
+        onClose={() => setModal(null)}
+      />
+      <ReceiptPreviewModal
+        isOpen={Boolean(receiptPreview)}
+        endpoint={receiptPreview ? `/api/financeiro/transactions/${receiptPreview.id}/receipt-url` : null}
+        title="Comprovante do Lançamento"
+        fileName={receiptPreview?.receiptFileName}
+        mimeType={receiptPreview?.receiptMimeType}
+        onClose={() => setReceiptPreview(null)}
       />
       <ConfirmDialog
         isOpen={!!confirm}

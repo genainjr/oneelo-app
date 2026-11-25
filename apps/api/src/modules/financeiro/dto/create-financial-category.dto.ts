@@ -15,4 +15,12 @@ export class CreateFinancialCategoryDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
+
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Indica se a categoria de entrada aparece para membros em Dízimos e Ofertas.',
+  })
+  @IsBoolean()
+  @IsOptional()
+  visibleToMembers?: boolean;
 }

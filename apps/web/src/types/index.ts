@@ -76,6 +76,7 @@ export interface AuthUser {
     pwaUpdatedAt?: string | null;
     themePalette?: string | null;
     primaryColor?: string | null;
+    pixEnabled?: boolean;
   };
   membro?: {
     id: string;

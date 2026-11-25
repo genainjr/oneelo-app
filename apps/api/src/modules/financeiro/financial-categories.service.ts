@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { FinancialCategoryType } from '@prisma/client';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { FinanceAuthorizationService } from './finance-authorization.service';
@@ -25,12 +31,20 @@ export class FinancialCategoriesService {
     await this.financeAuthorization.ensureFinanceManager(tenantId, actor);
     await this.ensureNameAvailable(tenantId, dto.type, dto.name);
 
+    if (dto.visibleToMembers && dto.type !== FinancialCategoryType.INCOME) {
+      throw new BadRequestException(
+        'Apenas categorias de entrada podem ficar visíveis para membros.',
+      );
+    }
+
     return this.prisma.financialCategory.create({
       data: {
         tenantId,
         name: dto.name.trim(),
         type: dto.type,
         active: dto.active ?? true,
+        visibleToMembers:
+          dto.type === FinancialCategoryType.INCOME ? (dto.visibleToMembers ?? false) : false,
       },
     });
   }
@@ -46,9 +60,22 @@ export class FinancialCategoriesService {
     const nextType = dto.type ?? current.type;
     const nextName = dto.name ?? current.name;
 
+    if (nextType !== FinancialCategoryType.INCOME && dto.visibleToMembers === true) {
+      throw new BadRequestException(
+        'Apenas categorias de entrada podem ficar visíveis para membros.',
+      );
+    }
+
     if (dto.name !== undefined || dto.type !== undefined) {
       await this.ensureNameAvailable(tenantId, nextType, nextName, id);
     }
+
+    const visibleToMembersUpdate =
+      nextType !== FinancialCategoryType.INCOME
+        ? { visibleToMembers: false }
+        : dto.visibleToMembers !== undefined
+          ? { visibleToMembers: dto.visibleToMembers }
+          : {};
 
     return this.prisma.financialCategory.update({
       where: { id },
@@ -56,6 +83,7 @@ export class FinancialCategoriesService {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.type !== undefined ? { type: dto.type } : {}),
         ...(dto.active !== undefined ? { active: dto.active } : {}),
+        ...visibleToMembersUpdate,
       },
     });
   }

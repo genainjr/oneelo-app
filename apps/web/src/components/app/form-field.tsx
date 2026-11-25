@@ -12,6 +12,7 @@ interface FieldWrapperProps {
   label: string;
   required?: boolean;
   optionalLabel?: string;
+  helperText?: string;
   error?: string | null;
   hideLabel?: boolean;
   children: React.ReactNode;
@@ -22,6 +23,7 @@ function FieldWrapper({
   label,
   required = false,
   optionalLabel,
+  helperText,
   error,
   hideLabel = false,
   children,
@@ -44,6 +46,7 @@ function FieldWrapper({
         )}
       </label>
       {children}
+      {helperText && !error && <p className="text-xs text-gray-500">{helperText}</p>}
       {error && <p className="text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
@@ -53,6 +56,7 @@ type InputFieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string | null;
   optionalLabel?: string;
+  helperText?: string;
   hideLabel?: boolean;
 };
 
@@ -60,6 +64,7 @@ export function InputField({
   label,
   error,
   optionalLabel,
+  helperText,
   hideLabel,
   className,
   required,
@@ -67,7 +72,7 @@ export function InputField({
   ...props
 }: InputFieldProps) {
   return (
-    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error} hideLabel={hideLabel}>
+    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} helperText={helperText} error={error} hideLabel={hideLabel}>
       <input
         id={id}
         required={required}
@@ -82,6 +87,7 @@ type SelectFieldProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
   error?: string | null;
   optionalLabel?: string;
+  helperText?: string;
   hideLabel?: boolean;
   children: React.ReactNode;
 };
@@ -90,6 +96,7 @@ export function SelectField({
   label,
   error,
   optionalLabel,
+  helperText,
   hideLabel,
   className,
   required,
@@ -98,7 +105,7 @@ export function SelectField({
   ...props
 }: SelectFieldProps) {
   return (
-    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error} hideLabel={hideLabel}>
+    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} helperText={helperText} error={error} hideLabel={hideLabel}>
       <select
         id={id}
         required={required}
@@ -143,6 +150,7 @@ type TextareaFieldProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
   error?: string | null;
   optionalLabel?: string;
+  helperText?: string;
   hideLabel?: boolean;
 };
 
@@ -150,6 +158,7 @@ export function TextareaField({
   label,
   error,
   optionalLabel,
+  helperText,
   hideLabel,
   className,
   required,
@@ -157,7 +166,7 @@ export function TextareaField({
   ...props
 }: TextareaFieldProps) {
   return (
-    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} error={error} hideLabel={hideLabel}>
+    <FieldWrapper id={id} label={label} required={required} optionalLabel={optionalLabel} helperText={helperText} error={error} hideLabel={hideLabel}>
       <textarea
         id={id}
         required={required}

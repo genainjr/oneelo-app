@@ -1,7 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
 import type { Multer } from 'multer';
-import { createPwaIconVariants } from './image-upload';
+import {
+  createPwaIconVariants,
+  MAX_FINANCIAL_RECEIPT_SIZE,
+  validateFinancialReceiptUpload,
+} from './image-upload';
 
 async function imageFile(width: number, height: number): Promise<Multer.File> {
   const buffer = await sharp({
@@ -67,5 +71,59 @@ describe('createPwaIconVariants', () => {
   it('rejeita imagem que nao seja quadrada', async () => {
     await expect(createPwaIconVariants('tenant-1', await imageFile(600, 512), 'v1'))
       .rejects.toThrow('O icone deve ser uma imagem quadrada.');
+  });
+});
+
+describe('validateFinancialReceiptUpload', () => {
+  const makeReceipt = (mimetype: string, buffer: Buffer, size = buffer.length): Multer.File =>
+    ({
+      fieldname: 'file',
+      originalname: 'comprovante',
+      encoding: '7bit',
+      mimetype,
+      size,
+      buffer,
+    }) as Multer.File;
+
+  it('aceita PDF, JPEG, PNG e WEBP com assinatura válida', () => {
+    expect(() =>
+      validateFinancialReceiptUpload(makeReceipt('application/pdf', Buffer.from('%PDF-1.7\n...'))),
+    ).not.toThrow();
+    expect(() =>
+      validateFinancialReceiptUpload(makeReceipt('image/jpeg', Buffer.from([0xff, 0xd8, 0xff, 0xe0]))),
+    ).not.toThrow();
+    expect(() =>
+      validateFinancialReceiptUpload(
+        makeReceipt('image/png', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00])),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateFinancialReceiptUpload(
+        makeReceipt('image/webp', Buffer.from('RIFF\x24\x00\x00\x00WEBP', 'latin1')),
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejeita arquivo disfarçado com MIME válido mas conteúdo inválido (magic bytes)', () => {
+    expect(() =>
+      validateFinancialReceiptUpload(
+        makeReceipt('image/png', Buffer.from('<html><script>alert(1)</script></html>')),
+      ),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      validateFinancialReceiptUpload(makeReceipt('application/pdf', Buffer.from('NOT-A-PDF'))),
+    ).toThrow(BadRequestException);
+  });
+
+  it('rejeita arquivo ausente, MIME não permitido ou acima de 10 MB', () => {
+    expect(() => validateFinancialReceiptUpload(undefined)).toThrow(BadRequestException);
+    expect(() =>
+      validateFinancialReceiptUpload(makeReceipt('image/svg+xml', Buffer.from('<svg></svg>'))),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      validateFinancialReceiptUpload(
+        makeReceipt('application/pdf', Buffer.from('%PDF-1.7'), MAX_FINANCIAL_RECEIPT_SIZE + 1),
+      ),
+    ).toThrow(BadRequestException);
   });
 });

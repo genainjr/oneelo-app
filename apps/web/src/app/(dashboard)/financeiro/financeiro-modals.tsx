@@ -49,6 +49,7 @@ type CategoryFormData = {
   name: string;
   type: FinancialCategoryType;
   active: boolean;
+  visibleToMembers: boolean;
 };
 
 export type TransactionFormData = {
@@ -200,11 +201,25 @@ export function CategoryModal({
   onClose: () => void;
   onSubmit: (data: CategoryFormData) => void | Promise<void>;
 }) {
-  const [form, setForm] = useState<CategoryFormData>({ name: "", type: "INCOME", active: true });
+  const [form, setForm] = useState<CategoryFormData>({
+    name: "",
+    type: "INCOME",
+    active: true,
+    visibleToMembers: false,
+  });
 
   useEffect(() => {
     if (!isOpen) return;
-    setForm(category ? { name: category.name, type: category.type, active: category.active } : { name: "", type: "INCOME", active: true });
+    setForm(
+      category
+        ? {
+            name: category.name,
+            type: category.type,
+            active: category.active,
+            visibleToMembers: Boolean(category.visibleToMembers && category.type === "INCOME"),
+          }
+        : { name: "", type: "INCOME", active: true, visibleToMembers: false },
+    );
   }, [category, isOpen]);
 
   return (
@@ -226,11 +241,34 @@ export function CategoryModal({
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
             placeholder="Ex: Dízimos"
           />
-          <SelectField id="finance-category-type" label="Tipo" value={form.type} onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as FinancialCategoryType }))}>
+          <SelectField
+            id="finance-category-type"
+            label="Tipo"
+            value={form.type}
+            onChange={(event) => {
+              const nextType = event.target.value as FinancialCategoryType;
+              setForm((current) => ({
+                ...current,
+                type: nextType,
+                visibleToMembers: nextType === "INCOME" ? current.visibleToMembers : false,
+              }));
+            }}
+          >
             {Object.entries(CATEGORY_TYPE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </SelectField>
+          {form.type === "INCOME" && (
+            <CheckboxField
+              id="finance-category-visible-members"
+              label="Visível para membros (Dízimos e Ofertas)"
+              helperText="Permite que membros selecionem esta categoria ao enviar comprovante PIX."
+              checked={form.visibleToMembers}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, visibleToMembers: event.target.checked }))
+              }
+            />
+          )}
         </div>
       </form>
     </ModalShell>
@@ -248,6 +286,7 @@ export function TransactionModal({
   onClose,
   onSubmit,
   onSubmitBatch,
+  onOpenReceipt,
 }: {
   isOpen: boolean;
   transaction?: FinancialTransaction | null;
@@ -259,7 +298,9 @@ export function TransactionModal({
   onClose: () => void;
   onSubmit: (data: TransactionFormData) => void | Promise<void>;
   onSubmitBatch?: (data: TransactionBatchFormData) => void | Promise<void>;
+  onOpenReceipt?: (transaction: FinancialTransaction) => void;
 }) {
+  const isMemberPortalTransaction = transaction?.source === "MEMBER_PORTAL";
   const [form, setForm] = useState<TransactionFormData>(emptyTransactionForm);
   const [createMode, setCreateMode] = useState<"single" | "batch">("single");
   const [frequency, setFrequency] = useState<FinancialRecurrenceFrequency>("MONTHLY");
@@ -481,6 +522,7 @@ export function TransactionModal({
               id="finance-type"
               label="Tipo"
               required
+              disabled={isMemberPortalTransaction}
               value={form.type}
               onChange={(event) => {
                 const type = event.target.value as FinancialTransactionType;
@@ -514,6 +556,12 @@ export function TransactionModal({
               <SelectField
                 id="finance-status"
                 label="Status"
+                disabled={isMemberPortalTransaction}
+                helperText={
+                  isMemberPortalTransaction
+                    ? "Use Dar Baixa ou Recusar para concluir contribuições do membro."
+                    : undefined
+                }
                 value={form.status}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -607,33 +655,48 @@ export function TransactionModal({
           />
           <div className="grid grid-cols-1 gap-4">
             {form.type === "INCOME" ? (
-              <MembroSearchCombobox
-                label="Membro"
-                optionalLabel="opcional"
-                placeholder="Buscar membro pelo nome..."
-                loading={membrosLoading}
-                options={membros}
-                selected={selectedMembro}
-                search={membroSearch}
-                emptyMessage="Nenhum membro encontrado."
-                selectedPrefix="Selecionado"
-                onSearchChange={(value) => {
-                  setMembroSearch(value);
-                  setSelectedMembro(null);
-                  setForm((current) => ({ ...current, memberId: "", counterpartyName: value }));
-                }}
-                onSelect={(membro) => {
-                  const membroPrintName = getMembroPrintName(membro);
-                  setSelectedMembro(membro);
-                  setMembroSearch(membroPrintName);
-                  setForm((current) => ({ ...current, memberId: membro.id, counterpartyName: membroPrintName }));
-                }}
-                onClear={() => {
-                  setSelectedMembro(null);
-                  setMembroSearch("");
-                  setForm((current) => ({ ...current, memberId: "", counterpartyName: "" }));
-                }}
-              />
+              isMemberPortalTransaction ? (
+                <InputField
+                  id="finance-member-readonly"
+                  label="Membro vinculado"
+                  value={transaction?.member?.nome || form.counterpartyName || "Membro"}
+                  disabled
+                  helperText={
+                    transaction?.payerName
+                      ? `Titular informado no comprovante: ${transaction.payerName}`
+                      : "O vínculo do membro em contribuições do portal não pode ser alterado."
+                  }
+                  onChange={() => {}}
+                />
+              ) : (
+                <MembroSearchCombobox
+                  label="Membro"
+                  optionalLabel="opcional"
+                  placeholder="Buscar membro pelo nome..."
+                  loading={membrosLoading}
+                  options={membros}
+                  selected={selectedMembro}
+                  search={membroSearch}
+                  emptyMessage="Nenhum membro encontrado."
+                  selectedPrefix="Selecionado"
+                  onSearchChange={(value) => {
+                    setMembroSearch(value);
+                    setSelectedMembro(null);
+                    setForm((current) => ({ ...current, memberId: "", counterpartyName: value }));
+                  }}
+                  onSelect={(membro) => {
+                    const membroPrintName = getMembroPrintName(membro);
+                    setSelectedMembro(membro);
+                    setMembroSearch(membroPrintName);
+                    setForm((current) => ({ ...current, memberId: membro.id, counterpartyName: membroPrintName }));
+                  }}
+                  onClear={() => {
+                    setSelectedMembro(null);
+                    setMembroSearch("");
+                    setForm((current) => ({ ...current, memberId: "", counterpartyName: "" }));
+                  }}
+                />
+              )
             ) : (
               <InputField id="finance-counterparty" label="Fornecedor" value={form.counterpartyName} onChange={(event) => setForm((current) => ({ ...current, counterpartyName: event.target.value, memberId: "" }))} />
             )}
@@ -826,22 +889,28 @@ export function TransactionModal({
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {transaction?.receiptUrl && !form.removeReceipt && !form.receiptFile && (
-                    <a href={transaction.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                  {transaction?.hasReceipt && !form.removeReceipt && !form.receiptFile && onOpenReceipt && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenReceipt(transaction)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    >
                       <FileText className="h-4 w-4" />
-                      Abrir
-                    </a>
+                      Visualizar
+                    </button>
                   )}
-                  <button type="button" onClick={() => receiptInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover">
-                    <Upload className="h-4 w-4" />
-                    {form.receiptFile || transaction?.receiptUrl ? "Trocar" : "Inserir"}
-                  </button>
-                  {(form.receiptFile || transaction?.receiptUrl) && (
+                  {!isMemberPortalTransaction && (
+                    <button type="button" onClick={() => receiptInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-brand-foreground hover:bg-brand-hover">
+                      <Upload className="h-4 w-4" />
+                      {form.receiptFile || transaction?.hasReceipt ? "Trocar" : "Inserir"}
+                    </button>
+                  )}
+                  {!isMemberPortalTransaction && (form.receiptFile || transaction?.hasReceipt) && (
                     <button
                       type="button"
                       onClick={() => {
                         if (receiptInputRef.current) receiptInputRef.current.value = "";
-                        setForm((current) => ({ ...current, receiptFile: null, removeReceipt: !!transaction?.receiptUrl }));
+                        setForm((current) => ({ ...current, receiptFile: null, removeReceipt: !!transaction?.hasReceipt }));
                       }}
                       className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
                     >
@@ -906,27 +975,37 @@ export type TransactionConfirmFormData = {
   paidAt: string;
   paymentMethod: "" | FinancialPaymentMethod;
   amount: string;
+  accountId: string;
+  categoryId: string;
 };
 
 export function TransactionConfirmModal({
   isOpen,
   transaction,
+  accounts,
+  categories,
   loading,
   error,
   onClose,
   onSubmit,
+  onOpenReceipt,
 }: {
   isOpen: boolean;
   transaction: FinancialTransaction | null;
+  accounts: FinancialAccount[];
+  categories: FinancialCategory[];
   loading: boolean;
   error?: string;
   onClose: () => void;
   onSubmit: (data: TransactionConfirmFormData) => void | Promise<void>;
+  onOpenReceipt?: (transaction: FinancialTransaction) => void;
 }) {
   const [form, setForm] = useState<TransactionConfirmFormData>({
     paidAt: todayInputValue(),
     paymentMethod: "",
     amount: "",
+    accountId: "",
+    categoryId: "",
   });
 
   useEffect(() => {
@@ -935,8 +1014,27 @@ export function TransactionConfirmModal({
       paidAt: todayInputValue(),
       paymentMethod: transaction.paymentMethod ?? "",
       amount: String(transaction.amount),
+      accountId: transaction.account.id,
+      categoryId: transaction.category.id,
     });
   }, [isOpen, transaction]);
+
+  const accountOptions = useMemo(() => {
+    const active = accounts.filter((acc) => acc.active);
+    if (transaction && !active.some((acc) => acc.id === transaction.account.id)) {
+      return [{ id: transaction.account.id, name: `${transaction.account.name} (inativa)` }, ...active];
+    }
+    return active;
+  }, [accounts, transaction]);
+
+  const categoryOptions = useMemo(() => {
+    if (!transaction) return [];
+    const matching = categories.filter((cat) => cat.active && cat.type === transaction.type);
+    if (!matching.some((cat) => cat.id === transaction.category.id)) {
+      return [{ id: transaction.category.id, name: `${transaction.category.name} (inativa)` }, ...matching];
+    }
+    return matching;
+  }, [categories, transaction]);
 
   const titleLabel = transaction ? getTransactionDisplayTitle(transaction) : "";
   const installmentLabel =
@@ -950,7 +1048,7 @@ export function TransactionConfirmModal({
       title="Confirmar pagamento / Dar baixa"
       description={transaction ? `${titleLabel}${installmentLabel}` : undefined}
       onClose={onClose}
-      size="sm"
+      size="md"
       bodyClassName="[overflow-anchor:none]"
       footer={
         <ModalFooter
@@ -970,16 +1068,84 @@ export function TransactionConfirmModal({
       >
         <ModalError message={error} />
         <div className="space-y-4 p-6">
-          <InputField
-            id="finance-confirm-paid-at"
-            label="Data de liquidação"
-            required
-            type="date"
-            value={form.paidAt}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, paidAt: event.target.value }))
-            }
-          />
+          {transaction?.source === "MEMBER_PORTAL" && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 text-xs text-indigo-900">
+              <div className="space-y-0.5">
+                <p className="font-bold">Comprovante enviado via Portal do Membro</p>
+                {transaction.member?.nome && <p>Membro: {transaction.member.nome}</p>}
+                {transaction.payerName && <p>Titular no comprovante: {transaction.payerName}</p>}
+              </div>
+              {transaction.hasReceipt && onOpenReceipt && (
+                <button
+                  type="button"
+                  onClick={() => onOpenReceipt(transaction)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Ver comprovante
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <InputField
+              id="finance-confirm-paid-at"
+              label="Data de liquidação"
+              required
+              type="date"
+              value={form.paidAt}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, paidAt: event.target.value }))
+              }
+            />
+            <InputField
+              id="finance-confirm-amount"
+              label="Valor liquidado"
+              required
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.amount}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, amount: event.target.value }))
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField
+              id="finance-confirm-account"
+              label="Conta financeira"
+              required
+              value={form.accountId}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, accountId: event.target.value }))
+              }
+            >
+              {accountOptions.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
+              id="finance-confirm-category"
+              label="Categoria"
+              required
+              value={form.categoryId}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, categoryId: event.target.value }))
+              }
+            >
+              {categoryOptions.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+
           <SelectField
             id="finance-confirm-payment-method"
             label="Forma de pagamento"
@@ -996,18 +1162,110 @@ export function TransactionConfirmModal({
               <option key={value} value={value}>{label}</option>
             ))}
           </SelectField>
-          <InputField
-            id="finance-confirm-amount"
-            label="Valor liquidado"
-            required
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={form.amount}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, amount: event.target.value }))
-            }
-          />
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+export function RejectContributionModal({
+  isOpen,
+  transaction,
+  loading,
+  error,
+  onClose,
+  onSubmit,
+  onOpenReceipt,
+}: {
+  isOpen: boolean;
+  transaction: FinancialTransaction | null;
+  loading: boolean;
+  error?: string;
+  onClose: () => void;
+  onSubmit: (rejectionReason: string) => void | Promise<void>;
+  onOpenReceipt?: (transaction: FinancialTransaction) => void;
+}) {
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setReason("");
+  }, [isOpen, transaction?.id]);
+
+  return (
+    <ModalShell
+      isOpen={isOpen}
+      title="Recusar comprovante"
+      description={
+        transaction
+          ? `${transaction.member?.nome || getTransactionDisplayTitle(transaction)} · ${currencyFormatter.format(transaction.amount)}`
+          : undefined
+      }
+      onClose={onClose}
+      size="md"
+      bodyClassName="[overflow-anchor:none]"
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          loading={loading}
+          disabled={reason.trim().length < 5}
+          primaryLabel="Recusar comprovante"
+          form="finance-reject-contribution-form"
+        />
+      }
+    >
+      <form
+        id="finance-reject-contribution-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void onSubmit(reason.trim());
+        }}
+      >
+        <ModalError message={error} />
+        <div className="space-y-4 p-6">
+          {transaction?.hasReceipt && onOpenReceipt && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 truncate">
+                  {transaction.receiptFileName || "Comprovante anexado"}
+                </p>
+                {transaction.payerName && (
+                  <p className="text-gray-500">Titular informado: {transaction.payerName}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenReceipt(transaction)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 font-semibold text-gray-700 transition hover:bg-gray-100"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Ver comprovante
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="finance-rejection-reason"
+              className="block text-xs font-bold uppercase tracking-wider text-gray-600"
+            >
+              Motivo da recusa <span className="text-rose-600">*</span>
+            </label>
+            <textarea
+              id="finance-rejection-reason"
+              rows={4}
+              required
+              minLength={5}
+              maxLength={500}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Ex: Imagem ilegível, valor divergente do extrato bancário ou comprovante duplicado."
+              className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-accent-ring focus:outline-none focus:ring-2 focus:ring-accent-soft-border"
+            />
+            <p className="text-xs text-gray-500">
+              O membro será notificado com este motivo e poderá enviar um novo comprovante ({reason.trim().length}/500).
+            </p>
+          </div>
         </div>
       </form>
     </ModalShell>
