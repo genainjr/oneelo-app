@@ -527,6 +527,124 @@ describe('AuthService available members & member unlinking', () => {
       ),
     ).rejects.toBeInstanceOf(ConflictException);
   });
+
+  it('filtra membro excluido e retorna hasPassword e hasAuthProvider sem expor senhaHash em findAllUsers', async () => {
+    const createdAt = new Date('2026-11-16T19:05:06.303Z');
+    const prisma = {
+      user: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'user-ativo',
+            nome: 'Ana Ativa',
+            email: 'ana@example.com',
+            telefoneLogin: null,
+            role: Role.ADMIN,
+            ativo: true,
+            status: UserStatus.ACTIVE,
+            senhaHash: 'hash-secreto',
+            activationExpiresAt: null,
+            activationCreatedAt: null,
+            activatedAt: createdAt,
+            onboardingCompletedAt: createdAt,
+            memberId: 'membro-ativo',
+            createdAt,
+            membro: { id: 'membro-ativo', nome: 'Ana Ativa' },
+            authProviders: [],
+            financePermissions: [{ role: 'FINANCE_MANAGER' }],
+          },
+          {
+            id: 'user-legado-excluido',
+            nome: 'Fabiana Rodrigues',
+            email: 'fab@example.com',
+            telefoneLogin: null,
+            role: Role.BASIC,
+            ativo: false,
+            status: UserStatus.DISABLED,
+            senhaHash: null,
+            activationExpiresAt: null,
+            activationCreatedAt: null,
+            activatedAt: null,
+            onboardingCompletedAt: null,
+            memberId: 'membro-excluido',
+            createdAt,
+            membro: null,
+            authProviders: [],
+            financePermissions: [],
+          },
+          {
+            id: 'user-oauth',
+            nome: 'Carlos OAuth',
+            email: 'carlos@example.com',
+            telefoneLogin: null,
+            role: Role.BASIC,
+            ativo: true,
+            status: UserStatus.ACTIVE,
+            senhaHash: null,
+            activationExpiresAt: null,
+            activationCreatedAt: null,
+            activatedAt: createdAt,
+            onboardingCompletedAt: null,
+            memberId: null,
+            createdAt,
+            membro: null,
+            authProviders: [{ id: 'provider-1' }],
+            financePermissions: [],
+          },
+        ]),
+      },
+    };
+    const service = createService(prisma);
+
+    const result = await service.findAllUsers('tenant-1');
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1' },
+      select: expect.objectContaining({
+        senhaHash: true,
+        membro: {
+          where: { deletedAt: null },
+          select: { id: true, nome: true },
+        },
+        authProviders: {
+          where: { ativo: true },
+          select: { id: true },
+          take: 1,
+        },
+      }),
+      orderBy: { nome: 'asc' },
+    });
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'user-ativo',
+        memberId: 'membro-ativo',
+        membro: { id: 'membro-ativo', nome: 'Ana Ativa' },
+        financePermission: 'FINANCE_MANAGER',
+        hasPassword: true,
+        hasAuthProvider: false,
+      }),
+      expect.objectContaining({
+        id: 'user-legado-excluido',
+        memberId: null,
+        membro: null,
+        financePermission: null,
+        hasPassword: false,
+        hasAuthProvider: false,
+      }),
+      expect.objectContaining({
+        id: 'user-oauth',
+        memberId: null,
+        membro: null,
+        financePermission: null,
+        hasPassword: false,
+        hasAuthProvider: true,
+      }),
+    ]);
+    for (const item of result) {
+      expect(item).not.toHaveProperty('senhaHash');
+      expect(item).not.toHaveProperty('authProviders');
+      expect(item).not.toHaveProperty('financePermissions');
+    }
+  });
 });
 
 describe('AuthService regeneratePendingActivationInTx & regenerateActivationLink', () => {
