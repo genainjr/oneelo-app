@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, FileText, Pencil, Presentation, QrCode, ShieldCheck, Tags, Trash2, UserRound, WalletCards, XCircle } from "lucide-react";
-import { CollapseButton } from "@/components/app/collapse-button";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { DataTable, type Column } from "@/components/app/data-table";
 import { EmptyState } from "@/components/app/empty-state";
 import { EntityCard } from "@/components/app/entity-card";
 import { getEventoDisplayName, type EventoOption } from "@/components/app/evento-search-combobox";
 import { FilterActions, FilterShell } from "@/components/app/filter-shell";
-import { PixConfigModal } from "@/components/app/financeiro/pix-config-modal";
+import { PixConfigPanel } from "@/components/app/financeiro/pix-config-panel";
 import { PixTelaoModal } from "@/components/app/financeiro/pix-telao-modal";
 import { ReceiptPreviewModal } from "@/components/app/financeiro/receipt-preview-modal";
 import { getMembroPrintName, type MembroOption } from "@/components/app/membro-search-combobox";
@@ -40,6 +39,8 @@ import {
   FinancialTransactionStatus,
   PAYMENT_METHOD_LABELS,
   ROLE_LABELS,
+  TenantPixConfig,
+  TenantPixConfigResponse,
   currencyFormatter,
   dateFormatter,
   financeiroEventosPath,
@@ -49,6 +50,9 @@ import {
   useFinanceiroData,
 } from "./financeiro-shared";
 
+type FinanceiroTab = "lancamentos" | "contas" | "categorias" | "pix";
+type CategoryQuickFilter = "ALL" | "INCOME" | "EXPENSE" | "MEMBERS";
+
 type ModalState =
   | { type: "account"; item: FinancialAccount | null }
   | { type: "category"; item: FinancialCategory | null }
@@ -56,7 +60,6 @@ type ModalState =
   | { type: "transaction-status"; item: FinancialTransaction }
   | { type: "transaction-confirm"; item: FinancialTransaction }
   | { type: "transaction-reject"; item: FinancialTransaction }
-  | { type: "pix-config" }
   | { type: "pix-telao" }
   | null;
 
@@ -114,6 +117,9 @@ export default function FinanceiroPage() {
     setDataError,
   } = useFinanceiroData(appliedTransactionFilters);
 
+  const [activeTab, setActiveTab] = useState<FinanceiroTab>("lancamentos");
+  const [pixConfig, setPixConfig] = useState<TenantPixConfig | null>(null);
+  const [categoryQuickFilter, setCategoryQuickFilter] = useState<CategoryQuickFilter>("ALL");
   const [modal, setModal] = useState<ModalState>(null);
   const [receiptPreview, setReceiptPreview] = useState<FinancialTransaction | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
@@ -121,7 +127,6 @@ export default function FinanceiroPage() {
   const [feedback, setFeedback] = useState<FeedbackMessage>(null);
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [auxiliaryCollapsed, setAuxiliaryCollapsed] = useState(true);
   const [membros, setMembros] = useState<MembroOption[]>([]);
   const [membrosLoading, setMembrosLoading] = useState(false);
   const [eventos, setEventos] = useState<EventoOption[]>([]);
@@ -151,6 +156,7 @@ export default function FinanceiroPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const tabParam = (params.get("tab") || "").toLowerCase();
     const sourceParam = params.get("source");
     const statusParam = params.get("status");
     const validSource: FinancialTransactionSource | null =
@@ -163,19 +169,47 @@ export default function FinanceiroPage() {
         ? statusParam
         : null;
 
-    if (!validSource && !validStatus) return;
+    if (validSource || validStatus) {
+      setActiveTab("lancamentos");
+      const nextFilters: TransactionFilterState = {
+        ...initialTransactionFilters,
+        ...(validSource ? { source: validSource } : {}),
+        ...(validStatus ? { status: validStatus } : {}),
+        ...(validSource === "MEMBER_PORTAL" && validStatus === "PENDING"
+          ? { startDate: "", endDate: "" }
+          : {}),
+      };
+      setTransactionFilterState(nextFilters);
+      setAppliedTransactionFilters(nextFilters);
+      return;
+    }
 
-    const nextFilters: TransactionFilterState = {
-      ...initialTransactionFilters,
-      ...(validSource ? { source: validSource } : {}),
-      ...(validStatus ? { status: validStatus } : {}),
-      ...(validSource === "MEMBER_PORTAL" && validStatus === "PENDING"
-        ? { startDate: "", endDate: "" }
-        : {}),
-    };
-    setTransactionFilterState(nextFilters);
-    setAppliedTransactionFilters(nextFilters);
+    if (
+      tabParam === "lancamentos" ||
+      tabParam === "contas" ||
+      tabParam === "categorias" ||
+      tabParam === "pix"
+    ) {
+      setActiveTab(tabParam);
+    }
   }, [setTransactionFilterState]);
+
+  useEffect(() => {
+    if (!summary?.role) return;
+    let active = true;
+    api
+      .get<TenantPixConfigResponse>("/api/financeiro/pix-config")
+      .then((res) => {
+        if (active) setPixConfig(res.config ?? null);
+      })
+      .catch(() => {
+        if (active) setPixConfig(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [summary?.role]);
 
   function openPendingMemberQueue() {
     const queueFilters: TransactionFilterState = {
@@ -258,6 +292,19 @@ export default function FinanceiroPage() {
     [appliedTransactionFilters, transactions],
   );
 
+  const filteredCategories = useMemo(
+    () =>
+      categories.filter((category) => {
+        if (categoryQuickFilter === "INCOME") return category.type === "INCOME";
+        if (categoryQuickFilter === "EXPENSE") return category.type === "EXPENSE";
+        if (categoryQuickFilter === "MEMBERS") {
+          return category.type === "INCOME" && Boolean(category.visibleToMembers);
+        }
+        return true;
+      }),
+    [categories, categoryQuickFilter],
+  );
+
   const accountColumns = useMemo<Column<FinancialAccount>[]>(() => [
     {
       key: "name",
@@ -268,6 +315,12 @@ export default function FinanceiroPage() {
           <div className="flex flex-wrap items-center gap-2">
             <ActiveBadge active={item.active} />
             <span className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-semibold text-gray-600">{ACCOUNT_TYPE_LABELS[item.type]}</span>
+            {pixConfig?.enabled && pixConfig.defaultAccountId === item.id && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-accent-soft-border bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent-ink">
+                <QrCode className="h-3 w-3" />
+                Conta padrão PIX
+              </span>
+            )}
           </div>
         </div>
       ),
@@ -304,7 +357,7 @@ export default function FinanceiroPage() {
         </div>
       ) : null,
     },
-  ], [canManage]);
+  ], [canManage, pixConfig?.defaultAccountId, pixConfig?.enabled]);
 
   const categoryColumns = useMemo<Column<FinancialCategory>[]>(() => [
     {
@@ -621,67 +674,136 @@ export default function FinanceiroPage() {
     );
   }
 
-  return (
-    <div className="p-6 space-y-6">
-      <PageHeader
-        title="Financeiro"
-        description={`Gerencie os lançamentos financeiros. Acesso atual: ${summary.role ? ROLE_LABELS[summary.role] : "Sem acesso"}.`}
-        stackActionsOnMobile
-        action={(
-          <div className="flex flex-wrap items-center gap-2">
-            {summary.role && (
-              <button
-                type="button"
-                onClick={() => setModal({ type: "pix-telao" })}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50"
-              >
-                <Presentation className="h-4 w-4 text-accent-ink" />
-                <span>Telão PIX</span>
-              </button>
-            )}
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => setModal({ type: "pix-config" })}
-                className="inline-flex items-center gap-2 rounded-xl border border-accent-soft-border bg-accent-soft px-3.5 py-2 text-sm font-semibold text-accent-ink shadow-2xs transition hover:bg-accent-soft-hover"
-              >
-                <QrCode className="h-4 w-4" />
-                <span>Configurar PIX</span>
-              </button>
-            )}
-            {canCreateTransaction && (
-              <PrimaryActionButton label="Novo Lançamento" onClick={() => { setFormError(""); setModal({ type: "transaction", item: null }); }} />
-            )}
-          </div>
-        )}
-      />
-
-      {financialSummary.pendingMemberCount > 0 && (
+  const headerAction = (() => {
+    if (activeTab === "lancamentos" && canCreateTransaction) {
+      return (
+        <PrimaryActionButton
+          label="Novo Lançamento"
+          onClick={() => {
+            setFormError("");
+            setModal({ type: "transaction", item: null });
+          }}
+        />
+      );
+    }
+    if (activeTab === "contas" && canManage) {
+      return (
+        <PrimaryActionButton
+          label="Nova Conta"
+          onClick={() => {
+            setFormError("");
+            setModal({ type: "account", item: null });
+          }}
+        />
+      );
+    }
+    if (activeTab === "categorias" && canManage) {
+      return (
+        <PrimaryActionButton
+          label="Nova Categoria"
+          onClick={() => {
+            setFormError("");
+            setModal({ type: "category", item: null });
+          }}
+        />
+      );
+    }
+    if (activeTab === "pix" && summary.role) {
+      return (
         <button
           type="button"
-          onClick={openPendingMemberQueue}
-          className="flex w-full flex-col items-start justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50 sm:flex-row sm:items-center"
+          onClick={() => setModal({ type: "pix-telao" })}
+          disabled={!pixConfig?.enabled}
+          title={
+            pixConfig?.enabled
+              ? "Abrir projeção em tela cheia e download PNG"
+              : "Ative a chave PIX para abrir o Modo Telão"
+          }
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground shadow-sm transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50 max-sm:w-full"
         >
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
-              <AlertCircle className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-indigo-950">
-                {financialSummary.pendingMemberCount === 1
-                  ? "1 comprovante de membro aguardando conferência"
-                  : `${financialSummary.pendingMemberCount} comprovantes de membros aguardando conferência`}
-              </p>
-              <p className="text-xs text-indigo-700">
-                Total em análise: {currencyFormatter.format(financialSummary.pendingMemberAmount)} · Clique para abrir a fila completa de conciliação.
-              </p>
-            </div>
-          </div>
-          <span className="inline-flex shrink-0 items-center rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs">
-            Conferir fila
-          </span>
+          <Presentation className="h-4 w-4" />
+          <span>Telão PIX</span>
         </button>
-      )}
+      );
+    }
+    return undefined;
+  })();
+
+  return (
+    <div className="p-4 sm:p-6 space-y-6">
+      <PageHeader
+        title="Financeiro"
+        description={`Gerencie lançamentos, contas, categorias e Pix da igreja. Acesso atual: ${summary.role ? ROLE_LABELS[summary.role] : "Sem acesso"}.`}
+        stackActionsOnMobile
+        action={headerAction}
+      />
+
+      {/* Abas do módulo financeiro (padrão ODS: Central de Notificações / Membros) */}
+      <div className="border-b border-gray-200">
+        <div className="grid grid-cols-2 gap-2 pb-2 sm:flex sm:gap-6 sm:pb-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab("lancamentos")}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
+              activeTab === "lancamentos"
+                ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink"
+                : "text-gray-500 hover:text-gray-700 sm:border-transparent"
+            }`}
+          >
+            <CircleDollarSign className="h-4 w-4 shrink-0" />
+            <span>Lançamentos</span>
+            {financialSummary.pendingMemberCount > 0 && (
+              <span className="inline-flex items-center justify-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white shadow-2xs">
+                {financialSummary.pendingMemberCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("contas")}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
+              activeTab === "contas"
+                ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink"
+                : "text-gray-500 hover:text-gray-700 sm:border-transparent"
+            }`}
+          >
+            <WalletCards className="h-4 w-4 shrink-0" />
+            <span>Contas</span>
+            <span className="text-xs font-semibold opacity-70">({accounts.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("categorias")}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
+              activeTab === "categorias"
+                ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink"
+                : "text-gray-500 hover:text-gray-700 sm:border-transparent"
+            }`}
+          >
+            <Tags className="h-4 w-4 shrink-0" />
+            <span>Categorias</span>
+            <span className="text-xs font-semibold opacity-70">({categories.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("pix")}
+            className={`min-h-11 justify-center rounded-xl px-3 text-sm font-semibold transition-all flex items-center gap-2 sm:min-h-0 sm:rounded-none sm:border-b-2 sm:px-1 sm:py-3.5 ${
+              activeTab === "pix"
+                ? "bg-accent-soft text-accent-ink sm:bg-transparent sm:border-accent-ink sm:text-accent-ink"
+                : "text-gray-500 hover:text-gray-700 sm:border-transparent"
+            }`}
+          >
+            <QrCode className="h-4 w-4 shrink-0" />
+            <span>Pix</span>
+            {pixConfig?.enabled && (
+              <span className="h-2 w-2 rounded-full bg-emerald-500" title="PIX ativo" />
+            )}
+          </button>
+        </div>
+      </div>
 
       {dataError && (
         <div className="flex items-center justify-between rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
@@ -705,38 +827,67 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard
-          title="Saldo realizado"
-          value={currencyFormatter.format(financialSummary.balance)}
-          description={`${financialSummary.transactions} confirmado(s) • Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`}
-          icon={<WalletCards className="h-5 w-5" />}
-          color="brand"
-          loading={loadingData}
-        />
-        <StatCard
-          title="A receber (Pendente)"
-          value={currencyFormatter.format(financialSummary.pendingIncome)}
-          description={
-            financialSummary.pendingMemberCount > 0
-              ? `${financialSummary.pendingMemberCount} comprovante(s) de membros (${currencyFormatter.format(financialSummary.pendingMemberAmount)})`
-              : "Entradas aguardando recebimento no período"
-          }
-          icon={<CircleDollarSign className="h-5 w-5" />}
-          color="emerald"
-          loading={loadingData}
-        />
-        <StatCard
-          title="A pagar (Pendente)"
-          value={currencyFormatter.format(financialSummary.pendingExpense)}
-          description={`${financialSummary.pendingCount} pendência(s) no período`}
-          icon={<Clock3 className="h-5 w-5" />}
-          color="amber"
-          loading={loadingData}
-        />
-      </div>
+      {activeTab === "lancamentos" && (
+        <>
+          {financialSummary.pendingMemberCount > 0 && (
+            <button
+              type="button"
+              onClick={openPendingMemberQueue}
+              className="flex w-full flex-col items-start justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50 sm:flex-row sm:items-center"
+            >
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
+                  <AlertCircle className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-indigo-950">
+                    {financialSummary.pendingMemberCount === 1
+                      ? "1 comprovante de membro aguardando conferência"
+                      : `${financialSummary.pendingMemberCount} comprovantes de membros aguardando conferência`}
+                  </p>
+                  <p className="text-xs text-indigo-700">
+                    Total em análise: {currencyFormatter.format(financialSummary.pendingMemberAmount)} · Clique para abrir a fila completa de conciliação.
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex shrink-0 items-center rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs">
+                Conferir fila
+              </span>
+            </button>
+          )}
 
-      <section className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <StatCard
+              title="Saldo realizado"
+              value={currencyFormatter.format(financialSummary.balance)}
+              description={`${financialSummary.transactions} confirmado(s) • Saldo inicial ${currencyFormatter.format(financialSummary.initialBalance)}`}
+              icon={<WalletCards className="h-5 w-5" />}
+              color="brand"
+              loading={loadingData}
+            />
+            <StatCard
+              title="A receber (Pendente)"
+              value={currencyFormatter.format(financialSummary.pendingIncome)}
+              description={
+                financialSummary.pendingMemberCount > 0
+                  ? `${financialSummary.pendingMemberCount} comprovante(s) de membros (${currencyFormatter.format(financialSummary.pendingMemberAmount)})`
+                  : "Entradas aguardando recebimento no período"
+              }
+              icon={<CircleDollarSign className="h-5 w-5" />}
+              color="emerald"
+              loading={loadingData}
+            />
+            <StatCard
+              title="A pagar (Pendente)"
+              value={currencyFormatter.format(financialSummary.pendingExpense)}
+              description={`${financialSummary.pendingCount} pendência(s) no período`}
+              icon={<Clock3 className="h-5 w-5" />}
+              color="amber"
+              loading={loadingData}
+            />
+          </div>
+
+          <section className="space-y-4">
         <FilterShell
           onSubmit={handleTransactionFilterSubmit}
           actions={
@@ -943,74 +1094,93 @@ export default function FinanceiroPage() {
             ))}
           </div>
         )}
-      </section>
+          </section>
+        </>
+      )}
 
-      <section className="space-y-5 border-t border-gray-100 pt-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      {activeTab === "contas" && (
+        <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Cadastros auxiliares</h2>
-            <p className="mt-1 text-sm text-gray-500">Contas e categorias usadas nos lançamentos financeiros.</p>
+            <h3 className="text-base font-bold text-gray-900">Contas e caixas</h3>
+            <p className="mt-0.5 text-sm text-gray-500">
+              Locais bancários, caixas físicos e contas PIX onde o dinheiro da igreja é movimentado.
+            </p>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <CollapseButton
-              collapsed={auxiliaryCollapsed}
-              onToggle={() => setAuxiliaryCollapsed((current) => !current)}
-              collapseLabel="Ocultar cadastros"
-              expandLabel="Mostrar cadastros"
-            />
+          <DataTable
+            columns={accountColumns}
+            data={accounts}
+            loading={loadingData}
+            itemsPerPage={10}
+            emptyTitle="Nenhuma conta cadastrada"
+            emptyDescription="Crie uma conta para começar a registrar lançamentos financeiros."
+          />
+        </section>
+      )}
+
+      {activeTab === "categorias" && (
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-base font-bold text-gray-900">Categorias</h3>
+              <p className="mt-0.5 text-sm text-gray-500">
+                Organize entradas e saídas e defina quais entradas ficam disponíveis para os membros no envio de comprovantes PIX.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(
+                [
+                  { id: "ALL", label: "Todas" },
+                  { id: "INCOME", label: "Entradas" },
+                  { id: "EXPENSE", label: "Saídas" },
+                  { id: "MEMBERS", label: "Visíveis p/ membros" },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setCategoryQuickFilter(option.id)}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                    categoryQuickFilter === option.id
+                      ? "bg-accent-soft text-accent-ink ring-1 ring-accent-soft-border"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200/70"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+          <DataTable
+            columns={categoryColumns}
+            data={filteredCategories}
+            loading={loadingData}
+            itemsPerPage={10}
+            emptyTitle="Nenhuma categoria encontrada"
+            emptyDescription={
+              categoryQuickFilter === "ALL"
+                ? "Crie categorias para classificar lançamentos financeiros."
+                : "Nenhuma categoria corresponde ao filtro selecionado."
+            }
+          />
+        </section>
+      )}
 
-        {!auxiliaryCollapsed && <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <section className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h3 className="text-base font-bold text-gray-900">Contas e caixas</h3>
-                <p className="mt-1 text-sm text-gray-500">Locais onde o dinheiro será movimentado.</p>
-              </div>
-              {canManage && (
-                <PrimaryActionButton
-                  label="Nova Conta"
-                  onClick={() => { setFormError(""); setModal({ type: "account", item: null }); }}
-                />
-              )}
-            </div>
-            <DataTable
-              columns={accountColumns}
-              data={accounts}
-              loading={loadingData}
-              showHeader={false}
-              itemsPerPage={2}
-              emptyTitle="Nenhuma conta cadastrada"
-              emptyDescription="Crie uma conta para começar a registrar lançamentos."
-            />
-          </section>
-
-          <section className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h3 className="text-base font-bold text-gray-900">Categorias</h3>
-                <p className="mt-1 text-sm text-gray-500">Organização das entradas e saídas.</p>
-              </div>
-              {canManage && (
-                <PrimaryActionButton
-                  label="Nova Categoria"
-                  onClick={() => { setFormError(""); setModal({ type: "category", item: null }); }}
-                />
-              )}
-            </div>
-            <DataTable
-              columns={categoryColumns}
-              data={categories}
-              loading={loadingData}
-              showHeader={false}
-              itemsPerPage={2}
-              emptyTitle="Nenhuma categoria cadastrada"
-              emptyDescription="Crie categorias para classificar lançamentos."
-            />
-          </section>
-        </div>}
-      </section>
+      {activeTab === "pix" && (
+        <PixConfigPanel
+          accounts={accounts}
+          categories={categories}
+          canManage={canManage}
+          onOpenTelao={() => setModal({ type: "pix-telao" })}
+          onGoToAccounts={() => setActiveTab("contas")}
+          onGoToCategories={() => setActiveTab("categorias")}
+          onConfigLoaded={setPixConfig}
+          onSaved={async (savedConfig) => {
+            setPixConfig(savedConfig);
+            setFeedback({ type: "success", message: "Configuração PIX salva com sucesso." });
+            await reloadData();
+          }}
+        />
+      )}
 
       <AccountModal isOpen={modal?.type === "account"} account={modal?.type === "account" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveAccount} />
       <CategoryModal isOpen={modal?.type === "category"} category={modal?.type === "category" ? modal.item : null} loading={saving} error={formError} onClose={() => setModal(null)} onSubmit={saveCategory} />
@@ -1047,16 +1217,6 @@ export default function FinanceiroPage() {
         onClose={() => setModal(null)}
         onSubmit={rejectMemberContribution}
         onOpenReceipt={(tx) => setReceiptPreview(tx)}
-      />
-      <PixConfigModal
-        isOpen={modal?.type === "pix-config"}
-        accounts={accounts}
-        onClose={() => setModal(null)}
-        onSaved={async () => {
-          setModal(null);
-          setFeedback({ type: "success", message: "Configuração PIX salva com sucesso." });
-          await reloadData();
-        }}
       />
       <PixTelaoModal
         isOpen={modal?.type === "pix-telao"}
