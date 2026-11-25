@@ -7,6 +7,7 @@ import {
   NotificationAudienceType,
   NotificationAutomationType,
   NotificationOrigin,
+  Role,
   StatusConfirmacao,
   StatusEscala,
   StatusEvento,
@@ -112,13 +113,23 @@ export class NotificationsService {
         tenantId,
         ativo: true,
         status: UserStatus.ACTIVE,
-        membro: {
-          is: {
-            tenantId,
-            deletedAt: null,
-            status: StatusMembro.ATIVO,
+        // Contas ADMIN/STAFF sem Membro vinculado (memberId = null) também devem receber avisos da igreja.
+        OR: [
+          {
+            membro: {
+              is: {
+                tenantId,
+                deletedAt: null,
+                status: StatusMembro.ATIVO,
+              },
+            },
           },
-        },
+          {
+            role: {
+              in: [Role.ADMIN, Role.STAFF],
+            },
+          },
+        ],
       },
       select: { id: true },
     });
@@ -381,6 +392,170 @@ export class NotificationsService {
     };
   }
 
+  /**
+   * Processa notificações de aniversário (pessoal e comunitária) para um único tenant.
+   */
+  private async processTenantBirthdayNotifications(
+    tenantId: string,
+    celebrants: Array<{
+      tenantId: string;
+      nome: string;
+      nomeExibicao: string | null;
+      dataNascimento: Date | null;
+      tenant: { nome: string };
+      user: {
+        id: string;
+        ativo: boolean;
+        status: UserStatus;
+      } | null;
+    }>,
+    referenceDate: Date,
+  ) {
+    let sent = 0;
+    let failed = 0;
+    let totalSubscriptions = 0;
+    let personalNotifications = 0;
+    let communityNotifications = 0;
+
+    const tenantName = celebrants[0].tenant.nome;
+    const celebrantUserIds = celebrants
+      .filter(
+        (member) =>
+          member.user?.ativo && member.user.status === UserStatus.ACTIVE,
+      )
+      .map((member) => member.user!.id);
+
+    const personalRule = (await this.automationRulesService?.getRuleByType(
+      tenantId,
+      NotificationAutomationType.BIRTHDAY_PERSONAL,
+    )) ?? {
+      ativo: true,
+      titulo: 'Hoje é o seu dia, {nome}! 🎂',
+      mensagem: `Feliz aniversário! Que este novo ciclo seja cheio de fé, alegria e boas histórias ao lado da família {igreja}.`,
+    };
+
+    const communityRule = (await this.automationRulesService?.getRuleByType(
+      tenantId,
+      NotificationAutomationType.BIRTHDAY_COMMUNITY,
+    )) ?? {
+      ativo: true,
+      titulo: 'Hoje tem aniversário na {igreja}! 🎉',
+      mensagem:
+        '{nome} está celebrando mais um ano de vida. Que tal enviar uma mensagem especial?',
+    };
+
+    if (personalRule.ativo) {
+      for (const celebrant of celebrants) {
+        if (
+          !celebrant.user?.ativo ||
+          celebrant.user.status !== UserStatus.ACTIVE
+        )
+          continue;
+
+        const displayName = celebrant.nomeExibicao || celebrant.nome;
+        const firstName = this.getFirstName(displayName);
+        const title = renderTemplate(personalRule.titulo, {
+          nome: firstName,
+          igreja: tenantName,
+        });
+        const body = renderTemplate(personalRule.mensagem, {
+          nome: firstName,
+          igreja: tenantName,
+        });
+
+        if (this.notificationDispatch) {
+          const ano = referenceDate.getFullYear();
+          await this.notificationDispatch.createNotification({
+            tenantId,
+            origem: NotificationOrigin.SYSTEM_AUTOMATION,
+            titulo: title,
+            mensagem: body,
+            urlDestino: '/personal-panel',
+            tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+            userIds: [celebrant.user.id],
+            idempotencyKey: `tenant:${tenantId}:membro:${celebrant.user.id}:birthday-personal:${ano}`,
+          });
+          personalNotifications += 1;
+          sent += 1;
+        } else {
+          const result = await this.sendToUsers(tenantId, [celebrant.user.id], {
+            title,
+            body,
+            url: '/personal-panel',
+          });
+
+          personalNotifications += 1;
+          sent += result.sent;
+          failed += result.failed;
+          totalSubscriptions += result.total;
+        }
+      }
+    }
+
+    const allUserIds = await this.getTenantMemberUserIds(tenantId);
+    const otherUserIds = allUserIds.filter(
+      (userId) => !celebrantUserIds.includes(userId),
+    );
+
+    if (communityRule.ativo && otherUserIds.length > 0) {
+      const names = celebrants.map(
+        (member) => member.nomeExibicao || member.nome,
+      );
+      const formattedNames = this.formatBirthdayNames(names);
+      const multiple = names.length > 1;
+      const defaultTitle = multiple
+        ? `Hoje temos aniversariantes na ${tenantName}! 🎉`
+        : `Hoje tem aniversário na ${tenantName}! 🎉`;
+      const title =
+        communityRule.titulo.includes('{nome}') ||
+        communityRule.titulo.includes('{igreja}')
+          ? renderTemplate(communityRule.titulo, {
+              nome: formattedNames,
+              igreja: tenantName,
+            })
+          : defaultTitle;
+      const body = renderTemplate(communityRule.mensagem, {
+        nome: formattedNames,
+        igreja: tenantName,
+      });
+
+      if (this.notificationDispatch) {
+        const refYmd = referenceDate.toISOString().split('T')[0];
+        await this.notificationDispatch.createNotification({
+          tenantId,
+          origem: NotificationOrigin.SYSTEM_AUTOMATION,
+          titulo: title,
+          mensagem: body,
+          urlDestino: '/personal-panel',
+          tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
+          userIds: otherUserIds,
+          idempotencyKey: `tenant:${tenantId}:birthday-community:${refYmd}`,
+        });
+        communityNotifications += 1;
+        sent += 1;
+      } else {
+        const result = await this.sendToUsers(tenantId, otherUserIds, {
+          title,
+          body,
+          url: '/personal-panel',
+        });
+
+        communityNotifications += 1;
+        sent += result.sent;
+        failed += result.failed;
+        totalSubscriptions += result.total;
+      }
+    }
+
+    return {
+      sent,
+      failed,
+      totalSubscriptions,
+      personalNotifications,
+      communityNotifications,
+    };
+  }
+
   @Cron('0 8 * * *', {
     name: 'member-birthday-notifications',
     timeZone: 'America/Sao_Paulo',
@@ -429,132 +604,23 @@ export class NotificationsService {
     let communityNotifications = 0;
 
     for (const [tenantId, celebrants] of membersByTenant) {
-      const tenantName = celebrants[0].tenant.nome;
-      const celebrantUserIds = celebrants
-        .filter(
-          (member) =>
-            member.user?.ativo && member.user.status === UserStatus.ACTIVE,
-        )
-        .map((member) => member.user!.id);
-
-      const personalRule = (await this.automationRulesService?.getRuleByType(
-        tenantId,
-        NotificationAutomationType.BIRTHDAY_PERSONAL,
-      )) ?? {
-        ativo: true,
-        titulo: 'Hoje é o seu dia, {nome}! 🎂',
-        mensagem: `Feliz aniversário! Que este novo ciclo seja cheio de fé, alegria e boas histórias ao lado da família {igreja}.`,
-      };
-
-      const communityRule = (await this.automationRulesService?.getRuleByType(
-        tenantId,
-        NotificationAutomationType.BIRTHDAY_COMMUNITY,
-      )) ?? {
-        ativo: true,
-        titulo: 'Hoje tem aniversário na {igreja}! 🎉',
-        mensagem:
-          '{nome} está celebrando mais um ano de vida. Que tal enviar uma mensagem especial?',
-      };
-
-      if (personalRule.ativo) {
-        for (const celebrant of celebrants) {
-          if (
-            !celebrant.user?.ativo ||
-            celebrant.user.status !== UserStatus.ACTIVE
-          )
-            continue;
-
-          const displayName = celebrant.nomeExibicao || celebrant.nome;
-          const firstName = this.getFirstName(displayName);
-          const title = renderTemplate(personalRule.titulo, {
-            nome: firstName,
-            igreja: tenantName,
-          });
-          const body = renderTemplate(personalRule.mensagem, {
-            nome: firstName,
-            igreja: tenantName,
-          });
-
-          if (this.notificationDispatch) {
-            const ano = referenceDate.getFullYear();
-            await this.notificationDispatch.createNotification({
-              tenantId,
-              origem: NotificationOrigin.SYSTEM_AUTOMATION,
-              titulo: title,
-              mensagem: body,
-              urlDestino: '/personal-panel',
-              tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
-              userIds: [celebrant.user.id],
-              idempotencyKey: `tenant:${tenantId}:membro:${celebrant.user.id}:birthday-personal:${ano}`,
-            });
-            personalNotifications += 1;
-            sent += 1;
-          } else {
-            const result = await this.sendToUsers(tenantId, [celebrant.user.id], {
-              title,
-              body,
-              url: '/personal-panel',
-            });
-
-            personalNotifications += 1;
-            sent += result.sent;
-            failed += result.failed;
-            totalSubscriptions += result.total;
-          }
-        }
-      }
-
-      const allUserIds = await this.getTenantMemberUserIds(tenantId);
-      const otherUserIds = allUserIds.filter(
-        (userId) => !celebrantUserIds.includes(userId),
-      );
-
-      if (communityRule.ativo && otherUserIds.length > 0) {
-        const names = celebrants.map(
-          (member) => member.nomeExibicao || member.nome,
+      try {
+        const tenantResult = await this.processTenantBirthdayNotifications(
+          tenantId,
+          celebrants,
+          referenceDate,
         );
-        const formattedNames = this.formatBirthdayNames(names);
-        const multiple = names.length > 1;
-        const defaultTitle = multiple
-          ? `Hoje temos aniversariantes na ${tenantName}! 🎉`
-          : `Hoje tem aniversário na ${tenantName}! 🎉`;
-        const title = communityRule.titulo.includes('{nome}') || communityRule.titulo.includes('{igreja}')
-          ? renderTemplate(communityRule.titulo, {
-              nome: formattedNames,
-              igreja: tenantName,
-            })
-          : defaultTitle;
-        const body = renderTemplate(communityRule.mensagem, {
-          nome: formattedNames,
-          igreja: tenantName,
-        });
-
-        if (this.notificationDispatch) {
-          const refYmd = referenceDate.toISOString().split('T')[0];
-          await this.notificationDispatch.createNotification({
-            tenantId,
-            origem: NotificationOrigin.SYSTEM_AUTOMATION,
-            titulo: title,
-            mensagem: body,
-            urlDestino: '/personal-panel',
-            tipoPublico: NotificationAudienceType.SPECIFIC_USERS,
-            userIds: otherUserIds,
-            idempotencyKey: `tenant:${tenantId}:birthday-community:${refYmd}`,
-          });
-          communityNotifications += 1;
-          sent += 1;
-        } else {
-          const result = await this.sendToUsers(tenantId, otherUserIds, {
-            title,
-            body,
-            url: '/personal-panel',
-          });
-
-          communityNotifications += 1;
-          sent += result.sent;
-          failed += result.failed;
-          totalSubscriptions += result.total;
-        }
+        sent += tenantResult.sent;
+        failed += tenantResult.failed;
+        totalSubscriptions += tenantResult.totalSubscriptions;
+        personalNotifications += tenantResult.personalNotifications;
+        communityNotifications += tenantResult.communityNotifications;
+      } catch (error) {
+        this.logger.error(
+          `Erro ao processar notificações de aniversário do tenant ${tenantId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
       }
     }
 
