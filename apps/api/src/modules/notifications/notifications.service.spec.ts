@@ -1,4 +1,4 @@
-import { UserStatus } from '@prisma/client';
+import { Role, UserStatus } from '@prisma/client';
 import { NotificationsService } from './notifications.service';
 
 describe('NotificationsService birthday job', () => {
@@ -122,6 +122,141 @@ describe('NotificationsService birthday job', () => {
       }),
     );
     expect(result.personalNotifications).toBe(1);
+    expect(result.communityNotifications).toBe(1);
+  });
+
+  it('inclui ADMIN/STAFF sem membro vinculado na notificacao comunitaria quando aniversariante e membros estao PENDING', async () => {
+    const prisma = {
+      membro: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            tenantId: 'tenant-ccc',
+            nome: 'Luan Wesley',
+            nomeExibicao: null,
+            dataNascimento: new Date('1998-11-24T00:00:00.000Z'),
+            tenant: { nome: 'CCC Barroso' },
+            user: {
+              id: 'celebrant-pending',
+              ativo: false,
+              status: UserStatus.PENDING,
+            },
+          },
+        ]),
+      },
+      user: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'admin-sem-membro' }]),
+      },
+    };
+    const config = { get: jest.fn() };
+    const notificationDispatch = {
+      createNotification: jest.fn().mockResolvedValue({ id: 'notif-community' }),
+    };
+
+    const service = new NotificationsService(
+      prisma as never,
+      config as never,
+      notificationDispatch as never,
+    );
+
+    const result = await service.runBirthdayNotificationJob(
+      new Date('2026-11-24T11:00:00.000Z'),
+    );
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: 'tenant-ccc',
+        ativo: true,
+        status: UserStatus.ACTIVE,
+        OR: [
+          {
+            membro: {
+              is: {
+                tenantId: 'tenant-ccc',
+                deletedAt: null,
+                status: 'ATIVO',
+              },
+            },
+          },
+          {
+            role: {
+              in: [Role.ADMIN, Role.STAFF],
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    expect(notificationDispatch.createNotification).toHaveBeenCalledTimes(1);
+    expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-ccc',
+        origem: 'SYSTEM_AUTOMATION',
+        idempotencyKey: 'tenant:tenant-ccc:birthday-community:2026-11-24',
+        userIds: ['admin-sem-membro'],
+      }),
+    );
+    expect(result.personalNotifications).toBe(0);
+    expect(result.communityNotifications).toBe(1);
+  });
+
+  it('isola falhas por tenant para nao interromper os demais tenants no job de aniversario', async () => {
+    const prisma = {
+      membro: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            tenantId: 'tenant-erro',
+            nome: 'Membro Tenant 1',
+            nomeExibicao: null,
+            dataNascimento: new Date('1995-11-24T00:00:00.000Z'),
+            tenant: { nome: 'Igreja Erro' },
+            user: {
+              id: 'user-1',
+              ativo: true,
+              status: UserStatus.ACTIVE,
+            },
+          },
+          {
+            tenantId: 'tenant-ok',
+            nome: 'Membro Tenant 2',
+            nomeExibicao: null,
+            dataNascimento: new Date('1998-11-24T00:00:00.000Z'),
+            tenant: { nome: 'Igreja OK' },
+            user: {
+              id: 'user-2',
+              ativo: false,
+              status: UserStatus.PENDING,
+            },
+          },
+        ]),
+      },
+      user: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'admin-2' }]),
+      },
+    };
+    const notificationDispatch = {
+      createNotification: jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Falha pontual no tenant 1'))
+        .mockResolvedValueOnce({ id: 'notif-tenant-2' }),
+    };
+
+    const service = new NotificationsService(
+      prisma as never,
+      { get: jest.fn() } as never,
+      notificationDispatch as never,
+    );
+
+    const result = await service.runBirthdayNotificationJob(
+      new Date('2026-11-24T11:00:00.000Z'),
+    );
+
+    expect(notificationDispatch.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-ok',
+        userIds: ['admin-2'],
+      }),
+    );
+    expect(result.tenants).toBe(2);
     expect(result.communityNotifications).toBe(1);
   });
 
