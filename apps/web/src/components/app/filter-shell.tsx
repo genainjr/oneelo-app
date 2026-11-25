@@ -68,7 +68,7 @@ export function FilterActions({
       {onClear && (
         <button
           type="button"
-          onClick={onClear}
+          onClick={() => onClear()}
           disabled={isLoadingOrDebouncing}
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
         >
@@ -79,7 +79,7 @@ export function FilterActions({
       {onReload && (
         <button
           type="button"
-          onClick={onReload}
+          onClick={() => onReload()}
           disabled={isLoadingOrDebouncing}
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
         >
