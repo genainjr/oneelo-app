@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent, Suspense } from 'react';
+import { useState, useEffect, useSyncExternalStore, FormEvent, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -8,6 +8,9 @@ import { ArrowLeft, Eye, EyeOff, Loader2, LogIn, UserPlus } from 'lucide-react';
 import { api, HttpError } from '@/lib/api';
 import { getPostLoginTarget, isSafeAppRedirect } from '@/lib/auth-redirect';
 import {
+  canUseCachedTenantOnLogin,
+  clearCachedTenantPwa,
+  isStandalonePwaContext,
   readCachedTenantPwa,
   saveCachedTenantPwa,
   syncTenantPwaHead,
@@ -55,16 +58,53 @@ function SiteNavigationLink({
   );
 }
 
+function subscribeToEmpty() {
+  return () => {};
+}
+
 function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps) {
   const t = useTranslations('auth.login');
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
   const querySlug = searchParams.get('igreja') || searchParams.get('church') || churchSlug;
-  const [church, setChurch] = useState<PublicTenantInfo | null>(initialChurch);
+  const sourceParam = searchParams.get('source');
+  const isHydrated = useSyncExternalStore(
+    subscribeToEmpty,
+    () => true,
+    () => false,
+  );
+  const [fetchedChurchState, setFetchedChurchState] = useState<{
+    slug: string;
+    church: PublicTenantInfo;
+  } | null>(null);
+
+  const allowCachedFallback =
+    isHydrated &&
+    canUseCachedTenantOnLogin({
+      querySlug,
+      sourceParam,
+      isStandaloneDisplayMode: isStandalonePwaContext(sourceParam),
+    });
+  const cachedBrand = !initialChurch && allowCachedFallback ? readCachedTenantPwa() : null;
+  const matchingCachedChurch: PublicTenantInfo | null =
+    cachedBrand && (!querySlug || cachedBrand.slug === querySlug)
+      ? {
+          nome: cachedBrand.nome,
+          slug: cachedBrand.slug,
+          logoUrl: cachedBrand.logoUrl || cachedBrand.pwaIconUrl || null,
+          pwaIconUrl: cachedBrand.pwaIconUrl || null,
+          themePalette: cachedBrand.themePalette ?? null,
+          primaryColor: cachedBrand.primaryColor ?? null,
+        }
+      : null;
+  const targetSlug = !initialChurch && allowCachedFallback ? querySlug || cachedBrand?.slug || null : null;
+  const church =
+    initialChurch ??
+    (targetSlug && fetchedChurchState?.slug === targetSlug ? fetchedChurchState.church : null) ??
+    matchingCachedChurch;
 
   useEffect(() => {
     if (initialChurch) {
-      setChurch(initialChurch);
       saveCachedTenantPwa({
         nome: initialChurch.nome,
         slug: initialChurch.slug,
@@ -84,29 +124,35 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
       return;
     }
 
+    const canUseCache = canUseCachedTenantOnLogin({
+      querySlug,
+      sourceParam,
+      isStandaloneDisplayMode: isStandalonePwaContext(sourceParam),
+    });
+
+    if (!canUseCache) {
+      syncTenantPwaHead(null);
+      return;
+    }
+
     const cached = readCachedTenantPwa();
-    const targetSlug = querySlug || cached?.slug || null;
+    const resolvedTargetSlug = querySlug || cached?.slug || null;
 
     if (cached && (!querySlug || cached.slug === querySlug)) {
-      setChurch({
-        nome: cached.nome,
-        slug: cached.slug,
-        logoUrl: cached.logoUrl || cached.pwaIconUrl || null,
-        pwaIconUrl: cached.pwaIconUrl || null,
-        themePalette: cached.themePalette ?? null,
-        primaryColor: cached.primaryColor ?? null,
-      });
       syncTenantPwaHead(cached);
     }
 
-    if (!targetSlug) return;
+    if (!resolvedTargetSlug) {
+      syncTenantPwaHead(null);
+      return;
+    }
 
     let active = true;
     api
-      .get<PublicTenantInfo>(`/api/public/tenants/${encodeURIComponent(targetSlug)}`)
+      .get<PublicTenantInfo>(`/api/public/tenants/${encodeURIComponent(resolvedTargetSlug)}`)
       .then((info) => {
         if (!active || !info) return;
-        setChurch(info);
+        setFetchedChurchState({ slug: resolvedTargetSlug, church: info });
         saveCachedTenantPwa({
           nome: info.nome,
           slug: info.slug,
@@ -124,7 +170,7 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
     return () => {
       active = false;
     };
-  }, [initialChurch, querySlug]);
+  }, [initialChurch, querySlug, sourceParam]);
 
   const resolvedSlug = church?.slug || querySlug;
   const isChurchBranded = Boolean(church || resolvedSlug);
@@ -152,6 +198,8 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
       });
       if (response.user?.tenant) {
         saveCachedTenantPwa(response.user.tenant);
+      } else if (response.user?.role === 'SUPER_ADMIN') {
+        clearCachedTenantPwa();
       } else if (church) {
         saveCachedTenantPwa({
           nome: church.nome,
@@ -194,6 +242,9 @@ function LoginForm({ initialChurch = null, churchSlug = null }: LoginClientProps
   }
 
   function handleGoogleLogin() {
+    if (!isChurchBranded) {
+      clearCachedTenantPwa();
+    }
     const safeRedirect = isSafeAppRedirect(redirect) && redirect ? redirect : '/dashboard';
     window.location.href = `/api/auth/oauth/google/start?redirect=${encodeURIComponent(safeRedirect)}`;
   }

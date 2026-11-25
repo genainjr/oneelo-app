@@ -195,12 +195,16 @@ export async function middleware(request: NextRequest) {
   const requestedChurch =
     request.nextUrl.searchParams.get('igreja') ||
     request.nextUrl.searchParams.get('church');
+  const sourceParam = request.nextUrl.searchParams.get('source');
 
   if (!token) {
     const isAdminRoute = pathname.startsWith('/admin');
     const loginUrl = new URL(isAdminRoute ? '/admin/login' : '/login', request.url);
     if (!isAdminRoute && requestedChurch) {
       loginUrl.searchParams.set('igreja', requestedChurch);
+    }
+    if (!isAdminRoute && sourceParam === 'pwa') {
+      loginUrl.searchParams.set('source', 'pwa');
     }
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
