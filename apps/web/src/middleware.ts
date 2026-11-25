@@ -156,6 +156,7 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/activate') ||
       pathname.startsWith('/dashboard') ||
       pathname.startsWith('/personal-panel') ||
+      pathname.startsWith('/minhas-contribuicoes') ||
       pathname.startsWith('/admin') ||
       pathname.startsWith('/configuracoes')
     ) {
@@ -167,6 +168,7 @@ export async function middleware(request: NextRequest) {
         (pathname === '/login' ||
           pathname.startsWith('/dashboard') ||
           pathname.startsWith('/personal-panel') ||
+          pathname.startsWith('/minhas-contribuicoes') ||
           pathname.startsWith('/configuracoes')) &&
         !targetUrl.searchParams.has('igreja') &&
         !targetUrl.searchParams.has('church')

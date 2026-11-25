@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import type { PixKeyType } from './pix-brcode';
 import { isReservedSlug, normalizeSlug } from './reserved-slugs';
 
 export type ModalidadeCulto = 'PRESENCIAL' | 'ONLINE' | 'HIBRIDO';
@@ -95,11 +96,20 @@ export interface PublicTenantNews {
   ativo: boolean;
 }
 
+export interface PublicSitePix {
+  pixKeyType: PixKeyType;
+  pixKey: string;
+  merchantName: string;
+  merchantCity: string;
+  brCode: string;
+}
+
 export interface PublicSiteData {
   tenant: PublicSiteTenant;
   config: PublicSiteConfig | null;
   schedules: PublicChurchSchedule[];
   news: PublicTenantNews[];
+  pix?: PublicSitePix | null;
 }
 
 export interface PublicNewsDetailResponse {

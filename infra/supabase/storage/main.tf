@@ -17,7 +17,7 @@ locals {
     financial_receipts = {
       id                 = "financial-receipts"
       name               = "financial-receipts"
-      public             = var.public_buckets
+      public             = false
       file_size_limit    = var.financial_receipt_file_size_limit
       allowed_mime_types = var.allowed_financial_receipt_mime_types
     }

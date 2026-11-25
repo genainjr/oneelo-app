@@ -1,5 +1,6 @@
 import type {
   FinancialPaymentMethod,
+  FinancialTransactionSource,
   FinancialTransactionStatus,
   FinancialTransactionType,
 } from '@prisma/client';
@@ -28,6 +29,8 @@ export interface FinanceiroDocumentItem {
   description: string | null;
   paymentMethod: FinancialPaymentMethod | null;
   counterpartyName: string | null;
+  payerName?: string | null;
+  source?: FinancialTransactionSource;
   installmentNumber: number | null;
   totalInstallments: number | null;
   account: { id: string; name: string };
@@ -66,6 +69,7 @@ export interface FinanceiroDocumentInput extends DocumentHeaderInput {
   filters: {
     status?: FinancialTransactionStatus;
     type?: FinancialTransactionType;
+    source?: FinancialTransactionSource;
     accountId?: string;
     categoryId?: string;
     eventoId?: string;

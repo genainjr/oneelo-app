@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { FinancialPaymentMethod } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class ConfirmFinancialTransactionDto {
   @ApiPropertyOptional({ description: 'Data efetiva de pagamento ou recebimento em ISO.' })
@@ -20,4 +20,14 @@ export class ConfirmFinancialTransactionDto {
   @Min(0.01, { message: 'Valor deve ser maior que zero.' })
   @IsOptional()
   amount?: number;
+
+  @ApiPropertyOptional({ description: 'Ajuste opcional da conta financeira na conferência.' })
+  @IsString()
+  @IsOptional()
+  accountId?: string;
+
+  @ApiPropertyOptional({ description: 'Ajuste opcional da categoria financeira na conferência.' })
+  @IsString()
+  @IsOptional()
+  categoryId?: string;
 }

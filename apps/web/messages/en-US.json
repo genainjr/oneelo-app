@@ -95,6 +95,7 @@
     "groupModules": "Modules",
     "groupFuture": "Coming soon",
     "groupAccount": "Account",
+    "contributions": "Giving",
     "profile": "My Profile",
     "website": "Community Website"
   },
@@ -137,6 +138,7 @@
     "quickLinks": {
       "churchDashboard": "Church Dashboard",
       "viewSchedules": "My Schedules",
+      "contributions": "Tithes & Offerings",
       "agenda": "Calendar",
       "profile": "My Profile",
       "website": "Community Website"
@@ -158,6 +160,7 @@
       "quickLinks": {
         "churchDashboard": "Church Dashboard",
         "viewSchedules": "My Schedules",
+        "contributions": "Tithes & Offerings",
         "ministries": "Ministries",
         "schedules": "Schedules",
         "agenda": "Calendar",

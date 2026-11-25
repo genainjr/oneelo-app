@@ -1,6 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
 import {
+  FinancialTransactionSource,
   FinancialTransactionStatus,
   FinancialTransactionType,
 } from '@prisma/client';
@@ -50,6 +51,11 @@ export class ExportFinanceiroDto {
   @IsOptional()
   @IsEnum(FinancialTransactionType)
   type?: FinancialTransactionType;
+
+  @Transform(normalizeOptionalFilterEnum)
+  @IsOptional()
+  @IsEnum(FinancialTransactionSource)
+  source?: FinancialTransactionSource;
 
   @Transform(normalizeOptionalString)
   @IsOptional()

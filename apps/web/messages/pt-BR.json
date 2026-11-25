@@ -95,6 +95,7 @@
     "groupModules": "Módulos",
     "groupFuture": "Em breve",
     "groupAccount": "Conta",
+    "contributions": "Contribuições",
     "profile": "Meu Perfil",
     "website": "Site da Comunidade"
   },
@@ -137,6 +138,7 @@
     "quickLinks": {
       "churchDashboard": "Dashboard da Igreja",
       "viewSchedules": "Minhas Escalas",
+      "contributions": "Dízimos e Ofertas",
       "agenda": "Agenda",
       "profile": "Meu Perfil",
       "website": "Site da Comunidade"
@@ -158,6 +160,7 @@
       "quickLinks": {
         "churchDashboard": "Dashboard da Igreja",
         "viewSchedules": "Minhas Escalas",
+        "contributions": "Dízimos e Ofertas",
         "ministries": "Ministérios",
         "schedules": "Escalas",
         "agenda": "Agenda",

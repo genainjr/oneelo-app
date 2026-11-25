@@ -17,6 +17,7 @@ import {
   SiteLocationSection,
 } from '@/components/public-site/site-location-section';
 import { SiteFooter } from '@/components/public-site/site-footer';
+import { SiteGivingSection } from '@/components/public-site/site-giving-section';
 import { SiteWelcomeSection } from '@/components/public-site/site-welcome-section';
 import { SiteWhatsappFloat } from '@/components/public-site/site-whatsapp-float';
 import { buildWhatsappLink } from '@/components/public-site/site-utils';
@@ -55,6 +56,7 @@ export default async function PublicTenantHomePage({
   const hasNews = site.news.length > 0;
   const hasAbout = hasAboutContent(site.config);
   const hasLocation = hasLocationContent(site.tenant, site.config);
+  const hasGiving = Boolean(site.pix);
   const whatsappHref = buildWhatsappLink(
     site.config?.whatsappAtendimento || site.tenant.telefone,
     site.tenant.nome,
@@ -71,6 +73,7 @@ export default async function PublicTenantHomePage({
         hasNews={hasNews}
         hasAbout={hasAbout}
         hasLocation={hasLocation}
+        hasGiving={hasGiving}
         basePath={basePath}
         membersLoginHref={membersLoginHref}
       />
@@ -104,6 +107,12 @@ export default async function PublicTenantHomePage({
         />
 
         <SiteAboutSection churchName={site.tenant.nome} config={site.config} />
+
+        <SiteGivingSection
+          churchName={site.tenant.nome}
+          pix={site.pix}
+          membersLoginHref={membersLoginHref}
+        />
 
         <SiteLocationSection tenant={site.tenant} config={site.config} />
       </main>

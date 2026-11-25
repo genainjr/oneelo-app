@@ -32,6 +32,7 @@ import {
   normalizeAndValidateCustomDomain,
   VercelDomainsService,
 } from './vercel-domains.service';
+import { generatePixBrCode } from '../financeiro/pix-brcode.util';
 
 const WEBSITE_MEDIA_BUCKET = 'tenant-logos';
 
@@ -76,7 +77,7 @@ export class WebsiteService {
   async getPublicSiteData(slug: string) {
     const tenant = await this.findActiveTenantBySlug(slug);
 
-    const [config, schedules, news] = await Promise.all([
+    const [config, schedules, news, pixConfig] = await Promise.all([
       this.prisma.tenantWebsiteConfig.findUnique({
         where: { tenantId: tenant.id },
       }),
@@ -93,7 +94,36 @@ export class WebsiteService {
         ],
         take: 12,
       }),
+      typeof this.prisma.tenantPixConfig?.findUnique === 'function'
+        ? this.prisma.tenantPixConfig.findUnique({
+            where: { tenantId: tenant.id },
+            include: {
+              defaultAccount: {
+                select: { active: true },
+              },
+            },
+          })
+        : Promise.resolve(null),
     ]);
+
+    const pix =
+      pixConfig?.enabled &&
+      pixConfig.showOnPublicSite &&
+      pixConfig.defaultAccount?.active
+        ? {
+            pixKeyType: pixConfig.pixKeyType,
+            pixKey: pixConfig.pixKey,
+            merchantName: pixConfig.merchantName,
+            merchantCity: pixConfig.merchantCity,
+            brCode: generatePixBrCode({
+              pixKeyType: pixConfig.pixKeyType,
+              pixKey: pixConfig.pixKey,
+              merchantName: pixConfig.merchantName,
+              merchantCity: pixConfig.merchantCity,
+              txidPrefix: pixConfig.txidPrefix,
+            }),
+          }
+        : null;
 
     return {
       tenant: {
@@ -109,6 +139,7 @@ export class WebsiteService {
       config: config ? this.serializePublicConfig(config) : null,
       schedules,
       news,
+      pix,
     };
   }
 

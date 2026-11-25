@@ -4,6 +4,14 @@ import { isReservedSlug, normalizeSlug } from '@/lib/reserved-slugs';
 
 const AUTH_COOKIE = 'access_token';
 
+function getServerApiBase(): string {
+  return (
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:4001'
+  ).replace(/\/+$/, '');
+}
+
 function decodeJwtRole(token: string): string | null {
   try {
     const payloadB64 = token.split('.')[1];
@@ -17,6 +25,24 @@ function decodeJwtRole(token: string): string | null {
   }
 }
 
+async function isAuthorizedFinanceManager(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${getServerApiBase()}/api/financeiro/permissions/me`, {
+      method: 'GET',
+      headers: {
+        Cookie: `${AUTH_COOKIE}=${token}`,
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) return false;
+    const data = (await response.json()) as { canManage?: boolean };
+    return Boolean(data?.canManage);
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE)?.value;
   if (!token) {
@@ -24,7 +50,12 @@ export async function POST(request: NextRequest) {
   }
 
   const role = decodeJwtRole(token);
-  if (role !== 'ADMIN' && role !== 'STAFF') {
+  const hasGlobalSitePermission = role === 'ADMIN' || role === 'STAFF';
+  const hasFinanceManagerPermission = hasGlobalSitePermission
+    ? false
+    : await isAuthorizedFinanceManager(token);
+
+  if (!hasGlobalSitePermission && !hasFinanceManagerPermission) {
     return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
   }
 

@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -77,6 +82,56 @@ export class SupabaseStorageService {
     }
   }
 
+  async createPrivateSignedUrl(
+    bucket: string,
+    path: string,
+    expiresIn = 300,
+  ): Promise<string> {
+    if (!path?.trim()) {
+      throw new BadRequestException('Caminho do arquivo privado não informado.');
+    }
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/storage/v1/object/sign/${bucket}/${this.encodePath(path)}`,
+        {
+          method: 'POST',
+          headers: {
+            ...this.authHeaders,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ expiresIn }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new ServiceUnavailableException(
+          'Não foi possível gerar link temporário seguro para o arquivo.',
+        );
+      }
+
+      const data = (await response.json()) as { signedURL?: string };
+      if (!data.signedURL) {
+        throw new ServiceUnavailableException(
+          'Não foi possível gerar link temporário seguro para o arquivo.',
+        );
+      }
+
+      return `${this.baseUrl}/storage/v1${data.signedURL}`;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ServiceUnavailableException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+      throw new ServiceUnavailableException(
+        'Serviço de armazenamento temporariamente indisponível para acesso seguro.',
+      );
+    }
+  }
+
   async ensureBucket(bucket: string, isPublic = true) {
     try {
       await fetch(`${this.baseUrl}/storage/v1/bucket`, {
@@ -151,7 +206,59 @@ export class SupabaseStorageService {
     return this.getPublicUrl(bucket, path);
   }
 
-  async deleteObject(bucket: string, path?: string | null) {
+  async uploadPrivateObject(
+    bucket: string,
+    path: string,
+    buffer: Buffer,
+    mimeType: string,
+  ): Promise<string> {
+    const response = await fetch(
+      `${this.baseUrl}/storage/v1/object/${bucket}/${this.encodePath(path)}`,
+      {
+        method: 'PUT',
+        headers: {
+          ...this.authHeaders,
+          'Content-Type': mimeType,
+          'x-upsert': 'true',
+        },
+        body: new Uint8Array(buffer),
+      },
+    );
+
+    if (!response.ok) {
+      const details = await response.text().catch(() => '');
+      if (response.status === 404 && details.includes('Bucket not found')) {
+        await this.ensureBucket(bucket, false);
+        const retryResponse = await fetch(
+          `${this.baseUrl}/storage/v1/object/${bucket}/${this.encodePath(path)}`,
+          {
+            method: 'PUT',
+            headers: {
+              ...this.authHeaders,
+              'Content-Type': mimeType,
+              'x-upsert': 'true',
+            },
+            body: new Uint8Array(buffer),
+          },
+        );
+        if (retryResponse.ok) {
+          return path;
+        }
+      }
+
+      throw new BadRequestException(
+        details || 'Nao foi possivel enviar o arquivo para o Supabase Storage.',
+      );
+    }
+
+    return path;
+  }
+
+  async deleteObject(
+    bucket: string,
+    path?: string | null,
+    options?: { ignoreNotFound?: boolean },
+  ) {
     if (!path) return;
 
     const response = await fetch(
@@ -163,6 +270,9 @@ export class SupabaseStorageService {
     );
 
     if (!response.ok) {
+      if (options?.ignoreNotFound && response.status === 404) {
+        return;
+      }
       const details = await response.text().catch(() => '');
       throw new BadRequestException(
         details || 'Nao foi possivel remover a imagem do Supabase Storage.',

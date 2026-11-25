@@ -4,6 +4,7 @@ import { ExportShell } from '@/components/app/export-shell';
 import { useExport } from '@/hooks/use-export';
 import {
   PAYMENT_METHOD_LABELS,
+  TRANSACTION_SOURCE_LABELS,
   TRANSACTION_STATUS_LABELS,
   TRANSACTION_TYPE_LABELS,
   currencyFormatter,
@@ -17,6 +18,7 @@ const ALL_FIELDS = [
   { key: 'paidAt', label: 'Liquidação' },
   { key: 'type', label: 'Tipo' },
   { key: 'status', label: 'Status' },
+  { key: 'source', label: 'Origem' },
   { key: 'installment', label: 'Parcela' },
   { key: 'description', label: 'Descrição' },
   { key: 'account', label: 'Conta' },
@@ -25,7 +27,8 @@ const ALL_FIELDS = [
   { key: 'amount', label: 'Valor' },
   { key: 'paymentMethod', label: 'Pagamento' },
   { key: 'counterpartyName', label: 'Pessoa/fornecedor' },
-  { key: 'receiptUrl', label: 'Comprovante' },
+  { key: 'payerName', label: 'Titular no comprovante' },
+  { key: 'receipt', label: 'Comprovante' },
 ];
 
 export default function FinanceiroExportacaoPage() {
@@ -46,6 +49,7 @@ export default function FinanceiroExportacaoPage() {
       if (field.key === 'paidAt') return transaction.paidAt ? dateFormatter.format(new Date(transaction.paidAt)) : '';
       if (field.key === 'type') return TRANSACTION_TYPE_LABELS[transaction.type] ?? transaction.type;
       if (field.key === 'status') return TRANSACTION_STATUS_LABELS[transaction.status] ?? transaction.status;
+      if (field.key === 'source') return transaction.source ? (TRANSACTION_SOURCE_LABELS[transaction.source] ?? transaction.source) : 'Tesouraria';
       if (field.key === 'installment') return formatInstallmentLabel(transaction.installmentNumber, transaction.totalInstallments) ?? '';
       if (field.key === 'account') return transaction.account.name;
       if (field.key === 'category') return transaction.category.name;
@@ -53,7 +57,8 @@ export default function FinanceiroExportacaoPage() {
       if (field.key === 'amount') return currencyFormatter.format(transaction.amount);
       if (field.key === 'paymentMethod') return transaction.paymentMethod ? PAYMENT_METHOD_LABELS[transaction.paymentMethod] : '';
       if (field.key === 'counterpartyName') return transaction.counterpartyName ?? '';
-      if (field.key === 'receiptUrl') return transaction.receiptUrl ?? '';
+      if (field.key === 'payerName') return transaction.payerName ?? '';
+      if (field.key === 'receipt') return transaction.hasReceipt ? (transaction.receiptFileName || 'Sim') : 'Não';
       return (transaction as unknown as Record<string, unknown>)[field.key] as string ?? '';
     },
   );

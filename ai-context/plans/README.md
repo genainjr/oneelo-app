@@ -17,6 +17,7 @@ Todo novo plano de desenvolvimento criado neste repositório **DEVE seguir estri
 
 | Criação | Documento | Assunto |
 |---|---|---|
+| 24/11/2026 | [dizimos-ofertas-pix-comprovantes-plan.md](dizimos-ofertas-pix-comprovantes-plan.md) | Dízimos e Ofertas Digitais: PIX, Comprovantes Privados e Conciliação (FT-021 — Concluído) |
 | 19/11/2026 | [financeiro-exportacao-pdf-png-plan.md](financeiro-exportacao-pdf-png-plan.md) | Exportação Unificada em PDF na Visualização Financeira (IMP-010 — Concluído) |
 | 19/11/2026 | [agenda-visualizacao-empty-state-plan.md](agenda-visualizacao-empty-state-plan.md) | Correção das Chaves de Tradução do Estado Vazio em Visualização Agenda (Concluído) |
 | 19/11/2026 | [notificacao-cancelamento-evento-ministerios-plan.md](notificacao-cancelamento-evento-ministerios-plan.md) | Notificação Automática de Cancelamento de Eventos aos Ministérios Vinculados (IMP-011 — Concluído) |

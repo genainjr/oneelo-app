@@ -58,6 +58,59 @@ export function getWebsiteNewsImagePath(tenantId: string, newsId: string, file: 
   return `tenants/${tenantId}/website/news/${newsId}/cover-${Date.now()}.${getImageExtension(file)}`;
 }
 
+function matchesFinancialReceiptMagicBytes(buffer: Buffer | undefined, mimeType: string): boolean {
+  if (!buffer || buffer.length < 4) return false;
+
+  if (mimeType === 'application/pdf') {
+    // %PDF-
+    return (
+      buffer.length >= 5 &&
+      buffer[0] === 0x25 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x44 &&
+      buffer[3] === 0x46 &&
+      buffer[4] === 0x2d
+    );
+  }
+
+  if (mimeType === 'image/jpeg') {
+    // FF D8 FF
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+
+  if (mimeType === 'image/png') {
+    // 89 50 4E 47 0D 0A 1A 0A
+    return (
+      buffer.length >= 8 &&
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47 &&
+      buffer[4] === 0x0d &&
+      buffer[5] === 0x0a &&
+      buffer[6] === 0x1a &&
+      buffer[7] === 0x0a
+    );
+  }
+
+  if (mimeType === 'image/webp') {
+    // RIFF....WEBP
+    return (
+      buffer.length >= 12 &&
+      buffer[0] === 0x52 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x46 &&
+      buffer[8] === 0x57 &&
+      buffer[9] === 0x45 &&
+      buffer[10] === 0x42 &&
+      buffer[11] === 0x50
+    );
+  }
+
+  return false;
+}
+
 export function validateFinancialReceiptUpload(file: Multer.File | undefined) {
   if (!file) {
     throw new BadRequestException('Comprovante é obrigatório.');
@@ -69,6 +122,12 @@ export function validateFinancialReceiptUpload(file: Multer.File | undefined) {
 
   if (file.size > MAX_FINANCIAL_RECEIPT_SIZE) {
     throw new BadRequestException('O comprovante deve ter no máximo 10 MB.');
+  }
+
+  if (!matchesFinancialReceiptMagicBytes(file.buffer, file.mimetype)) {
+    throw new BadRequestException(
+      'O conteúdo do arquivo não corresponde a um comprovante válido (PDF, JPG, PNG ou WEBP).',
+    );
   }
 }
 

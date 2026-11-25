@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
-import { LogIn, Menu, UserPlus, X } from 'lucide-react';
+import { HeartHandshake, LogIn, Menu, UserPlus, X } from 'lucide-react';
 import type { PublicSiteTenant } from '@/lib/api-website';
 import { ChurchBrandMark } from './church-brand-mark';
 
@@ -12,12 +12,14 @@ interface SiteHeaderProps {
   hasNews: boolean;
   hasAbout: boolean;
   hasLocation: boolean;
+  hasGiving?: boolean;
   basePath?: string;
   membersLoginHref?: string;
 }
 
 export function SiteHeader({
   tenant,
+  hasGiving = false,
   basePath,
   membersLoginHref = '/login',
 }: SiteHeaderProps) {
@@ -65,6 +67,16 @@ export function SiteHeader({
         </Link>
 
         <nav aria-label="Principal" className="hidden items-center gap-2.5 md:flex">
+          {hasGiving && (
+            <a
+              href={`${homeHref === '/' ? '' : homeHref}#contribuir`}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/70 px-3.5 py-2 text-xs font-semibold text-zinc-200 transition hover:border-[var(--site-accent-border-strong)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
+            >
+              <HeartHandshake className="h-3.5 w-3.5 text-[var(--site-accent-text)]" aria-hidden="true" />
+              <span>Contribuir</span>
+            </a>
+          )}
+
           <Link
             href={cadastroHref}
             className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900/90 px-4 py-2 text-xs font-semibold text-zinc-100 transition hover:border-[var(--site-accent-border-strong)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--site-accent-ring)]"
@@ -104,6 +116,16 @@ export function SiteHeader({
           className="border-t border-zinc-800 bg-zinc-950/98 px-4 pb-5 pt-4 shadow-2xl backdrop-blur-md md:hidden"
         >
           <div className="grid grid-cols-1 gap-2.5">
+            {hasGiving && (
+              <a
+                href={`${homeHref === '/' ? '' : homeHref}#contribuir`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-[var(--site-accent-border-strong)]"
+              >
+                <HeartHandshake className="h-4 w-4 text-[var(--site-accent-text)]" aria-hidden="true" />
+                <span>Contribuir</span>
+              </a>
+            )}
             <Link
               href={cadastroHref}
               onClick={() => setMobileMenuOpen(false)}

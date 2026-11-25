@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { JwtPayload } from '../../common/types/jwt-payload.interface';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { FinanceAuthorizationService } from './finance-authorization.service';
@@ -54,6 +59,23 @@ export class FinancialAccountsService {
 
     if (dto.name) {
       await this.ensureNameAvailable(tenantId, dto.name, id);
+    }
+
+    if (dto.active === false) {
+      const activePixUsingAccount = await this.prisma.tenantPixConfig.findFirst({
+        where: {
+          tenantId,
+          defaultAccountId: id,
+          enabled: true,
+        },
+        select: { id: true },
+      });
+
+      if (activePixUsingAccount) {
+        throw new BadRequestException(
+          'Esta conta está vinculada como conta padrão do PIX ativo. Altere a conta nas configurações do PIX ou desative o PIX antes de inativá-la.',
+        );
+      }
     }
 
     const account = await this.prisma.financialAccount.update({

@@ -21,6 +21,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/escalas/exportacao': 'Exportação Escalas',
   '/escalas/visualizacao': 'Visualização Escalas',
   '/minhas-escalas': 'Minhas Escalas',
+  '/minhas-contribuicoes': 'Minhas Contribuições',
   '/agenda': 'Gerenciamento Agenda',
   '/agenda/exportacao': 'Exportação Agenda',
   '/agenda/visualizacao': 'Visualização Agenda',

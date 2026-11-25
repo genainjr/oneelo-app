@@ -231,6 +231,7 @@ export function buildTransactionDetailSubline(
   // Preferir nome completo do membro; evitar duplicar counterpartyName quando já derivado do membro
   const personName = item.member?.nome?.trim() || item.counterpartyName?.trim() || null;
   appendIfUnique(personName);
+  appendIfUnique(item.payerName, 'Titular');
   appendIfUnique(item.evento?.titulo, 'Evento');
 
   if (item.paymentMethod) {
@@ -599,6 +600,8 @@ export class FinanceiroDocumentRendererService {
         description: item.description ?? null,
         paymentMethod: item.paymentMethod ?? null,
         counterpartyName: item.counterpartyName ?? null,
+        payerName: item.payerName ?? null,
+        source: item.source ?? null,
         installmentNumber: item.installmentNumber ?? null,
         totalInstallments: item.totalInstallments ?? null,
         account: item.account,
